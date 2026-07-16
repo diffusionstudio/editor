@@ -83,7 +83,7 @@ function VerticalMeter(props: VerticalMeterProps) {
   };
 
   return (
-    <div class={cx("h-full relative w-full overflow-clip bg-background", props.class)}>
+    <div class={cx("h-full relative w-full overflow-clip", props.class)}>
       <div class="absolute inset-0 bg-input" />
 
       <div
@@ -210,10 +210,9 @@ export function VolumeControl(props: VolumeControlProps) {
         }}
       </For>
       <div
-        class="w-4.5 -translate-y-1/2 h-2 flex justify-center items-center absolute -left-0.75 bg-foreground rounded-xs pointer-events-none"
+        class="w-5 -translate-y-1/2 h-2 flex justify-center items-center absolute -left-1 bg-foreground rounded-xs pointer-events-none"
         style={{ top: `${knobPct()}%` }}
       >
-        <div class="w-3 h-px bg-background" />
       </div>
     </div>
   );
