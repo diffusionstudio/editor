@@ -294,7 +294,7 @@ export function AudioSettings(props: AudioSettingsProps) {
       <ControlRow
         label="Volume"
         class="items-start"
-        labelClass="text-xxs pt-1.5"
+        labelClass="pt-1.5"
         contentClass="h-16"
       >
         <div class="flex h-full gap-2">
