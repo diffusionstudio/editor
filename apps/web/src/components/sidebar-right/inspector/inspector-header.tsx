@@ -58,7 +58,7 @@ export function InspectorHeader() {
 
   return (
     <div class="h-12 shrink-0 flex items-center px-4">
-      <span class="text-[12px] font-450 text-foreground">
+      <span class="text-[12px] font-strong text-foreground">
         Editor
       </span>
       <DropdownMenu placement="bottom-end">

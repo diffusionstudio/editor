@@ -101,7 +101,7 @@ export function ProjectHeader(props: ProjectHeaderProps) {
           onBlur={handleBlurNameInput}
           onKeyDown={handleKeyDownNameInput}
           placeholder="Project name"
-          class="w-full bg-transparent focus-ring px-1 h-5 ml-1 rounded text-xs text-muted-foreground font-450 outline-none"
+          class="w-full bg-transparent focus-ring px-1 h-5 ml-1 rounded text-xs text-muted-foreground font-strong outline-none"
         />
       </div>
     </div>
@@ -115,7 +115,7 @@ export function FloatingProjectHeader() {
   return (
     <div data-desktop={isDesktop} class="h-10 rounded-lg border border-border shrink-0 flex items-center px-2 gap-1 fixed top-4 data-[desktop=true]:top-10 left-4 z-30 bg-background shadow-lg">
       <ProjectMenu />
-      <span class="text-xs text-muted-foreground font-450">Diffusion Studio</span>
+      <span class="text-xs text-muted-foreground font-strong">Diffusion Studio</span>
       <Button variant="ghost" size="icon" class="text-muted-foreground ml-2" onClick={toggleUI}>
         <Icon name="sidebar" />
       </Button>

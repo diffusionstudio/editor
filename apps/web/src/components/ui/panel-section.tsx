@@ -27,7 +27,7 @@ export function PanelSection(props: PanelSectionProps) {
 
   return (
     <>
-      <div class="flex items-center justify-between h-10 border-t border-border px-4 text-muted-foreground [&:has(+_*>_*)]:text-foreground" ref={local.ref}>
+      <div class="flex items-center justify-between h-10 border-t border-border px-4 font-strong text-muted-foreground [&:has(+_*>_*)]:text-foreground" ref={local.ref}>
         <div class="flex items-center gap-1 text-xs font-450">
           <Show
             when={typeof local.title === "string"}
