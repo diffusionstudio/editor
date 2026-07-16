@@ -45,6 +45,7 @@ export function SliderInput(props: SliderInputProps) {
   const [internal, setInternal] = createSignal(untrack(() => formatValue(currentValue())));
   const [displayValue, setDisplayValue] = createSignal(untrack(() => currentValue()));
   const [isEditing, setIsEditing] = createSignal(false);
+  const [isDragging, setIsDragging] = createSignal(false);
   const fillRatio = () => (clamp(displayValue()) - min()) / safeRange();
 
   let lastEmittedValue = untrack(() => currentValue());
@@ -103,6 +104,7 @@ export function SliderInput(props: SliderInputProps) {
     activePointerId = null;
     dragRect = undefined;
     dragStarted = false;
+    setIsDragging(false);
   };
 
   const handlePointerMove = (event: PointerEvent) => {
@@ -114,6 +116,7 @@ export function SliderInput(props: SliderInputProps) {
 
     if (!dragStarted && Math.hypot(dx, dy) >= DRAG_THRESHOLD) {
       dragStarted = true;
+      setIsDragging(true);
       if (inputEl && document.activeElement === inputEl) {
         inputEl.blur();
       }
@@ -187,6 +190,7 @@ export function SliderInput(props: SliderInputProps) {
     pointerStartTarget = event.target instanceof HTMLElement ? event.target : null;
     activePointerId = event.pointerId;
     dragStarted = false;
+    setIsDragging(false);
     containerEl?.setPointerCapture?.(event.pointerId);
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -248,6 +252,7 @@ export function SliderInput(props: SliderInputProps) {
         "after:opacity-100": isEditing(),
         "cursor-not-allowed": props.disabled,
       }}
+      data-dragging={isDragging() ? "true" : "false"}
       onPointerDown={handlePointerDown}
     >
       <div
@@ -261,7 +266,7 @@ export function SliderInput(props: SliderInputProps) {
         }}
       >
         <Show when={!props.disabled}>
-          <div class="absolute right-1 top-1/2 -translate-y-1/2 w-0.5 rounded-xs bg-input transition-all duration-75 opacity-0 h-3 group-hover/slider-input:opacity-70 group-focus-within/slider-input:opacity-70 group-data-[dragging=true]/slider-input:opacity-100 group-data-[dragging=true]/slider-input:h-4" />
+          <div class="absolute right-1 top-1/2 -translate-y-1/2 w-0.5 rounded-xs bg-foreground transition-all duration-150 opacity-0 h-0 group-hover/slider-input:opacity-20 group-hover/slider-input:h-3 group-focus-within/slider-input:opacity-20 group-focus-within/slider-input:h-3 group-data-[dragging=true]/slider-input:opacity-30 group-data-[dragging=true]/slider-input:h-4" />
         </Show>
       </div>
       <div class="relative z-0 flex items-center h-full justify-between pl-2">

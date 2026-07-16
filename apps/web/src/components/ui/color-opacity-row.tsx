@@ -154,10 +154,11 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
   return (
     <div
       ref={rootRef}
-      class="relative h-7 w-full overflow-hidden rounded-md bg-input text-foreground border-none outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:opacity-0 after:ring-1 after:ring-inset after:ring-ring after:z-20"
+      class="group/color-slider relative h-7 w-full overflow-hidden rounded-md bg-input text-foreground border-none outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:opacity-0 after:ring-1 after:ring-inset after:ring-ring after:z-20"
       classList={{
         "after:opacity-100": isFocusWithin(),
       }}
+      data-dragging={isDraggingSlider() ? "true" : "false"}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -175,10 +176,7 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
           class="pointer-events-none absolute inset-y-0 left-0 rounded-sm bg-muted"
           style={{ width: `${opacityPercent()}%` }}
         >
-          <div
-            class="absolute inset-y-1 right-1 w-0.5 rounded-full bg-input"
-            classList={{ hidden: !isDraggingSlider() }}
-          />
+          <div class="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 w-0.5 rounded-xs bg-foreground transition-all duration-150 opacity-0 h-0 group-hover/color-slider:opacity-20 group-hover/color-slider:h-3 group-data-[dragging=true]/color-slider:opacity-30 group-data-[dragging=true]/color-slider:h-4" />
         </div>
       </Show>
 
