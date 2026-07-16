@@ -154,10 +154,9 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
   return (
     <div
       ref={rootRef}
-      class="relative h-7 w-full overflow-hidden rounded-md border bg-input text-foreground"
+      class="relative h-7 w-full overflow-hidden rounded-md bg-input text-foreground border-none outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:opacity-0 after:ring-1 after:ring-inset after:ring-ring after:z-20"
       classList={{
-        "border-primary": isFocusWithin(),
-        "border-transparent": !isFocusWithin(),
+        "after:opacity-100": isFocusWithin(),
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -183,24 +182,60 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
         </div>
       </Show>
 
-      <div class="relative z-10 flex h-full items-center justify-between pl-1">
-        <div class="flex min-w-0 items-center gap-2">
-          <button
-            class="size-5 min-w-5 overflow-hidden rounded-sm"
-            onClick={props.onClick}
-            onPointerDown={(e) => e.stopPropagation()}
-            onFocusIn={(e) => e.stopPropagation()}
-          >
+      <div class="relative z-10 flex h-full items-center">
+        <button
+          class="flex h-full shrink-0 items-center pl-1 pr-1"
+          onClick={props.onClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          onFocusIn={(e) => e.stopPropagation()}
+        >
+          <span class="size-5 min-w-5 overflow-hidden rounded-sm">
             <OpacitySwatch color={props.color} opacity={props.opacity ?? 1} />
-          </button>
+          </span>
+        </button>
 
+        <input
+          data-paint-editable="true"
+          type="text"
+          value={colorDraft()}
+          class="h-full min-w-0 flex-1 bg-transparent text-xxs outline-none pl-1"
+          classList={{ "cursor-default": !isFocusWithin() }}
+          onInput={(event) => setColorDraft(event.currentTarget.value)}
+          onPointerDown={handleInitialInputPointerDown}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              event.currentTarget.blur();
+              return;
+            }
+            if (event.key !== "Escape") return;
+
+            event.preventDefault();
+            cancelColorCommit = true;
+            setColorDraft(colorText());
+            event.currentTarget.value = colorText();
+            event.currentTarget.blur();
+          }}
+          onBlur={(event) => {
+            if (cancelColorCommit) {
+              cancelColorCommit = false;
+              event.currentTarget.value = colorText();
+              return;
+            }
+
+            commitColor();
+            event.currentTarget.value = colorText();
+          }}
+        />
+
+        <Show when={hasOpacity()}>
           <input
             data-paint-editable="true"
             type="text"
-            value={colorDraft()}
-            class="min-w-0 bg-transparent text-xxs outline-none"
+            value={opacityDraft()}
+            class="h-full w-8 shrink-0 text-right text-xxs outline-none"
             classList={{ "cursor-default": !isFocusWithin() }}
-            onInput={(event) => setColorDraft(event.currentTarget.value)}
+            onInput={(event) => setOpacityDraft(event.currentTarget.value)}
             onPointerDown={handleInitialInputPointerDown}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -211,70 +246,32 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
               if (event.key !== "Escape") return;
 
               event.preventDefault();
-              cancelColorCommit = true;
-              setColorDraft(colorText());
-              event.currentTarget.value = colorText();
+              cancelOpacityCommit = true;
+              const next = `${opacityPercent()}%`;
+              setOpacityDraft(next);
+              event.currentTarget.value = next;
               event.currentTarget.blur();
             }}
             onBlur={(event) => {
-              if (cancelColorCommit) {
-                cancelColorCommit = false;
-                event.currentTarget.value = colorText();
+              if (cancelOpacityCommit) {
+                cancelOpacityCommit = false;
+                setOpacityDraft(`${opacityPercent()}%`);
+                event.currentTarget.value = opacityDraft();
                 return;
               }
 
-              commitColor();
-              event.currentTarget.value = colorText();
+              commitOpacity();
+              setOpacityDraft(`${opacityPercent()}%`);
+              event.currentTarget.value = opacityDraft();
             }}
           />
-        </div>
 
-        <Show when={hasOpacity()}>
-          <div class="flex items-center">
-            <input
-              data-paint-editable="true"
-              type="text"
-              value={opacityDraft()}
-              class="w-10 text-right text-xxs outline-none"
-              classList={{ "cursor-default": !isFocusWithin() }}
-              onInput={(event) => setOpacityDraft(event.currentTarget.value)}
-              onPointerDown={handleInitialInputPointerDown}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  event.currentTarget.blur();
-                  return;
-                }
-                if (event.key !== "Escape") return;
-
-                event.preventDefault();
-                cancelOpacityCommit = true;
-                const next = `${opacityPercent()}%`;
-                setOpacityDraft(next);
-                event.currentTarget.value = next;
-                event.currentTarget.blur();
-              }}
-              onBlur={(event) => {
-                if (cancelOpacityCommit) {
-                  cancelOpacityCommit = false;
-                  setOpacityDraft(`${opacityPercent()}%`);
-                  event.currentTarget.value = opacityDraft();
-                  return;
-                }
-
-                commitOpacity();
-                setOpacityDraft(`${opacityPercent()}%`);
-                event.currentTarget.value = opacityDraft();
-              }}
-            />
-
-            <div
-              class="min-w-2 z-20"
-              onPointerDown={(e) => e.stopPropagation()}
-              onFocusIn={(e) => e.stopPropagation()}
-            >
-              {props.keyframe}
-            </div>
+          <div
+            class="min-w-2 z-20 flex h-full items-center"
+            onPointerDown={(e) => e.stopPropagation()}
+            onFocusIn={(e) => e.stopPropagation()}
+          >
+            {props.keyframe}
           </div>
         </Show>
       </div>
