@@ -301,53 +301,52 @@ export function FillItem(props: FillItemProps) {
         />
       </div>
 
-      <div class="relative z-0 flex h-full items-center justify-between pl-1">
-        <div class="flex min-w-0 items-center gap-2">
-          <button
-            class="size-5 min-w-5 overflow-hidden rounded-sm"
-            onFocusIn={(e) => e.stopPropagation()}
-            onClick={props.onClick}
-          >
+      <div class="relative z-0 flex h-full items-center">
+        <button
+          class="flex h-full shrink-0 items-center pl-1 pr-1"
+          onFocusIn={(e) => e.stopPropagation()}
+          onClick={props.onClick}
+        >
+          <span class="size-5 min-w-5 overflow-hidden rounded-sm">
             <PaintItemIcon fill={props.fillEid} />
-          </button>
+          </span>
+        </button>
 
-          <Show when={isSolidFill()}>
-            <input
-              data-paint-editable="true"
-              type="text"
-              value={colorDraft()}
-              class="w-[7ch] bg-transparent text-xxs outline-none"
-              classList={{ "cursor-default": !isFocusWithin() }}
-              onInput={handleColorInput}
-              onKeyDown={handleColorKeyDown}
-              onBlur={handleColorBlur}
-            />
-          </Show>
-
-          <Show when={!isSolidFill()}>
-            <FillLabel fill={props.fillEid} />
-          </Show>
-
-        </div>
-
-        <div class="flex items-center">
+        <Show when={isSolidFill()}>
           <input
             data-paint-editable="true"
             type="text"
-            value={opacityDraft()}
-            class="w-10 text-right text-xxs outline-none"
+            value={colorDraft()}
+            class="h-full min-w-0 flex-1 bg-transparent text-xxs outline-none pl-1"
             classList={{ "cursor-default": !isFocusWithin() }}
-            onInput={handleOpacityInput}
-            onKeyDown={handleOpacityKeyDown}
-            onBlur={handleOpacityBlur}
+            onInput={handleColorInput}
+            onKeyDown={handleColorKeyDown}
+            onBlur={handleColorBlur}
           />
+        </Show>
 
-          <div
-            class="z-20 min-w-2"
-            onFocusIn={(e) => e.stopPropagation()}
-          >
-            <Keyframe property="opacity" target={props.fillEid} />
+        <Show when={!isSolidFill()}>
+          <div class="flex h-full min-w-0 flex-1 items-center">
+            <FillLabel fill={props.fillEid} />
           </div>
+        </Show>
+
+        <input
+          data-paint-editable="true"
+          type="text"
+          value={opacityDraft()}
+          class="h-full w-8 shrink-0 text-right text-xxs outline-none"
+          classList={{ "cursor-default": !isFocusWithin() }}
+          onInput={handleOpacityInput}
+          onKeyDown={handleOpacityKeyDown}
+          onBlur={handleOpacityBlur}
+        />
+
+        <div
+          class="z-20 flex h-full shrink-0 items-center"
+          onFocusIn={(e) => e.stopPropagation()}
+        >
+          <Keyframe property="opacity" target={props.fillEid} class="h-full" />
         </div>
       </div>
     </div>
