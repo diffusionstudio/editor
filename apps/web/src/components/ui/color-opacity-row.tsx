@@ -123,6 +123,10 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
       dragMoved = true;
       setIsDraggingSlider(true);
       pendingInputFocus = null;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && rootRef?.contains(active)) {
+        active.blur();
+      }
       props.onStartTransaction?.();
     }
 
@@ -199,7 +203,7 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
           class="h-full min-w-0 flex-1 bg-transparent text-xxs outline-none pl-1"
           classList={{ "cursor-default": !isFocusWithin() }}
           onInput={(event) => setColorDraft(event.currentTarget.value)}
-          onPointerDown={handleInitialInputPointerDown}
+          onPointerDown={hasOpacity() ? undefined : handleInitialInputPointerDown}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -238,7 +242,6 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
               "w-8": !!props.keyframe,
             }}
             onInput={(event) => setOpacityDraft(event.currentTarget.value)}
-            onPointerDown={handleInitialInputPointerDown}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
