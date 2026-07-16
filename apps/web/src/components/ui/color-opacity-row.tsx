@@ -233,8 +233,12 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
             data-paint-editable="true"
             type="text"
             value={opacityDraft()}
-            class="h-full w-8 shrink-0 text-right text-xxs outline-none"
-            classList={{ "cursor-default": !isFocusWithin() }}
+            class="h-full shrink-0 text-right text-xxs outline-none"
+            classList={{
+              "cursor-default": !isFocusWithin(),
+              "w-10 pr-2": !props.keyframe,
+              "w-8": !!props.keyframe,
+            }}
             onInput={(event) => setOpacityDraft(event.currentTarget.value)}
             onPointerDown={handleInitialInputPointerDown}
             onKeyDown={(event) => {
@@ -266,13 +270,15 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
             }}
           />
 
-          <div
-            class="min-w-2 z-20 flex h-full items-center"
-            onPointerDown={(e) => e.stopPropagation()}
-            onFocusIn={(e) => e.stopPropagation()}
-          >
-            {props.keyframe}
-          </div>
+          <Show when={props.keyframe}>
+            <div
+              class="min-w-2 z-20 flex h-full items-center"
+              onPointerDown={(e) => e.stopPropagation()}
+              onFocusIn={(e) => e.stopPropagation()}
+            >
+              {props.keyframe}
+            </div>
+          </Show>
         </Show>
       </div>
     </div>
