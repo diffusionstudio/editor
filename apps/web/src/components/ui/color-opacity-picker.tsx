@@ -278,27 +278,29 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
       <div class="px-2">
         <div
           ref={colorAreaRef}
-          class="relative aspect-square w-full rounded-md overflow-hidden touch-none"
+          class="relative aspect-square w-full rounded-md touch-none"
           onPointerDown={colorAreaDrag.onPointerDown}
         >
-          <div
-            class="absolute inset-0"
-            style={{ "background-color": `hsl(${hslDraft().h}, 100%, 50%)` }}
-          />
-          <div
-            class="absolute inset-0"
-            style={{
-              "background-image":
-                "linear-gradient(90deg, #FFFFFF 0%, rgba(255,255,255,0) 100%)",
-            }}
-          />
-          <div
-            class="absolute inset-0"
-            style={{
-              "background-image":
-                "linear-gradient(180deg, rgba(0,0,0,0) 0%, #000000 100%)",
-            }}
-          />
+          <div class="absolute inset-0 rounded-md overflow-hidden">
+            <div
+              class="absolute inset-0"
+              style={{ "background-color": `hsl(${hslDraft().h}, 100%, 50%)` }}
+            />
+            <div
+              class="absolute inset-0"
+              style={{
+                "background-image":
+                  "linear-gradient(90deg, #FFFFFF 0%, rgba(255,255,255,0) 100%)",
+              }}
+            />
+            <div
+              class="absolute inset-0"
+              style={{
+                "background-image":
+                  "linear-gradient(180deg, rgba(0,0,0,0) 0%, #000000 100%)",
+              }}
+            />
+          </div>
           <div
             class="absolute size-3.5 rounded-full border-[3px] border-foreground shadow-[0_2px_7px_rgba(0,0,0,0.4)] pointer-events-none"
             style={{
@@ -386,6 +388,8 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
         <div class="flex flex-col gap-3">
           <div class="flex gap-px items-center overflow-clip rounded-md">
             <Select
+              modal
+              preventScroll={false}
               value={colorType()}
               onChange={setColorType}
               options={[...COLOR_TYPES]}

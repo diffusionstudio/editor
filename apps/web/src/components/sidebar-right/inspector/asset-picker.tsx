@@ -118,7 +118,7 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
             placeholder="Search in assets"
             class="flex-1 min-w-0 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
           />
-          <DropdownMenu placement="bottom-end">
+          <DropdownMenu placement="bottom-end" modal preventScroll={false}>
             <Tooltip>
               <TooltipTrigger<typeof DropdownMenuTrigger>
                 as={(triggerProps: object) => (

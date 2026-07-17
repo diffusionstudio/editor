@@ -345,6 +345,8 @@ export function GradientFillPicker(props: GradientPickerProps) {
       <div class="flex flex-col gap-4">
         <div class="flex items-center gap-2">
           <Select<GradientStyleOption>
+            modal
+            preventScroll={false}
             class="flex-1"
             value={fillType() === PaintType.RADIAL_GRADIENT ? "Radial" : "Linear"}
             options={[...GRADIENT_STYLE_OPTIONS]}

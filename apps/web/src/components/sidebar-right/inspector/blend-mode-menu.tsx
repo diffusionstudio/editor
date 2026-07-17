@@ -92,7 +92,7 @@ export function BlendModeMenu(props: BlendModeMenuProps) {
   }
 
   return (
-    <DropdownMenu placement="bottom-end" onOpenChange={handleOpenChange}>
+    <DropdownMenu placement="bottom-end" modal preventScroll={false} onOpenChange={handleOpenChange}>
       <Tooltip>
         <TooltipTrigger<typeof DropdownMenuTrigger>
           as={(triggerProps: object) => (

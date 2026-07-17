@@ -151,7 +151,7 @@ export function FillPicker(props: FillPickerProps) {
         </FloatingInspectorTitle>
         <div class="ml-auto flex items-center gap-1">
           <Show when={currentTab() === "asset"}>
-            <DropdownMenu placement="bottom-end">
+            <DropdownMenu placement="bottom-end" modal preventScroll={false}>
               <Tooltip>
                 <TooltipTrigger<typeof DropdownMenuTrigger>
                   as={(triggerProps: object) => (
