@@ -118,6 +118,7 @@ export function EffectsSettings(props: EffectsSettingsProps) {
   const c = world.components;
 
   let anchorRef: HTMLDivElement | undefined;
+  let rowsRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
   const effectEids = useEntityState(world.components.Cache.effects, eid, []);
@@ -136,7 +137,8 @@ export function EffectsSettings(props: EffectsSettingsProps) {
   };
 
   const handleRemoveEffect = (effectEid: number) => deleteEntity(world, effectEid);
-  const openInspector = (effectEid: number) => setInspectingEffect(effectEid);
+  const openInspector = (effectEid: number) =>
+    setInspectingEffect((prev) => (prev === effectEid ? undefined : effectEid));
   const handleReorderEffect = (effectEid: number, direction: number) => {
     const effects = getSiblingEntities(world, effectEid, c.Effect);
     const index = effects.indexOf(effectEid);
@@ -190,23 +192,26 @@ export function EffectsSettings(props: EffectsSettingsProps) {
           </DropdownMenu>
         }
       >
-        <For each={effectEids().toReversed()}>
-          {(effectEid) => (
-            <EffectRow
-              effectEid={effectEid}
-              onInspect={() => openInspector(effectEid)}
-              onRemove={() => handleRemoveEffect(effectEid)}
-              onMoveUp={() => handleReorderEffect(effectEid, 1)}
-              onMoveDown={() => handleReorderEffect(effectEid, -1)}
-            />
-          )}
-        </For>
+        <div ref={rowsRef} class="contents">
+          <For each={effectEids().toReversed()}>
+            {(effectEid) => (
+              <EffectRow
+                effectEid={effectEid}
+                onInspect={() => openInspector(effectEid)}
+                onRemove={() => handleRemoveEffect(effectEid)}
+                onMoveUp={() => handleReorderEffect(effectEid, 1)}
+                onMoveDown={() => handleReorderEffect(effectEid, -1)}
+              />
+            )}
+          </For>
+        </div>
       </PanelSection>
 
       <Show when={inspectingEffect()}>
         <EffectsInspector
           onClose={() => setInspectingEffect(undefined)}
           anchorRef={anchorRef!}
+          triggerRef={rowsRef}
           effectEid={inspectingEffect()!}
           nodeEid={eid()}
         />

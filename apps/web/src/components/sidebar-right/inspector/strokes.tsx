@@ -31,6 +31,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
   const { world } = useEngine();
   const c = world.components;
   let anchorRef!: HTMLDivElement;
+  let rowsRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
 
@@ -64,7 +65,8 @@ export function StrokesSettings(props: StrokesSettingsProps) {
   };
 
   const handleClosePicker = () => setSelectedStroke(undefined);
-  const handleSelectStroke = (strokeEid: number) => setSelectedStroke(strokeEid);
+  const handleSelectStroke = (strokeEid: number) =>
+    setSelectedStroke((prev) => (prev === strokeEid ? undefined : strokeEid));
   const handleRemoveStroke = (strokeEid: number) => deleteEntity(world, strokeEid);
 
   const handleReorderStroke = (strokeEid: number, direction: number) => {
@@ -99,18 +101,22 @@ export function StrokesSettings(props: StrokesSettingsProps) {
           </Tooltip>
         }
       >
-        <For each={strokeEids().toReversed()}>
-          {(strokeEid) => (
-            <FillRow
-              nodeEid={eid()}
-              fillEid={strokeEid}
-              onSelect={() => handleSelectStroke(strokeEid)}
-              onRemove={() => handleRemoveStroke(strokeEid)}
-              onMoveUp={() => handleReorderStroke(strokeEid, 1)}
-              onMoveDown={() => handleReorderStroke(strokeEid, -1)}
-            />
-          )}
-        </For>
+        <Show when={strokeEids().length > 0}>
+          <div ref={rowsRef} class="contents">
+            <For each={strokeEids().toReversed()}>
+              {(strokeEid) => (
+                <FillRow
+                  nodeEid={eid()}
+                  fillEid={strokeEid}
+                  onSelect={() => handleSelectStroke(strokeEid)}
+                  onRemove={() => handleRemoveStroke(strokeEid)}
+                  onMoveUp={() => handleReorderStroke(strokeEid, 1)}
+                  onMoveDown={() => handleReorderStroke(strokeEid, -1)}
+                />
+              )}
+            </For>
+          </div>
+        </Show>
 
         <Show when={strokeEids().length > 0}>
           <ControlRow label="Weight">
@@ -147,11 +153,12 @@ export function StrokesSettings(props: StrokesSettingsProps) {
           </ControlRow>
         </Show>
       </PanelSection>
-      <Show when={selectedStroke()}>
+      <Show when={selectedStroke()} keyed>
         <FillPicker
           nodeEid={eid()}
           fillEid={selectedStroke()!}
           anchorRef={anchorRef}
+          triggerRef={rowsRef}
           open={!!selectedStroke()}
           onClose={handleClosePicker}
           tabs={['solid', 'gradient']}

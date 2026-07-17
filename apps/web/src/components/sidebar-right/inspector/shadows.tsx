@@ -123,7 +123,16 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
 
   const [inspectingShadow, setInspectingShadow] = createSignal<number | null>(null);
 
+  const handleInspectorChange = (shadowEid: number | null) => {
+    if (shadowEid === null) {
+      setInspectingShadow(null);
+      return;
+    }
+    setInspectingShadow((prev) => (prev === shadowEid ? null : shadowEid));
+  };
+
   let anchorRef: HTMLDivElement | undefined;
+  let rowsRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
   const shadows = useEntityState(c.Cache.shadows, eid, []);
@@ -160,20 +169,23 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
           </Tooltip>
         }
       >
-        <For each={shadows().toReversed()}>
-          {(shadowEid: number) => (
-            <ShadowRow
-              shadowEid={shadowEid}
-              nodeEid={eid()}
-              onInspectorChange={setInspectingShadow}
-            />
-          )}
-        </For>
+        <div ref={rowsRef} class="contents">
+          <For each={shadows().toReversed()}>
+            {(shadowEid: number) => (
+              <ShadowRow
+                shadowEid={shadowEid}
+                nodeEid={eid()}
+                onInspectorChange={handleInspectorChange}
+              />
+            )}
+          </For>
+        </div>
       </PanelSection>
       <Show when={inspectingShadow()}>
         <ShadowInspector
           onClose={() => setInspectingShadow(null)}
           anchorRef={anchorRef!}
+          triggerRef={rowsRef}
           nodeEid={eid()}
           shadowEid={inspectingShadow()!}
         />

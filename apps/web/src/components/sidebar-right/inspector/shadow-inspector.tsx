@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createSignal } from 'solid-js';
+import { createSignal, createUniqueId, createEffect, on } from 'solid-js';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
@@ -12,6 +12,7 @@ import {
   FloatingInspectorHeader,
   FloatingInspectorTitle,
   FloatingInspectorSeparator,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { ControlRow } from "@/components/ui/control-group";
 import { ColorOpacityRow } from "@/components/ui/color-opacity-row";
@@ -26,6 +27,7 @@ import { Keyframe } from "@/components/ui/keyframe";
 type ShadowInspectorProps = {
   onClose(): void;
   anchorRef: HTMLElement;
+  triggerRef?: HTMLElement;
   nodeEid: number;
   shadowEid: number;
 };
@@ -36,13 +38,16 @@ export function ShadowInspector(props: ShadowInspectorProps) {
   const { world } = useEngine();
   const c = world.components;
 
+  const titleId = createUniqueId();
   const [isColorPickerOpen, setIsColorPickerOpen] = createSignal(false);
 
-  const color = useEntityState(c.Computed.color, props.shadowEid, 0x000000);
-  const opacity = useEntityState(c.Computed.opacity, props.shadowEid, 0.25);
-  const offsetX = useEntityState(c.Computed.offsetX, props.shadowEid, 0);
-  const offsetY = useEntityState(c.Computed.offsetY, props.shadowEid, 4);
-  const blur = useEntityState(c.Computed.blur, props.shadowEid, 0);
+  createEffect(on(() => props.shadowEid, () => setIsColorPickerOpen(false), { defer: true }));
+
+  const color = useEntityState(c.Computed.color, () => props.shadowEid, 0x000000);
+  const opacity = useEntityState(c.Computed.opacity, () => props.shadowEid, 0.25);
+  const offsetX = useEntityState(c.Computed.offsetX, () => props.shadowEid, 0);
+  const offsetY = useEntityState(c.Computed.offsetY, () => props.shadowEid, 4);
+  const blur = useEntityState(c.Computed.blur, () => props.shadowEid, 0);
 
   const updateColor = (color: number) => {
     setComponent(world, props.shadowEid, c.Color, color);
@@ -65,16 +70,27 @@ export function ShadowInspector(props: ShadowInspectorProps) {
     props.onClose();
   };
 
+  const handleParentInteraction = () => {
+    if (!isColorPickerOpen()) return;
+    setIsColorPickerOpen(false);
+  };
+
 
   return (
-    <>
+    <FloatingInspectorLayer
+      onDismiss={handleClose}
+      triggerRef={props.triggerRef}
+      triggerControlSelector="[data-row-control]"
+      labelledBy={titleId}
+    >
       <FloatingInspector
         open={true}
         anchorRef={props.anchorRef}
         width={248}
+        onPointerDown={handleParentInteraction}
       >
         <FloatingInspectorHeader class="items-center justify-between">
-          <FloatingInspectorTitle>
+          <FloatingInspectorTitle id={titleId}>
             Drop Shadow
           </FloatingInspectorTitle>
           <Tooltip>
@@ -100,7 +116,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
               onChangeOpacity={updateOpacity}
               onStartTransaction={() => world.history.startTransaction("Edit shadow opacity")}
               onEndTransaction={() => world.history.commitTransaction()}
-              onClick={() => setIsColorPickerOpen(true)}
+              onClick={() => setIsColorPickerOpen((open) => !open)}
             />
           </ControlRow>
 
@@ -182,6 +198,6 @@ export function ShadowInspector(props: ShadowInspectorProps) {
           />
         </FloatingInspectorContent>
       </FloatingInspector>
-    </>
+    </FloatingInspectorLayer>
   );
 }

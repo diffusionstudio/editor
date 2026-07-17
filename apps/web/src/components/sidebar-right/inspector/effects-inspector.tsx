@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { createUniqueId } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
@@ -11,6 +12,7 @@ import {
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
   FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
@@ -23,6 +25,7 @@ import { hasComponent } from 'bitecs';
 
 type EffectsInspectorProps = {
   anchorRef: HTMLElement;
+  triggerRef?: HTMLElement;
   onClose(): void;
   effectEid: number;
   nodeEid: number;
@@ -56,9 +59,11 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   const { world } = useEngine();
   const c = world.components;
 
-  const effectValue = useEntityState(c.Computed.value, props.effectEid, 0);
-  const hidden = useEntityTag(c.Hidden, props.effectEid);
-  const type = useEntityState(c.Effect.type, props.effectEid, EffectType.BRIGHTNESS);
+  const titleId = createUniqueId();
+
+  const effectValue = useEntityState(c.Computed.value, () => props.effectEid, 0);
+  const hidden = useEntityTag(c.Hidden, () => props.effectEid);
+  const type = useEntityState(c.Effect.type, () => props.effectEid, EffectType.BRIGHTNESS);
 
   const updateValue = (v: number) => {
     setComponent(world, props.effectEid, c.Effect, { value: v });
@@ -78,9 +83,15 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   const label = () => EFFECT_DEFAULTS[type() as Effects]?.label ?? "";
 
   return (
+    <FloatingInspectorLayer
+      onDismiss={props.onClose}
+      triggerRef={props.triggerRef}
+      triggerControlSelector="[data-row-control]"
+      labelledBy={titleId}
+    >
     <FloatingInspector open={true} anchorRef={props.anchorRef} width={248}>
       <FloatingInspectorHeader class="items-center justify-between">
-        <FloatingInspectorTitle>{label()}</FloatingInspectorTitle>
+        <FloatingInspectorTitle id={titleId}>{label()}</FloatingInspectorTitle>
         <div class="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger
@@ -164,5 +175,6 @@ export function EffectsInspector(props: EffectsInspectorProps) {
         )}
       </FloatingInspectorContent>
     </FloatingInspector>
+    </FloatingInspectorLayer>
   );
 }

@@ -7,6 +7,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   createSignal,
   createEffect,
+  createUniqueId,
+  onMount,
   Show,
   For,
   createMemo,
@@ -25,6 +27,7 @@ import {
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { BlendModeMenu } from "./blend-mode-menu";
 import { SolidFillPicker } from "./solid-picker";
@@ -51,6 +54,7 @@ const SCALE_MODE_OPTIONS: ReadonlyArray<{ value: ScaleMode; label: string; }> = 
 
 export type FillPickerProps = {
   anchorRef: HTMLElement;
+  triggerRef?: HTMLElement;
   nodeEid: number;
   fillEid: number;
   open: boolean;
@@ -69,6 +73,15 @@ export function getFillTab(paintType: PaintType): FillTab {
 export function FillPicker(props: FillPickerProps) {
   const { world } = useEngine();
   const c = world.components;
+
+  const titleId = createUniqueId();
+
+  onMount(() => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.matches("input[data-paint-editable='true']")) {
+      active.blur();
+    }
+  });
 
   const scaleMode = useEntityState(c.ScaleMode, props.fillEid, ScaleMode.FILL);
   const type = useEntityState(c.Paint, props.fillEid, PaintType.SOLID);
@@ -130,12 +143,18 @@ export function FillPicker(props: FillPickerProps) {
   });
 
   return (
+    <FloatingInspectorLayer
+      onDismiss={props.onClose}
+      triggerRef={props.triggerRef}
+      triggerControlSelector="[data-row-control]"
+      labelledBy={titleId}
+    >
     <FloatingInspector
       open={props.open}
       anchorRef={props.anchorRef}
     >
       <FloatingInspectorHeader>
-        <FloatingInspectorTitle>
+        <FloatingInspectorTitle id={titleId}>
           {TABS.find((mode) => mode.value === currentTab())?.label}
         </FloatingInspectorTitle>
         <div class="ml-auto flex items-center gap-1">
@@ -221,5 +240,6 @@ export function FillPicker(props: FillPickerProps) {
         </div>
       </FloatingInspectorContent>
     </FloatingInspector>
+    </FloatingInspectorLayer>
   );
 }

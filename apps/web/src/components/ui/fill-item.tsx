@@ -283,6 +283,7 @@ export function FillItem(props: FillItemProps) {
   return (
     <div
       ref={rootRef}
+      data-row-control=""
       class="group/fill-slider relative h-7 w-full overflow-hidden rounded-md bg-input text-foreground select-none border-none outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:opacity-0 after:ring-1 after:ring-inset after:ring-ring after:z-20"
       classList={{
         "after:opacity-100": isFocusWithin(),

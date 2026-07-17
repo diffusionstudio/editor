@@ -16,7 +16,9 @@ import {
   type Accessor,
   type Component,
   type ComponentProps,
+  type JSX,
 } from "solid-js"
+import { Dialog as DialogPrimitive } from "@kobalte/core/dialog"
 
 import { cx } from "@/lib/cva"
 import { clamp } from "@/utils"
@@ -261,6 +263,43 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
         </FloatingInspectorContext.Provider>
       </FloatingInspectorTopContext.Provider>
     </Show>
+  )
+}
+
+export type FloatingInspectorLayerProps = {
+  open?: boolean
+  onDismiss: () => void
+  triggerRef?: HTMLElement
+  triggerControlSelector?: string
+  labelledBy?: string
+  children?: JSX.Element
+}
+
+export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
+  props,
+) => {
+  return (
+    <DialogPrimitive
+      open={props.open ?? true}
+      modal={false}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) props.onDismiss()
+      }}
+    >
+      <DialogPrimitive.Content
+        aria-labelledby={props.labelledBy}
+        {...({ bypassTopMostLayerCheck: true } as any)}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onInteractOutside={(event) => {
+          const target = event.target as Element | null
+          if (!target || !props.triggerRef?.contains(target)) return
+          if (props.triggerControlSelector && !target.closest(props.triggerControlSelector)) return
+          event.preventDefault()
+        }}
+      >
+        {props.children}
+      </DialogPrimitive.Content>
+    </DialogPrimitive>
   )
 }
 

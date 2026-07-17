@@ -48,6 +48,7 @@ export function ItemRow(props: ItemRowProps) {
                 </span>
             </Show>
             <div
+                data-row-control=""
                 class="bg-input flex-1 min-w-0 h-7 rounded-md p-1 pr-0 flex items-center gap-2 hover:bg-input/80 transition-colors relative cursor-default overflow-clip"
                 onClick={handleClick}
             >

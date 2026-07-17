@@ -27,6 +27,7 @@ export function FillsSettings(props: FillsSettingsProps) {
 
   const c = world.components;
   let anchorRef!: HTMLDivElement;
+  let rowsRef: HTMLDivElement | undefined;
 
   const [selectedFill, setSelectedFill] = createSignal<number>();
   const eid = () => props.selection.values().next().value!;
@@ -48,7 +49,8 @@ export function FillsSettings(props: FillsSettingsProps) {
   };
 
   const handleClosePicker = () => setSelectedFill(undefined);
-  const handleSelectFill = (fillEid: number) => setSelectedFill(fillEid);
+  const handleSelectFill = (fillEid: number) =>
+    setSelectedFill((prev) => (prev === fillEid ? undefined : fillEid));
   const handleRemoveFill = (fillEid: number) => deleteEntity(world, fillEid);
 
   const handleReorderFill = (fillEid: number, direction: number) => {
@@ -83,24 +85,29 @@ export function FillsSettings(props: FillsSettingsProps) {
           </Tooltip>
         }
       >
-        <For each={fillEids().toReversed()}>
-          {(fillEid) => (
-            <FillRow
-              nodeEid={eid()}
-              fillEid={fillEid}
-              onSelect={() => handleSelectFill(fillEid)}
-              onRemove={() => handleRemoveFill(fillEid)}
-              onMoveUp={() => handleReorderFill(fillEid, 1)}
-              onMoveDown={() => handleReorderFill(fillEid, -1)}
-            />
-          )}
-        </For>
+        <Show when={fillEids().length > 0}>
+          <div ref={rowsRef} class="contents">
+            <For each={fillEids().toReversed()}>
+              {(fillEid) => (
+                <FillRow
+                  nodeEid={eid()}
+                  fillEid={fillEid}
+                  onSelect={() => handleSelectFill(fillEid)}
+                  onRemove={() => handleRemoveFill(fillEid)}
+                  onMoveUp={() => handleReorderFill(fillEid, 1)}
+                  onMoveDown={() => handleReorderFill(fillEid, -1)}
+                />
+              )}
+            </For>
+          </div>
+        </Show>
       </PanelSection>
-      <Show when={selectedFill()}>
+      <Show when={selectedFill()} keyed>
         <FillPicker
           nodeEid={eid()}
           fillEid={selectedFill()!}
           anchorRef={anchorRef}
+          triggerRef={rowsRef}
           open={!!selectedFill()}
           onClose={handleClosePicker}
           tabs={tabs()}
