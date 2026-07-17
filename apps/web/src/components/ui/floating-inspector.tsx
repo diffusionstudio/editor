@@ -288,7 +288,6 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
     >
       <DialogPrimitive.Content
         aria-labelledby={props.labelledBy}
-        {...({ bypassTopMostLayerCheck: true } as any)}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onInteractOutside={(event) => {
           const target = event.target as Element | null

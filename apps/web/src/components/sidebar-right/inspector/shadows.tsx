@@ -169,17 +169,19 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
           </Tooltip>
         }
       >
-        <div ref={rowsRef} class="contents">
-          <For each={shadows().toReversed()}>
-            {(shadowEid: number) => (
-              <ShadowRow
-                shadowEid={shadowEid}
-                nodeEid={eid()}
-                onInspectorChange={handleInspectorChange}
-              />
-            )}
-          </For>
-        </div>
+        <Show when={shadows().length > 0}>
+          <div ref={rowsRef} class="contents">
+            <For each={shadows().toReversed()}>
+              {(shadowEid: number) => (
+                <ShadowRow
+                  shadowEid={shadowEid}
+                  nodeEid={eid()}
+                  onInspectorChange={handleInspectorChange}
+                />
+              )}
+            </For>
+          </div>
+        </Show>
       </PanelSection>
       <Show when={inspectingShadow()}>
         <ShadowInspector

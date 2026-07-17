@@ -192,19 +192,21 @@ export function EffectsSettings(props: EffectsSettingsProps) {
           </DropdownMenu>
         }
       >
-        <div ref={rowsRef} class="contents">
-          <For each={effectEids().toReversed()}>
-            {(effectEid) => (
-              <EffectRow
-                effectEid={effectEid}
-                onInspect={() => openInspector(effectEid)}
-                onRemove={() => handleRemoveEffect(effectEid)}
-                onMoveUp={() => handleReorderEffect(effectEid, 1)}
-                onMoveDown={() => handleReorderEffect(effectEid, -1)}
-              />
-            )}
-          </For>
-        </div>
+        <Show when={effectEids().length > 0}>
+          <div ref={rowsRef} class="contents">
+            <For each={effectEids().toReversed()}>
+              {(effectEid) => (
+                <EffectRow
+                  effectEid={effectEid}
+                  onInspect={() => openInspector(effectEid)}
+                  onRemove={() => handleRemoveEffect(effectEid)}
+                  onMoveUp={() => handleReorderEffect(effectEid, 1)}
+                  onMoveDown={() => handleReorderEffect(effectEid, -1)}
+                />
+              )}
+            </For>
+          </div>
+        </Show>
       </PanelSection>
 
       <Show when={inspectingEffect()}>
