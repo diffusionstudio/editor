@@ -202,6 +202,11 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
   })
 
   onMount(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+      active.blur()
+    }
+
     queueMicrotask(() => {
       updateInitialPosition()
       if (!dragHandleRef && rootRef) {
@@ -289,6 +294,7 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
       <DialogPrimitive.Content
         aria-labelledby={props.labelledBy}
         onOpenAutoFocus={(event) => event.preventDefault()}
+        onFocusOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => {
           const target = event.target as Element | null
           if (!target || !props.triggerRef?.contains(target)) return

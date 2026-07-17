@@ -8,7 +8,6 @@ import {
   createSignal,
   createEffect,
   createUniqueId,
-  onMount,
   Show,
   For,
   createMemo,
@@ -75,13 +74,6 @@ export function FillPicker(props: FillPickerProps) {
   const c = world.components;
 
   const titleId = createUniqueId();
-
-  onMount(() => {
-    const active = document.activeElement;
-    if (active instanceof HTMLElement && active.matches("input[data-paint-editable='true']")) {
-      active.blur();
-    }
-  });
 
   const scaleMode = useEntityState(c.ScaleMode, props.fillEid, ScaleMode.FILL);
   const type = useEntityState(c.Paint, props.fillEid, PaintType.SOLID);
