@@ -84,7 +84,8 @@ export function syncKeyframeTrack(world: EngineWorld, eid: number, property: Pro
 	const existingKfEid = query(world, [c.Keyframe, ChildOf(trackEid), Not(c.Deleted)])
 		.find(kid => c.Keyframe.time[kid] === localFrame);
 
-	const currentValue = worldProps[property].authored[eid] ?? 0;
+	const path = worldProps[property];
+	const currentValue = path.authored[eid] ?? path.computed[eid] ?? 0;
 	const isNumber = typeof currentValue === 'number';
 	if (!isNumber) return;
 
@@ -123,7 +124,8 @@ export function toggleKeyframeTrack(world: EngineWorld, eid: number, property: P
 
 	const existingKfEid = trackKeyframes.find(kid => c.Keyframe.time[kid] === localFrame);
 
-	const currentValue = worldProps[property].authored[eid] ?? 0;
+	const path = worldProps[property];
+	const currentValue = path.authored[eid] ?? path.computed[eid] ?? 0;
 	const isNumber = typeof currentValue === 'number';
 	if (!isNumber) return;
 
