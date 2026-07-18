@@ -21,8 +21,9 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { EFFECT_DEFAULTS, EffectsInspector } from "./effects-inspector";
+import { useActiveInspector } from "./active-inspector";
 import { useEntityState, useEntityTag, EffectType, createEntity, deleteEntity, getSiblingEntities, addComponent, appendChild, removeComponent, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { hasComponent } from 'bitecs';
@@ -112,13 +113,16 @@ function EffectRow(props: EffectRowProps) {
   );
 }
 
+const OWNER = "effect";
+
 export function EffectsSettings(props: EffectsSettingsProps) {
   const { world } = useEngine();
-  const [inspectingEffect, setInspectingEffect] = createSignal<number>();
+  const inspectors = useActiveInspector();
+  const inspectingEffect = () => inspectors.currentId(OWNER);
   const c = world.components;
 
   let anchorRef: HTMLDivElement | undefined;
-  let rowsRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
   const effectEids = useEntityState(world.components.Cache.effects, eid, []);
@@ -135,12 +139,11 @@ export function EffectsSettings(props: EffectsSettingsProps) {
       appendChild(world, effectEid, eid())
       return effectEid;
     });
-    setInspectingEffect(newEffectEid);
+    inspectors.open(OWNER, newEffectEid);
   };
 
   const handleRemoveEffect = (effectEid: number) => deleteEntity(world, effectEid);
-  const openInspector = (effectEid: number) =>
-    setInspectingEffect((prev) => (prev === effectEid ? undefined : effectEid));
+  const openInspector = (effectEid: number) => inspectors.toggle(OWNER, effectEid);
   const handleReorderEffect = (effectEid: number, direction: number) => {
     const effects = getSiblingEntities(world, effectEid, c.Effect);
     const index = effects.indexOf(effectEid);
@@ -155,6 +158,7 @@ export function EffectsSettings(props: EffectsSettingsProps) {
 
   return (
     <>
+      <div ref={sectionRef} class="contents">
       <PanelSection
         title="Effects"
         ref={anchorRef}
@@ -170,6 +174,7 @@ export function EffectsSettings(props: EffectsSettingsProps) {
                         size="icon"
                         variant="ghost"
                         class="text-muted-foreground"
+                        data-row-control=""
                         {...buttonProps}
                       >
                         <Icon name="plus-add" />
@@ -195,7 +200,7 @@ export function EffectsSettings(props: EffectsSettingsProps) {
         }
       >
         <Show when={effectEids().length > 0}>
-          <div ref={rowsRef} class="contents">
+          <div class="contents">
             <For each={effectEids().toReversed()}>
               {(effectEid) => (
                 <EffectRow
@@ -210,12 +215,13 @@ export function EffectsSettings(props: EffectsSettingsProps) {
           </div>
         </Show>
       </PanelSection>
+      </div>
 
       <Show when={inspectingEffect()}>
         <EffectsInspector
-          onClose={() => setInspectingEffect(undefined)}
+          onClose={() => inspectors.close(OWNER)}
           anchorRef={anchorRef!}
-          triggerRef={rowsRef}
+          triggerRef={sectionRef}
           effectEid={inspectingEffect()!}
           nodeEid={eid()}
         />

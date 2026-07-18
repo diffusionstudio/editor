@@ -6,7 +6,6 @@ import {
   For,
   Show,
   createMemo,
-  createSignal,
 } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,19 +16,23 @@ import { FillPicker, type FillTab } from "./fill-picker";
 import { useEntityState, createEntity, deleteEntity, getSiblingEntities, PaintType, isText, appendChild, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { FillRow } from "./fill-row";
+import { useActiveInspector } from "./active-inspector";
 
 type FillsSettingsProps = {
   selection: Set<number>;
 };
+
+const OWNER = "fill";
 
 export function FillsSettings(props: FillsSettingsProps) {
   const { world } = useEngine();
 
   const c = world.components;
   let anchorRef!: HTMLDivElement;
-  let rowsRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
-  const [selectedFill, setSelectedFill] = createSignal<number>();
+  const inspectors = useActiveInspector();
+  const selectedFill = () => inspectors.currentId(OWNER);
   const eid = () => props.selection.values().next().value!;
 
   const fillEids = useEntityState(c.Cache.fills, eid, []);
@@ -47,12 +50,11 @@ export function FillsSettings(props: FillsSettingsProps) {
       appendChild(world, solidEid, eid());
       return solidEid;
     });
-    setSelectedFill(newFillEid);
+    inspectors.open(OWNER, newFillEid);
   };
 
-  const handleClosePicker = () => setSelectedFill(undefined);
-  const handleSelectFill = (fillEid: number) =>
-    setSelectedFill((prev) => (prev === fillEid ? undefined : fillEid));
+  const handleClosePicker = () => inspectors.close(OWNER);
+  const handleSelectFill = (fillEid: number) => inspectors.toggle(OWNER, fillEid);
   const handleRemoveFill = (fillEid: number) => deleteEntity(world, fillEid);
 
   const handleReorderFill = (fillEid: number, direction: number) => {
@@ -69,6 +71,7 @@ export function FillsSettings(props: FillsSettingsProps) {
 
   return (
     <>
+      <div ref={sectionRef} class="contents">
       <PanelSection
         title="Fill"
         ref={anchorRef}
@@ -79,6 +82,7 @@ export function FillsSettings(props: FillsSettingsProps) {
               size="icon"
               variant="ghost"
               class="text-muted-foreground"
+              data-row-control=""
               onClick={handleAppendFill}
             >
               <Icon name="plus-add" />
@@ -88,7 +92,7 @@ export function FillsSettings(props: FillsSettingsProps) {
         }
       >
         <Show when={fillEids().length > 0}>
-          <div ref={rowsRef} class="contents">
+          <div class="contents">
             <For each={fillEids().toReversed()}>
               {(fillEid) => (
                 <FillRow
@@ -104,12 +108,13 @@ export function FillsSettings(props: FillsSettingsProps) {
           </div>
         </Show>
       </PanelSection>
+      </div>
       <Show when={selectedFill()} keyed>
         <FillPicker
           nodeEid={eid()}
           fillEid={selectedFill()!}
           anchorRef={anchorRef}
-          triggerRef={rowsRef}
+          triggerRef={sectionRef}
           open={!!selectedFill()}
           onClose={handleClosePicker}
           tabs={tabs()}

@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { For, createMemo, createSignal, Show } from "solid-js";
+import { For, createMemo, Show } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
@@ -15,6 +15,7 @@ import { useEngine } from "@/context/engine";
 import { StrokeJoin, useEntityState, createEntity, deleteEntity, getSiblingEntities, addComponent, appendChild, setComponent } from "@/components/engine";
 import { FillRow } from "./fill-row";
 import { FillPicker } from "./fill-picker";
+import { useActiveInspector } from "./active-inspector";
 
 
 const STROKE_JOIN_SEGMENTS = [
@@ -27,11 +28,13 @@ type StrokesSettingsProps = {
   selection: Set<number>;
 };
 
+const OWNER = "stroke";
+
 export function StrokesSettings(props: StrokesSettingsProps) {
   const { world } = useEngine();
   const c = world.components;
   let anchorRef!: HTMLDivElement;
-  let rowsRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
 
@@ -39,7 +42,8 @@ export function StrokesSettings(props: StrokesSettingsProps) {
   const lineJoinId = useEntityState(c.StrokeStyle.join, eid, 0);
   const strokeWidth = useEntityState(c.Computed.strokeWidth, eid, 1);
   const strokeMiterLimit = useEntityState(c.StrokeStyle.miterLimit, eid, 3);
-  const [selectedStroke, setSelectedStroke] = createSignal<number>();
+  const inspectors = useActiveInspector();
+  const selectedStroke = () => inspectors.currentId(OWNER);
 
   const lineJoin = createMemo(() => String(lineJoinId()));
 
@@ -51,7 +55,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
       appendChild(world, solid, eid());
       return solid;
     });
-    setSelectedStroke(newStrokeEid);
+    inspectors.open(OWNER, newStrokeEid);
   };
 
   const handleStrokeWidthChange = (value: number) => {
@@ -66,9 +70,8 @@ export function StrokesSettings(props: StrokesSettingsProps) {
     setComponent(world, eid(), c.StrokeStyle, { miterLimit: value });
   };
 
-  const handleClosePicker = () => setSelectedStroke(undefined);
-  const handleSelectStroke = (strokeEid: number) =>
-    setSelectedStroke((prev) => (prev === strokeEid ? undefined : strokeEid));
+  const handleClosePicker = () => inspectors.close(OWNER);
+  const handleSelectStroke = (strokeEid: number) => inspectors.toggle(OWNER, strokeEid);
   const handleRemoveStroke = (strokeEid: number) => deleteEntity(world, strokeEid);
 
   const handleReorderStroke = (strokeEid: number, direction: number) => {
@@ -85,6 +88,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
 
   return (
     <>
+      <div ref={sectionRef} class="contents">
       <PanelSection
         title="Stroke"
         ref={anchorRef}
@@ -95,6 +99,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
               size="icon"
               variant="ghost"
               class="text-muted-foreground"
+              data-row-control=""
               onClick={handleAppendStroke}
             >
               <Icon name="plus-add" />
@@ -104,7 +109,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
         }
       >
         <Show when={strokeEids().length > 0}>
-          <div ref={rowsRef} class="contents">
+          <div class="contents">
             <For each={strokeEids().toReversed()}>
               {(strokeEid) => (
                 <FillRow
@@ -155,12 +160,13 @@ export function StrokesSettings(props: StrokesSettingsProps) {
           </ControlRow>
         </Show>
       </PanelSection>
+      </div>
       <Show when={selectedStroke()} keyed>
         <FillPicker
           nodeEid={eid()}
           fillEid={selectedStroke()!}
           anchorRef={anchorRef}
-          triggerRef={rowsRef}
+          triggerRef={sectionRef}
           open={!!selectedStroke()}
           onClose={handleClosePicker}
           tabs={['solid', 'gradient']}

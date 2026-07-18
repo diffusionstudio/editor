@@ -4,11 +4,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { For, Show, createSignal } from 'solid-js';
+import { For, Show } from 'solid-js';
 import { Icon } from '@/components/ui/icon';
 import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from '@/components/ui/panel-section';
 import { ShadowInspector } from './shadow-inspector';
+import { useActiveInspector } from './active-inspector';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -117,22 +118,25 @@ type ShadowSettingsProps = {
   selection: Set<number>;
 };
 
+const OWNER = "shadow";
+
 export function ShadowsSettings(props: ShadowSettingsProps) {
   const { world } = useEngine();
   const c = world.components;
 
-  const [inspectingShadow, setInspectingShadow] = createSignal<number | null>(null);
+  const inspectors = useActiveInspector();
+  const inspectingShadow = () => inspectors.currentId(OWNER);
 
   const handleInspectorChange = (shadowEid: number | null) => {
     if (shadowEid === null) {
-      setInspectingShadow(null);
+      inspectors.close(OWNER);
       return;
     }
-    setInspectingShadow((prev) => (prev === shadowEid ? null : shadowEid));
+    inspectors.toggle(OWNER, shadowEid);
   };
 
   let anchorRef: HTMLDivElement | undefined;
-  let rowsRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
   const shadows = useEntityState(c.Cache.shadows, eid, []);
@@ -148,11 +152,12 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
       appendChild(world, shadowEid, eid());
       return shadowEid;
     });
-    setInspectingShadow(newShadowEid);
+    inspectors.open(OWNER, newShadowEid);
   };
 
   return (
     <>
+      <div ref={sectionRef} class="contents">
       <PanelSection
         title="Shadow"
         ref={anchorRef}
@@ -163,6 +168,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
               size="icon"
               variant="ghost"
               class="text-muted-foreground"
+              data-row-control=""
               onClick={handleAddShadow}
             >
               <Icon name="plus-add" />
@@ -172,7 +178,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
         }
       >
         <Show when={shadows().length > 0}>
-          <div ref={rowsRef} class="contents">
+          <div class="contents">
             <For each={shadows().toReversed()}>
               {(shadowEid: number) => (
                 <ShadowRow
@@ -185,11 +191,12 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
           </div>
         </Show>
       </PanelSection>
+      </div>
       <Show when={inspectingShadow()}>
         <ShadowInspector
-          onClose={() => setInspectingShadow(null)}
+          onClose={() => inspectors.close(OWNER)}
           anchorRef={anchorRef!}
-          triggerRef={rowsRef}
+          triggerRef={sectionRef}
           nodeEid={eid()}
           shadowEid={inspectingShadow()!}
         />

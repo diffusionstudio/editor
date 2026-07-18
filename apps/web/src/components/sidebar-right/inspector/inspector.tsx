@@ -27,6 +27,7 @@ import { getParentEntity, isAdjustmentLayer, isAudio, isCaption, isGroup, isMask
 import { useEngine } from "@/context/engine";
 import { SceneTemplatePanel } from "./scene-template";
 import { TextPanel } from "./text";
+import { ActiveInspectorProvider } from "./active-inspector";
 import { useECS } from "@/context/ecs";
 
 export function Inspector() {
@@ -93,6 +94,7 @@ export function Inspector() {
     <div class="h-full min-h-0 flex flex-col" data-right-sidebar>
       <InspectorHeader />
       <Show when={selectionHash()} keyed>
+        <ActiveInspectorProvider>
         <ControlScrollArea class="flex-1 min-h-0">
           <Show when={includesTarget("scene-tool")}>
             <SceneTemplatePanel />
@@ -175,6 +177,7 @@ export function Inspector() {
             <InterpolationSettings />
           </Show>
         </ControlScrollArea>
+        </ActiveInspectorProvider>
       </Show>
     </div>
   );
