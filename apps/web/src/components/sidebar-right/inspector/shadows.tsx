@@ -138,7 +138,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
   const shadows = useEntityState(c.Cache.shadows, eid, []);
 
   const handleAddShadow = () => {
-    world.history.transaction('Add shadow', () => {
+    const newShadowEid = world.history.transaction('Add shadow', () => {
       const shadowEid = createEntity(world);
       addComponent(world, shadowEid, c.Shadow);
       setComponent(world, shadowEid, c.Color, DEFAULT_SHADOW.color);
@@ -146,7 +146,9 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
       setComponent(world, shadowEid, c.Blur, DEFAULT_SHADOW.blur);
       setComponent(world, shadowEid, c.Offset, { x: DEFAULT_SHADOW.offsetX, y: DEFAULT_SHADOW.offsetY });
       appendChild(world, shadowEid, eid());
+      return shadowEid;
     });
+    setInspectingShadow(newShadowEid);
   };
 
   return (

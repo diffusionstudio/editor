@@ -126,14 +126,16 @@ export function EffectsSettings(props: EffectsSettingsProps) {
   const handleAddEffect = (typeName: Effects) => {
     const defaults = EFFECT_DEFAULTS[typeName];
 
-    world.history.transaction('Add effect', () => {
+    const newEffectEid = world.history.transaction('Add effect', () => {
       const effectEid = createEntity(world);
       setComponent(world, effectEid, c.Effect, {
         type: EFFECT_TYPE_BUNDLES[typeName],
         value: defaults.value,
       });
       appendChild(world, effectEid, eid())
+      return effectEid;
     });
+    setInspectingEffect(newEffectEid);
   };
 
   const handleRemoveEffect = (effectEid: number) => deleteEntity(world, effectEid);

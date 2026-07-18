@@ -40,12 +40,14 @@ export function FillsSettings(props: FillsSettingsProps) {
   });
 
   const handleAppendFill = () => {
-    world.history.transaction('Append fill', () => {
+    const newFillEid = world.history.transaction('Append fill', () => {
       const solidEid = createEntity(world);
       setComponent(world, solidEid, c.Paint, PaintType.SOLID);
       setComponent(world, solidEid, c.Color, 0xE0E0E0);
       appendChild(world, solidEid, eid());
-    })
+      return solidEid;
+    });
+    setSelectedFill(newFillEid);
   };
 
   const handleClosePicker = () => setSelectedFill(undefined);

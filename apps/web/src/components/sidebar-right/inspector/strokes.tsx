@@ -44,12 +44,14 @@ export function StrokesSettings(props: StrokesSettingsProps) {
   const lineJoin = createMemo(() => String(lineJoinId()));
 
   const handleAppendStroke = () => {
-    world.history.transaction('Append stroke', () => {
+    const newStrokeEid = world.history.transaction('Append stroke', () => {
       const solid = createEntity(world);
       addComponent(world, solid, c.Stroke);
       setComponent(world, solid, c.Color, 0x000000);
       appendChild(world, solid, eid());
+      return solid;
     });
+    setSelectedStroke(newStrokeEid);
   };
 
   const handleStrokeWidthChange = (value: number) => {
