@@ -280,7 +280,6 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
 export type FloatingInspectorLayerProps = {
   open?: boolean
   onDismiss: () => void
-  modal?: boolean
   triggerRef?: HTMLElement
   triggerControlSelector?: string
   labelledBy?: string
@@ -293,7 +292,7 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
   return (
     <DialogPrimitive
       open={props.open ?? true}
-      modal={props.modal ?? false}
+      modal={false}
       preventScroll={false}
       onOpenChange={(isOpen) => {
         if (!isOpen) props.onDismiss()
