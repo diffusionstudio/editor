@@ -7,8 +7,10 @@
 import type { ComponentProps, ValidComponent, Accessor } from "solid-js";
 import { createMemo, mergeProps, Show, splitProps } from "solid-js";
 import { Tooltip as TooltipPrimitive } from "@kobalte/core/tooltip";
+import { callHandler } from "@kobalte/utils";
 
 import { cx } from "@/lib/cva";
+import { lastInputWasKeyboard } from "@/lib/input-modality";
 
 export type TooltipProps = ComponentProps<typeof TooltipPrimitive>;
 
@@ -34,7 +36,23 @@ export type TooltipTriggerProps<T extends ValidComponent = "button"> =
 export const TooltipTrigger = <T extends ValidComponent = "button">(
   props: TooltipTriggerProps<T>,
 ) => {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+  const [local, rest] = splitProps(props as TooltipTriggerProps, ["onFocus"]);
+
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      // Menus refocus their trigger on close; only keyboard-driven focus may open
+      // the tooltip. Kobalte's TooltipTrigger (0.13.12) bails on e.defaultPrevented,
+      // but focus events are non-cancelable — so shadow the property instead.
+      onFocus={(e: FocusEvent & { currentTarget: HTMLButtonElement; target: Element }) => {
+        callHandler(e, local.onFocus);
+        if (!e.defaultPrevented && !lastInputWasKeyboard()) {
+          Object.defineProperty(e, "defaultPrevented", { value: true });
+        }
+      }}
+      {...rest}
+    />
+  );
 };
 
 export type TooltipContentProps<T extends ValidComponent = "button"> =
