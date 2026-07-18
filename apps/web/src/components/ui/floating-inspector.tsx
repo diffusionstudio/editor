@@ -55,6 +55,13 @@ const toValue = <T,>(value: MaybeAccessor<T>): T => {
   return typeof value === "function" ? (value as Accessor<T>)() : value
 }
 
+const blurActiveEditable = () => {
+  const active = document.activeElement
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    active.blur()
+  }
+}
+
 const getAvailableTop = (preferredTop: number, inspectorHeight: number): number => {
   const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - inspectorHeight - VIEWPORT_PADDING)
   return clamp(preferredTop, VIEWPORT_PADDING, maxTop)
@@ -159,6 +166,8 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
     const target = event.target as HTMLElement | null
     if (target?.closest(NON_DRAG_INTERACTIVE_SELECTOR)) return
 
+    blurActiveEditable()
+
     const root = rootRef
     if (!root) return
 
@@ -202,10 +211,7 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
   })
 
   onMount(() => {
-    const active = document.activeElement
-    if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
-      active.blur()
-    }
+    blurActiveEditable()
 
     queueMicrotask(() => {
       updateInitialPosition()
@@ -274,6 +280,7 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
 export type FloatingInspectorLayerProps = {
   open?: boolean
   onDismiss: () => void
+  modal?: boolean
   triggerRef?: HTMLElement
   triggerControlSelector?: string
   labelledBy?: string
@@ -286,7 +293,8 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
   return (
     <DialogPrimitive
       open={props.open ?? true}
-      modal={false}
+      modal={props.modal ?? false}
+      preventScroll={false}
       onOpenChange={(isOpen) => {
         if (!isOpen) props.onDismiss()
       }}

@@ -31,6 +31,7 @@ import {
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { useDrag } from "@/hooks/use-drag";
 import { clamp, mergeColorWithOpacity } from "@/utils";
@@ -531,44 +532,45 @@ export function GradientFillPicker(props: GradientPickerProps) {
         </div>
       </div>
 
-      <FloatingInspector
-        open={colorPickerStopEid() !== null}
-        anchorRef={rootRef}
-      >
-        <FloatingInspectorHeader>
-          <FloatingInspectorTitle class="flex-1">Stop color</FloatingInspectorTitle>
-          <Tooltip>
-            <TooltipTrigger
-              as={Button}
-              size="icon"
-              variant="ghost"
-              class="text-muted-foreground"
-              onClick={closeStopColorPicker}
-            >
-              <Icon name="close-remove" />
-            </TooltipTrigger>
-            <TooltipContent>Close</TooltipContent>
-          </Tooltip>
-        </FloatingInspectorHeader>
-        <FloatingInspectorContent class="p-0">
-          <Show when={colorPickerStop()}>
-            {(stop) => (
-              <ColorOpacityPicker
-                color={stop().color}
-                opacity={stop().opacity}
-                onColorChange={(next) => {
-                  setComponent(world, stop().eid, c.ColorStop, { color: next });
-                }}
-                onOpacityChange={(next) => {
-                  setComponent(world, stop().eid, c.ColorStop, { opacity: next });
-                }}
-                onBeginChange={(label) => world.history.startTransaction(label)}
-                onEndChange={() => world.history.commitTransaction()}
-              />
-            )}
-          </Show>
-        </FloatingInspectorContent>
-      </FloatingInspector>
+      <Show when={colorPickerStopEid() !== null}>
+        <FloatingInspectorLayer modal onDismiss={closeStopColorPicker}>
+          <FloatingInspector open={true} anchorRef={rootRef}>
+            <FloatingInspectorHeader>
+              <FloatingInspectorTitle class="flex-1">Stop color</FloatingInspectorTitle>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button}
+                  size="icon"
+                  variant="ghost"
+                  class="text-muted-foreground"
+                  onClick={closeStopColorPicker}
+                >
+                  <Icon name="close-remove" />
+                </TooltipTrigger>
+                <TooltipContent>Close</TooltipContent>
+              </Tooltip>
+            </FloatingInspectorHeader>
+            <FloatingInspectorContent class="p-0">
+              <Show when={colorPickerStop()}>
+                {(stop) => (
+                  <ColorOpacityPicker
+                    color={stop().color}
+                    opacity={stop().opacity}
+                    onColorChange={(next) => {
+                      setComponent(world, stop().eid, c.ColorStop, { color: next });
+                    }}
+                    onOpacityChange={(next) => {
+                      setComponent(world, stop().eid, c.ColorStop, { opacity: next });
+                    }}
+                    onBeginChange={(label) => world.history.startTransaction(label)}
+                    onEndChange={() => world.history.commitTransaction()}
+                  />
+                )}
+              </Show>
+            </FloatingInspectorContent>
+          </FloatingInspector>
+        </FloatingInspectorLayer>
+      </Show>
     </div>
   );
 }

@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createSignal, createUniqueId, createEffect, on } from 'solid-js';
+import { createSignal, createUniqueId, createEffect, on, Show } from 'solid-js';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
@@ -70,11 +70,6 @@ export function ShadowInspector(props: ShadowInspectorProps) {
     props.onClose();
   };
 
-  const handleParentInteraction = () => {
-    if (!isColorPickerOpen()) return;
-    setIsColorPickerOpen(false);
-  };
-
 
   return (
     <FloatingInspectorLayer
@@ -87,7 +82,6 @@ export function ShadowInspector(props: ShadowInspectorProps) {
         open={true}
         anchorRef={props.anchorRef}
         width={248}
-        onPointerDown={handleParentInteraction}
       >
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle id={titleId}>
@@ -164,40 +158,44 @@ export function ShadowInspector(props: ShadowInspectorProps) {
         </FloatingInspectorContent>
       </FloatingInspector>
 
-      <FloatingInspector
-        open={isColorPickerOpen}
-        anchorRef={() => colorRowRef}
-        offset={26}
-      >
-        <FloatingInspectorHeader>
-          <FloatingInspectorTitle>Color</FloatingInspectorTitle>
-          <div class="ml-auto">
-            <Tooltip>
-              <TooltipTrigger
-                as={Button}
-                size="icon"
-                variant="ghost"
-                class="text-muted-foreground"
-                onClick={() => setIsColorPickerOpen(false)}
-              >
-                <Icon name="close-remove" class="size-6" />
-              </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
-            </Tooltip>
-          </div>
-        </FloatingInspectorHeader>
-        <FloatingInspectorContent class="p-0">
-          <ColorOpacityPicker
-            color={color()}
-            opacity={opacity()}
-            onColorChange={updateColor}
-            onOpacityChange={updateOpacity}
-            onBeginChange={(label) => world.history.startTransaction(label)}
-            onEndChange={() => world.history.commitTransaction()}
-            keyframeTarget={props.shadowEid}
-          />
-        </FloatingInspectorContent>
-      </FloatingInspector>
+      <Show when={isColorPickerOpen()}>
+        <FloatingInspectorLayer modal onDismiss={() => setIsColorPickerOpen(false)}>
+          <FloatingInspector
+            open={true}
+            anchorRef={() => colorRowRef}
+            offset={26}
+          >
+            <FloatingInspectorHeader>
+              <FloatingInspectorTitle>Color</FloatingInspectorTitle>
+              <div class="ml-auto">
+                <Tooltip>
+                  <TooltipTrigger
+                    as={Button}
+                    size="icon"
+                    variant="ghost"
+                    class="text-muted-foreground"
+                    onClick={() => setIsColorPickerOpen(false)}
+                  >
+                    <Icon name="close-remove" class="size-6" />
+                  </TooltipTrigger>
+                  <TooltipContent>Close</TooltipContent>
+                </Tooltip>
+              </div>
+            </FloatingInspectorHeader>
+            <FloatingInspectorContent class="p-0">
+              <ColorOpacityPicker
+                color={color()}
+                opacity={opacity()}
+                onColorChange={updateColor}
+                onOpacityChange={updateOpacity}
+                onBeginChange={(label) => world.history.startTransaction(label)}
+                onEndChange={() => world.history.commitTransaction()}
+                keyframeTarget={props.shadowEid}
+              />
+            </FloatingInspectorContent>
+          </FloatingInspector>
+        </FloatingInspectorLayer>
+      </Show>
     </FloatingInspectorLayer>
   );
 }
