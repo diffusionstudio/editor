@@ -280,6 +280,9 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
 export type FloatingInspectorLayerProps = {
   open?: boolean
   onDismiss: () => void
+  /** Dismiss on outside interaction even when not top-most, so a nested picker
+   *  collapses its whole branch instead of just the deepest child. */
+  bypassTopMostLayerCheck?: boolean
   triggerRef?: HTMLElement
   triggerControlSelector?: string
   labelledBy?: string
@@ -300,6 +303,8 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
     >
       <DialogPrimitive.Content
         aria-labelledby={props.labelledBy}
+        // @ts-expect-error DismissableLayer prop forwarded by Dialog.Content, not in its public types
+        bypassTopMostLayerCheck={props.bypassTopMostLayerCheck}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onFocusOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => {

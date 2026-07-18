@@ -532,7 +532,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
       </div>
 
       <Show when={colorPickerStopEid() !== null}>
-        <FloatingInspectorLayer onDismiss={closeStopColorPicker}>
+        <FloatingInspectorLayer bypassTopMostLayerCheck onDismiss={closeStopColorPicker}>
           <FloatingInspector open={true} anchorRef={rootRef}>
             <FloatingInspectorHeader>
               <FloatingInspectorTitle class="flex-1">Stop color</FloatingInspectorTitle>
