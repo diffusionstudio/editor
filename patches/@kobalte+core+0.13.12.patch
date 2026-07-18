@@ -1,0 +1,18 @@
+diff --git a/node_modules/@kobalte/core/dist/chunk/L544S5A4.jsx b/node_modules/@kobalte/core/dist/chunk/L544S5A4.jsx
+index f9b4c44..f339434 100644
+--- a/node_modules/@kobalte/core/dist/chunk/L544S5A4.jsx
++++ b/node_modules/@kobalte/core/dist/chunk/L544S5A4.jsx
+@@ -1591,11 +1591,11 @@ function MenuRoot(props) {
+     value: () => local.value,
+     orientation: () => local.orientation ?? optionalMenubarContext?.orientation() ?? "horizontal"
+   };
+-  return <MenuRootContext.Provider value={context}><Menu
++  return <MenuRootContext.Provider value={context}><MenuContext.Provider value={undefined}><Menu
+     open={disclosureState.isOpen()}
+     onOpenChange={disclosureState.setIsOpen}
+     {...others}
+-  /></MenuRootContext.Provider>;
++  /></MenuContext.Provider></MenuRootContext.Provider>;
+ }
+ 
+ export {

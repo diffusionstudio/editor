@@ -4,8 +4,12 @@
   "private": true,
   "license": "MPL-2.0",
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
+    "postinstall": "patch-package",
     "dev": "npm run dev:web",
     "dev:web": "npm run dev --workspace=@diffusionstudio/web",
     "dev:desktop": "node scripts/dev-desktop.mjs",
@@ -16,5 +20,8 @@
     "release": "node scripts/release.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "check": "npm run check --workspaces --if-present"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.1"
   }
 }
