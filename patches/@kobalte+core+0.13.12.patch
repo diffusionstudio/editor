@@ -16,3 +16,20 @@ index f9b4c44..f339434 100644
  }
  
  export {
+diff --git a/node_modules/@kobalte/core/dist/chunk/WT65CSSX.jsx b/node_modules/@kobalte/core/dist/chunk/WT65CSSX.jsx
+index 4ee28d6..f295420 100644
+--- a/node_modules/@kobalte/core/dist/chunk/WT65CSSX.jsx
++++ b/node_modules/@kobalte/core/dist/chunk/WT65CSSX.jsx
+@@ -75,9 +75,9 @@ function DropdownMenuContent(props) {
+   };
+   const onInteractOutside = (e) => {
+     local.onInteractOutside?.(e);
+-    if (!rootContext.isModal() || e.detail.isContextMenu) {
+-      hasInteractedOutside = true;
+-    }
++    // Patched: also skip trigger refocus for modal menus dismissed by pointer/outside
++    // (was gated on !isModal); Escape/keyboard/selection don't fire this, so they still refocus.
++    hasInteractedOutside = true;
+   };
+   return <MenuContent
+     onCloseAutoFocus={onCloseAutoFocus}
