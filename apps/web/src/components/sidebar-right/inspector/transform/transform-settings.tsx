@@ -2,19 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createMemo, Show } from "solid-js";
 import { ControlRow } from "@/components/ui/control-group";
 import { Icon } from "@/components/ui/icon";
 import { PanelSection } from "@/components/ui/panel-section";
 import { ControlledTextField } from "@/components/ui/text-field";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { RotateRow } from "./rotate-row";
 import { AnchorRow } from "./anchor-row";
 import { OffsetRow } from "./offset-row";
@@ -72,23 +66,13 @@ export function TransformSettings(props: TransformSettingsProps) {
       title="Transform"
       actions={
         <Show when={!addons().rotate || !addons().anchor || !addons().offset || !addons().scale || !addons().skew || !addons().constraints}>
-          <DropdownMenu placement="bottom-end">
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button size="icon" variant="ghost" class="text-muted-foreground" {...buttonProps}>
-                        <Icon name="plus-add" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Add transform</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent>
+          <MenuIconButton
+            tooltip="Add transform"
+            aria-label="Add transform property"
+            placement="bottom-end"
+            class="text-muted-foreground"
+            icon={<Icon name="plus-add" />}
+          >
               <Show when={!addons().rotate}>
                 <DropdownMenuItem onSelect={() => setAddons({ ...addons(), rotate: true })}>
                   Rotate
@@ -119,8 +103,7 @@ export function TransformSettings(props: TransformSettingsProps) {
                   Skew
                 </DropdownMenuItem>
               </Show>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          </MenuIconButton>
         </Show>
       }
     >

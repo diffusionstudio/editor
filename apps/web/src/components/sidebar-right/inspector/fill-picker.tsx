@@ -13,13 +13,8 @@ import {
   createMemo,
 } from "solid-js";
 import { Icon } from "@/components/ui/icon";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import {
   FloatingInspector,
@@ -151,49 +146,34 @@ export function FillPicker(props: FillPickerProps) {
         </FloatingInspectorTitle>
         <div class="ml-auto flex items-center gap-1">
           <Show when={currentTab() === "asset"}>
-            <DropdownMenu placement="bottom-end" modal preventScroll={false}>
-              <Tooltip>
-                <TooltipTrigger<typeof DropdownMenuTrigger>
-                  as={(triggerProps: object) => (
-                    <DropdownMenuTrigger<typeof Button>
-                      {...triggerProps}
-                      as={(buttonProps) => (
-                        <Button
-                          {...buttonProps}
-                          size="icon"
-                          variant="ghost"
-                          class="text-muted-foreground hover:bg-accent data-expanded:bg-accent"
-                        >
-                          <Icon name="media-fit-type" class="size-6" />
-                        </Button>
-                      )}
-                    />
-                  )}
-                />
-                <TooltipContent>Fit mode</TooltipContent>
-              </Tooltip>
-              <DropdownMenuPortal>
-                <DropdownMenuContent class="w-[180px]">
-                  <For each={SCALE_MODE_OPTIONS}>
-                    {(option) => (
-                      <DropdownMenuItem
-                        class="px-0 pr-2"
-                        onSelect={() => handleScaleModeChange(option.value)}
-                      >
-                        <span class="w-6 h-7 shrink-0 flex items-center justify-center overflow-clip">
-                          <Show when={scaleMode() === option.value}>
-                            <Icon name="confirm-check" class="text-popover-foreground" />
-                          </Show>
-                        </span>
-                        <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {option.label}
-                        </span>
-                      </DropdownMenuItem>
-                    )}
-                  </For>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenu>
+            <MenuIconButton
+              tooltip="Fit mode"
+              aria-label="Change fit mode"
+              placement="bottom-end"
+              modal
+              preventScroll={false}
+              class="text-muted-foreground hover:bg-accent data-expanded:bg-accent"
+              icon={<Icon name="media-fit-type" class="size-6" />}
+              contentClass="w-[180px]"
+            >
+              <For each={SCALE_MODE_OPTIONS}>
+                {(option) => (
+                  <DropdownMenuItem
+                    class="px-0 pr-2"
+                    onSelect={() => handleScaleModeChange(option.value)}
+                  >
+                    <span class="w-6 h-7 shrink-0 flex items-center justify-center overflow-clip">
+                      <Show when={scaleMode() === option.value}>
+                        <Icon name="confirm-check" class="text-popover-foreground" />
+                      </Show>
+                    </span>
+                    <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {option.label}
+                    </span>
+                  </DropdownMenuItem>
+                )}
+              </For>
+            </MenuIconButton>
           </Show>
           <BlendModeMenu fillEid={props.fillEid} />
           <Tooltip>

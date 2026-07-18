@@ -6,15 +6,10 @@ import { createSignal, For, Show } from 'solid-js';
 
 import { Icon } from '@/components/ui/icon';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { MenuIconButton } from '@/components/ui/menu-icon-button';
 import { useEngine } from '@/context/engine';
 import { BlendMode, useEntityState, setComponent } from '@/components/engine';
 
@@ -92,51 +87,37 @@ export function BlendModeMenu(props: BlendModeMenuProps) {
   }
 
   return (
-    <DropdownMenu placement="bottom-end" modal preventScroll={false} onOpenChange={handleOpenChange}>
-      <Tooltip>
-        <TooltipTrigger<typeof DropdownMenuTrigger>
-          as={(triggerProps: object) => (
-            <DropdownMenuTrigger<typeof Button>
-              {...triggerProps}
-              as={(buttonProps) => (
-                <Button
-                  {...buttonProps}
-                  size="icon"
-                  variant="ghost"
-                  class="text-muted-foreground"
-                >
-                  <Icon name={iconName()} class="size-6" />
-                </Button>
-              )}
-            />
-          )}
-        />
-        <TooltipContent>Blend mode</TooltipContent>
-      </Tooltip>
-      <DropdownMenuPortal>
-        <DropdownMenuContent class="w-44 overscroll-contain">
-          <For each={BLEND_MODE_ORDER}>
-            {(mode) => (
-              <>
-                <Show when={BLEND_MODE_SEPARATORS.has(mode)}>
-                  <DropdownMenuSeparator />
-                </Show>
-                <DropdownMenuItem
-                  onSelect={() => handleSelect(mode)}
-                  onPointerEnter={() => handlePointerEnter(mode)}
-                >
-                  <Show when={selected() === mode} fallback={<div class="size-6" />}>
-                    <Icon name="confirm-check" class="size-6 text-primary-foreground" />
-                  </Show>
-                  <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {displayBlendMode(BlendMode[mode])}
-                  </span>
-                </DropdownMenuItem>
-              </>
-            )}
-          </For>
-        </DropdownMenuContent>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+    <MenuIconButton
+      tooltip="Blend mode"
+      aria-label="Change blend mode"
+      placement="bottom-end"
+      modal
+      preventScroll={false}
+      onOpenChange={handleOpenChange}
+      class="text-muted-foreground"
+      icon={<Icon name={iconName()} class="size-6" />}
+      contentClass="w-44 overscroll-contain"
+    >
+      <For each={BLEND_MODE_ORDER}>
+        {(mode) => (
+          <>
+            <Show when={BLEND_MODE_SEPARATORS.has(mode)}>
+              <DropdownMenuSeparator />
+            </Show>
+            <DropdownMenuItem
+              onSelect={() => handleSelect(mode)}
+              onPointerEnter={() => handlePointerEnter(mode)}
+            >
+              <Show when={selected() === mode} fallback={<div class="size-6" />}>
+                <Icon name="confirm-check" class="size-6 text-primary-foreground" />
+              </Show>
+              <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                {displayBlendMode(BlendMode[mode])}
+              </span>
+            </DropdownMenuItem>
+          </>
+        )}
+      </For>
+    </MenuIconButton>
   );
 }

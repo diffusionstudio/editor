@@ -5,13 +5,8 @@
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
   FloatingInspector,
   FloatingInspectorContent,
@@ -94,30 +89,15 @@ export function TransitionSettings(props: TransitionSettingsProps) {
         title="Transition"
         ref={anchorRef}
         actions={
-          <DropdownMenu placement="bottom-end">
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        class="text-muted-foreground"
-                        disabled={!eid()}
-                        {...buttonProps}
-                      >
-                        <Icon name="plus-add" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Add transition</TooltipContent>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="w-44">
+          <MenuIconButton
+            tooltip="Add transition"
+            aria-label="Add transition"
+            placement="bottom-end"
+            class="text-muted-foreground"
+            disabled={!eid()}
+            icon={<Icon name="plus-add" />}
+            contentClass="w-44"
+          >
                 <For each={TRANSITION_OPTIONS}>
                   {(type) => (
                     <DropdownMenuItem onSelect={() => handleSetTransition(type)}>
@@ -125,9 +105,7 @@ export function TransitionSettings(props: TransitionSettingsProps) {
                     </DropdownMenuItem>
                   )}
                 </For>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+          </MenuIconButton>
         }
       >
         <Show when={hasTransition()}>

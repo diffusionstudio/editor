@@ -9,16 +9,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ItemRow } from "@/components/ui/item-row";
 import { ControlRow } from "@/components/ui/control-group";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
   DropdownMenuItem,
   DropdownMenuItemDetail,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
   FloatingInspector,
   FloatingInspectorContent,
@@ -190,35 +187,18 @@ export function ExportPanel(props: ExportPanelProps) {
       title="Export"
       ref={inspectorAnchorRef}
       actions={
-        <DropdownMenu
+        <MenuIconButton
+          tooltip="Add template"
+          aria-label="Add export template"
           placement="bottom-end"
           onOpenChange={(open) => {
             if (!open) setSearch("");
           }}
+          class="text-muted-foreground"
+          icon={<Icon name="plus-add" />}
+          contentClass="w-[208px]"
         >
-          <Tooltip>
-            <TooltipTrigger<typeof DropdownMenuTrigger>
-              as={(triggerProps: object) => (
-                <DropdownMenuTrigger<typeof Button>
-                  {...triggerProps}
-                  as={(buttonProps) => (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      class="text-muted-foreground"
-                      {...buttonProps}
-                    >
-                      <Icon name="plus-add" />
-                    </Button>
-                  )}
-                />
-              )}
-            />
-            <TooltipContent>Add template</TooltipContent>
-          </Tooltip>
-          <DropdownMenuPortal>
-            <DropdownMenuContent class="w-[208px]">
-              <div class="flex h-7 w-full items-center rounded-md overflow-hidden">
+          <div class="flex h-7 w-full items-center rounded-md overflow-hidden">
                 <div class="h-7 w-6 shrink-0 flex items-center justify-center text-muted-foreground">
                   <Icon name="search" class="size-6" />
                 </div>
@@ -270,9 +250,7 @@ export function ExportPanel(props: ExportPanelProps) {
                   No template found
                 </div>
               </Show>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
+        </MenuIconButton>
       }
     >
       <Show when={selectedTemplate()}>

@@ -2,8 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createMemo, Show } from "solid-js";
 import { ControlRow } from "@/components/ui/control-group";
 import { Icon } from "@/components/ui/icon";
@@ -32,12 +30,8 @@ import {
   CheckboxInput,
   CheckboxLabel,
 } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -218,35 +212,24 @@ export function TimeSettings(props: TimeSettingsProps) {
       title="Time"
       actions={
         <Show when={!addons().inOut || !addons().playbackRate}>
-          <DropdownMenu placement="bottom-end">
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button size="icon" variant="ghost" class="text-muted-foreground" {...buttonProps}>
-                        <Icon name="plus-add" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Add option</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent>
-              <Show when={!addons().inOut}>
-                <DropdownMenuItem onSelect={() => handleAddAddon("inOut")}>
-                  In &amp; Out
-                </DropdownMenuItem>
-              </Show>
-              <Show when={!addons().playbackRate && supportsPlaybackRate()}>
-                <DropdownMenuItem onSelect={() => handleAddAddon("playbackRate")}>
-                  Playback rate
-                </DropdownMenuItem>
-              </Show>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MenuIconButton
+            tooltip="Add option"
+            aria-label="Add time property"
+            placement="bottom-end"
+            class="text-muted-foreground"
+            icon={<Icon name="plus-add" />}
+          >
+            <Show when={!addons().inOut}>
+              <DropdownMenuItem onSelect={() => handleAddAddon("inOut")}>
+                In &amp; Out
+              </DropdownMenuItem>
+            </Show>
+            <Show when={!addons().playbackRate && supportsPlaybackRate()}>
+              <DropdownMenuItem onSelect={() => handleAddAddon("playbackRate")}>
+                Playback rate
+              </DropdownMenuItem>
+            </Show>
+          </MenuIconButton>
         </Show>
       }
     >

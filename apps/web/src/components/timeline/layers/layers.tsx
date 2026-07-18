@@ -6,9 +6,7 @@ import { createEffect, createMemo, createSignal, Index, onCleanup, onMount, Show
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import {
-  DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
@@ -17,8 +15,8 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { MenuIconButton } from '@/components/ui/menu-icon-button';
 import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from '@/components/ui/tooltip';
 import { DEFAULT_CLIP_HEIGHT, RULER_HEIGHT } from '@/components/engine/timeline/config';
 import { useTimeline } from '@/context/timeline';
@@ -148,98 +146,83 @@ export function Layers() {
               <TooltipContent shortcut="⌘B">Split at playhead</TooltipContent>
             </TooltipPortal>
           </Tooltip>
-          <DropdownMenu>
-            <Tooltip placement="top">
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button {...buttonProps} variant="ghost" size="icon">
-                        <Icon name="more-three-dots" class="size-6" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipPortal>
-                <TooltipContent>More options</TooltipContent>
-              </TooltipPortal>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="w-[180px]">
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Layer height</DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent class="w-[140px]">
-                      <DropdownMenuCheckboxItem
-                        onSelect={() => handleCommonClipHeightChange(28)}
-                        checked={commonLayerHeight() === 28}
-                      >
-                        Tight
-                        <span class="text-xxs text-muted-foreground ml-auto">28</span>
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem
-                        onSelect={() => handleCommonClipHeightChange(32)}
-                        checked={commonLayerHeight() === 32}
-                      >
-                        Snug
-                        <span class="text-xxs text-muted-foreground ml-auto">32</span>
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem
-                        onSelect={() => handleCommonClipHeightChange(40)}
-                        checked={commonLayerHeight() === 40}
-                      >
-                        Normal
-                        <span class="text-xxs text-muted-foreground ml-auto">40</span>
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem
-                        onSelect={() => handleCommonClipHeightChange(64)}
-                        checked={commonLayerHeight() === 64}
-                      >
-                        Relaxed
-                        <span class="text-xxs text-muted-foreground ml-auto">64</span>
-                      </DropdownMenuCheckboxItem>
-                      <DropdownMenuCheckboxItem
-                        onSelect={() => handleCommonClipHeightChange(116)}
-                        checked={commonLayerHeight() === 116}
-                      >
-                        Loose
-                        <span class="text-xxs text-muted-foreground ml-auto">116</span>
-                      </DropdownMenuCheckboxItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Time format</DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent class="w-[200px]">
-                      <DropdownMenuRadioGroup
-                        value={timeFormat()}
-                        onChange={(value) => setTimeFormat(value as TimeFormat)}
-                      >
-                        <Index each={TIME_FORMAT_OPTIONS}>
-                          {(option) => (
-                            <DropdownMenuRadioItem value={option().value}>
-                              {option().label}
-                              <span class="text-xxs text-muted-foreground ml-auto">
-                                {option().example}
-                              </span>
-                            </DropdownMenuRadioItem>
-                          )}
-                        </Index>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={addAdjustmentLayer}>
-                  Add adjustment layer
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+          <MenuIconButton
+            tooltip="More options"
+            aria-label="Open timeline options"
+            tooltipPlacement="top"
+            icon={<Icon name="more-three-dots" class="size-6" />}
+            contentClass="w-[180px]"
+          >
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Layer height</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent class="w-[140px]">
+                  <DropdownMenuCheckboxItem
+                    onSelect={() => handleCommonClipHeightChange(28)}
+                    checked={commonLayerHeight() === 28}
+                  >
+                    Tight
+                    <span class="text-xxs text-muted-foreground ml-auto">28</span>
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    onSelect={() => handleCommonClipHeightChange(32)}
+                    checked={commonLayerHeight() === 32}
+                  >
+                    Snug
+                    <span class="text-xxs text-muted-foreground ml-auto">32</span>
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    onSelect={() => handleCommonClipHeightChange(40)}
+                    checked={commonLayerHeight() === 40}
+                  >
+                    Normal
+                    <span class="text-xxs text-muted-foreground ml-auto">40</span>
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    onSelect={() => handleCommonClipHeightChange(64)}
+                    checked={commonLayerHeight() === 64}
+                  >
+                    Relaxed
+                    <span class="text-xxs text-muted-foreground ml-auto">64</span>
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    onSelect={() => handleCommonClipHeightChange(116)}
+                    checked={commonLayerHeight() === 116}
+                  >
+                    Loose
+                    <span class="text-xxs text-muted-foreground ml-auto">116</span>
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Time format</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent class="w-[200px]">
+                  <DropdownMenuRadioGroup
+                    value={timeFormat()}
+                    onChange={(value) => setTimeFormat(value as TimeFormat)}
+                  >
+                    <Index each={TIME_FORMAT_OPTIONS}>
+                      {(option) => (
+                        <DropdownMenuRadioItem value={option().value}>
+                          {option().label}
+                          <span class="text-xxs text-muted-foreground ml-auto">
+                            {option().example}
+                          </span>
+                        </DropdownMenuRadioItem>
+                      )}
+                    </Index>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={addAdjustmentLayer}>
+              Add adjustment layer
+            </DropdownMenuItem>
+          </MenuIconButton>
           <span class="text-xs font-mono font-thin ml-auto select-none">
             {clock()}
           </span>

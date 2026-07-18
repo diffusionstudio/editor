@@ -6,13 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createMemo, Show } from "solid-js";
 import { toast } from "somoto";
@@ -113,63 +110,45 @@ export function PromptInputActions() {
           </Tooltip>
           <Separator orientation="vertical" class="min-h-5" />
         </Show>
-        <DropdownMenu placement="right-start">
-          <Tooltip>
-            <TooltipTrigger<typeof DropdownMenuTrigger>
-              as={(triggerProps: object) => (
-                <DropdownMenuTrigger<typeof Button>
-                  {...triggerProps}
-                  as={(buttonProps) => (
-                    <Button
-                      {...buttonProps}
-                      variant="ghost"
-                      size="icon"
-                      class="text-muted-foreground"
-                    >
-                      <Icon name="chevron-down" />
-                    </Button>
-                  )}
-                />
-              )}
-            />
-            <TooltipContent>More options</TooltipContent>
-          </Tooltip>
-          <DropdownMenuPortal>
-            <DropdownMenuContent>
-              <Show when={isGenerated()}>
-                <div class="flex items-center gap-1 px-0 pr-2 h-7">
-                  <Icon name="ai-generate" class="text-muted-foreground" />
-                  <span class="text-xs text-muted-foreground">
-                    {totalCredits()} AI credits used
-                  </span>
-                </div>
-                <Separator class="my-1" />
-              </Show>
-              <DropdownMenuGroup>
-                <Show when={hasImageSelection()}>
-                  <DropdownMenuItem onSelect={upscaleImage}>
-                    <Icon name="arrow-scale" class="mr-2 text-foreground" />
-                    Upscale
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={removeBackground}>
-                    <Icon name="ai-generate" class="mr-2 text-foreground" />
-                    Remove background
-                  </DropdownMenuItem>
-                </Show>
-                <Show when={hasVideoSelection()}>
-                  <DropdownMenuItem onSelect={upscaleVideo}>
-                    <Icon name="arrow-scale" class="mr-2 text-foreground" />
-                    Upscale
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={addAudioToVideo}>
-                    <Icon name="audio-on" class="mr-2 text-foreground" />
-                    Add audio
-                  </DropdownMenuItem>
-                </Show>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
+        <MenuIconButton
+          tooltip="More options"
+          aria-label="Open media actions"
+          placement="right-start"
+          class="text-muted-foreground"
+          icon={<Icon name="chevron-down" />}
+        >
+          <Show when={isGenerated()}>
+            <div class="flex items-center gap-1 px-0 pr-2 h-7">
+              <Icon name="ai-generate" class="text-muted-foreground" />
+              <span class="text-xs text-muted-foreground">
+                {totalCredits()} AI credits used
+              </span>
+            </div>
+            <Separator class="my-1" />
+          </Show>
+          <DropdownMenuGroup>
+            <Show when={hasImageSelection()}>
+              <DropdownMenuItem onSelect={upscaleImage}>
+                <Icon name="arrow-scale" class="mr-2 text-foreground" />
+                Upscale
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={removeBackground}>
+                <Icon name="ai-generate" class="mr-2 text-foreground" />
+                Remove background
+              </DropdownMenuItem>
+            </Show>
+            <Show when={hasVideoSelection()}>
+              <DropdownMenuItem onSelect={upscaleVideo}>
+                <Icon name="arrow-scale" class="mr-2 text-foreground" />
+                Upscale
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={addAudioToVideo}>
+                <Icon name="audio-on" class="mr-2 text-foreground" />
+                Add audio
+              </DropdownMenuItem>
+            </Show>
+          </DropdownMenuGroup>
+        </MenuIconButton>
       </div>
     </Show>
   );

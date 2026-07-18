@@ -7,13 +7,10 @@ import { Separator } from "@/components/ui/separator";
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { useEngine } from "@/context/engine";
 import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
@@ -57,43 +54,31 @@ export function Toolbar() {
               {selectedTool() === ToolType.HAND ? 'Hand' : 'Move'}
             </TooltipContent>
           </Tooltip>
-          <DropdownMenu placement="top-start">
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button {...buttonProps} size="icon-select" variant="ghost" class="text-muted-foreground">
-                        <Icon name="chevron-down" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Select tool</TooltipContent>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.MOVE)}>
-                  <div classList={{ "visible": selectedTool() === ToolType.MOVE }} class="invisible">
-                    <Icon name="confirm-check" class="text-foreground" />
-                  </div>
-                  <Icon name="move-small" class="text-foreground" />
-                  <span class="min-w-12 mx-1">Move</span>
-                  <DropdownMenuShortcut>V</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.HAND)}>
-                  <div classList={{ "visible": selectedTool() === ToolType.HAND }} class="invisible">
-                    <Icon name="confirm-check" class="text-foreground" />
-                  </div>
-                  <Icon name="hand" class="text-foreground" />
-                  <span class="min-w-12 mx-1">Hand</span>
-                  <DropdownMenuShortcut>H</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+          <MenuIconButton
+            tooltip="Select tool"
+            aria-label="Change canvas tool"
+            placement="top-start"
+            class="text-muted-foreground"
+            size="icon-select"
+            icon={<Icon name="chevron-down" />}
+          >
+            <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.MOVE)}>
+              <div classList={{ "visible": selectedTool() === ToolType.MOVE }} class="invisible">
+                <Icon name="confirm-check" class="text-foreground" />
+              </div>
+              <Icon name="move-small" class="text-foreground" />
+              <span class="min-w-12 mx-1">Move</span>
+              <DropdownMenuShortcut>V</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.HAND)}>
+              <div classList={{ "visible": selectedTool() === ToolType.HAND }} class="invisible">
+                <Icon name="confirm-check" class="text-foreground" />
+              </div>
+              <Icon name="hand" class="text-foreground" />
+              <span class="min-w-12 mx-1">Hand</span>
+              <DropdownMenuShortcut>H</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </MenuIconButton>
         </div>
         <Separator orientation="vertical" class="min-h-5" />
         <Tooltip>

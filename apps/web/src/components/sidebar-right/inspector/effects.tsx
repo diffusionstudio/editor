@@ -2,15 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { IconButton } from "@/components/ui/icon-button";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { Icon } from "@/components/ui/icon";
 import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from "@/components/ui/panel-section";
@@ -79,18 +73,14 @@ function EffectRow(props: EffectRowProps) {
           onClick={props.onInspect}
           disabled={hidden()}
         >
-          <Tooltip>
-            <TooltipTrigger
-              as={Button}
-              size="icon"
-              variant="ghost"
-              class="text-muted-foreground"
-              onClick={props.onRemove}
-            >
-              <Icon name="close-remove-small" />
-            </TooltipTrigger>
-            <TooltipContent>Remove effect</TooltipContent>
-          </Tooltip>
+          <IconButton
+            tooltip="Remove effect"
+            aria-label="Remove effect"
+            class="text-muted-foreground"
+            onClick={props.onRemove}
+          >
+            <Icon name="close-remove-small" />
+          </IconButton>
         </ItemRow>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -163,40 +153,23 @@ export function EffectsSettings(props: EffectsSettingsProps) {
         title="Effects"
         ref={anchorRef}
         actions={
-          <DropdownMenu placement="bottom-end">
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        class="text-muted-foreground"
-                        data-row-control=""
-                        {...buttonProps}
-                      >
-                        <Icon name="plus-add" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Add effect</TooltipContent>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="w-44">
-                <For each={Object.values(EffectType).filter((v): v is Effects => typeof v === 'number' && v !== EffectType.DROP_SHADOW)}>
-                  {(t) => (
-                    <DropdownMenuItem onSelect={() => handleAddEffect(t)}>
-                      {EFFECT_DEFAULTS[t].label}
-                    </DropdownMenuItem>
-                  )}
-                </For>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+          <MenuIconButton
+            tooltip="Add effect"
+            aria-label="Add effect"
+            placement="bottom-end"
+            class="text-muted-foreground"
+            data-row-control=""
+            icon={<Icon name="plus-add" />}
+            contentClass="w-44"
+          >
+            <For each={Object.values(EffectType).filter((v): v is Effects => typeof v === 'number' && v !== EffectType.DROP_SHADOW)}>
+              {(t) => (
+                <DropdownMenuItem onSelect={() => handleAddEffect(t)}>
+                  {EFFECT_DEFAULTS[t].label}
+                </DropdownMenuItem>
+              )}
+            </For>
+          </MenuIconButton>
         }
       >
         <Show when={effectEids().length > 0}>

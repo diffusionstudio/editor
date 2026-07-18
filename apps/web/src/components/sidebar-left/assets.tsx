@@ -28,9 +28,9 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { showFileDialog } from "@/utils";
 import { toast } from "somoto";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Breadcrumbs,
   BreadcrumbList,
@@ -329,85 +329,51 @@ export function Assets() {
         </div>
         <div class="flex items-center gap-1 shrink-0">
           <Show when={hasAssets()}>
-            <DropdownMenu placement="bottom-start">
-              <Tooltip>
-                <TooltipTrigger<typeof DropdownMenuTrigger>
-                  as={(triggerProps: object) => (
-                    <DropdownMenuTrigger<typeof Button>
-                      {...triggerProps}
-                      as={(buttonProps) => (
-                        <Button
-                          {...buttonProps}
-                          size="icon"
-                          variant="ghost"
-                          class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
-                        >
-                          <Icon name="preferences-adjust" class="size-6" />
-                        </Button>
-                      )}
+            <MenuIconButton
+              tooltip="Filter assets"
+              aria-label="Filter assets"
+              placement="bottom-start"
+              class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
+              icon={<Icon name="preferences-adjust" class="size-6" />}
+              contentClass="w-32"
+            >
+              <For each={ASSET_FILTER_OPTIONS}>
+                {(option) => (
+                  <DropdownMenuItem
+                    tone="neutral"
+                    class="gap-1 px-0 pr-2"
+                    onSelect={() => setAssetFilter(option.value)}
+                  >
+                    <FilterIconStack
+                      icon={option.icon}
+                      selected={assetFilter() === option.value}
                     />
-                  )}
-                />
-                <TooltipContent>Filter assets</TooltipContent>
-              </Tooltip>
-              <DropdownMenuPortal>
-                <DropdownMenuContent class="w-32">
-                  <For each={ASSET_FILTER_OPTIONS}>
-                    {(option) => (
-                      <DropdownMenuItem
-                        tone="neutral"
-                        class="gap-1 px-0 pr-2"
-                        onSelect={() => setAssetFilter(option.value)}
-                      >
-                        <FilterIconStack
-                          icon={option.icon}
-                          selected={assetFilter() === option.value}
-                        />
-                        <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {option.label}
-                        </span>
-                      </DropdownMenuItem>
-                    )}
-                  </For>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenu>
-          </Show>
-          <DropdownMenu placement="bottom-start">
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button
-                        {...buttonProps}
-                        size="icon"
-                        variant="ghost"
-                        aria-label="Add assets"
-                        class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
-                      >
-                        <Icon name="plus-add" class="size-6" />
-                      </Button>
-                    )}
-                  />
+                    <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {option.label}
+                    </span>
+                  </DropdownMenuItem>
                 )}
-              />
-              <TooltipContent shortcut="⌘I">Import assets</TooltipContent>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="w-40">
-                <DropdownMenuItem tone="neutral" onSelect={handleImportAssets}>
-                  Import assets
-                  <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem tone="neutral" onSelect={handleCreateFolder}>
-                  Create folder
-                  <DropdownMenuShortcut>⇧⌘N</DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+              </For>
+            </MenuIconButton>
+          </Show>
+          <MenuIconButton
+            tooltip="Import assets"
+            aria-label="Import assets"
+            placement="bottom-start"
+            shortcut="⌘I"
+            class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
+            icon={<Icon name="plus-add" class="size-6" />}
+            contentClass="w-40"
+          >
+            <DropdownMenuItem tone="neutral" onSelect={handleImportAssets}>
+              Import assets
+              <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem tone="neutral" onSelect={handleCreateFolder}>
+              Create folder
+              <DropdownMenuShortcut>⇧⌘N</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </MenuIconButton>
         </div>
       </div>
 

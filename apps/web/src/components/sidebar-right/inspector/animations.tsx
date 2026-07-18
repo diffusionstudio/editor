@@ -6,15 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuGroupLabel,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
   FloatingInspector,
   FloatingInspectorContent,
@@ -221,51 +218,34 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
         title="Animations"
         ref={inspectorAnchorRef}
         actions={
-          <DropdownMenu placement="bottom-end" modal>
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        class="text-muted-foreground"
-                        {...buttonProps}
-                      >
-                        <Icon name="plus-add" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Add animation</TooltipContent>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                <For each={availableGroups()}>
-                  {(group, index) => (
-                    <>
-                      <Show when={index() > 0}>
-                        <DropdownMenuSeparator />
-                      </Show>
-                      <DropdownMenuGroup>
-                        <DropdownMenuGroupLabel>{group.label}</DropdownMenuGroupLabel>
-                        <For each={group.types}>
-                          {(type) => (
-                            <DropdownMenuItem onSelect={() => handleAddAnimation(type)}>
-                              {ANIMATION_LABELS[type]}
-                            </DropdownMenuItem>
-                          )}
-                        </For>
-                      </DropdownMenuGroup>
-                    </>
-                  )}
-                </For>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+          <MenuIconButton
+            tooltip="Add animation"
+            aria-label="Add animation"
+            placement="bottom-end"
+            modal
+            class="text-muted-foreground"
+            icon={<Icon name="plus-add" />}
+          >
+            <For each={availableGroups()}>
+              {(group, index) => (
+                <>
+                  <Show when={index() > 0}>
+                    <DropdownMenuSeparator />
+                  </Show>
+                  <DropdownMenuGroup>
+                    <DropdownMenuGroupLabel>{group.label}</DropdownMenuGroupLabel>
+                    <For each={group.types}>
+                      {(type) => (
+                        <DropdownMenuItem onSelect={() => handleAddAnimation(type)}>
+                          {ANIMATION_LABELS[type]}
+                        </DropdownMenuItem>
+                      )}
+                    </For>
+                  </DropdownMenuGroup>
+                </>
+              )}
+            </For>
+          </MenuIconButton>
         }
       >
         <For each={inAnimEids()}>

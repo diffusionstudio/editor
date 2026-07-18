@@ -8,7 +8,6 @@ import { toast } from "somoto";
 import { downloadAsset } from "@/components/assets/actions";
 import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,14 +17,9 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { useEngine } from "@/context/engine";
 import { usePromptInput } from "@/context/prompt-input";
 import { createDefaultConfig } from "@/components/genai/prompt-input";
@@ -118,55 +112,40 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
             placeholder="Search in assets"
             class="flex-1 min-w-0 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none"
           />
-          <DropdownMenu placement="bottom-end" modal preventScroll={false}>
-            <Tooltip>
-              <TooltipTrigger<typeof DropdownMenuTrigger>
-                as={(triggerProps: object) => (
-                  <DropdownMenuTrigger<typeof Button>
-                    {...triggerProps}
-                    as={(buttonProps) => (
-                      <Button
-                        {...buttonProps}
-                        size="icon"
-                        variant="ghost"
-                        class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
-                      >
-                        <Icon name="preferences-adjust" class="size-6" />
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-              <TooltipContent>Filter assets</TooltipContent>
-            </Tooltip>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="w-32">
-                <For each={filterOptions()}>
-                  {(option) => (
-                    <DropdownMenuItem
-                      tone="neutral"
-                      class="gap-1 px-0 pr-2"
-                      onSelect={() => setAssetFilter(option.value)}
-                    >
-                      <div class="flex items-center">
-                        <span class="w-6 h-7 shrink-0 flex items-center justify-center">
-                          <Show when={assetFilter() === option.value}>
-                            <Icon name="confirm-check" class="size-6 text-popover-foreground" />
-                          </Show>
-                        </span>
-                        <span class="w-7 h-7 flex items-center justify-center">
-                          <Icon name={option.icon} class="size-6 text-popover-foreground" />
-                        </span>
-                      </div>
-                      <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                        {option.label}
-                      </span>
-                    </DropdownMenuItem>
-                  )}
-                </For>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
+          <MenuIconButton
+            tooltip="Filter assets"
+            aria-label="Filter assets"
+            placement="bottom-end"
+            modal
+            preventScroll={false}
+            class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
+            icon={<Icon name="preferences-adjust" class="size-6" />}
+            contentClass="w-32"
+          >
+            <For each={filterOptions()}>
+              {(option) => (
+                <DropdownMenuItem
+                  tone="neutral"
+                  class="gap-1 px-0 pr-2"
+                  onSelect={() => setAssetFilter(option.value)}
+                >
+                  <div class="flex items-center">
+                    <span class="w-6 h-7 shrink-0 flex items-center justify-center">
+                      <Show when={assetFilter() === option.value}>
+                        <Icon name="confirm-check" class="size-6 text-popover-foreground" />
+                      </Show>
+                    </span>
+                    <span class="w-7 h-7 flex items-center justify-center">
+                      <Icon name={option.icon} class="size-6 text-popover-foreground" />
+                    </span>
+                  </div>
+                  <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                    {option.label}
+                  </span>
+                </DropdownMenuItem>
+              )}
+            </For>
+          </MenuIconButton>
         </div>
       </div>
 
