@@ -159,7 +159,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
       </FloatingInspector>
 
       <Show when={isColorPickerOpen()}>
-        <FloatingInspectorLayer modal onDismiss={() => setIsColorPickerOpen(false)}>
+        <FloatingInspectorLayer onDismiss={() => setIsColorPickerOpen(false)}>
           <FloatingInspector
             open={true}
             anchorRef={() => colorRowRef}

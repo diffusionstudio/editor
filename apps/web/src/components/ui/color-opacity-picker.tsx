@@ -388,7 +388,6 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
         <div class="flex flex-col gap-3">
           <div class="flex gap-px items-center overflow-clip rounded-md">
             <Select
-              modal
               preventScroll={false}
               value={colorType()}
               onChange={setColorType}
