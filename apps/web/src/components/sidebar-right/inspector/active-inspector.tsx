@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createContext, createSignal, useContext, type JSX } from "solid-js";
+import { createContext, createEffect, createSignal, useContext, type Accessor, type JSX } from "solid-js";
 
 type ActiveInspectorKey = { owner: string; id: number };
 
@@ -44,4 +44,29 @@ export function useActiveInspector(): ActiveInspectorContextValue {
     throw new Error("useActiveInspector must be used within an ActiveInspectorProvider");
   }
   return ctx;
+}
+
+// Only invalidate ids already observed in the list; newly added entities sync a tick later.
+export function useActiveInspectorInvalidation(
+  owner: string,
+  ids: Accessor<readonly number[]>,
+): void {
+  const inspectors = useActiveInspector();
+  let confirmedId: number | null = null;
+
+  createEffect(() => {
+    const id = inspectors.currentId(owner);
+    if (id === undefined) {
+      confirmedId = null;
+      return;
+    }
+    if (ids().includes(id)) {
+      confirmedId = id;
+      return;
+    }
+    if (confirmedId === id) {
+      confirmedId = null;
+      inspectors.close(owner);
+    }
+  });
 }

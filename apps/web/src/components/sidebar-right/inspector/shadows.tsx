@@ -9,7 +9,7 @@ import { Icon } from '@/components/ui/icon';
 import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from '@/components/ui/panel-section';
 import { ShadowInspector } from './shadow-inspector';
-import { useActiveInspector } from './active-inspector';
+import { useActiveInspector, useActiveInspectorInvalidation } from './active-inspector';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -140,6 +140,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
 
   const eid = () => props.selection.values().next().value!;
   const shadows = useEntityState(c.Cache.shadows, eid, []);
+  useActiveInspectorInvalidation(OWNER, shadows);
 
   const handleAddShadow = () => {
     const newShadowEid = world.history.transaction('Add shadow', () => {

@@ -16,7 +16,7 @@ import { FillPicker, type FillTab } from "./fill-picker";
 import { useEntityState, createEntity, deleteEntity, getSiblingEntities, PaintType, isText, appendChild, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { FillRow } from "./fill-row";
-import { useActiveInspector } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
 
 type FillsSettingsProps = {
   selection: Set<number>;
@@ -36,6 +36,7 @@ export function FillsSettings(props: FillsSettingsProps) {
   const eid = () => props.selection.values().next().value!;
 
   const fillEids = useEntityState(c.Cache.fills, eid, []);
+  useActiveInspectorInvalidation(OWNER, fillEids);
   const tabs = createMemo<FillTab[] | undefined>(() => {
     return isText(world, eid())
       ? ['solid', 'gradient']

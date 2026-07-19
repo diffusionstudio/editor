@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/context-menu";
 import { For, Show, createMemo } from "solid-js";
 import { EFFECT_DEFAULTS, EffectsInspector } from "./effects-inspector";
-import { useActiveInspector } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
 import { useEntityState, useEntityTag, EffectType, createEntity, deleteEntity, getSiblingEntities, addComponent, appendChild, removeComponent, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { hasComponent } from 'bitecs';
@@ -116,6 +116,7 @@ export function EffectsSettings(props: EffectsSettingsProps) {
 
   const eid = () => props.selection.values().next().value!;
   const effectEids = useEntityState(world.components.Cache.effects, eid, []);
+  useActiveInspectorInvalidation(OWNER, effectEids);
 
   const handleAddEffect = (typeName: Effects) => {
     const defaults = EFFECT_DEFAULTS[typeName];

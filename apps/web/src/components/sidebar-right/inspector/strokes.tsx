@@ -15,7 +15,7 @@ import { useEngine } from "@/context/engine";
 import { StrokeJoin, useEntityState, createEntity, deleteEntity, getSiblingEntities, addComponent, appendChild, setComponent } from "@/components/engine";
 import { FillRow } from "./fill-row";
 import { FillPicker } from "./fill-picker";
-import { useActiveInspector } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
 
 
 const STROKE_JOIN_SEGMENTS = [
@@ -44,6 +44,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
   const strokeMiterLimit = useEntityState(c.StrokeStyle.miterLimit, eid, 3);
   const inspectors = useActiveInspector();
   const selectedStroke = () => inspectors.currentId(OWNER);
+  useActiveInspectorInvalidation(OWNER, strokeEids);
 
   const lineJoin = createMemo(() => String(lineJoinId()));
 
