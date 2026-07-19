@@ -30,3 +30,10 @@ No fix in `0.13.12` or `main`. Related: [#160](https://github.com/kobaltedev/kob
 
 Remove when Kobalte stops treating an unrelated ancestor `MenuContext` as a parent, or the app
 no longer renders inside `ContextMenu.Trigger`.
+
+## Unpatched Kobalte assumptions
+
+Verify on Kobalte upgrades:
+
+- `FloatingInspector` relies on `Dialog.Content` forwarding `bypassTopMostLayerCheck`.
+- Tooltip focus gating relies on `TooltipTrigger` calling consumer `onFocus` before checking `e.defaultPrevented`.
