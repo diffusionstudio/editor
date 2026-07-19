@@ -532,7 +532,12 @@ export function GradientFillPicker(props: GradientPickerProps) {
       </div>
 
       <Show when={colorPickerStopEid() !== null}>
-        <FloatingInspectorLayer bypassTopMostLayerCheck onDismiss={closeStopColorPicker}>
+        <FloatingInspectorLayer
+          bypassTopMostLayerCheck
+          onDismiss={closeStopColorPicker}
+          triggerRef={rootRef}
+          triggerControlSelector="[data-stop-swatch]"
+        >
           <FloatingInspector open={true} anchorRef={rootRef}>
             <FloatingInspectorHeader>
               <FloatingInspectorTitle class="flex-1">Stop color</FloatingInspectorTitle>
@@ -664,6 +669,7 @@ function GradientStopRow(props: GradientStopRowProps) {
 
         <div class="h-7 min-w-0 flex-1 rounded-l-md border border-border-input bg-input pl-1 flex items-center gap-1.5 border-transparent focus-within:border-ring">
           <button
+            data-stop-swatch=""
             class="size-5 min-w-5 overflow-hidden rounded-sm"
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
