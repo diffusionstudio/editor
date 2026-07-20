@@ -87,6 +87,7 @@
   --color-code-number: var(--code-number);
   --color-selection: var(--selection);
   --color-selection-foreground: var(--selection-foreground);
+  --color-selection-muted: var(--selection-muted);
   --color-inset: var(--inset);
   --color-overlay: var(--overlay);
   --color-overlay-soft: var(--overlay-soft);
@@ -160,7 +161,7 @@
   --overlay-soft: hsla(0, 0%, 9%, 0.4);
   --selection: hsla(207, 100%, 50%, 1);
   --selection-foreground: hsla(207, 100%, 90%, 1);
-  --selection-muted-foreground: hsla(0, 0%, 45%, 1);
+  --selection-muted: hsla(0, 0%, 45%, 1);
   --inset: hsla(0, 0%, 85%, 1);
   --meter-green: hsla(125, 85%, 57%, 1);
   --meter-yellow: hsla(46, 90%, 62%, 1);
@@ -213,7 +214,7 @@
   --overlay-soft: hsla(0, 0%, 9%, 0.4);
   --selection: hsla(207, 99%, 22%, 1);
   --selection-foreground: hsla(207, 100%, 90%, 1);
-  --selection-muted-foreground: hsla(0, 0%, 100%, 0.06);
+  --selection-muted: hsla(0, 0%, 100%, 0.06);
   --inset: hsla(0, 0%, 100%, 0.09);
   --meter-green: hsla(125, 85%, 57%, 1);
   --meter-yellow: hsla(46, 90%, 62%, 1);

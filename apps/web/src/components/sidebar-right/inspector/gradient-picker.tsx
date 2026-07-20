@@ -250,6 +250,12 @@ export function GradientFillPicker(props: GradientPickerProps) {
     setColorPickerStopEid(null);
   };
 
+  const focusStop = (eid: number) => {
+    setSelectedStopEid(eid);
+    // Follow the open picker to this stop; never open a closed one.
+    setColorPickerStopEid((prev) => (prev === null ? null : eid));
+  };
+
   const colorPickerStop = createMemo(() => {
     return stops().find(s => s.eid === colorPickerStopEid()) ?? null;
   });
@@ -312,7 +318,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
     draggedStopEid = eid;
     dragStartPointerRatio = ratio;
     dragStartOffset = displayedStopOffset(eid);
-    setSelectedStopEid(eid);
+    focusStop(eid);
     stopDrag.onPointerDown(e);
   };
 
@@ -379,6 +385,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
   };
 
   return (
+    <>
     <div ref={rootRef} class="flex flex-col gap-4 p-4" onClick={handleGradientBackgroundClick}>
       <div class="flex flex-col gap-4">
         <div class="flex items-center gap-2">
@@ -471,6 +478,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
                 <ContextMenu modal={false}>
                   <ContextMenuTrigger
                     as="div"
+                    data-stop-control=""
                     class="absolute top-0 touch-none"
                     classList={{ "opacity-80": selectedStopEid() !== eid }}
                     style={{
@@ -552,7 +560,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
             <TooltipContent>Add stop</TooltipContent>
           </Tooltip>
         </div>
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-0 -mb-1.5">
           <For each={sortedStopEids()}>
             {(eid) => (
               <GradientStopRow
@@ -561,19 +569,21 @@ export function GradientFillPicker(props: GradientPickerProps) {
                 color={stopByEid(eid)?.color ?? 0xFFFFFF}
                 opacity={stopByEid(eid)?.opacity ?? 1}
                 selected={selectedStopEid() === eid}
+                selectStop={focusStop}
                 toggleColorPicker={toggleColorPicker}
               />
             )}
           </For>
         </div>
       </div>
+    </div>
 
       <Show when={colorPickerStopEid() !== null}>
         <FloatingInspectorLayer
           bypassTopMostLayerCheck
           onDismiss={closeStopColorPicker}
           triggerRef={rootRef}
-          triggerControlSelector="[data-stop-swatch]"
+          triggerControlSelector="[data-stop-swatch],[data-stop-control]"
         >
           <FloatingInspector open={true} anchorRef={rootRef}>
             <FloatingInspectorHeader>
@@ -612,7 +622,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
           </FloatingInspector>
         </FloatingInspectorLayer>
       </Show>
-    </div>
+    </>
   );
 }
 
@@ -622,6 +632,7 @@ type GradientStopRowProps = {
   color: number;
   opacity: number;
   selected: boolean;
+  selectStop(eid: number): void;
   toggleColorPicker(anchor: HTMLElement, eid: number): void;
 }
 
@@ -684,7 +695,12 @@ function GradientStopRow(props: GradientStopRowProps) {
   };
 
   return (
-    <div class="flex min-w-0 items-center gap-2">
+    <div
+      data-stop-control=""
+      class="flex min-w-0 items-center gap-2 -mx-4 px-4 py-1.5"
+      classList={{ "bg-selection-muted": props.selected }}
+      onPointerDown={() => props.selectStop(props.eid)}
+    >
       <ControlledTextField
         class="w-15 shrink-0"
         value={Math.round(props.offset * 100)}
