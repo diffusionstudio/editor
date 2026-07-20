@@ -722,6 +722,7 @@ function GradientStopRow(props: GradientStopRowProps) {
         onNumber={handleOffsetChange}
         inputClassName="transition-none"
         keyframe={<Keyframe target={props.eid} property="stop.offset" />}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
       />
 
       <div
@@ -750,6 +751,7 @@ function GradientStopRow(props: GradientStopRowProps) {
             onKeyDown={handleColorKeyDown}
             onBlur={handleColorBlur}
             onPointerDown={handleInitialInputPointerDown}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
           />
 
           <div
@@ -774,6 +776,7 @@ function GradientStopRow(props: GradientStopRowProps) {
           onNumber={handleOpacityChange}
           inputClassName="rounded-l-none"
           keyframe={<Keyframe target={props.eid} property="stop.opacity" />}
+          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
       </div>
     </ContextMenuTrigger>
