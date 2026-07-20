@@ -159,7 +159,12 @@ export function ShadowInspector(props: ShadowInspectorProps) {
       </FloatingInspector>
 
       <Show when={isColorPickerOpen()}>
-        <FloatingInspectorLayer bypassTopMostLayerCheck onDismiss={() => setIsColorPickerOpen(false)}>
+        <FloatingInspectorLayer
+          bypassTopMostLayerCheck
+          onDismiss={() => setIsColorPickerOpen(false)}
+          triggerRef={colorRowRef}
+          triggerControlSelector="[data-row-control]"
+        >
           <FloatingInspector
             open={true}
             anchorRef={() => colorRowRef}
