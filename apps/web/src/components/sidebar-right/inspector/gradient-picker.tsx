@@ -4,7 +4,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount, type JSXElement } from "solid-js";
 
 import { Icon } from "@/components/ui/icon";
 import {
@@ -255,6 +255,35 @@ export function GradientFillPicker(props: GradientPickerProps) {
     // Follow the open picker to this stop; never open a closed one.
     setColorPickerStopEid((prev) => (prev === null ? null : eid));
   };
+
+  // Shared by the track knob and the stop row so both right-click menus stay in sync.
+  const stopMenuItems = (eid: number) => (
+    <ContextMenuContent>
+      <ContextMenuItem
+        disabled={stops().length <= 1}
+        onSelect={redistributeStopsEvenly}
+      >
+        Redistribute stops evenly
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onSelect={() => duplicateStop(eid)}>
+        Duplicate stop
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={stops().length <= 2}
+        onSelect={() => removeStopEid(eid)}
+      >
+        Delete stop
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        disabled={stops().length === 0}
+        onSelect={removeAllStops}
+      >
+        Delete all stops
+      </ContextMenuItem>
+    </ContextMenuContent>
+  );
 
   const colorPickerStop = createMemo(() => {
     return stops().find(s => s.eid === colorPickerStopEid()) ?? null;
@@ -509,31 +538,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
                     </svg>
                   </ContextMenuTrigger>
                   <ContextMenuPortal>
-                    <ContextMenuContent>
-                      <ContextMenuItem
-                        disabled={stops().length <= 1}
-                        onSelect={redistributeStopsEvenly}
-                      >
-                        Redistribute stops evenly
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem onSelect={() => duplicateStop(eid)}>
-                        Duplicate stop
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        disabled={stops().length <= 2}
-                        onSelect={() => removeStopEid(eid)}
-                      >
-                        Delete stop
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem
-                        disabled={stops().length === 0}
-                        onSelect={removeAllStops}
-                      >
-                        Delete all stops
-                      </ContextMenuItem>
-                    </ContextMenuContent>
+                    {stopMenuItems(eid)}
                   </ContextMenuPortal>
                 </ContextMenu>
               )}
@@ -571,6 +576,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
                 selected={selectedStopEid() === eid}
                 selectStop={focusStop}
                 toggleColorPicker={toggleColorPicker}
+                menu={stopMenuItems(eid)}
               />
             )}
           </For>
@@ -634,6 +640,7 @@ type GradientStopRowProps = {
   selected: boolean;
   selectStop(eid: number): void;
   toggleColorPicker(anchor: HTMLElement, eid: number): void;
+  menu: JSXElement;
 }
 
 function GradientStopRow(props: GradientStopRowProps) {
@@ -695,7 +702,9 @@ function GradientStopRow(props: GradientStopRowProps) {
   };
 
   return (
-    <div
+    <ContextMenu modal={false}>
+    <ContextMenuTrigger
+      as="div"
       data-stop-control=""
       class="flex min-w-0 items-center gap-2 -mx-4 px-4 py-1.5"
       classList={{ "bg-selection-muted": props.selected }}
@@ -767,6 +776,10 @@ function GradientStopRow(props: GradientStopRowProps) {
           keyframe={<Keyframe target={props.eid} property="stop.opacity" />}
         />
       </div>
-    </div>
+    </ContextMenuTrigger>
+    <ContextMenuPortal>
+      {props.menu}
+    </ContextMenuPortal>
+    </ContextMenu>
   );
 }
