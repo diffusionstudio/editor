@@ -75,6 +75,9 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
     });
   });
 
+  const hasAnyAssets = createMemo(() => availableAssets().length > 0);
+  const isFiltering = createMemo(() => query().trim() !== "" || assetFilter() !== "ALL");
+
   const handleImportAssets = async () => {
     const files = await showFileDialog();
     if (files.length === 0) return;
@@ -149,17 +152,41 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 px-4 pt-4 overflow-y-auto max-h-96">
-        <For each={filteredAssets()}>
-          {(asset) => (
-            <AssetCard
-              asset={asset}
-              selected={selectedAssetId() === asset.id}
-              onSelect={() => selectAsset(asset)}
-            />
-          )}
-        </For>
-        <Separator class="col-span-2" />
+      <Show
+        when={filteredAssets().length > 0}
+        fallback={
+          <div class="min-h-52 flex items-center justify-center px-6 py-4">
+            <Show
+              when={hasAnyAssets() && isFiltering()}
+              fallback={
+                <div class="flex flex-col items-center gap-1">
+                  <span class="text-xs font-450 text-muted-foreground">No assets</span>
+                  <p class="text-xxs text-muted-foreground text-center text-balance">
+                    Import from your computer, or generate something new with AI.
+                  </p>
+                </div>
+              }
+            >
+              <span class="text-xs text-muted-foreground">No matching assets</span>
+            </Show>
+          </div>
+        }
+      >
+        <div class="grid grid-cols-2 gap-2 px-4 pt-4 pb-4 overflow-y-auto max-h-96 min-h-52 content-start">
+          <For each={filteredAssets()}>
+            {(asset) => (
+              <AssetCard
+                asset={asset}
+                selected={selectedAssetId() === asset.id}
+                onSelect={() => selectAsset(asset)}
+              />
+            )}
+          </For>
+        </div>
+      </Show>
+
+      <div class="mx-4">
+        <Separator />
       </div>
 
       <div class="flex flex-col gap-2 px-4 pb-4 pt-3">
