@@ -302,7 +302,7 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
             />
           </div>
           <div
-            class="absolute size-3.5 rounded-full border-[3px] border-foreground shadow-[0_2px_7px_rgba(0,0,0,0.4)] pointer-events-none"
+            class="absolute size-3.5 rounded-full border-[3px] border-foreground shadow-[0_2px_7px_rgba(0,0,0,0.4)]"
             style={{
               left: `${hsvDraft().s}%`,
               top: `${100 - hsvDraft().v}%`,
@@ -343,7 +343,7 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
                 onPointerDown={hueDrag.onPointerDown}
               >
                 <div
-                  class="absolute top-1/2 size-3.5 rounded-full border-[3px] border-foreground shadow-sm pointer-events-none"
+                  class="absolute top-1/2 size-3.5 rounded-full border-[3px] border-foreground shadow-sm"
                   style={{
                     left: `${(hslDraft().h / 360) * 100}%`,
                     transform: "translate(-50%, -50%)",
@@ -371,7 +371,7 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
                     }}
                   />
                   <div
-                    class="absolute top-1/2 size-3.5 rounded-full border-[3px] border-foreground shadow-sm pointer-events-none"
+                    class="absolute top-1/2 size-3.5 rounded-full border-[3px] border-foreground shadow-sm"
                     style={{
                       left: `${opacity() * 100}%`,
                       transform: "translate(-50%, -50%)",
