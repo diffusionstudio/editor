@@ -240,9 +240,10 @@ export function GradientFillPicker(props: GradientPickerProps) {
     if (!stopEids().includes(eid)) setColorPickerStopEid(null);
   });
 
-  const spawnColorPicker = (_anchor: HTMLElement, eid: number) => {
+  const toggleColorPicker = (_anchor: HTMLElement, eid: number) => {
     setSelectedStopEid(eid);
-    setColorPickerStopEid(eid);
+    // Re-clicking the same swatch closes; a different one switches in place.
+    setColorPickerStopEid((prev) => (prev === eid ? null : eid));
   };
 
   const closeStopColorPicker = () => {
@@ -560,7 +561,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
                 color={stopByEid(eid)?.color ?? 0xFFFFFF}
                 opacity={stopByEid(eid)?.opacity ?? 1}
                 selected={selectedStopEid() === eid}
-                spawnColorPicker={spawnColorPicker}
+                toggleColorPicker={toggleColorPicker}
               />
             )}
           </For>
@@ -621,7 +622,7 @@ type GradientStopRowProps = {
   color: number;
   opacity: number;
   selected: boolean;
-  spawnColorPicker(anchor: HTMLElement, eid: number): void;
+  toggleColorPicker(anchor: HTMLElement, eid: number): void;
 }
 
 function GradientStopRow(props: GradientStopRowProps) {
@@ -679,7 +680,7 @@ function GradientStopRow(props: GradientStopRowProps) {
 
   const handleClickColorPicker = (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
     e.stopPropagation();
-    props.spawnColorPicker(e.currentTarget, props.eid);
+    props.toggleColorPicker(e.currentTarget, props.eid);
   };
 
   return (
