@@ -476,7 +476,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
         </div>
 
         <div class="flex flex-col gap-2 items-center">
-          <ContextMenu modal={false}>
+          <ContextMenu onOpenChange={(open) => open && closeStopColorPicker()}>
             <ContextMenuTrigger
               as="div"
               class="h-7 w-full touch-none rounded-md border border-border-input"
@@ -504,7 +504,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
           <div ref={stopTrackRef} class="relative z-10 h-[14px] w-full overflow-visible">
             <For each={sortedStopEids()}>
               {(eid) => (
-                <ContextMenu modal={false}>
+                <ContextMenu onOpenChange={(open) => open && closeStopColorPicker()}>
                   <ContextMenuTrigger
                     as="div"
                     data-stop-control=""
@@ -576,6 +576,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
                 selected={selectedStopEid() === eid}
                 selectStop={focusStop}
                 toggleColorPicker={toggleColorPicker}
+                onMenuOpen={closeStopColorPicker}
                 menu={stopMenuItems(eid)}
               />
             )}
@@ -640,6 +641,7 @@ type GradientStopRowProps = {
   selected: boolean;
   selectStop(eid: number): void;
   toggleColorPicker(anchor: HTMLElement, eid: number): void;
+  onMenuOpen(): void;
   menu: JSXElement;
 }
 
@@ -702,7 +704,7 @@ function GradientStopRow(props: GradientStopRowProps) {
   };
 
   return (
-    <ContextMenu modal={false}>
+    <ContextMenu onOpenChange={(open) => open && props.onMenuOpen()}>
     <ContextMenuTrigger
       as="div"
       data-stop-control=""
