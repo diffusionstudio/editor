@@ -4,6 +4,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { IconButton } from "@/components/ui/icon-button";
 import { ControlRow } from "@/components/ui/control-group";
 import {
   DropdownMenuGroup,
@@ -17,6 +18,8 @@ import {
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
+  FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import { ItemRow } from "@/components/ui/item-row";
@@ -30,11 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createMemo, createUniqueId } from "solid-js";
 
 import { useEntityState, AnimationType, AnimationPhase, PaintType, createEntity, deleteEntity, isAudio, isText, appendChild, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { secondsToFrames } from "@/components/engine/utils/time";
+import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
 
 
 type AnimationsSettingsProps = {
@@ -123,33 +127,35 @@ function AnimationRow(props: AnimationRowProps) {
       icon={<Icon name="preferences-adjust" />}
       onClick={props.onInspect}
     >
-      <Tooltip>
-        <TooltipTrigger
-          as={Button}
-          size="icon"
-          variant="ghost"
-          class="text-muted-foreground"
-          onClick={props.onRemove}
-        >
-          <Icon name="close-remove-small" />
-        </TooltipTrigger>
-        <TooltipContent>Remove animation</TooltipContent>
-      </Tooltip>
+      <IconButton
+        tooltip="Remove animation"
+        aria-label="Remove animation"
+        class="text-muted-foreground"
+        onClick={props.onRemove}
+      >
+        <Icon name="close-remove-small" />
+      </IconButton>
     </ItemRow>
   );
 }
+
+const OWNER = "animation";
 
 export function AnimationsSettings(props: AnimationsSettingsProps) {
   const { world } = useEngine();
   const c = world.components;
 
-  const [inspectingAnimation, setInspectingAnimation] = createSignal<number>();
+  const titleId = createUniqueId();
+  const inspectors = useActiveInspector();
+  const inspectingAnimation = () => inspectors.currentId(OWNER);
 
   let inspectorAnchorRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
   const animations = useEntityState(c.Cache.animations, eid, []);
   const fillEids = useEntityState(c.Cache.fills, eid, [] as number[]);
+  useActiveInspectorInvalidation(OWNER, animations);
 
   const availableGroups = createMemo(() => {
     // Captions are also text-geometry, so isText covers both.
@@ -173,7 +179,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
   );
 
   const handleAddAnimation = (type: AnimationType) => {
-    world.history.transaction('Add animation', () => {
+    const newAnimEid = world.history.transaction('Add animation', () => {
       const animEid = createEntity(world);
       setComponent(world, animEid, c.Animation, {
         duration: world.frameRate,
@@ -181,11 +187,13 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
         phase: AnimationPhase.IN,
       });
       appendChild(world, animEid, eid());
+      return animEid;
     });
+    inspectors.open(OWNER, newAnimEid);
   };
 
   const handleRemoveAnimation = (aid: number) => deleteEntity(world, aid);
-  const handleInspectAnimation = (aid: number) => setInspectingAnimation(aid);
+  const handleInspectAnimation = (aid: number) => inspectors.toggle(OWNER, aid);
 
   // Read inspected animation's data reactively
   const inspectedPhase = useEntityState(c.Animation.phase, inspectingAnimation, 0);
@@ -214,6 +222,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
 
   return (
     <>
+      <div ref={sectionRef} class="contents">
       <PanelSection
         title="Animations"
         ref={inspectorAnchorRef}
@@ -224,6 +233,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
             placement="bottom-end"
             modal
             class="text-muted-foreground"
+            data-row-control=""
             icon={<Icon name="plus-add" />}
           >
             <For each={availableGroups()}>
@@ -248,29 +258,41 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
           </MenuIconButton>
         }
       >
-        <For each={inAnimEids()}>
-          {(animEid) => (
-            <AnimationRow
-              animEid={animEid}
-              onInspect={() => handleInspectAnimation(animEid)}
-              onRemove={() => handleRemoveAnimation(animEid)}
-            />
-          )}
-        </For>
+        <Show when={inAnimEids().length + outAnimEids().length > 0}>
+          <div class="contents">
+            <For each={inAnimEids()}>
+              {(animEid) => (
+                <AnimationRow
+                  animEid={animEid}
+                  onInspect={() => handleInspectAnimation(animEid)}
+                  onRemove={() => handleRemoveAnimation(animEid)}
+                />
+              )}
+            </For>
 
-        <For each={outAnimEids()}>
-          {(animEid) => (
-            <AnimationRow
-              animEid={animEid}
-              onInspect={() => handleInspectAnimation(animEid)}
-              onRemove={() => handleRemoveAnimation(animEid)}
-            />
-          )}
-        </For>
+            <For each={outAnimEids()}>
+              {(animEid) => (
+                <AnimationRow
+                  animEid={animEid}
+                  onInspect={() => handleInspectAnimation(animEid)}
+                  onRemove={() => handleRemoveAnimation(animEid)}
+                />
+              )}
+            </For>
+          </div>
+        </Show>
       </PanelSection>
+      </div>
 
       <Show when={inspectingAnimation()}>
+        <FloatingInspectorLayer
+          onDismiss={() => inspectors.close(OWNER)}
+          triggerRef={sectionRef}
+          triggerControlSelector="[data-row-control]"
+          labelledBy={titleId}
+        >
         <FloatingInspector open anchorRef={inspectorAnchorRef} width={248}>
+          <FloatingInspectorTitle id={titleId} class="sr-only">Animation</FloatingInspectorTitle>
           <FloatingInspectorHeader class="items-center justify-between px-2">
             <Select
               value={inspectedPhase()}
@@ -297,7 +319,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
                 size="icon"
                 variant="ghost"
                 class="text-muted-foreground"
-                onClick={() => setInspectingAnimation(undefined)}
+                onClick={() => inspectors.close(OWNER)}
               >
                 <Icon name="close-remove" />
               </TooltipTrigger>
@@ -333,6 +355,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
             </ControlRow>
           </FloatingInspectorContent>
         </FloatingInspector>
+        </FloatingInspectorLayer>
       </Show>
     </>
   );
