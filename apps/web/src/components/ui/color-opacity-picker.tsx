@@ -118,11 +118,17 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
       hue = untrack(() => hsvDraft().h);
     }
 
+    // Black (v=0) has no saturation; keep the knob's x instead of snapping to 0.
+    let saturation = hsv.s;
+    if (hsv.v === 0) {
+      saturation = untrack(() => hsvDraft().s);
+    }
+
     batch(() => {
       setHexDraft(colorToHex(props.color).replace("#", ""));
       setRgbDraft(rgb);
       setHslDraft({ ...hsl, h: hsl.s === 0 ? hue : hsl.h });
-      setHsvDraft({ ...hsv, h: hue });
+      setHsvDraft({ ...hsv, h: hue, s: saturation });
     });
   });
 
