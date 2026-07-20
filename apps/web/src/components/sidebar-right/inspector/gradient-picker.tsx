@@ -37,9 +37,9 @@ import { useDrag } from "@/hooks/use-drag";
 import { clamp, mergeColorWithOpacity } from "@/utils";
 import { colorToHex, parseColor } from "@/utils/color";
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
-import { ChildOf, PaintType, useEntityState, useEntityStates, useQuery, createEntity, deleteEntity, appendChild, setComponent } from "@/components/engine";
+import { ChildOf, PaintType, getParentEntity, useEntityState, useEntityStates, useQuery, createEntity, deleteEntity, appendChild, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
-import { Not } from 'bitecs';
+import { Not, entityExists, hasComponent } from 'bitecs';
 
 export type GradientPickerProps = {
   nodeEid: number;
@@ -84,7 +84,6 @@ export function GradientFillPicker(props: GradientPickerProps) {
 
   let rootRef: HTMLDivElement | undefined;
   let stopTrackRef: HTMLDivElement | undefined;
-  let draggedStopEid: number | null = null;
 
   const [selectedStopEid, setSelectedStopEid] = createSignal<number | null>(null);
   const [colorPickerStopEid, setColorPickerStopEid] = createSignal<number | null>(null);
@@ -103,6 +102,11 @@ export function GradientFillPicker(props: GradientPickerProps) {
     }))
     .toSorted((a, b) => a.offset - b.offset)
   );
+
+  // Key <For> rows by eid; the fresh objects from stops() remount every row on any value change.
+  const sortedStopEids = createMemo(() => stops().map((stop) => stop.eid));
+  const stopByEidMap = createMemo(() => new Map(stops().map((stop) => [stop.eid, stop])));
+  const stopByEid = (eid: number) => stopByEidMap().get(eid);
 
   const rotation = useEntityState(c.Computed.rotation, props.fillEid, 0);
   const fillType = useEntityState(c.Paint, props.fillEid, PaintType.LINEAR_GRADIENT);
@@ -265,17 +269,48 @@ export function GradientFillPicker(props: GradientPickerProps) {
     return stopEid;
   };
 
-  const updateStopDragPosition = (pos: { x: number; y: number }) => {
-    const ratio = getSliderRatio(stopTrackRef, pos);
+  let draggedStopEid: number | null = null;
+  let dragStartPointerRatio = 0;
+  let dragStartOffset = 0;
 
-    if (draggedStopEid && ratio !== null) {
-      setComponent(world, draggedStopEid, c.ColorStop, { offset: ratio });
+  // A drag can outlive its stop; eids can be reused.
+  const isLiveStop = (eid: number) =>
+    entityExists(world, eid) &&
+    hasComponent(world, eid, c.ColorStop) &&
+    !hasComponent(world, eid, c.Deleted) &&
+    getParentEntity(world, eid) === props.fillEid;
+
+  const roundedVisualOffset = (raw: number) => Math.round(visualOffset(raw) * 100) / 100;
+
+  const displayedStopOffset = (eid: number) =>
+    roundedVisualOffset(c.Computed.stopOffset[eid] ?? c.ColorStop.offset[eid] ?? 0);
+
+  const updateStopDragPosition = (pos: { x: number; y: number }) => {
+    const eid = draggedStopEid;
+    if (eid === null) return;
+    if (!isLiveStop(eid)) {
+      draggedStopEid = null;
+      return;
     }
+
+    const ratio = getSliderRatio(stopTrackRef, pos);
+    if (ratio === null) return;
+
+    const next = Math.round(clamp(dragStartOffset + (ratio - dragStartPointerRatio), 0, 1) * 100) / 100;
+    if (next === displayedStopOffset(eid)) return;
+
+    setComponent(world, eid, c.ColorStop, { offset: next });
   };
 
   const beginStopDrag = (eid: number, e: PointerEvent) => {
     if (!isPrimaryPointerButton(e)) return;
+    const ratio = getSliderRatio(stopTrackRef, { x: e.clientX, y: e.clientY });
+    if (ratio === null) return;
+    if (!isLiveStop(eid)) return;
+
     draggedStopEid = eid;
+    dragStartPointerRatio = ratio;
+    dragStartOffset = displayedStopOffset(eid);
     setSelectedStopEid(eid);
     stopDrag.onPointerDown(e);
   };
@@ -297,8 +332,8 @@ export function GradientFillPicker(props: GradientPickerProps) {
   const stopDrag = useDrag({
     onDragStart: updateStopDragPosition,
     onDragMove: updateStopDragPosition,
-    onDragEnd: (pos) => {
-      updateStopDragPosition(pos);
+    onDragEnd: (pos, e) => {
+      if (e.type !== 'pointercancel') updateStopDragPosition(pos);
       draggedStopEid = null;
     },
   });
@@ -337,7 +372,8 @@ export function GradientFillPicker(props: GradientPickerProps) {
     return `linear-gradient(90deg, ${parts.join(", ")})`;
   });
 
-  const handleGradientBackgroundClick = () => {
+  const handleGradientBackgroundClick = (e: MouseEvent & { currentTarget: HTMLDivElement }) => {
+    if (e.target !== e.currentTarget) return;
     setSelectedStopEid(null);
   };
 
@@ -429,19 +465,19 @@ export function GradientFillPicker(props: GradientPickerProps) {
             </ContextMenuPortal>
           </ContextMenu>
           <div ref={stopTrackRef} class="relative z-10 h-[14px] w-full overflow-visible">
-            <For each={stops()}>
-              {(stop) => (
+            <For each={sortedStopEids()}>
+              {(eid) => (
                 <ContextMenu modal={false}>
                   <ContextMenuTrigger
                     as="div"
                     class="absolute top-0 touch-none"
-                    classList={{ "opacity-80": selectedStopEid() !== stop.eid }}
+                    classList={{ "opacity-80": selectedStopEid() !== eid }}
                     style={{
                       filter: "drop-shadow(0px 3px 3px rgba(0,0,0,0.48)) drop-shadow(0px 2px 1px rgba(0,0,0,0.48))",
-                      left: `${visualOffset(stop.offset) * 100}%`,
+                      left: `${roundedVisualOffset(stopByEid(eid)?.offset ?? 0) * 100}%`,
                       transform: "translateX(-50%)",
                     }}
-                    onPointerDown={(e) => beginStopDrag(stop.eid, e)}
+                    onPointerDown={(e) => beginStopDrag(eid, e)}
                   >
                     <svg
                       width="18"
@@ -452,13 +488,13 @@ export function GradientFillPicker(props: GradientPickerProps) {
                     >
                       <path
                         d="M7.48137 1.69753C8.27955 0.766245 9.72025 0.766211 10.5185 1.69746L13.5184 5.19738C13.8291 5.55987 13.9999 6.02154 13.9999 6.49896L13.9999 11.9258C13.9999 13.0304 13.1044 13.9258 11.9999 13.9258L5.99999 13.9258C4.89538 13.9258 3.99993 13.0303 3.99999 11.9257L4.0003 6.49885C4.00033 6.02149 4.17109 5.55989 4.48173 5.19745L7.48137 1.69753Z"
-                        fill={colorToHex(stop.color)}
+                        fill={colorToHex(stopByEid(eid)?.color ?? 0xFFFFFF)}
                         stroke={
-                          selectedStopEid() === stop.eid
+                          selectedStopEid() === eid
                             ? "var(--ring)"
                             : "var(--border-input)"
                         }
-                        stroke-width={selectedStopEid() === stop.eid ? 2 : 1}
+                        stroke-width={selectedStopEid() === eid ? 2 : 1}
                         stroke-linejoin="round"
                       />
                     </svg>
@@ -472,12 +508,12 @@ export function GradientFillPicker(props: GradientPickerProps) {
                         Redistribute stops evenly
                       </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem onSelect={() => duplicateStop(stop.eid)}>
+                      <ContextMenuItem onSelect={() => duplicateStop(eid)}>
                         Duplicate stop
                       </ContextMenuItem>
                       <ContextMenuItem
                         disabled={stops().length <= 2}
-                        onSelect={() => removeStopEid(stop.eid)}
+                        onSelect={() => removeStopEid(eid)}
                       >
                         Delete stop
                       </ContextMenuItem>
@@ -516,14 +552,14 @@ export function GradientFillPicker(props: GradientPickerProps) {
           </Tooltip>
         </div>
         <div class="flex flex-col gap-3">
-          <For each={stops()}>
-            {(stop) => (
+          <For each={sortedStopEids()}>
+            {(eid) => (
               <GradientStopRow
-                eid={stop.eid}
-                offset={stop.offset}
-                color={stop.color}
-                opacity={stop.opacity}
-                selected={selectedStopEid() === stop.eid}
+                eid={eid}
+                offset={stopByEid(eid)?.offset ?? 0}
+                color={stopByEid(eid)?.color ?? 0xFFFFFF}
+                opacity={stopByEid(eid)?.opacity ?? 1}
+                selected={selectedStopEid() === eid}
                 spawnColorPicker={spawnColorPicker}
               />
             )}
