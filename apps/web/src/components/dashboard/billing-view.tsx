@@ -42,7 +42,7 @@ export function DashboardBillingView() {
   return (
     <div class="min-h-0 flex-1 overflow-y-auto">
       <div class="flex min-h-full flex-col">
-        <div class="sticky top-0 z-10 flex h-12 items-center border-b border-border bg-background px-4">
+        <div class="sticky top-0 z-10 flex h-12 items-center border-b border-border bg-canvas px-4">
           <div class="flex items-center gap-6">
             <DashboardBillingTabButton
               label="Plans"
