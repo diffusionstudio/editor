@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, createUniqueId } from "solid-js";
 import { PanelSection } from "@/components/ui/panel-section";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,6 +21,8 @@ import {
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
+  FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -38,6 +40,7 @@ import { SliderInput } from "@/components/ui/slider-input";
 import { formatBytes, formatDuration } from "@/utils/formatters";
 import { useEntityState, useEntityTag, setComponent, removeComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
+import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
 import { useExport } from "@/context/export";
 import { type ExportConfig } from "./export-progress";
 import {
@@ -112,15 +115,19 @@ function readConfig(world: EngineWorld, eid: number): ExportConfig | undefined {
   };
 }
 
+const OWNER = "export";
+
 export function ExportPanel(props: ExportPanelProps) {
   const { world } = useEngine();
   const { exportScene: runExport } = useExport();
 
   const c = world.components;
 
+  const inspectors = useActiveInspector();
+  const isInspectorOpen = () => inspectors.currentId(OWNER) !== undefined;
+
   const [search, setSearch] = createSignal("");
   const [config, setConfig] = createSignal<ExportConfig | undefined>();
-  const [isInspectorOpen, setIsInspectorOpen] = createSignal(false);
 
   const eid = () => props.selection.values().next().value!;
   const duration = useEntityState(c.Computed.duration, eid, 0);
@@ -129,6 +136,9 @@ export function ExportPanel(props: ExportPanelProps) {
   // but the SoA arrays aren't cleared, so the value subscription alone would
   // still report the old id.
   const hasSettings = useEntityTag(c.ExportSettings, eid);
+  // Close the inspector if the settings disappear (remove, undo). The one-element
+  // list gives the shared helper its confirmedId tolerance, matching the other sections.
+  useActiveInspectorInvalidation(OWNER, () => (hasSettings() ? [eid()] : []));
   const templateId = useEntityState(c.ExportSettings.templateId, eid, null);
   const selectedTemplateId = () => (hasSettings() ? templateId() ?? null : null);
 
@@ -150,6 +160,7 @@ export function ExportPanel(props: ExportPanelProps) {
     if (!id) return;
     const payload = templatePayload(id);
     if (payload) writeSettings(payload);
+    inspectors.open(OWNER, eid());
   };
 
   const filteredTemplateGroups = createMemo(() => {
@@ -181,8 +192,11 @@ export function ExportPanel(props: ExportPanelProps) {
   });
 
   let inspectorAnchorRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
   return (
+    <>
+    <div ref={sectionRef} class="contents">
     <PanelSection
       title="Export"
       ref={inspectorAnchorRef}
@@ -195,6 +209,7 @@ export function ExportPanel(props: ExportPanelProps) {
             if (!open) setSearch("");
           }}
           class="text-muted-foreground"
+          data-row-control=""
           icon={<Icon name="plus-add" />}
           contentClass="w-[208px]"
         >
@@ -259,7 +274,7 @@ export function ExportPanel(props: ExportPanelProps) {
             <ItemRow
               value={`${template().name} · ${template().video?.resolution}p`}
               icon={<Icon name="film-video-export" />}
-              onClick={() => setIsInspectorOpen(true)}
+              onClick={() => inspectors.toggle(OWNER, eid())}
             >
               <Tooltip>
                 <TooltipTrigger
@@ -269,7 +284,7 @@ export function ExportPanel(props: ExportPanelProps) {
                   class="text-muted-foreground"
                   onClick={() => {
                     removeComponent(world, eid(), c.ExportSettings, false);
-                    setIsInspectorOpen(false);
+                    inspectors.close(OWNER);
                   }}
                 >
                   <Icon name="close-remove-small" />
@@ -291,22 +306,27 @@ export function ExportPanel(props: ExportPanelProps) {
           </>
         )}
       </Show>
-      <Show when={isInspectorOpen()}>
-        <ExportInspector
-          eid={eid}
-          anchorRef={inspectorAnchorRef}
-          onClose={() => setIsInspectorOpen(false)}
-          onConfigChange={setConfig}
-          onSelectTemplate={setInspectorTemplate}
-        />
-      </Show>
     </PanelSection>
+    </div>
+
+    <Show when={isInspectorOpen() && hasSettings()}>
+      <ExportInspector
+        eid={eid}
+        anchorRef={inspectorAnchorRef}
+        triggerRef={sectionRef}
+        onClose={() => inspectors.close(OWNER)}
+        onConfigChange={setConfig}
+        onSelectTemplate={setInspectorTemplate}
+      />
+    </Show>
+    </>
   );
 }
 
 type ExportInspectorProps = {
   eid: () => number;
   anchorRef: HTMLDivElement | undefined;
+  triggerRef?: HTMLElement;
   onClose: () => void;
   onConfigChange: (config: ExportConfig | undefined) => void;
   onSelectTemplate: (id: string) => void;
@@ -317,6 +337,8 @@ type ExportInspectorProps = {
 function ExportInspector(props: ExportInspectorProps) {
   const { world } = useEngine();
   const c = world.components;
+
+  const titleId = createUniqueId();
 
   const templateId = useEntityState(c.ExportSettings.templateId, props.eid, null);
   const format = useEntityState(c.ExportSettings.format, props.eid, undefined);
@@ -363,7 +385,14 @@ function ExportInspector(props: ExportInspectorProps) {
   };
 
   return (
+    <FloatingInspectorLayer
+      onDismiss={props.onClose}
+      triggerRef={props.triggerRef}
+      triggerControlSelector="[data-row-control]"
+      labelledBy={titleId}
+    >
     <FloatingInspector open anchorRef={props.anchorRef} width={272}>
+      <FloatingInspectorTitle id={titleId} class="sr-only">Export settings</FloatingInspectorTitle>
       <FloatingInspectorHeader class="items-center justify-between px-2">
         <Select
           value={selectedTemplate()?.id ?? ""}
@@ -556,6 +585,7 @@ function ExportInspector(props: ExportInspectorProps) {
         </div>
       </FloatingInspectorContent>
     </FloatingInspector>
+    </FloatingInspectorLayer>
   );
 }
 
