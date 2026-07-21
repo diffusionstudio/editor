@@ -13,15 +13,17 @@ import {
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
   FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from "@/components/ui/panel-section";
 import { SliderInput } from "@/components/ui/slider-input";
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createMemo, createUniqueId } from "solid-js";
 
 import { useEntityState, useEntityTag, TransitionType, removeComponent, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
+import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
 import { secondsToFrames } from "@/components/engine/utils/time";
 
 
@@ -41,12 +43,18 @@ const TRANSITION_LABELS: Record<TransitionType, string> = {
   [TransitionType.FADE_TO_WHITE]: "Fade To White",
 };
 
+const OWNER = "transition";
+
 export function TransitionSettings(props: TransitionSettingsProps) {
   const { world } = useEngine();
-  const [isInspectorOpen, setIsInspectorOpen] = createSignal(false);
+
+  const titleId = createUniqueId();
+  const inspectors = useActiveInspector();
+  const isInspectorOpen = () => inspectors.currentId(OWNER) !== undefined;
 
   const c = world.components;
   let anchorRef: HTMLDivElement | undefined;
+  let sectionRef: HTMLDivElement | undefined;
 
   const eid = () => props.selection.values().next().value!;
 
@@ -54,6 +62,11 @@ export function TransitionSettings(props: TransitionSettingsProps) {
   const transitionType = useEntityState(c.Transition.type, eid, TransitionType.DISSOLVE);
   const transitionDuration = useEntityState(c.Transition.duration, eid, world.frameRate);
   const transitionDurationInSeconds = createMemo(() => transitionDuration() / world.frameRate);
+
+  // Close the inspector if the transition disappears (remove, undo). The one-element
+  // list gives the shared helper its confirmedId tolerance so open-on-add (the tag
+  // syncs a tick later) doesn't immediately self-close.
+  useActiveInspectorInvalidation(OWNER, () => (hasTransition() ? [eid()] : []));
 
   const transitionLabel = createMemo(() => {
     if (!hasTransition()) return "";
@@ -65,26 +78,28 @@ export function TransitionSettings(props: TransitionSettingsProps) {
       duration: world.frameRate,
       type,
     });
+    inspectors.open(OWNER, eid());
   };
 
   const handleRemoveTransition = () => {
     removeComponent(world, eid(), c.Transition);
-    setIsInspectorOpen(false);
+    inspectors.close(OWNER);
   };
 
   const handleSetDuration = (durationSec: number) => {
-    setComponent(world, eid(), c.Transition, { 
+    setComponent(world, eid(), c.Transition, {
       duration: secondsToFrames(durationSec),
     });
   };
 
   const openInspector = () => {
     if (!hasTransition()) return;
-    setIsInspectorOpen(true);
+    inspectors.toggle(OWNER, eid());
   };
 
   return (
     <>
+      <div ref={sectionRef} class="contents">
       <PanelSection
         title="Transition"
         ref={anchorRef}
@@ -94,6 +109,7 @@ export function TransitionSettings(props: TransitionSettingsProps) {
             aria-label="Add transition"
             placement="bottom-end"
             class="text-muted-foreground"
+            data-row-control=""
             disabled={!eid()}
             icon={<Icon name="plus-add" />}
             contentClass="w-44"
@@ -130,18 +146,25 @@ export function TransitionSettings(props: TransitionSettingsProps) {
           </ItemRow>
         </Show>
       </PanelSection>
+      </div>
 
       <Show when={isInspectorOpen() && hasTransition()}>
+        <FloatingInspectorLayer
+          onDismiss={() => inspectors.close(OWNER)}
+          triggerRef={sectionRef}
+          triggerControlSelector="[data-row-control]"
+          labelledBy={titleId}
+        >
         <FloatingInspector open={true} anchorRef={() => anchorRef} width={248}>
           <FloatingInspectorHeader class="items-center justify-between">
-            <FloatingInspectorTitle>{transitionLabel()}</FloatingInspectorTitle>
+            <FloatingInspectorTitle id={titleId}>{transitionLabel()}</FloatingInspectorTitle>
             <Tooltip>
               <TooltipTrigger
                 as={Button}
                 size="icon"
                 variant="ghost"
                 class="text-muted-foreground"
-                onClick={() => setIsInspectorOpen(false)}
+                onClick={() => inspectors.close(OWNER)}
               >
                 <Icon name="close-remove" />
               </TooltipTrigger>
@@ -164,6 +187,7 @@ export function TransitionSettings(props: TransitionSettingsProps) {
             </ControlRow>
           </FloatingInspectorContent>
         </FloatingInspector>
+        </FloatingInspectorLayer>
       </Show>
     </>
   );
