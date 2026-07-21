@@ -47,13 +47,14 @@ const FloatingInspectorSessionContext = createContext<FloatingInspectorSessionCo
 
 export const FloatingInspectorSessionProvider = FloatingInspectorSessionContext.Provider
 
-/** Surfaces (timeline canvas, layer list) whose pointer interactions must not
- *  directly dismiss a layer-owned session; the ownership effect decides. */
+/** Timeline surfaces: defer dismissal to the ownership effect, don't dismiss here. */
 const TIMELINE_SURFACE_SELECTOR = "[data-timeline-surface]"
 
-/** Controls that open/switch a floating inspector; pointerdown here must not
- *  dismiss the current session, so it hands off directly without a null flash. */
+/** Inspector openers: hand off directly instead of dismissing (avoids a null flash). */
 const INSPECTOR_HANDOFF_SELECTOR = "[data-inspector-handoff]"
+
+/** Opt-outs within a handoff region (e.g. a row's Remove) that keep normal dismissal. */
+const INSPECTOR_HANDOFF_EXCLUDE_SELECTOR = "[data-inspector-handoff-exclude]"
 
 const DRAG_HANDLE_SELECTOR = "[data-slot='floating-inspector-header']"
 const NON_DRAG_INTERACTIVE_SELECTOR = [
@@ -334,7 +335,10 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
         onFocusOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => {
           const target = event.target as Element | null
-          if (target?.closest(INSPECTOR_HANDOFF_SELECTOR)) {
+          if (
+            target?.closest(INSPECTOR_HANDOFF_SELECTOR) &&
+            !target.closest(INSPECTOR_HANDOFF_EXCLUDE_SELECTOR)
+          ) {
             event.preventDefault()
             return
           }
