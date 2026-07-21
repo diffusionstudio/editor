@@ -260,7 +260,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
       >
         <Show when={inAnimEids().length + outAnimEids().length > 0}>
           <div class="contents">
-            <For each={inAnimEids()}>
+            <For each={inAnimEids().toReversed()}>
               {(animEid) => (
                 <AnimationRow
                   animEid={animEid}
@@ -270,7 +270,7 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
               )}
             </For>
 
-            <For each={outAnimEids()}>
+            <For each={outAnimEids().toReversed()}>
               {(animEid) => (
                 <AnimationRow
                   animEid={animEid}
