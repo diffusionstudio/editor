@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createUniqueId, For, Show } from "solid-js";
 import { ControlRow } from "@/components/ui/control-group";
 import { Icon } from "@/components/ui/icon";
 import { PanelSection } from "@/components/ui/panel-section";
@@ -19,6 +19,7 @@ import {
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorTitle,
+  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,6 +27,7 @@ import { ColorOpacityRow } from "@/components/ui/color-opacity-row";
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
 import { CaptionType, useEntityState, ChildOf, deleteEntity, type EngineWorld, setComponent } from "../../engine";
 import { useEngine } from "@/context/engine";
+import { useActiveInspector } from "./active-inspector";
 import { query } from 'bitecs';
 
 type CaptionSettingsProps = {
@@ -87,15 +89,22 @@ const CAPTION_PRESETS: CaptionPreset[] = [
   },
 ];
 
+const OWNER = "caption";
+
 export function CaptionSettings(props: CaptionSettingsProps) {
   const { world } = useEngine();
   const c = world.components;
+
+  const titleId = createUniqueId();
+  const inspectors = useActiveInspector();
+  const openSlot = () => inspectors.currentId(OWNER);
 
   const eid = () => props.selection.values().next().value!;
   const type = useEntityState<CaptionType>(c.Caption.type, eid, CaptionType.CLASSIC);
   const colors = useEntityState<number[]>(c.Caption.colors, eid, []);
 
   let anchorRef!: HTMLDivElement;
+  let sectionRef: HTMLDivElement | undefined;
 
   const currentPreset = createMemo(
     () => CAPTION_PRESETS.find((p) => p.value === type()) ?? CAPTION_PRESETS[0]
@@ -105,24 +114,28 @@ export function CaptionSettings(props: CaptionSettingsProps) {
     () => CAPTION_PRESETS.find((p) => p.value === type())?.slots ?? []
   );
 
-  const [openSlot, setOpenSlot] = createSignal<number | null>(null);
+  // Close the picker if its slot disappears (preset change, undo, selection swap).
+  createEffect(() => {
+    const slot = openSlot();
+    if (slot !== undefined && slot >= slots().length) inspectors.close(OWNER);
+  });
 
   const handlePresetChange = (preset: CaptionPreset | null) => {
     if (!preset) return;
 
     clearText(world, eid());
-    setOpenSlot(null);
+    inspectors.close(OWNER);
     setComponent(world, eid(), c.Caption, { type: preset.value });
   };
 
-  const getSlotColor = (index: number | null) => {
+  const getSlotColor = (index: number | null | undefined) => {
     const current = colors();
     const slot = slots()[index ?? 0];
     return current[index ?? 0] ?? slot.defaultColor;
   };
 
-  const setSlotColor = (index: number | null, next: number) => {
-    if (index === null) return;
+  const setSlotColor = (index: number | null | undefined, next: number) => {
+    if (index == null) return;
     const max = slots().length;
     const current = colors();
     const nextColors = new Array<number>(max);
@@ -134,55 +147,60 @@ export function CaptionSettings(props: CaptionSettingsProps) {
   };
 
   return (
-    <PanelSection title="Caption" ref={anchorRef}>
-      <ControlRow label="Preset">
-        <Select<CaptionPreset>
-          value={currentPreset()}
-          onChange={handlePresetChange}
-          options={CAPTION_PRESETS}
-          optionValue="value"
-          optionTextValue="label"
-          itemComponent={(itemProps) => (
-            <SelectItem item={itemProps.item}>
-              {itemProps.item.rawValue.label}
-            </SelectItem>
+    <>
+      <div ref={sectionRef} class="contents">
+      <PanelSection title="Caption" ref={anchorRef}>
+        <ControlRow label="Preset">
+          <Select<CaptionPreset>
+            value={currentPreset()}
+            onChange={handlePresetChange}
+            options={CAPTION_PRESETS}
+            optionValue="value"
+            optionTextValue="label"
+            itemComponent={(itemProps) => (
+              <SelectItem item={itemProps.item}>
+                {itemProps.item.rawValue.label}
+              </SelectItem>
+            )}
+          >
+            <SelectTrigger class="pl-1 gap-2">
+              <div class="text-foreground size-5 rounded-sm flex items-center justify-center bg-primary overflow-clip shrink-0">
+                <Icon name="captions" class="text-foreground" />
+              </div>
+              <SelectValue<CaptionPreset> class="text-xs">
+                {(state) => state.selectedOption()?.label}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectPortal>
+              <SelectContent />
+            </SelectPortal>
+          </Select>
+        </ControlRow>
+
+        <For each={slots()}>
+          {(slot, index) => (
+            <ControlRow label={slot.label}>
+              <ColorOpacityRow
+                color={getSlotColor(index())}
+                onChangeColor={(next) => setSlotColor(index(), next)}
+                onClick={() => inspectors.toggle(OWNER, index())}
+              />
+            </ControlRow>
           )}
-        >
-          <SelectTrigger class="pl-1 gap-2">
-            <div class="text-foreground size-5 rounded-sm flex items-center justify-center bg-primary overflow-clip shrink-0">
-              <Icon name="captions" class="text-foreground" />
-            </div>
-            <SelectValue<CaptionPreset> class="text-xs">
-              {(state) => state.selectedOption()?.label}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPortal>
-            <SelectContent />
-          </SelectPortal>
-        </Select>
-      </ControlRow>
+        </For>
+      </PanelSection>
+      </div>
 
-      <For each={slots()}>
-        {(slot, index) => (
-          <ControlRow label={slot.label}>
-            <ColorOpacityRow
-              color={getSlotColor(index())}
-              onChangeColor={(next) => setSlotColor(index(), next)}
-              onClick={() =>
-                setOpenSlot(openSlot() === index() ? null : index())
-              }
-            />
-          </ControlRow>
-        )}
-      </For>
-
-      <Show when={openSlot() !== null}>
-        <FloatingInspector
-          open={() => openSlot() !== null}
-          anchorRef={anchorRef}
+      <Show when={openSlot() !== undefined}>
+        <FloatingInspectorLayer
+          onDismiss={() => inspectors.close(OWNER)}
+          triggerRef={sectionRef}
+          triggerControlSelector="[data-row-control]"
+          labelledBy={titleId}
         >
+        <FloatingInspector open anchorRef={anchorRef}>
           <FloatingInspectorHeader>
-            <FloatingInspectorTitle>
+            <FloatingInspectorTitle id={titleId}>
               {slots()[openSlot() as number]?.label ?? "Color"}
             </FloatingInspectorTitle>
             <div class="ml-auto">
@@ -192,7 +210,7 @@ export function CaptionSettings(props: CaptionSettingsProps) {
                   size="icon"
                   variant="ghost"
                   class="text-muted-foreground"
-                  onClick={() => setOpenSlot(null)}
+                  onClick={() => inspectors.close(OWNER)}
                 >
                   <Icon name="close-remove" class="size-6" />
                 </TooltipTrigger>
@@ -211,8 +229,9 @@ export function CaptionSettings(props: CaptionSettingsProps) {
             />
           </FloatingInspectorContent>
         </FloatingInspector>
+        </FloatingInspectorLayer>
       </Show>
-    </PanelSection>
+    </>
   );
 }
 
