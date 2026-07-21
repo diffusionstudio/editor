@@ -187,6 +187,7 @@ export function ColorOpacityRow(props: ColorOpacityRowProps) {
       <div class="relative z-10 flex h-full items-center">
         <button
           data-row-control=""
+          data-inspector-handoff=""
           class="flex h-full shrink-0 items-center pl-1 pr-1"
           onClick={props.onClick}
           onPointerDown={(e) => e.stopPropagation()}

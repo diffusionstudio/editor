@@ -12,6 +12,9 @@ export type ItemRowProps = JSX.HTMLAttributes<HTMLDivElement> & {
     label?: string;
     icon?: JSX.Element;
     disabled?: boolean;
+    /** Mark the opener region (icon + value, not the trailing action) as an
+     *  inspector handoff so opening from here doesn't dismiss the current one. */
+    handoff?: boolean;
     children?: JSX.Element;
 };
 
@@ -27,6 +30,7 @@ export function ItemRow(props: ItemRowProps) {
         "class",
         "disabled",
         "onClick",
+        "handoff",
         "children",
     ]);
 
@@ -52,15 +56,21 @@ export function ItemRow(props: ItemRowProps) {
                 class="bg-input flex-1 min-w-0 h-7 rounded-md p-1 pr-0 flex items-center gap-2 hover:bg-input/80 transition-colors relative cursor-default overflow-clip"
                 onClick={handleClick}
             >
-                <Show when={local.icon}>
-                    <div class="text-foreground size-5 rounded-sm flex items-center justify-center bg-primary overflow-clip">
-                        {local.icon}
-                    </div>
-                </Show>
+                {/* Opener only; the trailing action stays outside so it keeps normal dismissal. */}
+                <div
+                    {...(local.handoff ? { "data-inspector-handoff": "" } : {})}
+                    class="flex flex-1 min-w-0 items-center gap-2 overflow-clip"
+                >
+                    <Show when={local.icon}>
+                        <div class="text-foreground size-5 rounded-sm flex items-center justify-center bg-primary overflow-clip">
+                            {local.icon}
+                        </div>
+                    </Show>
 
-                <span class="flex-1 min-w-0 text-xs text-foreground truncate">
-                    {local.value}
-                </span>
+                    <span class="flex-1 min-w-0 text-xs text-foreground truncate">
+                        {local.value}
+                    </span>
+                </div>
 
                 {local.children}
             </div>

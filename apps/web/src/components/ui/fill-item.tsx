@@ -302,6 +302,7 @@ export function FillItem(props: FillItemProps) {
       <div class="relative z-0 flex h-full items-center">
         <button
           data-row-control=""
+          data-inspector-handoff=""
           class="flex h-full shrink-0 items-center pl-1 pr-1"
           onFocusIn={(e) => e.stopPropagation()}
           onClick={props.onClick}

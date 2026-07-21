@@ -3,40 +3,26 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createContext, createEffect, createSignal, Show, useContext, type Accessor, type JSX } from "solid-js";
-import { useECS } from "@/context/ecs";
+import { Or } from "bitecs";
+import { useEngine } from "@/context/engine";
+import { useQuery, findKeyframeTargetNode } from "@/components/engine";
 import {
   FloatingInspector,
   FloatingInspectorLayer,
   FloatingInspectorSessionProvider,
 } from "@/components/ui/floating-inspector";
 
-/**
- * A floating inspector and its open nested pickers form one editing session
- * owned by a layer. The session is host-owned and ID-driven so it outlives the
- * property section that opened it — the section can unmount (e.g. selection
- * target flips to a keyframe) while the session stays open, as long as the
- * owning layer remains selected.
- */
 export type InspectorSession = {
   owner: string;
-  /** The inspected entity (shadow/effect/fill/… eid). */
   id: number;
-  /** Owning layer; the session closes when this leaves the selection. Null for
-   *  layer-less inspectors (background/export) which keep normal dismissal. */
+  /** Owning layer for the timeline policy; null for layer-less inspectors
+   *  (background/export), which keep normal dismissal. */
   ownerNodeEid: number | null;
-  /** Positioning anchor, captured at open so it survives the section unmounting. */
   anchorEl: HTMLElement | null;
-  /** Trigger subtree; clicks on its control are ignored so re-click toggles. */
-  triggerEl?: HTMLElement | null;
   width?: number;
   offset?: number;
   labelledBy?: string;
-  triggerControlSelector?: string;
-  /** Body factory, executed under the host owner. Must be self-contained and
-   *  read entity data from the global ECS world by id — no section-owned scope. */
   render: () => JSX.Element;
-  /** Overrides the default "owning layer stays selected" keep-open rule. */
-  keepOpenWhile?: (selected: Set<number>) => boolean;
 };
 
 type ActiveInspectorContextValue = {
@@ -76,25 +62,26 @@ function FloatingInspectorHost(props: {
   session: Accessor<InspectorSession | null>;
   onClose: (owner: string) => void;
 }) {
-  const { selectedNodes } = useECS();
+  const { world } = useEngine();
+  const c = world.components;
 
-  // Ownership effect: selection is the authority. Close the whole session once
-  // its owning layer leaves the selection. Uses ownerNodeEid membership (not
-  // selection-hash equality) so keyframe selection — which changes the hash
-  // while the layer stays selected — never closes the session.
+  // Selection changes close via the keyed boundary; this only handles direct
+  // drags, which never touch Selected (clip.ts/keyframe.ts mutate it on click only).
+  const draggedClips = useQuery([Or(c.Geometry, c.Group, c.AdjustmentLayer), c.ClipDragOrigin]);
+  const draggedKeyframes = useQuery([c.Keyframe, c.KeyframeDragOrigin]);
+
   createEffect(() => {
     const s = props.session();
     if (!s || s.ownerNodeEid == null) return;
-    const ownerNodeEid = s.ownerNodeEid;
-    const keepOpen = s.keepOpenWhile ?? ((sel: Set<number>) => sel.has(ownerNodeEid));
-    if (!keepOpen(selectedNodes())) props.onClose(s.owner);
+    const owner = s.ownerNodeEid;
+    const otherLayerDragged =
+      draggedClips().some((cid) => cid !== owner) ||
+      draggedKeyframes().some((kid) => findKeyframeTargetNode(world, kid) !== owner);
+    if (otherLayerDragged) props.onClose(s.owner);
   });
 
-  // Non-keyed: the layer/portal mounts once when any session opens and PERSISTS
-  // across owner and id changes — only the body (and anchor) swap reactively. This
-  // is what removes the cross-owner teardown flicker; a keyed Show here would
-  // rebuild the Kobalte dialog on every handoff. Session-context value is a getter
-  // so nested pickers read the current owner's policy through the persistent layer.
+  // Non-keyed so the layer persists across owner/id changes — a cross-owner handoff
+  // swaps only the body, never tearing down the Kobalte dialog.
   return (
     <Show when={props.session()}>
       <FloatingInspectorSessionProvider
@@ -109,8 +96,6 @@ function FloatingInspectorHost(props: {
             const s = props.session();
             if (s) props.onClose(s.owner);
           }}
-          triggerRef={props.session()?.triggerEl ?? undefined}
-          triggerControlSelector={props.session()?.triggerControlSelector}
           labelledBy={props.session()?.labelledBy}
         >
           <FloatingInspector

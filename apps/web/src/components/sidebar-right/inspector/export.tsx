@@ -160,10 +160,8 @@ export function ExportPanel(props: ExportPanelProps) {
     id: eid(),
     ownerNodeEid: null,
     anchorEl: inspectorAnchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     width: 272,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <ExportInspectorBody
         eid={eid}
@@ -294,6 +292,7 @@ export function ExportPanel(props: ExportPanelProps) {
               value={`${template().name} · ${template().video?.resolution}p`}
               icon={<Icon name="film-video-export" />}
               onClick={() => inspectors.toggle(exportSession())}
+              handoff
             >
               <Tooltip>
                 <TooltipTrigger

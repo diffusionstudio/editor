@@ -149,9 +149,7 @@ export function CaptionSettings(props: CaptionSettingsProps) {
     id: slotIndex,
     ownerNodeEid: eid(),
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <CaptionColorBody
         captionEid={eid()}

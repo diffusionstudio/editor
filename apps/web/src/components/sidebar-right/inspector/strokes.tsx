@@ -51,9 +51,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
     id: strokeEid,
     ownerNodeEid: eid(),
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <FillPickerBody
         nodeEid={eid()}
@@ -119,6 +117,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
               variant="ghost"
               class="text-muted-foreground"
               data-row-control=""
+              data-inspector-handoff=""
               onClick={handleAppendStroke}
             >
               <Icon name="plus-add" />

@@ -49,9 +49,7 @@ export function FillsSettings(props: FillsSettingsProps) {
     id: fillEid,
     ownerNodeEid: eid(),
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <FillPickerBody
         nodeEid={eid()}
@@ -103,6 +101,7 @@ export function FillsSettings(props: FillsSettingsProps) {
               variant="ghost"
               class="text-muted-foreground"
               data-row-control=""
+              data-inspector-handoff=""
               onClick={handleAppendFill}
             >
               <Icon name="plus-add" />

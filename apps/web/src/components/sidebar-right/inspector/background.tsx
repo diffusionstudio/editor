@@ -45,9 +45,7 @@ export function BackgroundSettings() {
     id: SLOT,
     ownerNodeEid: null,
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <>
         <FloatingInspectorHeader>

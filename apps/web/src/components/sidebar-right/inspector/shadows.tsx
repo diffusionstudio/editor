@@ -79,6 +79,7 @@ function ShadowRow(props: ShadowRowProps) {
           value={color()}
           icon={<Icon name="color-grade" />}
           onClick={handleOpenInspector}
+          handoff
           disabled={hidden()}
         >
           <Tooltip>
@@ -140,10 +141,8 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
     id: shadowEid,
     ownerNodeEid: eid(),
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     width: 248,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <ShadowInspectorBody
         shadowEid={shadowEid}
@@ -190,6 +189,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
               variant="ghost"
               class="text-muted-foreground"
               data-row-control=""
+              data-inspector-handoff=""
               onClick={handleAddShadow}
             >
               <Icon name="plus-add" />

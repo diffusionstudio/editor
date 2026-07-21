@@ -124,6 +124,7 @@ function AnimationRow(props: AnimationRowProps) {
       label={phaseLabel()}
       icon={<Icon name="preferences-adjust" />}
       onClick={props.onInspect}
+      handoff
     >
       <IconButton
         tooltip="Remove animation"
@@ -180,10 +181,8 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
     id: animEid,
     ownerNodeEid: eid(),
     anchorEl: inspectorAnchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     width: 248,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <AnimationInspectorBody
         animEid={animEid}

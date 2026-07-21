@@ -71,6 +71,7 @@ function EffectRow(props: EffectRowProps) {
           value={label()}
           icon={<Icon name="fx" />}
           onClick={props.onInspect}
+          handoff
           disabled={hidden()}
         >
           <IconButton
@@ -123,10 +124,8 @@ export function EffectsSettings(props: EffectsSettingsProps) {
     id: effectEid,
     ownerNodeEid: eid(),
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     width: 248,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <EffectsInspectorBody
         effectEid={effectEid}

@@ -75,10 +75,8 @@ export function TransitionSettings(props: TransitionSettingsProps) {
     id: eid(),
     ownerNodeEid: eid(),
     anchorEl: anchorRef ?? null,
-    triggerEl: sectionRef ?? null,
     width: 248,
     labelledBy: titleId,
-    triggerControlSelector: "[data-row-control]",
     render: () => (
       <>
         <FloatingInspectorHeader class="items-center justify-between">
@@ -172,6 +170,7 @@ export function TransitionSettings(props: TransitionSettingsProps) {
             value={transitionLabel()}
             icon={<Icon name="video-transition" />}
             onClick={() => openInspector()}
+            handoff
           >
             <Tooltip>
               <TooltipTrigger

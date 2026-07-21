@@ -51,6 +51,10 @@ export const FloatingInspectorSessionProvider = FloatingInspectorSessionContext.
  *  directly dismiss a layer-owned session; the ownership effect decides. */
 const TIMELINE_SURFACE_SELECTOR = "[data-timeline-surface]"
 
+/** Controls that open/switch a floating inspector; pointerdown here must not
+ *  dismiss the current session, so it hands off directly without a null flash. */
+const INSPECTOR_HANDOFF_SELECTOR = "[data-inspector-handoff]"
+
 const DRAG_HANDLE_SELECTOR = "[data-slot='floating-inspector-header']"
 const NON_DRAG_INTERACTIVE_SELECTOR = [
   "button",
@@ -330,13 +334,15 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
         onFocusOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => {
           const target = event.target as Element | null
-          // In a layer-owned session, timeline interactions never dismiss here;
-          // the selection-driven ownership effect makes the keep/close call once
-          // selection settles. Inherited by nested pickers via session context.
+          if (target?.closest(INSPECTOR_HANDOFF_SELECTOR)) {
+            event.preventDefault()
+            return
+          }
           if (session?.deferTimelineDismiss && target?.closest(TIMELINE_SURFACE_SELECTOR)) {
             event.preventDefault()
             return
           }
+          // Nested pickers: re-click on their own trigger toggles, not dismiss.
           if (!target || !props.triggerRef?.contains(target)) return
           if (props.triggerControlSelector && !target.closest(props.triggerControlSelector)) return
           event.preventDefault()
