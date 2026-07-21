@@ -17,12 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
-  FloatingInspector,
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
   FloatingInspectorTitle,
-  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -40,7 +38,7 @@ import { SliderInput } from "@/components/ui/slider-input";
 import { formatBytes, formatDuration } from "@/utils/formatters";
 import { useEntityState, useEntityTag, setComponent, removeComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
-import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation, type InspectorSession } from "./active-inspector";
 import { useExport } from "@/context/export";
 import { type ExportConfig } from "./export-progress";
 import {
@@ -124,7 +122,7 @@ export function ExportPanel(props: ExportPanelProps) {
   const c = world.components;
 
   const inspectors = useActiveInspector();
-  const isInspectorOpen = () => inspectors.currentId(OWNER) !== undefined;
+  const titleId = createUniqueId();
 
   const [search, setSearch] = createSignal("");
   const [config, setConfig] = createSignal<ExportConfig | undefined>();
@@ -156,11 +154,32 @@ export function ExportPanel(props: ExportPanelProps) {
     setComponent(world, eid(), c.ExportSettings, data, false);
   };
 
+  // Scene-scoped inspector: no owning layer, so it keeps normal outside-dismiss.
+  const exportSession = (): InspectorSession => ({
+    owner: OWNER,
+    id: eid(),
+    ownerNodeEid: null,
+    anchorEl: inspectorAnchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    width: 272,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <ExportInspectorBody
+        eid={eid}
+        titleId={titleId}
+        onClose={() => inspectors.close(OWNER)}
+        onConfigChange={setConfig}
+        onSelectTemplate={setInspectorTemplate}
+      />
+    ),
+  });
+
   const setInspectorTemplate = (id?: string | null) => {
     if (!id) return;
     const payload = templatePayload(id);
     if (payload) writeSettings(payload);
-    inspectors.open(OWNER, eid());
+    inspectors.open(exportSession());
   };
 
   const filteredTemplateGroups = createMemo(() => {
@@ -274,7 +293,7 @@ export function ExportPanel(props: ExportPanelProps) {
             <ItemRow
               value={`${template().name} · ${template().video?.resolution}p`}
               icon={<Icon name="film-video-export" />}
-              onClick={() => inspectors.toggle(OWNER, eid())}
+              onClick={() => inspectors.toggle(exportSession())}
             >
               <Tooltip>
                 <TooltipTrigger
@@ -308,37 +327,25 @@ export function ExportPanel(props: ExportPanelProps) {
       </Show>
     </PanelSection>
     </div>
-
-    <Show when={isInspectorOpen() && hasSettings()}>
-      <ExportInspector
-        eid={eid}
-        anchorRef={inspectorAnchorRef}
-        triggerRef={sectionRef}
-        onClose={() => inspectors.close(OWNER)}
-        onConfigChange={setConfig}
-        onSelectTemplate={setInspectorTemplate}
-      />
-    </Show>
     </>
   );
 }
 
-type ExportInspectorProps = {
+type ExportInspectorBodyProps = {
   eid: () => number;
-  anchorRef: HTMLDivElement | undefined;
-  triggerRef?: HTMLElement;
+  titleId: string;
   onClose: () => void;
   onConfigChange: (config: ExportConfig | undefined) => void;
   onSelectTemplate: (id: string) => void;
 };
 
-// The floating export-settings dialog. Kept as its own component so the per-field
+// The floating export-settings body. Kept as its own component so the per-field
 // value subscriptions below only exist while the dialog is mounted (i.e. open).
-function ExportInspector(props: ExportInspectorProps) {
+function ExportInspectorBody(props: ExportInspectorBodyProps) {
   const { world } = useEngine();
   const c = world.components;
 
-  const titleId = createUniqueId();
+  const titleId = props.titleId;
 
   const templateId = useEntityState(c.ExportSettings.templateId, props.eid, null);
   const format = useEntityState(c.ExportSettings.format, props.eid, undefined);
@@ -385,13 +392,7 @@ function ExportInspector(props: ExportInspectorProps) {
   };
 
   return (
-    <FloatingInspectorLayer
-      onDismiss={props.onClose}
-      triggerRef={props.triggerRef}
-      triggerControlSelector="[data-row-control]"
-      labelledBy={titleId}
-    >
-    <FloatingInspector open anchorRef={props.anchorRef} width={272}>
+    <>
       <FloatingInspectorTitle id={titleId} class="sr-only">Export settings</FloatingInspectorTitle>
       <FloatingInspectorHeader class="items-center justify-between px-2">
         <Select
@@ -584,8 +585,7 @@ function ExportInspector(props: ExportInspectorProps) {
           </div>
         </div>
       </FloatingInspectorContent>
-    </FloatingInspector>
-    </FloatingInspectorLayer>
+    </>
   );
 }
 

@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createEffect, createMemo, createUniqueId, For, Show } from "solid-js";
+import { createEffect, createMemo, createUniqueId, For } from "solid-js";
 import { ControlRow } from "@/components/ui/control-group";
 import { Icon } from "@/components/ui/icon";
 import { PanelSection } from "@/components/ui/panel-section";
@@ -15,11 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  FloatingInspector,
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorTitle,
-  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,7 +25,7 @@ import { ColorOpacityRow } from "@/components/ui/color-opacity-row";
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
 import { CaptionType, useEntityState, ChildOf, deleteEntity, type EngineWorld, setComponent } from "../../engine";
 import { useEngine } from "@/context/engine";
-import { useActiveInspector } from "./active-inspector";
+import { useActiveInspector, type InspectorSession } from "./active-inspector";
 import { query } from 'bitecs';
 
 type CaptionSettingsProps = {
@@ -146,6 +144,24 @@ export function CaptionSettings(props: CaptionSettingsProps) {
     setComponent(world, eid(), c.Caption, { colors: nextColors });
   };
 
+  const captionSession = (slotIndex: number): InspectorSession => ({
+    owner: OWNER,
+    id: slotIndex,
+    ownerNodeEid: eid(),
+    anchorEl: anchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <CaptionColorBody
+        captionEid={eid()}
+        slotIndex={slotIndex}
+        titleId={titleId}
+        onClose={() => inspectors.close(OWNER)}
+      />
+    ),
+  });
+
   return (
     <>
       <div ref={sectionRef} class="contents">
@@ -183,54 +199,80 @@ export function CaptionSettings(props: CaptionSettingsProps) {
               <ColorOpacityRow
                 color={getSlotColor(index())}
                 onChangeColor={(next) => setSlotColor(index(), next)}
-                onClick={() => inspectors.toggle(OWNER, index())}
+                onClick={() => inspectors.toggle(captionSession(index()))}
               />
             </ControlRow>
           )}
         </For>
       </PanelSection>
       </div>
+    </>
+  );
+}
 
-      <Show when={openSlot() !== undefined}>
-        <FloatingInspectorLayer
-          onDismiss={() => inspectors.close(OWNER)}
-          triggerRef={sectionRef}
-          triggerControlSelector="[data-row-control]"
-          labelledBy={titleId}
-        >
-        <FloatingInspector open anchorRef={anchorRef}>
-          <FloatingInspectorHeader>
-            <FloatingInspectorTitle id={titleId}>
-              {slots()[openSlot() as number]?.label ?? "Color"}
-            </FloatingInspectorTitle>
-            <div class="ml-auto">
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button}
-                  size="icon"
-                  variant="ghost"
-                  class="text-muted-foreground"
-                  onClick={() => inspectors.close(OWNER)}
-                >
-                  <Icon name="close-remove" class="size-6" />
-                </TooltipTrigger>
-                <TooltipContent>Close</TooltipContent>
-              </Tooltip>
-            </div>
-          </FloatingInspectorHeader>
-          <FloatingInspectorContent class="p-0">
-            <ColorOpacityPicker
-              color={getSlotColor(openSlot())}
-              opacity={1}
-              onColorChange={(next) => setSlotColor(openSlot(), next)}
-              onBeginChange={(label) => world.history.startTransaction(label)}
-              onEndChange={() => world.history.commitTransaction()}
-              withoutOpacity
-            />
-          </FloatingInspectorContent>
-        </FloatingInspector>
-        </FloatingInspectorLayer>
-      </Show>
+function CaptionColorBody(props: {
+  captionEid: number;
+  slotIndex: number;
+  titleId: string;
+  onClose(): void;
+}) {
+  const { world } = useEngine();
+  const c = world.components;
+
+  const captionEid = () => props.captionEid;
+  const type = useEntityState<CaptionType>(c.Caption.type, captionEid, CaptionType.CLASSIC);
+  const colors = useEntityState<number[]>(c.Caption.colors, captionEid, []);
+  const slots = createMemo(
+    () => CAPTION_PRESETS.find((p) => p.value === type())?.slots ?? []
+  );
+
+  const slotColor = () => {
+    const slot = slots()[props.slotIndex];
+    return colors()[props.slotIndex] ?? slot?.defaultColor ?? 0;
+  };
+
+  const assignColor = (next: number) => {
+    const max = slots().length;
+    const current = colors();
+    const nextColors = new Array<number>(max);
+    for (let i = 0; i < max; i++) {
+      nextColors[i] = current[i] ?? slots()[i].defaultColor;
+    }
+    nextColors[props.slotIndex] = next;
+    setComponent(world, props.captionEid, c.Caption, { colors: nextColors });
+  };
+
+  return (
+    <>
+      <FloatingInspectorHeader>
+        <FloatingInspectorTitle id={props.titleId}>
+          {slots()[props.slotIndex]?.label ?? "Color"}
+        </FloatingInspectorTitle>
+        <div class="ml-auto">
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon"
+              variant="ghost"
+              class="text-muted-foreground"
+              onClick={props.onClose}
+            >
+              <Icon name="close-remove" class="size-6" />
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
+        </div>
+      </FloatingInspectorHeader>
+      <FloatingInspectorContent class="p-0">
+        <ColorOpacityPicker
+          color={slotColor()}
+          opacity={1}
+          onColorChange={assignColor}
+          onBeginChange={(label) => world.history.startTransaction(label)}
+          onEndChange={() => world.history.commitTransaction()}
+          withoutOpacity
+        />
+      </FloatingInspectorContent>
     </>
   );
 }

@@ -4,11 +4,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { For, Show } from 'solid-js';
+import { For, Show, createUniqueId } from 'solid-js';
 import { Icon } from '@/components/ui/icon';
 import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from '@/components/ui/panel-section';
-import { ShadowInspector } from './shadow-inspector';
+import { ShadowInspectorBody } from './shadow-inspector';
+import type { InspectorSession } from './active-inspector';
 import { useActiveInspector, useActiveInspectorInvalidation } from './active-inspector';
 import {
   ContextMenu,
@@ -125,15 +126,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
   const c = world.components;
 
   const inspectors = useActiveInspector();
-  const inspectingShadow = () => inspectors.currentId(OWNER);
-
-  const handleInspectorChange = (shadowEid: number | null) => {
-    if (shadowEid === null) {
-      inspectors.close(OWNER);
-      return;
-    }
-    inspectors.toggle(OWNER, shadowEid);
-  };
+  const titleId = createUniqueId();
 
   let anchorRef: HTMLDivElement | undefined;
   let sectionRef: HTMLDivElement | undefined;
@@ -141,6 +134,33 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
   const eid = () => props.selection.values().next().value!;
   const shadows = useEntityState(c.Cache.shadows, eid, []);
   useActiveInspectorInvalidation(OWNER, shadows);
+
+  const shadowSession = (shadowEid: number): InspectorSession => ({
+    owner: OWNER,
+    id: shadowEid,
+    ownerNodeEid: eid(),
+    anchorEl: anchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    width: 248,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <ShadowInspectorBody
+        shadowEid={shadowEid}
+        nodeEid={eid()}
+        titleId={titleId}
+        onClose={() => inspectors.close(OWNER)}
+      />
+    ),
+  });
+
+  const handleInspectorChange = (shadowEid: number | null) => {
+    if (shadowEid === null) {
+      inspectors.close(OWNER);
+      return;
+    }
+    inspectors.toggle(shadowSession(shadowEid));
+  };
 
   const handleAddShadow = () => {
     const newShadowEid = world.history.transaction('Add shadow', () => {
@@ -153,7 +173,7 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
       appendChild(world, shadowEid, eid());
       return shadowEid;
     });
-    inspectors.open(OWNER, newShadowEid);
+    inspectors.open(shadowSession(newShadowEid));
   };
 
   return (
@@ -193,15 +213,6 @@ export function ShadowsSettings(props: ShadowSettingsProps) {
         </Show>
       </PanelSection>
       </div>
-      <Show when={inspectingShadow()}>
-        <ShadowInspector
-          onClose={() => inspectors.close(OWNER)}
-          anchorRef={anchorRef!}
-          triggerRef={sectionRef}
-          nodeEid={eid()}
-          shadowEid={inspectingShadow()!}
-        />
-      </Show>
     </>
   );
 }

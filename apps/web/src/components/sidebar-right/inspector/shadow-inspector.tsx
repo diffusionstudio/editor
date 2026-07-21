@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createSignal, createUniqueId, createEffect, on, Show } from 'solid-js';
+import { createSignal, createEffect, on, Show } from 'solid-js';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
@@ -24,21 +24,20 @@ import { useEngine } from "@/context/engine";
 import { Keyframe } from "@/components/ui/keyframe";
 
 
-type ShadowInspectorProps = {
+type ShadowInspectorBodyProps = {
   onClose(): void;
-  anchorRef: HTMLElement;
-  triggerRef?: HTMLElement;
+  titleId: string;
   nodeEid: number;
   shadowEid: number;
 };
 
-export function ShadowInspector(props: ShadowInspectorProps) {
+export function ShadowInspectorBody(props: ShadowInspectorBodyProps) {
   let colorRowRef: HTMLDivElement | undefined;
 
   const { world } = useEngine();
   const c = world.components;
 
-  const titleId = createUniqueId();
+  const titleId = props.titleId;
   const [isColorPickerOpen, setIsColorPickerOpen] = createSignal(false);
 
   createEffect(on(() => props.shadowEid, () => setIsColorPickerOpen(false), { defer: true }));
@@ -72,17 +71,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
 
 
   return (
-    <FloatingInspectorLayer
-      onDismiss={handleClose}
-      triggerRef={props.triggerRef}
-      triggerControlSelector="[data-row-control]"
-      labelledBy={titleId}
-    >
-      <FloatingInspector
-        open={true}
-        anchorRef={props.anchorRef}
-        width={248}
-      >
+    <>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle id={titleId}>
             Drop Shadow
@@ -156,7 +145,6 @@ export function ShadowInspector(props: ShadowInspectorProps) {
             </div>
           </ControlRow>
         </FloatingInspectorContent>
-      </FloatingInspector>
 
       <Show when={isColorPickerOpen()}>
         <FloatingInspectorLayer
@@ -201,6 +189,6 @@ export function ShadowInspector(props: ShadowInspectorProps) {
           </FloatingInspector>
         </FloatingInspectorLayer>
       </Show>
-    </FloatingInspectorLayer>
+    </>
   );
 }

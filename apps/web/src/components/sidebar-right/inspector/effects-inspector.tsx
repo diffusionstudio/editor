@@ -2,17 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createUniqueId } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
 import {
-  FloatingInspector,
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
   FloatingInspectorTitle,
-  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
@@ -23,10 +20,9 @@ import { useEngine } from "@/context/engine";
 import { useEntityState, useEntityTag, EffectType, addComponent, removeComponent, setComponent } from "@/components/engine";
 import { hasComponent } from 'bitecs';
 
-type EffectsInspectorProps = {
-  anchorRef: HTMLElement;
-  triggerRef?: HTMLElement;
+type EffectsInspectorBodyProps = {
   onClose(): void;
+  titleId: string;
   effectEid: number;
   nodeEid: number;
 };
@@ -55,11 +51,11 @@ const AMOUNT_EFFECTS: Effects[] = [
   EffectType.SEPIA,
 ];
 
-export function EffectsInspector(props: EffectsInspectorProps) {
+export function EffectsInspectorBody(props: EffectsInspectorBodyProps) {
   const { world } = useEngine();
   const c = world.components;
 
-  const titleId = createUniqueId();
+  const titleId = props.titleId;
 
   const effectValue = useEntityState(c.Computed.value, () => props.effectEid, 0);
   const hidden = useEntityTag(c.Hidden, () => props.effectEid);
@@ -83,13 +79,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   const label = () => EFFECT_DEFAULTS[type() as Effects]?.label ?? "";
 
   return (
-    <FloatingInspectorLayer
-      onDismiss={props.onClose}
-      triggerRef={props.triggerRef}
-      triggerControlSelector="[data-row-control]"
-      labelledBy={titleId}
-    >
-    <FloatingInspector open={true} anchorRef={props.anchorRef} width={248}>
+    <>
       <FloatingInspectorHeader class="items-center justify-between">
         <FloatingInspectorTitle id={titleId}>{label()}</FloatingInspectorTitle>
         <div class="flex items-center gap-1">
@@ -174,7 +164,6 @@ export function EffectsInspector(props: EffectsInspectorProps) {
           </ControlRow>
         )}
       </FloatingInspectorContent>
-    </FloatingInspector>
-    </FloatingInspectorLayer>
+    </>
   );
 }

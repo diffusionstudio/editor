@@ -94,7 +94,7 @@ export function Layers() {
   onCleanup(timeline.unmount);
 
   return (
-    <div class="relative size-full">
+    <div class="relative size-full" data-timeline-surface>
       <div
         class="grid grid-cols-1 h-full absolute border-b border-border inset-0 overflow-hidden"
         on:wheel={timeline.scroll}

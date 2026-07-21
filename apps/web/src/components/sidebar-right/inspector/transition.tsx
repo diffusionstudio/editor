@@ -8,12 +8,10 @@ import { ControlRow } from "@/components/ui/control-group";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
-  FloatingInspector,
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
   FloatingInspectorTitle,
-  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import { ItemRow } from "@/components/ui/item-row";
@@ -23,7 +21,7 @@ import { For, Show, createMemo, createUniqueId } from "solid-js";
 
 import { useEntityState, useEntityTag, TransitionType, removeComponent, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
-import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation, type InspectorSession } from "./active-inspector";
 import { secondsToFrames } from "@/components/engine/utils/time";
 
 
@@ -50,7 +48,6 @@ export function TransitionSettings(props: TransitionSettingsProps) {
 
   const titleId = createUniqueId();
   const inspectors = useActiveInspector();
-  const isInspectorOpen = () => inspectors.currentId(OWNER) !== undefined;
 
   const c = world.components;
   let anchorRef: HTMLDivElement | undefined;
@@ -73,12 +70,57 @@ export function TransitionSettings(props: TransitionSettingsProps) {
     return TRANSITION_LABELS[transitionType() as TransitionType] ?? "Dissolve";
   });
 
+  const transitionSession = (): InspectorSession => ({
+    owner: OWNER,
+    id: eid(),
+    ownerNodeEid: eid(),
+    anchorEl: anchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    width: 248,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <>
+        <FloatingInspectorHeader class="items-center justify-between">
+          <FloatingInspectorTitle id={titleId}>{transitionLabel()}</FloatingInspectorTitle>
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon"
+              variant="ghost"
+              class="text-muted-foreground"
+              onClick={() => inspectors.close(OWNER)}
+            >
+              <Icon name="close-remove" />
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
+        </FloatingInspectorHeader>
+        <FloatingInspectorSeparator />
+        <FloatingInspectorContent class="p-4">
+          <ControlRow label="Duration">
+            <SliderInput
+              value={transitionDurationInSeconds()}
+              min={0.1}
+              max={10}
+              step={0.1}
+              format={(v) => `${v.toFixed(1)}s`}
+              onDragStart={() => world.history.startTransaction("Edit transition duration")}
+              onDragEnd={() => world.history.commitTransaction()}
+              onChange={handleSetDuration}
+            />
+          </ControlRow>
+        </FloatingInspectorContent>
+      </>
+    ),
+  });
+
   const handleSetTransition = (type: TransitionType) => {
     setComponent(world, eid(), c.Transition, {
       duration: world.frameRate,
       type,
     });
-    inspectors.open(OWNER, eid());
+    inspectors.open(transitionSession());
   };
 
   const handleRemoveTransition = () => {
@@ -94,7 +136,7 @@ export function TransitionSettings(props: TransitionSettingsProps) {
 
   const openInspector = () => {
     if (!hasTransition()) return;
-    inspectors.toggle(OWNER, eid());
+    inspectors.toggle(transitionSession());
   };
 
   return (
@@ -147,48 +189,6 @@ export function TransitionSettings(props: TransitionSettingsProps) {
         </Show>
       </PanelSection>
       </div>
-
-      <Show when={isInspectorOpen() && hasTransition()}>
-        <FloatingInspectorLayer
-          onDismiss={() => inspectors.close(OWNER)}
-          triggerRef={sectionRef}
-          triggerControlSelector="[data-row-control]"
-          labelledBy={titleId}
-        >
-        <FloatingInspector open={true} anchorRef={() => anchorRef} width={248}>
-          <FloatingInspectorHeader class="items-center justify-between">
-            <FloatingInspectorTitle id={titleId}>{transitionLabel()}</FloatingInspectorTitle>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button}
-                size="icon"
-                variant="ghost"
-                class="text-muted-foreground"
-                onClick={() => inspectors.close(OWNER)}
-              >
-                <Icon name="close-remove" />
-              </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
-            </Tooltip>
-          </FloatingInspectorHeader>
-          <FloatingInspectorSeparator />
-          <FloatingInspectorContent class="p-4">
-            <ControlRow label="Duration">
-              <SliderInput
-                value={transitionDurationInSeconds()}
-                min={0.1}
-                max={10}
-                step={0.1}
-                format={(v) => `${v.toFixed(1)}s`}
-                onDragStart={() => world.history.startTransaction("Edit transition duration")}
-                onDragEnd={() => world.history.commitTransaction()}
-                onChange={handleSetDuration}
-              />
-            </ControlRow>
-          </FloatingInspectorContent>
-        </FloatingInspector>
-        </FloatingInspectorLayer>
-      </Show>
     </>
   );
 }

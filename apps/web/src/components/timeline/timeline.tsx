@@ -171,6 +171,7 @@ export function Timeline() {
     <div
       ref={root}
       class="relative size-full"
+      data-timeline-surface
     >
       <canvas
         class="absolute inset-0"

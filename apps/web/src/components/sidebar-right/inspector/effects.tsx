@@ -15,9 +15,9 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { For, Show, createMemo } from "solid-js";
-import { EFFECT_DEFAULTS, EffectsInspector } from "./effects-inspector";
-import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
+import { For, Show, createMemo, createUniqueId } from "solid-js";
+import { EFFECT_DEFAULTS, EffectsInspectorBody } from "./effects-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation, type InspectorSession } from "./active-inspector";
 import { useEntityState, useEntityTag, EffectType, createEntity, deleteEntity, getSiblingEntities, addComponent, appendChild, removeComponent, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { hasComponent } from 'bitecs';
@@ -108,7 +108,7 @@ const OWNER = "effect";
 export function EffectsSettings(props: EffectsSettingsProps) {
   const { world } = useEngine();
   const inspectors = useActiveInspector();
-  const inspectingEffect = () => inspectors.currentId(OWNER);
+  const titleId = createUniqueId();
   const c = world.components;
 
   let anchorRef: HTMLDivElement | undefined;
@@ -117,6 +117,25 @@ export function EffectsSettings(props: EffectsSettingsProps) {
   const eid = () => props.selection.values().next().value!;
   const effectEids = useEntityState(world.components.Cache.effects, eid, []);
   useActiveInspectorInvalidation(OWNER, effectEids);
+
+  const effectSession = (effectEid: number): InspectorSession => ({
+    owner: OWNER,
+    id: effectEid,
+    ownerNodeEid: eid(),
+    anchorEl: anchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    width: 248,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <EffectsInspectorBody
+        effectEid={effectEid}
+        nodeEid={eid()}
+        titleId={titleId}
+        onClose={() => inspectors.close(OWNER)}
+      />
+    ),
+  });
 
   const handleAddEffect = (typeName: Effects) => {
     const defaults = EFFECT_DEFAULTS[typeName];
@@ -130,11 +149,11 @@ export function EffectsSettings(props: EffectsSettingsProps) {
       appendChild(world, effectEid, eid())
       return effectEid;
     });
-    inspectors.open(OWNER, newEffectEid);
+    inspectors.open(effectSession(newEffectEid));
   };
 
   const handleRemoveEffect = (effectEid: number) => deleteEntity(world, effectEid);
-  const openInspector = (effectEid: number) => inspectors.toggle(OWNER, effectEid);
+  const openInspector = (effectEid: number) => inspectors.toggle(effectSession(effectEid));
   const handleReorderEffect = (effectEid: number, direction: number) => {
     const effects = getSiblingEntities(world, effectEid, c.Effect);
     const index = effects.indexOf(effectEid);
@@ -190,16 +209,6 @@ export function EffectsSettings(props: EffectsSettingsProps) {
         </Show>
       </PanelSection>
       </div>
-
-      <Show when={inspectingEffect()}>
-        <EffectsInspector
-          onClose={() => inspectors.close(OWNER)}
-          anchorRef={anchorRef!}
-          triggerRef={sectionRef}
-          effectEid={inspectingEffect()!}
-          nodeEid={eid()}
-        />
-      </Show>
     </>
   );
 }

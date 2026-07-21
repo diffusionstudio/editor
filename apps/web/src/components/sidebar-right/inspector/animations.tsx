@@ -14,12 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import {
-  FloatingInspector,
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
   FloatingInspectorTitle,
-  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
 import { ItemRow } from "@/components/ui/item-row";
@@ -38,7 +36,7 @@ import { For, Show, createMemo, createUniqueId } from "solid-js";
 import { useEntityState, AnimationType, AnimationPhase, PaintType, createEntity, deleteEntity, isAudio, isText, appendChild, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { secondsToFrames } from "@/components/engine/utils/time";
-import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation, type InspectorSession } from "./active-inspector";
 
 
 type AnimationsSettingsProps = {
@@ -147,7 +145,6 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
 
   const titleId = createUniqueId();
   const inspectors = useActiveInspector();
-  const inspectingAnimation = () => inspectors.currentId(OWNER);
 
   let inspectorAnchorRef: HTMLDivElement | undefined;
   let sectionRef: HTMLDivElement | undefined;
@@ -178,6 +175,24 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
     animations().filter(animEid => c.Animation.phase[animEid] === AnimationPhase.OUT)
   );
 
+  const animationSession = (animEid: number): InspectorSession => ({
+    owner: OWNER,
+    id: animEid,
+    ownerNodeEid: eid(),
+    anchorEl: inspectorAnchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    width: 248,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <AnimationInspectorBody
+        animEid={animEid}
+        titleId={titleId}
+        onClose={() => inspectors.close(OWNER)}
+      />
+    ),
+  });
+
   const handleAddAnimation = (type: AnimationType) => {
     const newAnimEid = world.history.transaction('Add animation', () => {
       const animEid = createEntity(world);
@@ -189,36 +204,11 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
       appendChild(world, animEid, eid());
       return animEid;
     });
-    inspectors.open(OWNER, newAnimEid);
+    inspectors.open(animationSession(newAnimEid));
   };
 
   const handleRemoveAnimation = (aid: number) => deleteEntity(world, aid);
-  const handleInspectAnimation = (aid: number) => inspectors.toggle(OWNER, aid);
-
-  // Read inspected animation's data reactively
-  const inspectedPhase = useEntityState(c.Animation.phase, inspectingAnimation, 0);
-  const inspectedDuration = useEntityState(c.Animation.duration, inspectingAnimation, world.frameRate);
-  const inspectedDurationInSeconds = createMemo(() => inspectedDuration() / world.frameRate);
-  const inspectedDelay = useEntityState(c.Animation.delay, inspectingAnimation, 0);
-  const inspectedDelayInSeconds = createMemo(() => inspectedDelay() / world.frameRate);
-
-  const handleDurationChange = (durationSec: number) => {
-    const eid = inspectingAnimation();
-    if (!eid) return;
-    setComponent(world, eid, c.Animation, { duration: secondsToFrames(durationSec) });
-  };
-
-  const handleDelayChange = (delaySec: number) => {
-    const eid = inspectingAnimation();
-    if (!eid) return;
-    setComponent(world, eid, c.Animation, { delay: secondsToFrames(delaySec) });
-  };
-
-  const handlePhaseChange = (phase: AnimationPhase) => {
-    const eid = inspectingAnimation();
-    if (!eid) return;
-    setComponent(world, eid, c.Animation, { phase });
-  };
+  const handleInspectAnimation = (aid: number) => inspectors.toggle(animationSession(aid));
 
   return (
     <>
@@ -283,80 +273,92 @@ export function AnimationsSettings(props: AnimationsSettingsProps) {
         </Show>
       </PanelSection>
       </div>
+    </>
+  );
+}
 
-      <Show when={inspectingAnimation()}>
-        <FloatingInspectorLayer
-          onDismiss={() => inspectors.close(OWNER)}
-          triggerRef={sectionRef}
-          triggerControlSelector="[data-row-control]"
-          labelledBy={titleId}
+function AnimationInspectorBody(props: { animEid: number; titleId: string; onClose(): void }) {
+  const { world } = useEngine();
+  const c = world.components;
+
+  const animEid = () => props.animEid;
+  const phase = useEntityState(c.Animation.phase, animEid, 0);
+  const duration = useEntityState(c.Animation.duration, animEid, world.frameRate);
+  const durationInSeconds = createMemo(() => duration() / world.frameRate);
+  const delay = useEntityState(c.Animation.delay, animEid, 0);
+  const delayInSeconds = createMemo(() => delay() / world.frameRate);
+
+  const handleDurationChange = (durationSec: number) =>
+    setComponent(world, props.animEid, c.Animation, { duration: secondsToFrames(durationSec) });
+  const handleDelayChange = (delaySec: number) =>
+    setComponent(world, props.animEid, c.Animation, { delay: secondsToFrames(delaySec) });
+  const handlePhaseChange = (phase: AnimationPhase) =>
+    setComponent(world, props.animEid, c.Animation, { phase });
+
+  return (
+    <>
+      <FloatingInspectorTitle id={props.titleId} class="sr-only">Animation</FloatingInspectorTitle>
+      <FloatingInspectorHeader class="items-center justify-between px-2">
+        <Select
+          value={phase()}
+          options={[AnimationPhase.IN, AnimationPhase.OUT]}
+          onChange={(value) => value !== null && handlePhaseChange(value)}
+          itemComponent={(itemProps) => (
+            <SelectItem item={itemProps.item}>
+              {itemProps.item.rawValue === AnimationPhase.OUT ? "Out" : "In"}
+            </SelectItem>
+          )}
         >
-        <FloatingInspector open anchorRef={inspectorAnchorRef} width={248}>
-          <FloatingInspectorTitle id={titleId} class="sr-only">Animation</FloatingInspectorTitle>
-          <FloatingInspectorHeader class="items-center justify-between px-2">
-            <Select
-              value={inspectedPhase()}
-              options={[AnimationPhase.IN, AnimationPhase.OUT]}
-              onChange={(value) => value !== null && handlePhaseChange(value)}
-              itemComponent={(itemProps) => (
-                <SelectItem item={itemProps.item}>
-                  {itemProps.item.rawValue === AnimationPhase.OUT ? "Out" : "In"}
-                </SelectItem>
-              )}
-            >
-              <SelectTrigger>
-                <SelectValue>
-                  {inspectedPhase() === AnimationPhase.OUT ? "Out" : "In"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectPortal>
-                <SelectContent />
-              </SelectPortal>
-            </Select>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button}
-                size="icon"
-                variant="ghost"
-                class="text-muted-foreground"
-                onClick={() => inspectors.close(OWNER)}
-              >
-                <Icon name="close-remove" />
-              </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
-            </Tooltip>
-          </FloatingInspectorHeader>
-          <FloatingInspectorSeparator />
+          <SelectTrigger>
+            <SelectValue>
+              {phase() === AnimationPhase.OUT ? "Out" : "In"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectPortal>
+            <SelectContent />
+          </SelectPortal>
+        </Select>
+        <Tooltip>
+          <TooltipTrigger
+            as={Button}
+            size="icon"
+            variant="ghost"
+            class="text-muted-foreground"
+            onClick={props.onClose}
+          >
+            <Icon name="close-remove" />
+          </TooltipTrigger>
+          <TooltipContent>Close</TooltipContent>
+        </Tooltip>
+      </FloatingInspectorHeader>
+      <FloatingInspectorSeparator />
 
-          <FloatingInspectorContent class="p-4 gap-2 flex flex-col">
-            <ControlRow label="Duration">
-              <SliderInput
-                value={inspectedDurationInSeconds()}
-                onChange={handleDurationChange}
-                min={0.1}
-                max={5}
-                step={0.1}
-                format={(v) => `${v.toFixed(1)}s`}
-                onDragStart={() => world.history.startTransaction("Edit animation duration")}
-                onDragEnd={() => world.history.commitTransaction()}
-              />
-            </ControlRow>
-            <ControlRow label="Delay">
-              <SliderInput
-                value={inspectedDelayInSeconds()}
-                onChange={handleDelayChange}
-                min={0}
-                max={5}
-                step={0.1}
-                format={(v) => `${v.toFixed(1)}s`}
-                onDragStart={() => world.history.startTransaction("Edit animation delay")}
-                onDragEnd={() => world.history.commitTransaction()}
-              />
-            </ControlRow>
-          </FloatingInspectorContent>
-        </FloatingInspector>
-        </FloatingInspectorLayer>
-      </Show>
+      <FloatingInspectorContent class="p-4 gap-2 flex flex-col">
+        <ControlRow label="Duration">
+          <SliderInput
+            value={durationInSeconds()}
+            onChange={handleDurationChange}
+            min={0.1}
+            max={5}
+            step={0.1}
+            format={(v) => `${v.toFixed(1)}s`}
+            onDragStart={() => world.history.startTransaction("Edit animation duration")}
+            onDragEnd={() => world.history.commitTransaction()}
+          />
+        </ControlRow>
+        <ControlRow label="Delay">
+          <SliderInput
+            value={delayInSeconds()}
+            onChange={handleDelayChange}
+            min={0}
+            max={5}
+            step={0.1}
+            format={(v) => `${v.toFixed(1)}s`}
+            onDragStart={() => world.history.startTransaction("Edit animation delay")}
+            onDragEnd={() => world.history.commitTransaction()}
+          />
+        </ControlRow>
+      </FloatingInspectorContent>
     </>
   );
 }

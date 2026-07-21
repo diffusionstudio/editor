@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { For, createMemo, Show } from "solid-js";
+import { For, createMemo, Show, createUniqueId } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
@@ -14,8 +14,8 @@ import { Keyframe } from "@/components/ui/keyframe";
 import { useEngine } from "@/context/engine";
 import { StrokeJoin, useEntityState, createEntity, deleteEntity, getSiblingEntities, addComponent, appendChild, setComponent } from "@/components/engine";
 import { FillRow } from "./fill-row";
-import { FillPicker } from "./fill-picker";
-import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
+import { FillPickerBody } from "./fill-picker";
+import { useActiveInspector, useActiveInspectorInvalidation, type InspectorSession } from "./active-inspector";
 
 
 const STROKE_JOIN_SEGMENTS = [
@@ -43,8 +43,27 @@ export function StrokesSettings(props: StrokesSettingsProps) {
   const strokeWidth = useEntityState(c.Computed.strokeWidth, eid, 1);
   const strokeMiterLimit = useEntityState(c.StrokeStyle.miterLimit, eid, 3);
   const inspectors = useActiveInspector();
-  const selectedStroke = () => inspectors.currentId(OWNER);
+  const titleId = createUniqueId();
   useActiveInspectorInvalidation(OWNER, strokeEids);
+
+  const strokeSession = (strokeEid: number): InspectorSession => ({
+    owner: OWNER,
+    id: strokeEid,
+    ownerNodeEid: eid(),
+    anchorEl: anchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <FillPickerBody
+        nodeEid={eid()}
+        fillEid={strokeEid}
+        titleId={titleId}
+        tabs={['solid', 'gradient']}
+        onClose={() => inspectors.close(OWNER)}
+      />
+    ),
+  });
 
   const lineJoin = createMemo(() => String(lineJoinId()));
 
@@ -56,7 +75,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
       appendChild(world, solid, eid());
       return solid;
     });
-    inspectors.open(OWNER, newStrokeEid);
+    inspectors.open(strokeSession(newStrokeEid));
   };
 
   const handleStrokeWidthChange = (value: number) => {
@@ -71,8 +90,7 @@ export function StrokesSettings(props: StrokesSettingsProps) {
     setComponent(world, eid(), c.StrokeStyle, { miterLimit: value });
   };
 
-  const handleClosePicker = () => inspectors.close(OWNER);
-  const handleSelectStroke = (strokeEid: number) => inspectors.toggle(OWNER, strokeEid);
+  const handleSelectStroke = (strokeEid: number) => inspectors.toggle(strokeSession(strokeEid));
   const handleRemoveStroke = (strokeEid: number) => deleteEntity(world, strokeEid);
 
   const handleReorderStroke = (strokeEid: number, direction: number) => {
@@ -162,17 +180,6 @@ export function StrokesSettings(props: StrokesSettingsProps) {
         </Show>
       </PanelSection>
       </div>
-      <Show when={selectedStroke()} keyed>
-        <FillPicker
-          nodeEid={eid()}
-          fillEid={selectedStroke()!}
-          anchorRef={anchorRef}
-          triggerRef={sectionRef}
-          open={!!selectedStroke()}
-          onClose={handleClosePicker}
-          tabs={['solid', 'gradient']}
-        />
-      </Show>
     </>
   );
 }

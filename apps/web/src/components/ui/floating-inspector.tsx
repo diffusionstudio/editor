@@ -34,8 +34,22 @@ type FloatingInspectorTopContextValue = {
   top: Accessor<number>
 }
 
+type FloatingInspectorSessionContextValue = {
+  /** When true, timeline pointer interactions defer to the selection-driven
+   *  ownership effect instead of dismissing, so the whole layer-owned session
+   *  (this layer plus any nested pickers) is preserved. */
+  deferTimelineDismiss: boolean
+}
+
 const FloatingInspectorContext = createContext<FloatingInspectorContextValue>()
 const FloatingInspectorTopContext = createContext<FloatingInspectorTopContextValue>()
+const FloatingInspectorSessionContext = createContext<FloatingInspectorSessionContextValue>()
+
+export const FloatingInspectorSessionProvider = FloatingInspectorSessionContext.Provider
+
+/** Surfaces (timeline canvas, layer list) whose pointer interactions must not
+ *  directly dismiss a layer-owned session; the ownership effect decides. */
+const TIMELINE_SURFACE_SELECTOR = "[data-timeline-surface]"
 
 const DRAG_HANDLE_SELECTOR = "[data-slot='floating-inspector-header']"
 const NON_DRAG_INTERACTIVE_SELECTOR = [
@@ -110,9 +124,11 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
   const offset = createMemo(() => Math.max(0, Number(toValue(local.offset)) || DEFAULT_OFFSET))
   const isOpen = createMemo(() => Boolean(toValue(local.open)))
 
-  const updateInitialPosition = () => {
-    if (isPositionInitialized()) return
-
+  // Recompute position from the current anchor/size. position() keeps its
+  // previous value until this runs (inside a pre-paint microtask), so an
+  // anchor/content handoff never flashes through the (8,8) origin and
+  // isPositionInitialized is never cleared mid-session.
+  const applyPosition = () => {
     const anchor = toValue(local.anchorRef)
     const root = rootRef
     if (!anchor || !root) return
@@ -128,7 +144,7 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
     const left = clamp(preferredLeft, VIEWPORT_PADDING, maxLeft)
 
     setPosition({ left, top })
-    setIsPositionInitialized(true)
+    if (!isPositionInitialized()) setIsPositionInitialized(true)
   }
 
   const onPointerMove = (event: PointerEvent) => {
@@ -203,18 +219,19 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
 
   createEffect(() => {
     if (!isOpen()) return
+    // Re-run on anchor/size changes (content or owner handoff). position() holds
+    // its previous value until applyPosition recomputes it, so no (8,8) flash.
     toValue(local.anchorRef)
     width()
     offset()
-    setIsPositionInitialized(false)
-    queueMicrotask(updateInitialPosition)
+    queueMicrotask(applyPosition)
   })
 
   onMount(() => {
     blurActiveEditable()
 
     queueMicrotask(() => {
-      updateInitialPosition()
+      applyPosition()
       if (!dragHandleRef && rootRef) {
         const fallbackHandle = rootRef.querySelector<HTMLElement>(DRAG_HANDLE_SELECTOR)
         setDragHandle(fallbackHandle)
@@ -266,6 +283,9 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
               left: `${position().left}px`,
               top: `${position().top}px`,
               width: `${width()}px`,
+              // Safety net only: suppress the pre-position paint on a fresh mount.
+              // Never toggles false mid-session, so handoffs don't flash hidden.
+              visibility: isPositionInitialized() ? "visible" : "hidden",
             }}
             {...rest}
           >
@@ -292,6 +312,7 @@ export type FloatingInspectorLayerProps = {
 export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
   props,
 ) => {
+  const session = useContext(FloatingInspectorSessionContext)
   return (
     <DialogPrimitive
       open={props.open ?? true}
@@ -309,6 +330,13 @@ export const FloatingInspectorLayer: Component<FloatingInspectorLayerProps> = (
         onFocusOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => {
           const target = event.target as Element | null
+          // In a layer-owned session, timeline interactions never dismiss here;
+          // the selection-driven ownership effect makes the keep/close call once
+          // selection settles. Inherited by nested pickers via session context.
+          if (session?.deferTimelineDismiss && target?.closest(TIMELINE_SURFACE_SELECTOR)) {
+            event.preventDefault()
+            return
+          }
           if (!target || !props.triggerRef?.contains(target)) return
           if (props.triggerControlSelector && !target.closest(props.triggerControlSelector)) return
           event.preventDefault()

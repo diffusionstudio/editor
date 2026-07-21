@@ -6,17 +6,18 @@ import {
   For,
   Show,
   createMemo,
+  createUniqueId,
 } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
 import { PanelSection } from "@/components/ui/panel-section";
 
-import { FillPicker, type FillTab } from "./fill-picker";
+import { FillPickerBody, type FillTab } from "./fill-picker";
 import { useEntityState, createEntity, deleteEntity, getSiblingEntities, PaintType, isText, appendChild, setComponent } from "@/components/engine";
 import { useEngine } from "@/context/engine";
 import { FillRow } from "./fill-row";
-import { useActiveInspector, useActiveInspectorInvalidation } from "./active-inspector";
+import { useActiveInspector, useActiveInspectorInvalidation, type InspectorSession } from "./active-inspector";
 
 type FillsSettingsProps = {
   selection: Set<number>;
@@ -32,7 +33,7 @@ export function FillsSettings(props: FillsSettingsProps) {
   let sectionRef: HTMLDivElement | undefined;
 
   const inspectors = useActiveInspector();
-  const selectedFill = () => inspectors.currentId(OWNER);
+  const titleId = createUniqueId();
   const eid = () => props.selection.values().next().value!;
 
   const fillEids = useEntityState(c.Cache.fills, eid, []);
@@ -43,6 +44,25 @@ export function FillsSettings(props: FillsSettingsProps) {
       : undefined;
   });
 
+  const fillSession = (fillEid: number): InspectorSession => ({
+    owner: OWNER,
+    id: fillEid,
+    ownerNodeEid: eid(),
+    anchorEl: anchorRef ?? null,
+    triggerEl: sectionRef ?? null,
+    labelledBy: titleId,
+    triggerControlSelector: "[data-row-control]",
+    render: () => (
+      <FillPickerBody
+        nodeEid={eid()}
+        fillEid={fillEid}
+        titleId={titleId}
+        tabs={tabs()}
+        onClose={() => inspectors.close(OWNER)}
+      />
+    ),
+  });
+
   const handleAppendFill = () => {
     const newFillEid = world.history.transaction('Append fill', () => {
       const solidEid = createEntity(world);
@@ -51,11 +71,10 @@ export function FillsSettings(props: FillsSettingsProps) {
       appendChild(world, solidEid, eid());
       return solidEid;
     });
-    inspectors.open(OWNER, newFillEid);
+    inspectors.open(fillSession(newFillEid));
   };
 
-  const handleClosePicker = () => inspectors.close(OWNER);
-  const handleSelectFill = (fillEid: number) => inspectors.toggle(OWNER, fillEid);
+  const handleSelectFill = (fillEid: number) => inspectors.toggle(fillSession(fillEid));
   const handleRemoveFill = (fillEid: number) => deleteEntity(world, fillEid);
 
   const handleReorderFill = (fillEid: number, direction: number) => {
@@ -110,17 +129,6 @@ export function FillsSettings(props: FillsSettingsProps) {
         </Show>
       </PanelSection>
       </div>
-      <Show when={selectedFill()} keyed>
-        <FillPicker
-          nodeEid={eid()}
-          fillEid={selectedFill()!}
-          anchorRef={anchorRef}
-          triggerRef={sectionRef}
-          open={!!selectedFill()}
-          onClose={handleClosePicker}
-          tabs={tabs()}
-        />
-      </Show>
     </>
   );
 }

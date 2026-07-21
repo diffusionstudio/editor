@@ -7,7 +7,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   createSignal,
   createEffect,
-  createUniqueId,
   Show,
   For,
   createMemo,
@@ -17,11 +16,9 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { MenuIconButton } from "@/components/ui/menu-icon-button";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import {
-  FloatingInspector,
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorTitle,
-  FloatingInspectorLayer,
 } from "@/components/ui/floating-inspector";
 import { BlendModeMenu } from "./blend-mode-menu";
 import { SolidFillPicker } from "./solid-picker";
@@ -46,12 +43,10 @@ const SCALE_MODE_OPTIONS: ReadonlyArray<{ value: ScaleMode; label: string; }> = 
   { value: ScaleMode.NONE, label: "None", },
 ];
 
-export type FillPickerProps = {
-  anchorRef: HTMLElement;
-  triggerRef?: HTMLElement;
+export type FillPickerBodyProps = {
+  titleId: string;
   nodeEid: number;
   fillEid: number;
-  open: boolean;
   onClose(): void;
   tabs?: FillTab[];
 };
@@ -64,11 +59,11 @@ export function getFillTab(paintType: PaintType): FillTab {
   return 'asset';
 };
 
-export function FillPicker(props: FillPickerProps) {
+export function FillPickerBody(props: FillPickerBodyProps) {
   const { world } = useEngine();
   const c = world.components;
 
-  const titleId = createUniqueId();
+  const titleId = props.titleId;
 
   const scaleMode = useEntityState(c.ScaleMode, props.fillEid, ScaleMode.FILL);
   const type = useEntityState(c.Paint, props.fillEid, PaintType.SOLID);
@@ -130,16 +125,7 @@ export function FillPicker(props: FillPickerProps) {
   });
 
   return (
-    <FloatingInspectorLayer
-      onDismiss={props.onClose}
-      triggerRef={props.triggerRef}
-      triggerControlSelector="[data-row-control]"
-      labelledBy={titleId}
-    >
-    <FloatingInspector
-      open={props.open}
-      anchorRef={props.anchorRef}
-    >
+    <>
       <FloatingInspectorHeader>
         <FloatingInspectorTitle id={titleId}>
           {TABS.find((mode) => mode.value === currentTab())?.label}
@@ -211,7 +197,6 @@ export function FillPicker(props: FillPickerProps) {
           </Show>
         </div>
       </FloatingInspectorContent>
-    </FloatingInspector>
-    </FloatingInspectorLayer>
+    </>
   );
 }
