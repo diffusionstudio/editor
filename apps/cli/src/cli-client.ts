@@ -31,24 +31,35 @@ function requestConnection(handshake: CliHandshake, timeoutMs: number): Promise<
       fn();
     };
 
-    sock.setEncoding("utf8");
-    sock.setTimeout(timeoutMs, () =>
-      settle(() => reject(new Error("Timed out waiting for the app to accept the connection"))),
-    );
-    sock.on("connect", () => sock.end(JSON.stringify(handshake)));
-    sock.on("data", (chunk) => {
-      buf += chunk;
-    });
-    sock.on("end", () => {
+    const settleReply = (raw: string) => {
       let reply: CliHandshakeReply;
       try {
-        reply = JSON.parse(buf) as CliHandshakeReply;
+        reply = JSON.parse(raw) as CliHandshakeReply;
       } catch (e) {
         settle(() => reject(e instanceof Error ? e : new Error(String(e))));
         return;
       }
       if (reply.ok) settle(resolve);
       else settle(() => reject(new Error(reply.error)));
+    };
+
+    sock.setEncoding("utf8");
+    sock.setTimeout(timeoutMs, () =>
+      settle(() => reject(new Error("Timed out waiting for the app to accept the connection"))),
+    );
+    // Windows named pipes do not support half-open: an `end()` here tears the
+    // pipe down before the app can reply. Frame the handshake with a newline
+    // instead and keep the socket open until the (newline-framed) reply lands.
+    sock.on("connect", () => sock.write(JSON.stringify(handshake) + "\n"));
+    sock.on("data", (chunk) => {
+      buf += chunk;
+      const nl = buf.indexOf("\n");
+      if (nl !== -1) settleReply(buf.slice(0, nl));
+    });
+    sock.on("end", () => {
+      // Unix servers may still close without a trailing newline.
+      if (buf.length > 0) settleReply(buf);
+      else settle(() => reject(new Error("App closed the handshake socket without replying")));
     });
     sock.on("error", (err) => settle(() => reject(err)));
   });
