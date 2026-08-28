@@ -27,7 +27,7 @@ import { Switch, SwitchControl, SwitchInput, SwitchThumb } from "@/components/ui
 import { Separator } from "@/components/ui/separator";
 import { SliderInput } from "@/components/ui/slider-input";
 import { formatBytes, formatDuration } from "@/utils/formatters";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { Computed, FrameRate, Source } from "@diffusionstudio/runtime";
 import { useDerived } from "@/engine/hooks";
 import { useProjectConfig } from "@/engine/project-config";

@@ -4,7 +4,7 @@
 
 import { createEffect, createMemo, Index, onCleanup, onMount, Show } from 'solid-js';
 import { toast } from 'somoto';
-import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useTrait, useWorld } from '@diffusionstudio/koota/solid';
 import { Sequence as SequenceElement } from '@diffusionstudio/reconciler';
 import {
   ClipHeight,

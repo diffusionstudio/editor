@@ -4,7 +4,7 @@
 
 import { Index } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-import { useTag } from '@diffusionstudio/koota-solid';
+import { useTag } from '@diffusionstudio/koota/solid';
 import { Selected } from '@diffusionstudio/runtime';
 import { KeyframeLayer } from './keyframe';
 import { NodeLayer } from './node';

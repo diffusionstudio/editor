@@ -30,7 +30,7 @@ import {
   type Accessor,
   type Setter,
 } from "solid-js";
-import { useQuery } from "@diffusionstudio/koota-solid";
+import { useQuery } from "@diffusionstudio/koota/solid";
 import { Color, DEFAULT_BACKGROUND } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 

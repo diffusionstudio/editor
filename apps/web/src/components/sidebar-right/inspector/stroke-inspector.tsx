@@ -19,7 +19,7 @@ import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Keyframe } from "@/components/ui/keyframe";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { Computed, StrokeJoin, StrokeStyle, colorToHex } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";

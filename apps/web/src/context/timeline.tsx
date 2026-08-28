@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createContext, useContext, type JSX } from 'solid-js';
-import { useWorld } from '@diffusionstudio/koota-solid';
+import { useWorld } from '@diffusionstudio/koota/solid';
 import { assert } from '@/utils';
 import { createTimelineController } from '@/engine/timeline';
 

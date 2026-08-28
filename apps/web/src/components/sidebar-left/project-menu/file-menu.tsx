@@ -19,7 +19,7 @@ import { forgetProjectBundle, generateProjectName } from "@/lib/db";
 import { createProject, deleteProject, duplicateProject, ensureProjectsRoot } from "@/projects";
 import { AssetId, ChildOf, Name, Root, Scene, getAssetFile, getActiveEntity, sortByItemIndex } from "@diffusionstudio/runtime";
 import { assetName } from "@diffusionstudio/assets";
-import { useQuery, useWorld } from "@diffusionstudio/koota-solid";
+import { useQuery, useWorld } from "@diffusionstudio/koota/solid";
 import { useLibrary } from "@/engine/library";
 import { pickAndImport } from "@/engine/asset-actions";
 import { projectRoute } from "@/hooks/use-project-route";

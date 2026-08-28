@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Show } from "solid-js";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { Rect, Scene, SolidPaint, Text } from "@diffusionstudio/reconciler";
 import {
   Computed,

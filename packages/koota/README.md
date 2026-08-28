@@ -1,7 +1,13 @@
 # @diffusionstudio/koota
 
-A vendored fork of [pmndrs/koota](https://github.com/pmndrs/koota), reduced to the
-core ECS library.
+A vendored fork of [pmndrs/koota](https://github.com/pmndrs/koota) reduced to the
+core ECS library, plus the in-house Solid bindings that used to live in
+`packages/koota-solid`.
+
+| Entry point | Source | Origin |
+| --- | --- | --- |
+| `@diffusionstudio/koota` | `src/index.ts` | Vendored upstream core (ISC) |
+| `@diffusionstudio/koota/solid` | `src/solid/index.ts` | Ours, a port of `@koota/react` (MPL-2.0) |
 
 Upstream commit: [`460a0c8`](https://github.com/pmndrs/koota/commit/460a0c8cca7839debffab304ed83dd8bbd0a3d30)
 (the `koota@0.6.6` line).
@@ -17,7 +23,7 @@ Upstream commit: [`460a0c8`](https://github.com/pmndrs/koota/commit/460a0c8cca78
 ## What was dropped
 
 React bindings (`@koota/react` and the `koota/react` entry point — nothing here
-uses them; Solid bindings live in `@diffusionstudio/koota-solid`), the `publish`
+uses them; we use the Solid bindings below instead), the `publish`
 package and its `tsdown` build, tests, benches, docs, examples and upstream repo
 tooling. The public API is unchanged: `src/index.ts` is upstream's core entry
 point, which is all the published `koota` package re-exported.
@@ -39,15 +45,16 @@ into the source (that patch file has been deleted):
   only if no generation matched. The relation-filtered variants delegate to these
   two functions, so they inherit the fix.
 
-## Do not add `"sideEffects": false`
+## The `sideEffects` field is deliberately narrow
 
-Unlike the other packages in this workspace, this package's manifest deliberately
-omits `sideEffects`. `src/entity/entity-methods-patch.ts` is imported purely for
-its side effect — it patches `Number.prototype` with the entity methods (`has`,
-`add`, `get`, `set`, ...) so a raw number can act as an entity. Declaring the
-package side-effect-free lets bundlers tree-shake that import away, which breaks
-every entity method at runtime while still typechecking cleanly. Upstream omits
-the field for the same reason.
+The manifest declares `"sideEffects": ["**/entity-methods-patch.ts"]` rather than
+the `false` used by the other packages here. `src/entity/entity-methods-patch.ts`
+is imported purely for its side effect — it patches `Number.prototype` with the
+entity methods (`has`, `add`, `get`, `set`, ...) so a raw number can act as an
+entity. Declaring the package side-effect-free lets bundlers tree-shake that
+import away, which breaks every entity method at runtime while still typechecking
+cleanly. Listing just that one file keeps the rest of core and all of the Solid
+bindings tree-shakeable. It is the only side-effect-only import in the package.
 
 ## Upstream `@inline` annotations
 
@@ -57,4 +64,56 @@ annotations are inert; they are left in place to keep diffs against upstream cle
 
 ## License
 
-koota is ISC licensed, Copyright (c) 2024-2025 Poimandres — see [LICENSE](./LICENSE).
+This package is dual-origin, so the manifest declares `ISC AND MPL-2.0`:
+
+- Everything outside `src/solid` is vendored koota, ISC licensed,
+  Copyright (c) 2024-2025 Poimandres — see [LICENSE](./LICENSE).
+- `src/solid` is our own port of `@koota/react`, MPL-2.0 like the rest of this
+  repository.
+
+---
+
+# Solid bindings — `@diffusionstudio/koota/solid`
+
+
+Solid bindings for [koota](https://github.com/pmndrs/koota): a port of `@koota/react`. The API mirrors `@koota/react` one to one, adapted to Solid's reactivity model.
+
+## Usage
+
+```tsx
+import { createWorld, trait } from '@diffusionstudio/koota';
+import { WorldProvider, useQuery, useTrait } from '@diffusionstudio/koota/solid';
+
+const Position = trait({ x: 0, y: 0 });
+const world = createWorld();
+
+function App() {
+	return (
+		<WorldProvider world={world}>
+			<EntityList />
+		</WorldProvider>
+	);
+}
+
+function EntityList() {
+	const entities = useQuery(Position);
+	return <For each={entities()}>{(entity) => <EntityView entity={entity} />}</For>;
+}
+
+function EntityView(props: { entity: Entity }) {
+	// Pass reactive inputs as accessors so the hook resubscribes when they change
+	const pos = useTrait(() => props.entity, Position);
+	return <div>{pos()?.x}, {pos()?.y}</div>;
+}
+```
+
+## Differences from `@koota/react`
+
+- Every hook returns an `Accessor` instead of a plain value: call it (`pos()`, `entities()`) inside JSX, memos, or effects to subscribe.
+- Solid components run once, so hooks are set up once. Where React re-renders with new props, here you pass reactive inputs as accessors: the `target` argument of `useTrait`, `useTraitEffect`, `useTag`, `useHas`, `useTarget`, and `useTargets` accepts `Entity | World` or an accessor returning one.
+- The `trait` argument of `useTrait`, `useTraitEffect`, and `useHas` also accepts an accessor, which matters for relation pairs with reactive targets: `useTrait(entity, () => ChildOf(parent()))`. Pair identity is compared by relation + target, so re-evaluations with the same pair do not resubscribe.
+- `useTraitEffect` runs its callback untracked, like the React version. Cleanup is tied to the owning component.
+
+## Exports
+
+`WorldProvider`, `useWorld`, `useActions`, `useQuery`, `useQueryFirst`, `useTrait`, `useTraitEffect`, `useTag`, `useHas`, `useTarget`, `useTargets`, plus the `MaybeAccessor` type and `access` helper.

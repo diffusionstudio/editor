@@ -1,4 +1,4 @@
-import type { World } from '@diffusionstudio/koota';
+import type { World } from '../../index';
 import { createComponent, type JSX } from 'solid-js';
 import { WorldContext } from './world-context';
 

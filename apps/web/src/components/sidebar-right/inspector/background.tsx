@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createSignal } from "solid-js";
 import { Background, DEFAULT_BACKGROUND, Root, colorToHex } from "@diffusionstudio/runtime";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { useEditor } from "@/engine/hooks/use-editor";
 
 export function BackgroundSettings() {

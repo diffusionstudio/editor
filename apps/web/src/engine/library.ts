@@ -8,7 +8,7 @@
 
 import { AssetId, Library } from '@diffusionstudio/runtime';
 import { AssetLibrary, MANIFEST_FILE, ASSETS_DIR } from '@diffusionstudio/assets';
-import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useTrait, useWorld } from '@diffusionstudio/koota/solid';
 import { authoredElement } from '@diffusionstudio/reconciler';
 import type { Accessor } from 'solid-js';
 

@@ -18,7 +18,7 @@ import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
 import { Show } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { useTool } from "@/engine";
 import { usePromptInput } from "@/context/prompt-input";
 

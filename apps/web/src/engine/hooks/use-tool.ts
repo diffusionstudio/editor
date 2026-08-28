@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Tool, ToolType } from '@diffusionstudio/runtime';
-import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useTrait, useWorld } from '@diffusionstudio/koota/solid';
 
 import type { Accessor } from 'solid-js';
 

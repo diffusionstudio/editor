@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
 import { ControlledTextField } from "@/components/ui/text-field";
-import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useHas, useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { Computed, Effect, Hidden } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";

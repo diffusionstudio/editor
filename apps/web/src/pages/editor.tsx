@@ -12,7 +12,7 @@ import { useEditorApi } from "@/context/dapi";
 import { RULER_HEIGHT } from "@/engine/timeline";
 import { createEffect, onCleanup, untrack } from 'solid-js';
 import { toast } from 'somoto';
-import { useWorld } from '@diffusionstudio/koota-solid';
+import { useWorld } from '@diffusionstudio/koota/solid';
 import { mount } from '@diffusionstudio/reconciler';
 import { getDocumentEditor } from '@/engine/editor';
 import { getEditHistory } from '@/engine/history';

@@ -5,7 +5,7 @@
 import { createMemo } from "solid-js";
 import { Captions, authoredElement } from "@diffusionstudio/reconciler";
 import { Caption, getEntityTree, isScene } from "@diffusionstudio/runtime";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { useEditor, useSelection } from "@/engine/hooks";
 import { toast } from "somoto";
 

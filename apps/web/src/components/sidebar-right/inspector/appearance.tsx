@@ -25,7 +25,7 @@ import { Show, createMemo, createSignal } from "solid-js";
 import { Icon } from "@/components/ui/icon";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Keyframe } from "@/components/ui/keyframe";
-import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useHas, useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import {
   BlendMode,
   BlendModeType,

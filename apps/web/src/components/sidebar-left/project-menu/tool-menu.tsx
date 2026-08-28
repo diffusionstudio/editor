@@ -9,7 +9,7 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { usePromptInput } from "@/context/prompt-input";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 
 export function ToolMenu() {

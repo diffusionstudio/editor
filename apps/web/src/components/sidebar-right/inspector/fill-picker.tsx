@@ -21,7 +21,7 @@ import {
   FloatingInspectorHeader,
   FloatingInspectorTitle,
 } from "@/components/ui/floating-inspector";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import {
   ColorStop as ColorStopElement,
   ImagePaint,

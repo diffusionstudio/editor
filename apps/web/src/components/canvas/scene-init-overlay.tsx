@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createMemo, createSignal, For, Show } from "solid-js";
-import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { ChildOf, Library, Root, setCamera, Source } from "@diffusionstudio/runtime";
 import { Icon } from "@/components/ui/icon";
 import {

@@ -7,7 +7,7 @@ import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
 import { Icon } from "@/components/ui/icon";
 import { Keyframe } from "@/components/ui/keyframe";
 import { OpacitySwatch } from "@/components/ui/opacity-swatch";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { AssetId, Computed, Paint, PaintType, colorToHex, parseColor } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";

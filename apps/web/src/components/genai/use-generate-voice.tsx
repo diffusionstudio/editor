@@ -8,7 +8,7 @@
 
 import { generate } from "@diffusionstudio/jsx";
 import { Audio } from "@diffusionstudio/reconciler";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { useEditor } from "@/engine/hooks";
 import { AUDIO_SIZE } from "@/engine/insert-asset";
 import { insertGenerated, randomSeed } from "./insert";

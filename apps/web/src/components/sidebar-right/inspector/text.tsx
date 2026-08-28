@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { cx } from '@/lib/cva';
 import { toast } from 'somoto';
 import { usePermissionState } from '@/hooks/use-permission';
-import { useHas, useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useHas, useTrait, useWorld } from '@diffusionstudio/koota/solid';
 import {
   Chars,
   Computed,

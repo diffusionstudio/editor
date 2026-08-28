@@ -12,7 +12,7 @@ import {
   SelectPortal,
 } from "@/components/ui/select";
 import { horizontalConstraints, verticalConstraints } from "./constants";
-import { useTrait } from "@diffusionstudio/koota-solid";
+import { useTrait } from "@diffusionstudio/koota/solid";
 import { Constraint, ConstraintType } from "@diffusionstudio/runtime";
 
 import type { Entity } from "@diffusionstudio/koota";

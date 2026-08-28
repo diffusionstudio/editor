@@ -35,7 +35,7 @@ import {
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
 import { useDrag } from "@/hooks/use-drag";
 import { clamp, mergeColorWithOpacity } from "@/utils";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { ColorStop as ColorStopElement } from "@diffusionstudio/reconciler";
 import { Computed, Paint, PaintType, colorToHex, parseColor } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useQuery, useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useQuery, useTrait, useWorld } from '@diffusionstudio/koota/solid';
 import { AudioBusHandle, Computed, Name, Volume } from '@diffusionstudio/runtime';
 import { Or } from '@diffusionstudio/koota';
 import { useDerived, useEditor, useTimelineIndex } from '@/engine/hooks';

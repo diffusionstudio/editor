@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/context-menu";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import {
   Computed,
   FrameRate,

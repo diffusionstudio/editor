@@ -4,7 +4,7 @@
 
 import { createSignal, onMount, onCleanup, Show, createMemo } from "solid-js";
 import { toast } from "somoto";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { assetName } from "@diffusionstudio/assets";
 import { insertAssetAtPlayhead, replaceAssetSource, saveAssetAs } from "@/engine/asset-actions";
 import {

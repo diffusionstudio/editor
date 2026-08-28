@@ -4,7 +4,7 @@
 
 import { createContext, useContext, onCleanup, onMount } from "solid-js";
 import { toast } from "somoto";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { Computed, FrameRate, getActiveEntity } from "@diffusionstudio/runtime";
 import { assert, downloadObject, isInputTarget } from "@/utils";
 import { useEngineContext } from "@/engine";

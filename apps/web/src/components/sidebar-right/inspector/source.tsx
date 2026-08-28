@@ -18,7 +18,7 @@ import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
 import { OpacitySwatch } from "@/components/ui/opacity-swatch";
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
 import { assetName } from "@diffusionstudio/assets";
-import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useHas, useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { AssetId, Color, Computed, PaintType, colorToHex, getIntrinsicPaint, parseColor } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";

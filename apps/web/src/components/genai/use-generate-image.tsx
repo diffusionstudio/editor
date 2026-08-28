@@ -6,7 +6,7 @@
 import { generate } from "@diffusionstudio/jsx";
 import { ImagePaint, Rect } from "@diffusionstudio/reconciler";
 import { Library } from "@diffusionstudio/runtime";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { useEditor } from "@/engine/hooks";
 import { ASPECT_RATIO_DIMENSIONS } from "./config";
 import { insertGenerated, randomSeed } from "./insert";

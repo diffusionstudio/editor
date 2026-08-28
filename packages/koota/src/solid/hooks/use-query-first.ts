@@ -1,4 +1,4 @@
-import type { Entity, QueryParameter } from '@diffusionstudio/koota';
+import type { Entity, QueryParameter } from '../../index';
 import type { Accessor } from 'solid-js';
 import { useQuery } from './use-query';
 

@@ -12,15 +12,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useWorld } from "@diffusionstudio/koota-solid";
-import { useCameraScale, zoomBy, zoomTo, zoomToFit } from "@/engine";
+import { useWorld, useTrait } from "@diffusionstudio/koota/solid";
+import { zoomBy, zoomTo, zoomToFit } from "@/engine";
+import { Camera, Root } from '@diffusionstudio/runtime';
+import { createMemo, } from 'solid-js';
 
 export function InspectorHeader() {
   const world = useWorld();
 
-  // Every operation here is anchored on the stage itself — its center, or its
-  // content — so the menu needs no canvas geometry of its own.
-  const scale = useCameraScale();
+  const camera = useTrait(world.get(Root)!, Camera);
+
+  const scale = createMemo(() => {
+    const { a = 1, b = 0 } = camera() ?? {};
+    return Math.hypot(a, b);
+  });
+
   const zoomLabel = () => `${Math.round(scale() * 100)}%`;
 
   return (

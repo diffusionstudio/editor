@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createMemo, Show } from 'solid-js';
-import { useTag, useWorld } from '@diffusionstudio/koota-solid';
+import { useTag, useWorld } from '@diffusionstudio/koota/solid';
 import {
   ColorStop,
   Effect,

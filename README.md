@@ -211,7 +211,7 @@ Conventions throughout: single results are one JSON value, collections are JSON 
 | `packages/jsx` | `@diffusionstudio/jsx` | The authoring API: element vocabulary, types, and generated assets (`generate.*`) |
 | `packages/assets` | `@diffusionstudio/assets` | A project's asset library: the `assets.yml` manifest, content hashing, probing, resolution |
 | `packages/encoder` | `@diffusionstudio/encoder` | Offline video/audio/image encoding over runtime worlds (mediabunny) |
-| `packages/koota-solid` | `@diffusionstudio/koota-solid` | Solid bindings for koota, ported from `@koota/react` |
+| `packages/koota` | `@diffusionstudio/koota` | Vendored fork of [pmndrs/koota](https://github.com/pmndrs/koota) (core ECS only), plus Solid bindings ported from `@koota/react` at `@diffusionstudio/koota/solid` |
 
 ## Contributing / local setup
 

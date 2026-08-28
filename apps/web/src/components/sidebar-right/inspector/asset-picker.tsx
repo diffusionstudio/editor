@@ -20,7 +20,7 @@ import { LazyAssetItem } from "@/components/sidebar-left/asset-item";
 import { usePromptInput } from "@/context/prompt-input";
 import { createDefaultConfig } from "@/components/genai/prompt-input";
 import { assetName } from "@diffusionstudio/assets";
-import { useTrait } from "@diffusionstudio/koota-solid";
+import { useTrait } from "@diffusionstudio/koota/solid";
 import { AssetId, isScene } from "@diffusionstudio/runtime";
 import { useLibrary } from "@/engine/library";
 import { pickAndImport } from "@/engine/asset-actions";

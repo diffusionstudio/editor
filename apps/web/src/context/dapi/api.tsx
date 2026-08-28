@@ -4,7 +4,7 @@
 
 import { createEffect, createContext, useContext, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { useWorld } from '@diffusionstudio/koota-solid';
+import { useWorld } from '@diffusionstudio/koota/solid';
 import { Project } from '@diffusionstudio/runtime';
 import { useProject } from '@/context/project';
 import { useAuth } from '@/context/auth';

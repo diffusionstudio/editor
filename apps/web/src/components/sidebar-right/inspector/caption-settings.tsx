@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ColorOpacityRow } from "@/components/ui/color-opacity-row";
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
-import { useTrait } from "@diffusionstudio/koota-solid";
+import { useTrait } from "@diffusionstudio/koota/solid";
 import { Caption, colorToHex } from "@diffusionstudio/runtime";
 import { useEditor } from "@/engine/hooks";
 import {

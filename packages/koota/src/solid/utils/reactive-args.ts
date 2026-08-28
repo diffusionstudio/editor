@@ -1,4 +1,4 @@
-import { $internal, $relationPair, type RelationPair, type Trait } from '@diffusionstudio/koota';
+import { $internal, $relationPair, type RelationPair, type Trait } from '../../index';
 import { createMemo, type Accessor } from 'solid-js';
 
 export type MaybeAccessor<T> = T | Accessor<T>;

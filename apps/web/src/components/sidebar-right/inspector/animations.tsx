@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota/solid";
 import { Animation as AnimationElement } from "@diffusionstudio/reconciler";
 import {
   Animation,

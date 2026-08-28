@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createMemo, onCleanup, onMount } from 'solid-js';
-import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useTrait, useWorld } from '@diffusionstudio/koota/solid';
 import { panCamera, setCamera, zoomCameraAt, getCamera, RenderSurface, getCameraMatrix, Root, Tool, ToolType } from '@diffusionstudio/runtime';
 import { useEditor } from './hooks/use-editor';
 

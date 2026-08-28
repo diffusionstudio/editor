@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Active } from '@diffusionstudio/runtime';
-import { useQuery } from '@diffusionstudio/koota-solid';
+import { useQuery } from '@diffusionstudio/koota/solid';
 
 import type { Entity } from '@diffusionstudio/koota';
 import type { Accessor } from 'solid-js';

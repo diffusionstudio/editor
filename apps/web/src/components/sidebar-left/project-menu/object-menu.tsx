@@ -12,7 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 import { isGroupLike, isSequence } from "@diffusionstudio/runtime";
 import {
   groupSelection,

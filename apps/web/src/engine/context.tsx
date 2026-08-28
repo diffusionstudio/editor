@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createContext, onCleanup, useContext, type JSX } from 'solid-js';
-import { WorldProvider } from '@diffusionstudio/koota-solid';
+import { WorldProvider } from '@diffusionstudio/koota/solid';
 
 import { createEngine, type Engine, type EngineOptions } from './create-engine';
 
@@ -17,7 +17,7 @@ export interface EngineProviderProps {
 
 /**
  * Provides the Engine instance (lifecycle: mount/resize/start/stop) and,
- * via koota-solid's WorldProvider, its koota world. Deliberately does not
+ * via @diffusionstudio/koota/solid's WorldProvider, its koota world. Deliberately does not
  * hand out a bag of engine internals — components read world-trait state
  * with useTrait/useQuery (see ./hooks) and reach the Engine itself only for
  * lifecycle calls (useEngineContext()), keeping each consumer's dependency

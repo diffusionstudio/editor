@@ -12,7 +12,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useHas, useTrait } from "@diffusionstudio/koota-solid";
+import { useHas, useTrait } from "@diffusionstudio/koota/solid";
 import { Hidden, Paint, PaintType } from "@diffusionstudio/runtime";
 import { useEditor } from "@/engine/hooks";
 

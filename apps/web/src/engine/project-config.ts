@@ -22,7 +22,7 @@
 import { createSignal } from 'solid-js';
 import { Source } from '@diffusionstudio/runtime';
 import { parseSource } from '@diffusionstudio/jsx';
-import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
+import { useTrait, useWorld } from '@diffusionstudio/koota/solid';
 
 import { readProjectConfig, writeProjectConfig } from '@/projects/host';
 import { ProjectConfig as ProjectConfigTrait } from './traits';

@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { AdjustmentLayer, Geometry, Group, Keyframe, Selected } from '@diffusionstudio/runtime';
-import { useQuery } from '@diffusionstudio/koota-solid';
+import { useQuery } from '@diffusionstudio/koota/solid';
 import { createMemo } from 'solid-js';
 
 /**

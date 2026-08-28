@@ -12,7 +12,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from "@/components/ui/context-menu";
-import { useTrait } from "@diffusionstudio/koota-solid";
+import { useTrait } from "@diffusionstudio/koota/solid";
 import { Anchor } from "@diffusionstudio/runtime";
 import { AnchorPointPicker } from "./anchor-picker";
 

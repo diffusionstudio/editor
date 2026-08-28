@@ -5,7 +5,7 @@
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { For } from "solid-js";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useWorld } from "@diffusionstudio/koota/solid";
 
 import { Icon } from "@/components/ui/icon";
 import { alignSelection, distributeSelection } from "@/engine/align";
