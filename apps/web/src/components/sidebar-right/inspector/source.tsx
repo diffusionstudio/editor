@@ -27,7 +27,7 @@ import { FitMenu } from "./fill-picker";
 import { AssetFillPicker } from "./asset-picker";
 
 import type { Asset } from "@diffusionstudio/assets";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** The row label, like a fill row's: which kind of media the node is. */
 const MEDIA_LABELS: Partial<Record<PaintType, string>> = {

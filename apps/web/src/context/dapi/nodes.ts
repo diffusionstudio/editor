@@ -5,7 +5,7 @@
 import { AdjustmentLayer, Geometry, Group, Scene, Source } from "@diffusionstudio/runtime";
 import { parseSource } from "@diffusionstudio/jsx";
 
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 
 // Scenes are nodes too, so node-targeting endpoints accept them alongside
 // geometry, groups, and adjustment layers.

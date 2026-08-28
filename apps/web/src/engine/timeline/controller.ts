@@ -34,7 +34,7 @@ import {
 } from './config';
 import { getFrameRate } from './view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export type TimelineController = ReturnType<typeof createTimelineController>;
 

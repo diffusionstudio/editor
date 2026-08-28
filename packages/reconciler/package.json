@@ -21,7 +21,7 @@
     "@diffusionstudio/assets": "*",
     "@diffusionstudio/jsx": "*",
     "@diffusionstudio/runtime": "*",
-    "koota": "^0.6.6"
+    "@diffusionstudio/koota": "*"
   },
   "peerDependencies": {
     "solid-js": "^1.9.0"

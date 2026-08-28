@@ -7,7 +7,7 @@ import { isStage, isScene } from './predicates';
 // Direct module, not the utils barrel: utils/time reaches back into this file.
 import { sortByItemIndex } from '../utils/sort';
 
-import type { Entity, World, QueryParameter } from 'koota';
+import type { Entity, World, QueryParameter } from '@diffusionstudio/koota';
 
 export function getParentEntity(entity: Entity | null | undefined): Entity | null {
 	if (!entity) return null;

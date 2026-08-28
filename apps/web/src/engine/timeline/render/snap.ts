@@ -5,7 +5,7 @@
 import { RULER_HEIGHT } from '../config';
 import { getResolution, getScrollX } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { TimelineSurfaceState } from '../surface';
 
 /**

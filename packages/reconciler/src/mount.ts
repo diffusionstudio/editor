@@ -8,7 +8,7 @@ import { createRuntimeDocument } from './document';
 import { evaluate } from './evaluate';
 import { renderProject } from './renderer';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 
 export interface Mount {
 	/** Tears down the reactive graph and every entity the project rendered. */

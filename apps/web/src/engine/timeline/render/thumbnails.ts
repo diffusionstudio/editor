@@ -10,7 +10,7 @@ import { framesToPixels, getFrameRate, getResolution, getViewport, pixelsToFrame
 import { renderWaveform } from './waveform';
 
 import type { Asset, VideoAsset } from '@diffusionstudio/assets';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { RowCursor } from '../layout';
 import type { TimelineSurfaceState } from '../surface';
 

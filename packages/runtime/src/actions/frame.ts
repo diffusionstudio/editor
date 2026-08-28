@@ -6,7 +6,7 @@
 // api/base.ts). The app reacts to Active changes (clearing timeline buffers,
 // rebuilding its index) through its own trait observer.
 
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import { GeometryType, PaintType } from '../constants';
@@ -23,7 +23,7 @@ import { createEntity } from './entities';
 import { appendChild, removeChild } from './hierarchy';
 import { resizeEntity } from './resize';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /** The entity carrying Active, or null. */
 export function getActiveEntity(world: World): Entity | null {

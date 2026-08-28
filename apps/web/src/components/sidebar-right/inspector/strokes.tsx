@@ -21,7 +21,7 @@ import { Cache, Computed, Hidden, colorToHex } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { StrokeInspector } from "./stroke-inspector";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** What "Add stroke" authors; `<stroke>`'s own default color. */
 const DEFAULT_COLOR = "#000000";

@@ -9,7 +9,7 @@ import { Keys, Pointer, PointerEvents } from '../traits';
 import { getToolCursor, updateCursor } from './cursor';
 import { handleCanvasInteraction, handleGeometryInteraction } from './interactions';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type { CursorType } from './cursor';
 import type { CanvasPointerEvent, DispatchedPointerEvent, HitRegion, PointerEventType } from '@diffusionstudio/runtime';
 

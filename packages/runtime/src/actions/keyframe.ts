@@ -12,7 +12,7 @@ import { getPropertyPaths } from '../systems/motion';
 import { createEntity, deleteEntity } from './entities';
 import { appendChild } from './hierarchy';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { PropertyPath } from '../systems/motion';
 
 /**

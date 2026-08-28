@@ -45,7 +45,7 @@ import { DropIndicator } from './drop-indicator';
 import { formatFrames, TIME_FORMAT_OPTIONS, type TimeFormat } from '../time-format';
 
 import type { TimelineNode } from '@diffusionstudio/runtime';
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 
 /** The row heights the height menu offers, tightest first. */
 const HEIGHT_PRESETS = [

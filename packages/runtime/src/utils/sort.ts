@@ -4,7 +4,7 @@
 
 import { ItemIndex, Computed, Keyframe } from '../traits';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 
 
 export function sortByItemIndex(a: Entity, b: Entity): number {

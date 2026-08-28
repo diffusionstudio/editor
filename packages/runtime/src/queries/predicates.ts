@@ -8,7 +8,7 @@ import {
 } from '../traits';
 import { GeometryType, PaintType } from '../constants';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 
 export function isStage(entity: Entity): boolean {
 	return entity.has(Stage);

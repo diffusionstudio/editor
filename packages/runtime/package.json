@@ -24,7 +24,7 @@
     "@diffusionstudio/jsx": "*",
     "animejs": "^4.4.1",
     "colord": "^2.9.3",
-    "koota": "^0.6.6",
+    "@diffusionstudio/koota": "*",
     "mediabunny": "^1.32.2"
   },
   "devDependencies": {

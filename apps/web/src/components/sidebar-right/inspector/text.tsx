@@ -51,7 +51,7 @@ import { getLocalFonts } from '@/engine/fonts';
 import { useDerived, useEditor, useTool } from '@/engine/hooks';
 import { removeKeyframeTrack, syncKeyframe } from '@/engine/keyframes';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 
 type TextPanelProps = {
   selection: Entity[];

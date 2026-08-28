@@ -6,7 +6,7 @@ import { KNOB_PATH } from '../paths';
 import { RULER_HEIGHT } from '../config';
 import { framesToPixels, getCurrentFrame, getFrameRate, getResolution, getScrollX } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { TimelineSurfaceState } from '../surface';
 
 // The knob shown in place of the line while the timeline is collapsed.

@@ -4,7 +4,7 @@
 
 // Group and ungroup actions (was api/group.ts).
 
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import {
@@ -19,7 +19,7 @@ import { createEntity, deleteEntity } from './entities';
 import { appendChild, removeChild } from './hierarchy';
 import { resolveNewSequenceOverlaps } from './overlap';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Wrap the current node selection in a new GROUP. All selected nodes must

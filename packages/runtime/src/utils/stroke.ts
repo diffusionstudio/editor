@@ -6,7 +6,7 @@ import { store } from '../world/store';
 import { StrokeCap, StrokeJoin } from '../constants';
 import { StrokeStyle, Computed, Hidden } from '../traits';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 

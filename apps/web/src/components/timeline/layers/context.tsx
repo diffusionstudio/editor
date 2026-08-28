@@ -12,7 +12,7 @@ import { resolveSequentialOverlaps } from "@/engine/overlap";
 import { assert, clamp } from "@/utils";
 import { flattenRows, getListBottom, hitRows, resolveGap } from "./drag";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { DropTarget, FlatRow, GapContext, LayerDrag } from "./drag";
 
 /** How far the pointer travels before a press means a drag, not a click. */

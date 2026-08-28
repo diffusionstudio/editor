@@ -34,7 +34,7 @@ import {
 
 import { PRESET_CATEGORIES } from "@/lib/layout-presets";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type LayoutPanelProps = {
   selection: Entity[];

@@ -30,7 +30,7 @@ import { parseTime } from '@diffusionstudio/jsx';
 import { getDocumentEditor } from './editor';
 
 import type { Time } from '@diffusionstudio/jsx';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /** The time a node authors, in the vocabulary of the JSX rather than the traits'. */
 export type TimeProp = 'start' | 'end' | 'sourceIn' | 'sourceOut';

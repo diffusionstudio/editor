@@ -9,7 +9,7 @@ import { toast } from "somoto";
 
 import type { AssetRef } from "@diffusionstudio/jsx";
 import type { DocumentEditor } from "@/engine/editor";
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 
 /** Between the variants of one batch, and between the batch and its neighbour. */
 const GAP = 40;

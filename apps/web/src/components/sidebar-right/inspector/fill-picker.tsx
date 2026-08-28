@@ -40,7 +40,7 @@ import { AssetFillPicker } from "./asset-picker";
 
 import type { Fit } from "@diffusionstudio/jsx";
 import type { Asset } from "@diffusionstudio/assets";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export type FillTab = "solid" | "gradient" | "asset";
 

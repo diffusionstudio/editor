@@ -16,13 +16,13 @@
  */
 
 import { ChildOf, Computed, Geometry, Group, Sequential, getParentNode, isGroup, store } from '@diffusionstudio/runtime';
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { getDocumentEditor } from './editor';
 import { trimIn, trimOut } from './timing';
 
 import type { DocumentEditor } from './editor';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Settles every sequence the just-dropped clips landed in. `dragged` is what

@@ -7,14 +7,14 @@
 // straight into the SoA store by the transform system (never added as a
 // trait), so it is read by entity id here, like WorldBounds in ./camera.
 
-import { Not } from 'koota';
+import { Not } from '@diffusionstudio/koota';
 
 import { Computed, Culled, Geometry, Hidden, LocalTransform, Scene } from '../traits';
 import { store } from '../world/store';
 import { aabbFromTransformedRect, invert2D, multiply2D, transformPoint } from '../math';
 import { getParentNode } from './hierarchy';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Mat2D, Point } from '../math';
 
 /** Below this the transform is singular and the mapping is undefined. */

@@ -1,4 +1,4 @@
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import { useContext } from 'solid-js';
 import { WorldContext } from './world-context';
 

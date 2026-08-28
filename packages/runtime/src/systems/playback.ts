@@ -7,7 +7,7 @@
 // audio bus tree in sync, and steps live mounts. In offline modes the encoder
 // sets the playhead explicitly and awaits FramePromises.
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import { PaintType } from '../constants';
@@ -31,7 +31,7 @@ import {
 import { whenHtmlReady } from '../media/html';
 import { AudioBus } from '../media/audio-bus';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 const WARMUP_FRAMES = 15;
 

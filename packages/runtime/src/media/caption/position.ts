@@ -8,7 +8,7 @@ import { Caption, Position, Computed, Host } from '../../traits';
 import { getParentNode } from '../../queries/hierarchy';
 import { resizeEntity } from '../../actions/resize';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 // Margin between the caption box and the parent edge for top/bottom alignment.
 export const CAPTION_MARGIN = 100;

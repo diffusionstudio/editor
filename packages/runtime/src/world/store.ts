@@ -2,9 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { getStore } from 'koota';
+import { getStore } from '@diffusionstudio/koota';
 
-import type { ExtractStore, Trait, World } from 'koota';
+import type { ExtractStore, Trait, World } from '@diffusionstudio/koota';
 
 /**
  * Direct SoA store access for hot paths (array indexing by entity.id(), no

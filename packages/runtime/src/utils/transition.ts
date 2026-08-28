@@ -5,7 +5,7 @@
 import { store } from '../world/store';
 import { Transition, Computed } from '../traits';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export type TransitionWindow = { start: number; end: number; midpointFrame: number };
 

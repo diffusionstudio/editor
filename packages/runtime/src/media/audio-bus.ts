@@ -7,7 +7,7 @@ import { Muted, Computed, AudioEngine } from '../traits';
 import { attempt } from '../utils/async';
 import { assert } from '../utils/assert';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Per-entity audio bus. Each clip and each scene gets its own gain node.

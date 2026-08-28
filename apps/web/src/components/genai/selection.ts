@@ -19,7 +19,7 @@ import { useSelection } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
 
 import type { Asset } from "@diffusionstudio/assets";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** A selected node and the library asset it is bound to. */
 export interface BoundNode {

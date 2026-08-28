@@ -24,7 +24,7 @@ import { authoredElement } from '@diffusionstudio/reconciler';
 
 import { getDocumentEditor, isLooped } from './editor';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 
 export function sourceErrorSystem(world: World): void {
 	for (const entity of world.query(SourceError)) {

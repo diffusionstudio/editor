@@ -1,4 +1,4 @@
-import { $internal, type Entity, type Relation, type Trait, type World } from 'koota';
+import { $internal, type Entity, type Relation, type Trait, type World } from '@diffusionstudio/koota';
 import { createComputed, createSignal, onCleanup, type Accessor } from 'solid-js';
 import { isWorld } from '../utils/is-world';
 import { access, type MaybeAccessor } from '../utils/reactive-args';

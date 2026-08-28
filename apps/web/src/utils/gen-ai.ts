@@ -28,7 +28,7 @@ import type { AspectRatio, AssetInput, AssetRef, AssetSpecInput } from "@diffusi
 import type { Asset, AssetLibrary, AssetType } from "@diffusionstudio/assets";
 import type { FileRef } from "@diffusionstudio/api-contract";
 import type { ExportResult } from "@diffusionstudio/encoder";
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 
 /** What a failure is called where the user reads about it. */
 const FAILURE_TITLES: Record<AssetSpecInput["type"] | "transcript", string> = {

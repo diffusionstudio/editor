@@ -11,7 +11,7 @@ import {
 
 import { captureScene, normalizeSceneTransform, resolverSystem, warmupAssets } from './encoder';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type { ImageEncoderConfig } from './interfaces';
 
 /** One capture: the PNG plus the timecode of the frame rendered, e.g. `01s15f`. */

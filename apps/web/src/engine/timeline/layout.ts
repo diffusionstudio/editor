@@ -14,7 +14,7 @@ import { ClipHeight, Timeline, store } from '@diffusionstudio/runtime';
 import { DEFAULT_CLIP_HEIGHT, KEYFRAME_TRACK_HEIGHT } from './config';
 
 import type { TimelineNode } from '@diffusionstudio/runtime';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Where the walk has got to and how tall the row it is in is. One object

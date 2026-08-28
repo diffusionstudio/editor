@@ -19,7 +19,7 @@ import {
 } from '../traits';
 import { createEntity } from '../actions/entities';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Plain-object snapshot of one entity's traits. Used to clone entity

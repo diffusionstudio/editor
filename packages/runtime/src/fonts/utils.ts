@@ -10,7 +10,7 @@ import { WebFonts } from './fixtures';
 import { FontStyle } from '../constants';
 import { Fonts } from '../traits';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type * as types from './types';
 
 const STYLE_MAP = {

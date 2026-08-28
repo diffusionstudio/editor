@@ -7,7 +7,7 @@ import { Cache, Computed, store } from '@diffusionstudio/runtime';
 import { CLIP_CORNER_RADIUS } from '../config';
 import { framesToPixels, getResolution } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { RowCursor } from '../layout';
 import type { TimelineSurfaceState } from '../surface';
 

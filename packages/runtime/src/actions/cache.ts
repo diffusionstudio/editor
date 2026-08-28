@@ -6,7 +6,7 @@
 // KeyframeTrack.target are derived state, so they are written through stores
 // without change events; the app observes the authoring writes instead.
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import {
@@ -19,7 +19,7 @@ import { getParentNode } from '../queries/hierarchy';
 import { sortByFrame, sortByItemIndex } from '../utils/sort';
 import { resetAnimatedValues } from '../systems/motion';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Refresh the parent's Cache lists that the attached/detached entity

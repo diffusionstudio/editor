@@ -11,7 +11,7 @@ import {
 } from '@diffusionstudio/runtime';
 
 import type { AABB, Point } from '@diffusionstudio/runtime';
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 
 /** The visible part of the canvas in document space, or null before a surface is mounted. */
 function viewportBounds(world: World): AABB | null {

@@ -8,7 +8,7 @@ import { deleteEntity } from '../../actions/entities';
 import { getAssetFile } from '../../actions/assets';
 import { parseSubtitles } from './subtitles';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset, Transcript, WordGroup } from '@diffusionstudio/assets';
 
 export type TextRangeOverride = {

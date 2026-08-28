@@ -10,7 +10,7 @@ import { store } from '../world/store';
 import { ChildOf, ColorStop, Position, Computed } from '../traits';
 import { colorToCss } from '../utils/color';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 

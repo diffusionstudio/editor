@@ -19,7 +19,7 @@ import { KEYFRAME_TRACK_HEIGHT } from '../config';
 import { getRowTransform } from '../layout';
 import { framesToPixels, getFrameRate, getResolution, getViewport, pixelsToFrames } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { RowCursor } from '../layout';
 import type { TimelineSurfaceState } from '../surface';
 

@@ -10,7 +10,7 @@ import { writeProject } from './host';
 
 import type { EntityEdit, InsertEdit, MoveEdit, RemoveEdit, UnrollEdit } from '@/engine/editor';
 import type { SourceEdit, WriteResult } from './host';
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 
 /**
  * How long edits pile up before they are written. Long enough that a drag is

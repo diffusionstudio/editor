@@ -16,7 +16,7 @@ import {
 import { editWorkarea } from '../../timing';
 import { framesToPixels, getFrameRate, getResolution, getScrollX, getViewport, pixelsToFrames } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { TimelineSurfaceState } from '../surface';
 
 /**

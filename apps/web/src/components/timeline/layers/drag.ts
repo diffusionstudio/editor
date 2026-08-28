@@ -17,7 +17,7 @@ import { isGroupLike, isMask, isSequence } from '@diffusionstudio/runtime';
 import { NESTED_INDENT_PX } from './config';
 
 import type { Accessor } from 'solid-js';
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 import type { TimelineNode } from '@diffusionstudio/runtime';
 
 /** Client X of the insertion dot for a depth-0 drop; each depth steps inwards.

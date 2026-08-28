@@ -20,7 +20,7 @@
  * be) and none of it is worth an event.
  */
 
-import { trait } from 'koota';
+import { trait } from '@diffusionstudio/koota';
 
 import { COLORS } from './constants';
 

@@ -11,7 +11,7 @@ import { createSignal } from "solid-js";
 import { assert } from "@/utils/common";
 
 import type { Accessor } from "solid-js";
-import type { World } from "koota";
+import type { World } from "@diffusionstudio/koota";
 
 /**
  * The open project, as the editor knows it. Structural on purpose: this is

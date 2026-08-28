@@ -25,11 +25,11 @@ import {
   store,
   transformPoint,
 } from "@diffusionstudio/runtime";
-import { Or } from "koota";
+import { Or } from "@diffusionstudio/koota";
 import { getDocumentEditor } from "./editor";
 import { syncKeyframe } from "./keyframes";
 
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 
 export type AlignAction =
   | "align-left"

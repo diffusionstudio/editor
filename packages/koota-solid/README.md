@@ -5,7 +5,7 @@ Solid bindings for [koota](https://github.com/pmndrs/koota): a port of `@koota/r
 ## Usage
 
 ```tsx
-import { createWorld, trait } from 'koota';
+import { createWorld, trait } from '@diffusionstudio/koota';
 import { WorldProvider, useQuery, useTrait } from '@diffusionstudio/koota-solid';
 
 const Position = trait({ x: 0, y: 0 });

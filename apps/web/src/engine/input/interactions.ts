@@ -28,7 +28,7 @@ import {
 	rotate2D, scale2D,
 	store, syncInteractiveState, togglePlayback, transformPoint, translate2D,
 } from '@diffusionstudio/runtime';
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { getDocumentEditor } from '../editor';
 import { syncKeyframe } from '../keyframes';
@@ -43,7 +43,7 @@ import {
 } from './snapping';
 
 import type { DocumentEditor } from '../editor';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { DispatchedPointerEvent, Mat2D, Point, Quad } from '@diffusionstudio/runtime';
 
 /** How close, in CSS pixels, a candidate has to be before a gesture snaps to it. */

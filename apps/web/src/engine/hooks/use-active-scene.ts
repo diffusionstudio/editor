@@ -5,7 +5,7 @@
 import { Active } from '@diffusionstudio/runtime';
 import { useQuery } from '@diffusionstudio/koota-solid';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 import type { Accessor } from 'solid-js';
 
 /** Reactive read of the entity carrying Active. Write via `useEditor().activate(...)`. */

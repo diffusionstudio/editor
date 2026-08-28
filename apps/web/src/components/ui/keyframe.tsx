@@ -11,7 +11,7 @@ import { findKeyframeAt, findKeyframeTrack, keyframeFrame, toggleKeyframe } from
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 import type { AnimatableProperty } from "@diffusionstudio/jsx";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type KeyframeProps = {
   target: Entity;

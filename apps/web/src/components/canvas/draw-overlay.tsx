@@ -19,7 +19,7 @@ import {
 } from "@diffusionstudio/runtime";
 import { useEditor, useTool } from "@/engine";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { Point } from "@diffusionstudio/runtime";
 
 type ToolConfig = {

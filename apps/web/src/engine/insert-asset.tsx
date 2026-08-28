@@ -10,7 +10,7 @@ import { assetName } from '@diffusionstudio/assets';
 import { getDocumentEditor } from './editor';
 
 import type { Asset } from '@diffusionstudio/assets';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export interface InsertAssetOptions {
 	/** The scene (or group) to insert into; the active scene by default. */

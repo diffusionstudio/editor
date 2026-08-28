@@ -10,7 +10,7 @@
 // entity id: the transform system writes them there without ever adding the
 // traits.
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import {
 	Anchor, Computed, Geometry, Group, LocalTransform, Offset, Selected,
@@ -24,7 +24,7 @@ import {
 	scale2D, skew2D, transformPoint, translate2D,
 } from '../math';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Mat2D, Point, Quad } from '../math';
 
 /**

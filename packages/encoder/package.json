@@ -18,7 +18,7 @@
   ],
   "dependencies": {
     "@diffusionstudio/runtime": "*",
-    "koota": "^0.6.6",
+    "@diffusionstudio/koota": "*",
     "mediabunny": "^1.32.2"
   },
   "devDependencies": {

@@ -43,7 +43,7 @@ import {
   SAMPLE_RATE_OPTIONS,
 } from "./export-templates";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { VideoCodec, AudioCodec } from "mediabunny";
 import type { ContainerFormat, ExportConfig as ProjectExportConfig } from "@/engine/project-config";
 import type { ExportConfig } from "./export-templates";

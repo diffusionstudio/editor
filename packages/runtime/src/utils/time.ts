@@ -10,7 +10,7 @@ import {
 import { getParentNode } from '../queries/hierarchy';
 import { getSourceDuration } from '../actions/assets';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset } from '@diffusionstudio/assets';
 
 export function snapToMs(seconds: number) {

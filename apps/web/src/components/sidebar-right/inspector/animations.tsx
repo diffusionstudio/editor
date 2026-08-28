@@ -43,7 +43,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { ANIMATION_GROUPS, DEFAULT_ANIMATION, animationOption } from "./animation-types";
 
 import type { AnimationGroup, AnimationOption } from "./animation-types";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** `<animation>`'s defaults; a control left at one of these unsets its prop. */
 const DEFAULT_DURATION = 1;

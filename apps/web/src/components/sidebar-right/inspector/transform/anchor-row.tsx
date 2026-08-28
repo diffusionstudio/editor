@@ -16,7 +16,7 @@ import { useTrait } from "@diffusionstudio/koota-solid";
 import { Anchor } from "@diffusionstudio/runtime";
 import { AnchorPointPicker } from "./anchor-picker";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export type AnchorRowProps = {
   node: Entity;

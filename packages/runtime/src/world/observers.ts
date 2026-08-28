@@ -26,7 +26,7 @@ import {
 import { propagateSize, resolveConstraintOffsets } from '../actions/resize';
 import { resetAnimatedValues } from '../systems/motion';
 
-import type { Entity, Trait, World } from 'koota';
+import type { Entity, Trait, World } from '@diffusionstudio/koota';
 
 /**
  * Wire the runtime invariants into a world. Returns a disposer (worlds are

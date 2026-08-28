@@ -4,7 +4,7 @@
 
 import { getDocumentEditor } from '../../editor';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type { TimelineSurfaceState } from '../surface';
 
 /**

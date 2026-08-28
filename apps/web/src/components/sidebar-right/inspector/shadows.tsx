@@ -21,7 +21,7 @@ import { Cache, Computed, Hidden, colorToHex } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { ShadowInspector } from "./shadow-inspector";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /**
  * What "Add shadow" authors. `<shadow>`'s own defaults are all zero, which

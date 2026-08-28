@@ -19,7 +19,7 @@ import { colorToHex } from './color';
 import { applyStrokeStyle, findWidestStroke } from './stroke';
 import { createLinearGradient, createRadialGradient } from '../systems/gradients';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 

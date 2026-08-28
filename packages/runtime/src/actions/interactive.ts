@@ -7,7 +7,7 @@
 // decides what clicking the canvas can reach, and drilling into a container
 // moves the tag down a level.
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import {
 	AdjustmentLayer, ChildOf, Culled, Geometry, Group, Hovering, Interactive,
@@ -16,7 +16,7 @@ import {
 import { isScene } from '../queries/predicates';
 import { isPointerInEntity } from '../queries/interaction';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Point } from '../math';
 
 /**

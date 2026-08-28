@@ -31,7 +31,7 @@ import { loadProjectBundle } from '@/lib/db';
 import { compileProject, isDesktop } from '@/projects';
 
 import type { RuntimeMode } from '@diffusionstudio/runtime';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export interface CaptureOptions {
 	/** Frames per second the copy is timed at; the source world's by default. */

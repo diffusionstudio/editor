@@ -1,4 +1,4 @@
-import { $internal, createQuery, type QueryParameter, type QueryResult } from 'koota';
+import { $internal, createQuery, type QueryParameter, type QueryResult } from '@diffusionstudio/koota';
 import { createSignal, onCleanup, type Accessor } from 'solid-js';
 import { useWorld } from '../world/use-world';
 

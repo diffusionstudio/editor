@@ -16,7 +16,7 @@ import { useHas, useTrait } from "@diffusionstudio/koota-solid";
 import { Hidden, Paint, PaintType } from "@diffusionstudio/runtime";
 import { useEditor } from "@/engine/hooks";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type FillRowProps = {
   fill: Entity;

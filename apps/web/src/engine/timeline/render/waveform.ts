@@ -9,7 +9,7 @@ import { SAMPLE_WIDTH, getClipSamples, requestPeaks } from '../peaks';
 import { framesToPixels, getFrameRate, getResolution, getViewport } from '../view';
 
 import type { AudioAsset, VideoAsset } from '@diffusionstudio/assets';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { RowCursor } from '../layout';
 import type { TimelineSurfaceState } from '../surface';
 

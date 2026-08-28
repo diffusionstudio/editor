@@ -35,7 +35,7 @@
     "colord": "^2.9.3",
     "cva": "^1.0.0-beta.4",
     "idb": "^8.0.3",
-    "koota": "^0.6.6",
+    "@diffusionstudio/koota": "*",
     "mediabunny": "^1.32.2",
     "solid-js": "^1.9.10",
     "somoto": "^0.0.2",

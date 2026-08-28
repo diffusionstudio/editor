@@ -23,7 +23,7 @@ import { renderGroup } from './group';
 import { renderStillThumbnails, renderVideoThumbnails } from './thumbnails';
 import { renderWaveform } from './waveform';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset } from '@diffusionstudio/assets';
 import type { ClipStyle } from '../style';
 import type { RowCursor } from '../layout';

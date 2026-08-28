@@ -24,7 +24,7 @@ import {
 	findAssetDuration,
 	store,
 } from '@diffusionstudio/runtime';
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { clamp } from '@/utils';
 import { resolveSequentialOverlaps } from '../overlap';
@@ -32,7 +32,7 @@ import { authoredTime, moveEntityTo, trimIn, trimOut } from '../timing';
 import { findSnapDelta, findSnapFrame } from './snapping';
 import { framesToPixels, pixelsToFrames } from './view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { TimelineSurfaceState } from './surface';
 
 const NODES = Or(Geometry, Group, AdjustmentLayer);

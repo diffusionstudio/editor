@@ -26,13 +26,13 @@ import {
 	isSequence,
 	store,
 } from '@diffusionstudio/runtime';
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { getDocumentEditor } from './editor';
 import { cloneFramesForSplit, clonePeaksForSplit } from './timeline';
 import { trimIn, trimOut } from './timing';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /** The node kinds that sit on a timeline, and so are the ones a cut is about. */
 const NODES = Or(Geometry, Group, AdjustmentLayer);

@@ -34,7 +34,7 @@ import {
 } from "./caption-types";
 
 import type { CaptionPresetOption } from "./caption-types";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type CaptionSettingsProps = {
   selection: Entity[];

@@ -9,7 +9,7 @@
  * pointer), and none of it is authored, so it never reaches the source.
  */
 
-import { trait } from 'koota';
+import { trait } from '@diffusionstudio/koota';
 
 import type { CanvasPointerEvent, Point } from '@diffusionstudio/runtime';
 import type { ProjectConfig as ProjectConfigStore } from './project-config';

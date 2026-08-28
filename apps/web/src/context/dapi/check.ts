@@ -11,7 +11,7 @@ import {
 import { resolveNode } from "./nodes";
 
 import type { CheckIssue, CheckRequest, CheckResult } from "@diffusionstudio/cli/channels";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { EditorSession } from "./session";
 
 // Absolute frames, [start, end).

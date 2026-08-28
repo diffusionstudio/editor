@@ -5,7 +5,7 @@
 import { Library } from '@diffusionstudio/runtime';
 import { WAVEFORM_PEAKS_PER_SECOND, downsamplePeaks } from '@diffusionstudio/assets';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type { AssetCache, AudioAsset, VideoAsset } from '@diffusionstudio/assets';
 
 /** How wide one drawn sample is, in pixels. */

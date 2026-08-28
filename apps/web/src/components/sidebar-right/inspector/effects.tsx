@@ -22,7 +22,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { DEFAULT_EFFECT, effectOption } from "./effect-types";
 import { EffectsInspector } from "./effects-inspector";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 // Stable identity, so a node without effects does not resample every tick.
 const NO_EFFECTS: Entity[] = [];

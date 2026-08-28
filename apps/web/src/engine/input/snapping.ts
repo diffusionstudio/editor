@@ -12,7 +12,7 @@
  * pointer's own is.
  */
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 import {
 	ChildOf, Computed, Culled, Geometry, Group, Hidden, Root, Scale,
 	entityLocalMat, entityQuad, entityWorldMat, getParentEntity, getSelection,
@@ -21,7 +21,7 @@ import {
 
 import { Hud, Pointer } from '../traits';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Mat2D, Point, Quad, SelectionMask } from '@diffusionstudio/runtime';
 
 export type NodeSnapshot = {

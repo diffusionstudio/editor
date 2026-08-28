@@ -48,7 +48,7 @@ import {
 import { useDerived, useEditor } from "@/engine/hooks";
 import { editTime, trimIn, trimOut } from "@/engine/timing";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type TimeAddon = "inOut" | "playbackRate";
 type TimeAddons = Partial<Record<TimeAddon, boolean>>;

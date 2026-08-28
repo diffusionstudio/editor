@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 import { cubicBezier, steps, spring } from 'animejs';
 
 import { store } from '../world/store';
@@ -17,7 +17,7 @@ import { AnimationType, AnimationPhase } from '../constants';
 import { revealChars, revealWords, scrambleChars } from '../utils/text-motion';
 import { getLocalWindow } from '../utils/time';
 
-import type { Entity, Trait, TraitRecord, World } from 'koota';
+import type { Entity, Trait, TraitRecord, World } from '@diffusionstudio/koota';
 
 /**
  * Reset an entity's Computed values back to its authored trait values.

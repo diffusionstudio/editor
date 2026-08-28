@@ -9,7 +9,7 @@ import { useWorld } from "@diffusionstudio/koota-solid";
 import { useEditor, useSelection } from "@/engine/hooks";
 import { toast } from "somoto";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export function useAutoCaptions() {
   const world = useWorld();

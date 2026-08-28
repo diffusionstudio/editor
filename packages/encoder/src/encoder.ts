@@ -8,7 +8,7 @@ import {
 	AudioSample,
 	AudioSampleSource,
 } from 'mediabunny';
-import { Not } from 'koota';
+import { Not } from '@diffusionstudio/koota';
 import {
 	setActive, framesToSeconds,
 	assert, store, isScene,
@@ -25,7 +25,7 @@ import { TargetBuffer } from './buffer';
 import { createOutputFormat } from './format';
 import { createRenderEventDetail } from './utils';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { EncoderConfig } from './interfaces';
 import type { ExportResult } from './types';
 

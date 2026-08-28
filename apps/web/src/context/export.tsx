@@ -17,7 +17,7 @@ import {
   getDefaultExportTemplate,
 } from "@/components/sidebar-right/inspector/export-templates";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { JSX, Accessor } from "solid-js";
 
 type ExportContextValue = {

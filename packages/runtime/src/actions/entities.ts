@@ -8,7 +8,7 @@
 import { DEFAULT_DURATION_FRAMES } from '../constants';
 import { Computed, Cache } from '../traits';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Spawn an empty document entity. Computed/Cache are pre-attached (systems

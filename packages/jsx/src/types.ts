@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import type { JSX as SolidJSX } from "solid-js";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { AssetRef } from "./generate";
 
 /**

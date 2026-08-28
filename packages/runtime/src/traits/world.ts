@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { trait, type Entity, type World } from 'koota';
+import { trait, type Entity, type World } from '@diffusionstudio/koota';
 
 import type { FontSource } from '../fonts/types';
 import type { AssetLibrary } from '@diffusionstudio/assets';

@@ -4,7 +4,7 @@
 
 import { generate } from '@diffusionstudio/jsx';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset } from '@diffusionstudio/assets';
 import type { SourceModifierValues } from './actions/assets';
 import type {

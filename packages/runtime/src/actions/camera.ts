@@ -14,7 +14,7 @@ import { MAX_CAMERA_ZOOM, MIN_CAMERA_ZOOM } from '../constants';
 import { clamp, transformPoint } from '../math';
 import { getCamera, getCameraInverse, getCameraScale, getContentBounds, getEntityBounds, getViewport } from '../queries/camera';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Camera2D } from '../traits';
 import type { CameraMatrix } from '../queries/camera';
 import type { Rect } from '../math';

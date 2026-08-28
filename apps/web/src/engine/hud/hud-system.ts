@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 import {
 	Active, Computed, Culled, FrameRate, Geometry, Group, Hidden,
 	HitRegions, Hovering, Name, Playback, RenderSurface, Root, Selected,
@@ -21,7 +21,7 @@ import {
 import { getMarqueeQuad } from '../input/snapping';
 import { getMountedNameInput } from './name-input';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Mat2D } from '@diffusionstudio/runtime';
 
 const ACCENT = '#008CFF';

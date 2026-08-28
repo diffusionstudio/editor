@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { trait, type Entity } from 'koota';
+import { trait, type Entity } from '@diffusionstudio/koota';
 
 // Fully resolved per-frame values (base state + constraints + animations +
 // keyframes). Written by the motion and transform systems, read by render and

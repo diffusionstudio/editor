@@ -21,7 +21,7 @@ import { cubicBezier } from 'animejs';
 
 import { Cache, Generating, SourceError, Time } from '../traits';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 const generatingEase = cubicBezier(0.52, 0.18, 0.56, 0.88);
 

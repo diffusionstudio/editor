@@ -4,7 +4,7 @@
 
 import { Hovering } from '@diffusionstudio/runtime';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Points the hover at one row, or at none. Only ever one row is hovered, so

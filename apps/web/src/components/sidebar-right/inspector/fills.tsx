@@ -13,7 +13,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { FillPicker, type FillTab } from "./fill-picker";
 import { FillRow } from "./fill-row";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** What "Add fill" authors. */
 const DEFAULT_FILL_COLOR = "#E0E0E0";

@@ -13,7 +13,7 @@ import {
 	buildTimelineLayers,
 	store,
 } from '@diffusionstudio/runtime';
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { getNodeHeight, getRowTransform, getSubtreeHeight } from '../layout';
 import { getResolution, getViewport, pixelsToFrames } from '../view';
@@ -21,7 +21,7 @@ import { isDragging } from '../drag';
 import { getClipAlpha, renderClip } from './clip';
 import { renderKeyframeTrack } from './keyframes';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { TimelineNode } from '@diffusionstudio/runtime';
 import type { RowCursor } from '../layout';
 import type { TimelineSurfaceState } from '../surface';

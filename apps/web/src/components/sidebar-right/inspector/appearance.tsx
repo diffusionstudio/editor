@@ -40,7 +40,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
 import { BLEND_MODE_ORDER, BLEND_MODE_SEPARATORS, blendModeName, displayBlendMode } from "./blend-modes";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type AppearanceSettingsProps = {
   selection: Entity[];

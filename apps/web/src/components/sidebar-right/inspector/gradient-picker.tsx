@@ -42,7 +42,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 import { readGradientStops, sameGradientStops, type GradientStop } from "./gradient-stops";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export type GradientPickerProps = {
   fill: Entity;

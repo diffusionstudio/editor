@@ -8,14 +8,14 @@
 // Cache/size/constraint/time-range fixups ride on the ChildOf events (see
 // world/observers.ts), so these functions only validate and re-target.
 
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { ChildOf, Geometry, Group, AdjustmentLayer, ItemIndex, Selected, Root } from '../traits';
 import { getEntityTree, getParentNode } from '../queries/hierarchy';
 import { assert } from '../utils/assert';
 import { sortByItemIndex } from '../utils/sort';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export type ReorderTarget = 'front' | 'back' | number;
 

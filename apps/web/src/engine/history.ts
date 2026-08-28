@@ -30,7 +30,7 @@ import { getDocumentEditor } from './editor';
 
 import type { AuthoredTree } from '@diffusionstudio/reconciler';
 import type { PropValue } from '@diffusionstudio/jsx';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { CapturedNode, DocumentEditor, EntityEdit } from './editor';
 
 /**

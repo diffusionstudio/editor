@@ -18,7 +18,7 @@ import { authoredElement, authoredTree, getRuntimeDocument, insert, isSceneNode,
 
 import type { SceneNode } from '@diffusionstudio/runtime';
 import type { PropValue, SerializedAssetRef } from '@diffusionstudio/jsx';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { AuthoredTree, ProjectDocument, RuntimeDocument } from '@diffusionstudio/reconciler';
 
 /**

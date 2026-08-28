@@ -9,7 +9,7 @@ import { getClipStyle } from '../style';
 import { truncateText } from '../text';
 import { framesToPixels, getFrameRate, getResolution } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { RowCursor } from '../layout';
 import type { TimelineSurfaceState } from '../surface';
 

@@ -24,7 +24,7 @@ import { Computed, colorToHex } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** `<shadow>`'s defaults; a control left at one of these unsets its prop. */
 const DEFAULT_OPACITY = 1;

@@ -14,7 +14,7 @@ import { PaperCaptionDecoder, PAPER_TEXT_STYLE } from './paper';
 import { GuineaCaptionDecoder, GUINEA_TEXT_STYLE } from './guinea';
 import { StarkCaptionDecoder, STARK_TEXT_STYLE } from './stark';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset } from '@diffusionstudio/assets';
 import type { CaptionDecoder, CaptionPresetStyle } from './types';
 

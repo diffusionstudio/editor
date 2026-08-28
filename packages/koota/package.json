@@ -1,0 +1,20 @@
+{
+  "name": "@diffusionstudio/koota",
+  "version": "0.6.6",
+  "description": "Local fork of the koota core ECS (pmndrs/koota). Vanilla core only — no React bindings, no build step; consumed as TypeScript source.",
+  "license": "ISC",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "keywords": [
+    "koota",
+    "ecs"
+  ],
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

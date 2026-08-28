@@ -28,7 +28,7 @@ import { useExport } from "@/context/export";
 import { getDefaultExportTemplate } from "@/components/sidebar-right/inspector/export-templates";
 import { mimeTypeToExtension } from "@/utils";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export function FileMenu() {
   const navigate = useNavigate();

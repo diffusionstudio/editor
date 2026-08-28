@@ -25,7 +25,7 @@ import { KEYFRAME_TRACK_HEIGHT } from '@/engine/timeline';
 import { NESTED_INDENT_PX } from './config';
 import { setRowHover } from './hover';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 import type { PropertyPath } from '@diffusionstudio/runtime';
 import type { LayerRowProps } from './layer';
 

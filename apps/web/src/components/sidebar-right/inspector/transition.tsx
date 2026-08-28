@@ -35,7 +35,7 @@ import {
 } from "./transition-types";
 
 import type { TransitionOption } from "./transition-types";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type TransitionSettingsProps = {
   selection: Entity[];

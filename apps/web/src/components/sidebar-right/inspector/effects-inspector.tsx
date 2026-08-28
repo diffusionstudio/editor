@@ -32,7 +32,7 @@ import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
 import { EFFECT_OPTIONS, effectOption } from "./effect-types";
 
 import type { EffectOption } from "./effect-types";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 const clampUnit = (value: number) => Math.min(1, Math.max(0, value));
 

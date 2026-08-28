@@ -16,7 +16,7 @@ import { updateDragGestures } from './drag';
 import { TimelineSurface } from './surface';
 import { ensureTimelineView, getTimelineScene } from './view';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type { TimelinePointer } from './pointer';
 import type { TimelineSurfaceState } from './surface';
 

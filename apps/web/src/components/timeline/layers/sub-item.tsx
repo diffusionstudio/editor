@@ -23,7 +23,7 @@ import { effectOption } from '@/components/sidebar-right/inspector/effect-types'
 import { NESTED_INDENT_PX } from './config';
 import { setRowHover } from './hover';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 import type { LayerRowProps } from './layer';
 
 const PAINT_NAMES: Partial<Record<PaintType, string>> = {

@@ -11,7 +11,7 @@ import { insertAsset } from "./insert-asset";
 import { forgetAssetMedia } from "./timeline/media";
 import { forgetAssetPeaks } from "./timeline/peaks";
 
-import type { World } from "koota";
+import type { World } from "@diffusionstudio/koota";
 
 import type { Asset, AssetLibrary } from "@diffusionstudio/assets";
 

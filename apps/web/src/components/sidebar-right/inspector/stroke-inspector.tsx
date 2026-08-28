@@ -25,7 +25,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 
 import type { StrokeJoin as StrokeJoinName } from "@diffusionstudio/jsx";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 const JOIN_SEGMENTS: { value: StrokeJoinName; icon: string; label: string }[] = [
   { value: "miter", icon: "line-join-miter", label: "Miter" },

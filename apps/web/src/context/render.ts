@@ -9,7 +9,7 @@ import { Computed, FrameRate, Workarea } from "@diffusionstudio/runtime";
 import { createCapture } from "@/engine/capture";
 import { version } from "../../package.json";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 import type { EncoderConfig, ExportResult } from "@diffusionstudio/encoder";
 import type { Capture } from "@/engine/capture";
 import type { Engine } from "@/engine";

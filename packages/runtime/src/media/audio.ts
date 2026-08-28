@@ -10,7 +10,7 @@ import { assert } from '../utils/assert';
 import { getAsset, getAssetFile } from '../actions/assets';
 import { TimeStretcher } from './time-stretcher';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { AudioAsset, VideoAsset } from '@diffusionstudio/assets';
 import type { AudioBus } from './audio-bus';
 

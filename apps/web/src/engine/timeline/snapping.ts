@@ -23,12 +23,12 @@ import {
 	getParentEntity,
 	store,
 } from '@diffusionstudio/runtime';
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { SNAP_DISTANCE } from './config';
 import { framesToPixels, getCurrentFrame } from './view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 const NODES = Or(Geometry, Group, AdjustmentLayer);
 

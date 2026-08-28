@@ -31,7 +31,7 @@ import {
 	store,
 	translate2D,
 } from '@diffusionstudio/runtime';
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { getDocumentEditor } from './editor';
 import { editTransform } from './input/interactions';
@@ -42,7 +42,7 @@ import { authoredTime } from './timing';
 import type { DocumentEditor } from './editor';
 import type { TransformWrite } from './input/interactions';
 import type { Mat2D } from '@diffusionstudio/runtime';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /** The node kinds a group holds; a mask belongs to its target, not the group. */
 const NODES = Or(Geometry, Group, AdjustmentLayer);

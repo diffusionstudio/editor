@@ -19,7 +19,7 @@ import { findAssetDuration, getSourceFrameAt, isPaintEntity, secondsToFrames } f
 import { getAsset } from './assets';
 import { getTranscriptDuration, primeTranscriptDuration } from '../media/caption/utils';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Ignorable, TimeTrait } from '../utils/time';
 
 /**

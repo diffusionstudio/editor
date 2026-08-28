@@ -28,7 +28,7 @@ import { readProjectConfig, writeProjectConfig } from '@/projects/host';
 import { ProjectConfig as ProjectConfigTrait } from './traits';
 
 import type { VideoCodec, AudioCodec } from 'mediabunny';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Accessor } from 'solid-js';
 
 /** The file the config lives in, relative to the project. */

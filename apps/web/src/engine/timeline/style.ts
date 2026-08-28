@@ -20,7 +20,7 @@ import {
 import { COLORS } from './constants';
 
 import type { Asset } from '@diffusionstudio/assets';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export type ClipStyle = {
 	background: string;

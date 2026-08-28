@@ -29,7 +29,7 @@ import {
 } from "./easing-types";
 
 import type { EasingPreset } from "./easing-types";
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type InterpolationSettingsProps = {
   selection: Entity[];

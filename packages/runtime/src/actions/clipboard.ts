@@ -6,7 +6,7 @@
 // api/clipboard.ts). Module-level, in-memory; navigator.clipboard bridging
 // stays app-side.
 
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { Geometry, Group, Scene, Selected, Position, Computed } from '../traits';
 import { store } from '../world/store';
@@ -16,7 +16,7 @@ import {
 } from '../world/serialize';
 import { removeChild, appendChild } from './hierarchy';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { EntityRecord } from '../world/serialize';
 
 type ClipboardEntry = {

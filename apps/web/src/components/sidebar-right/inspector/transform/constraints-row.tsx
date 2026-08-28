@@ -15,7 +15,7 @@ import { horizontalConstraints, verticalConstraints } from "./constants";
 import { useTrait } from "@diffusionstudio/koota-solid";
 import { Constraint, ConstraintType } from "@diffusionstudio/runtime";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type ConstraintsRowProps = {
   node: Entity;

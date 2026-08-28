@@ -13,7 +13,7 @@ import {
 } from '../traits';
 import { getParentNode } from '../queries/hierarchy';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 type ResizeParams = { width?: number; height?: number };
 

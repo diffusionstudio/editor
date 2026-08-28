@@ -41,7 +41,7 @@ import { MasksSettings } from "./masks";
 import { AudioSettings } from "./audio";
 import { InterpolationSettings } from "./interpolation";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export type SelectionTarget =
   | "scene-tool"

@@ -5,7 +5,7 @@
 import { Shader, ShaderHostHandle } from "../traits";
 import { parseColor } from "../utils/color";
 
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 type UniformValue = number | number[] | string;

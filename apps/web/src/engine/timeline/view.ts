@@ -14,7 +14,7 @@ import { Computed, FrameRate, Timeline, getActiveEntity, store } from '@diffusio
 
 import { DEFAULT_TIMELINE_RESOLUTION, RULER_HEIGHT, TIMELINE_PADDING_LEFT } from './config';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /** The scene the timeline shows: the one holding the playhead. */
 export function getTimelineScene(world: World): Entity | null {

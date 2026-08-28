@@ -9,7 +9,7 @@
 import { Ai, AssetId, Library, Paint, SourceFrameRate, SourceModifiers } from '../traits';
 import { PaintType } from '../constants';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset, AssetLibrary, SequenceAsset } from '@diffusionstudio/assets';
 import type { GenAi } from '../ai';
 

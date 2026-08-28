@@ -13,7 +13,7 @@
 import { AssetId, VideoDecoderHandle } from '../traits';
 import { getEntityChildren } from '../queries/hierarchy';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Moves the live video decoders of `from`'s subtree to `to`'s.

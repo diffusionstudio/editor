@@ -7,13 +7,13 @@
 // transform systems scale it by RenderSurface.resolution to reach device
 // pixels (getViewMatrix). Writes live in actions/camera.ts.
 
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { Camera, Root, RenderSurface, WorldBounds, Geometry, Group, Hidden, ChildOf } from '../traits';
 import { store } from '../world/store';
 import { invert2D, transformPoint } from '../math';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Camera2D } from '../traits';
 import type { Mat2D, Point, Rect } from '../math';
 

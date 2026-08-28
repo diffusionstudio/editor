@@ -13,7 +13,7 @@ import {
 	AudioDecoderHandle, CaptionDecoderHandle, WaveformHandle, AudioBusHandle,
 } from '../traits';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export function disposeDecoders(world: World, entity: Entity): void {
 	if (entity.has(ImageDecoderHandle)) {

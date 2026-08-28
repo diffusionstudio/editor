@@ -5,7 +5,7 @@
 // Sequential overlap resolution (was api/overlap.ts). Lives in actions, not
 // queries: it trims, deletes, and splits clips via the overwrite model.
 
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import {
@@ -17,7 +17,7 @@ import { cloneSubtree } from '../world/serialize';
 import { deleteEntity } from './entities';
 import { trimEntityIn, trimEntityOut } from './timing';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Enforce the "no two direct children overlap in time" invariant of a

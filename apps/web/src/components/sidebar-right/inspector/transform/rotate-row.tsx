@@ -19,7 +19,7 @@ import { Computed, Flip } from '@diffusionstudio/runtime';
 import { useDerived, useEditor } from '@/engine/hooks';
 import { syncKeyframe } from '@/engine/keyframes';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 
 type RotateRowProps = {
   node: Entity;

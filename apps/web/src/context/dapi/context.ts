@@ -7,7 +7,7 @@ import { AssetId, Computed, Fonts, FrameRate, Generating, getActiveEntity, Libra
 import { getProjectsRoot } from "@/projects";
 
 import type { Accessor } from "solid-js";
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 import type { EditorSession } from "./session";
 
 /**

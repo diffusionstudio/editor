@@ -7,12 +7,12 @@ import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appe
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
 import { SVGElements } from 'solid-js/web';
-import { IsExcluded } from 'koota';
+import { IsExcluded } from '@diffusionstudio/koota';
 
 import type { CameraMatrix, PropertyPath, SceneNode } from '@diffusionstudio/runtime';
 import type { AnimatableProperty, AssetRef } from '@diffusionstudio/jsx';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { ProjectDocument, ProjectTick } from './host';
 
 /** Props that address or wire an element rather than describe it. */

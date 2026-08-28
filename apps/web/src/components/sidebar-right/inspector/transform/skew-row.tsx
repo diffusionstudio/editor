@@ -15,7 +15,7 @@ import {
 import { Computed, Skew } from "@diffusionstudio/runtime";
 import { useDerived } from "@/engine/hooks";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 export type SkewRowProps = {
   node: Entity;

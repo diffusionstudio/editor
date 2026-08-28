@@ -15,7 +15,7 @@ import { AudioBusHandle, Computed, Muted, Soloed } from "@diffusionstudio/runtim
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 const MIN_DB = -60;
 const MAX_DB = 12;

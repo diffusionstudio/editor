@@ -12,7 +12,7 @@ import { Name, RenderSurface } from '@diffusionstudio/runtime';
 
 import { getDocumentEditor } from '../editor';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 const INPUT_STYLE = {
 	position: 'absolute',

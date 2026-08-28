@@ -17,7 +17,7 @@ import { PaintType } from '../constants';
 import { getIntrinsicPaint } from '../utils/time';
 import { getParentEntity } from '../queries/hierarchy';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 /**
  * Whether a node plays media of its own: audio, or video through its

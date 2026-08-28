@@ -16,7 +16,7 @@ import { readGradientStops, sameGradientStops, type GradientStop } from "@/compo
 import { assetName } from "@diffusionstudio/assets";
 import { mergeColorWithOpacity } from "@/utils";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 const DRAG_THRESHOLD_PX = 3;
 

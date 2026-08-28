@@ -28,7 +28,7 @@ import {
 	store,
 	togglePlayback,
 } from '@diffusionstudio/runtime';
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
 import { getDocumentEditor } from '../editor';
@@ -40,7 +40,7 @@ import { editTransform } from './interactions';
 
 import type { TransformWrite } from './interactions';
 import type { CameraMatrix } from '@diffusionstudio/runtime';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 type Shortcut = {
 	keys: string[];

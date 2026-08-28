@@ -13,7 +13,7 @@ import { Rect } from "@diffusionstudio/reconciler";
 import { Cache, Computed, Name, getNextName } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /**
  * Where a new mask sits in its parent, px. Offset rather than flush so the

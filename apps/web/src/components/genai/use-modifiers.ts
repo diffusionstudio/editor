@@ -13,7 +13,7 @@ import { authoredElement } from "@diffusionstudio/reconciler";
 import { useEditor } from "@/engine/hooks";
 import { useMediaSelection } from "./selection";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 /** The props an element carries to say what its source is put through. */
 export type ModifierName = "removeBackground" | "upscale" | "addAudio";

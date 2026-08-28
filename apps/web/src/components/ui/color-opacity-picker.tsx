@@ -34,7 +34,7 @@ import { useQuery } from "@diffusionstudio/koota-solid";
 import { Color, DEFAULT_BACKGROUND } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 const COLOR_TYPES = ["Hex", "HSL", "RGB"] as const;
 type ColorType = (typeof COLOR_TYPES)[number];

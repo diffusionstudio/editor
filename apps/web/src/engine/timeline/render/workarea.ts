@@ -10,7 +10,7 @@ import { IN_POINT_PATH, OUT_POINT_PATH } from '../paths';
 import { RULER_HEIGHT } from '../config';
 import { framesToPixels, getResolution, getScrollX, pixelsToFrames } from '../view';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { TimelineSurfaceState } from '../surface';
 
 const HANDLE_WIDTH = 5;

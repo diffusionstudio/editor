@@ -8,7 +8,7 @@
 // regions are pushed callback-less (see HitRegions); the app's input layer
 // attaches its handlers.
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import {
@@ -39,7 +39,7 @@ import {
 	resolveCaptionDecoder, resolveShaderHost, resolveWaveformPeaks,
 } from '../media';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Quad } from '../math/aabb';
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;

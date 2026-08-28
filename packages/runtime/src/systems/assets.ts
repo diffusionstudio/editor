@@ -12,7 +12,7 @@ import { computeAudioSyncOffsetCached } from '../media/audio-sync';
 import { store } from '../world/store';
 import { assert } from '../utils/assert';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { Asset } from '@diffusionstudio/assets';
 
 export function assetSystem(world: World): void {

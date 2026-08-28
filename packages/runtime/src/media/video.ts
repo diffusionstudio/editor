@@ -11,7 +11,7 @@ import { FrameCache } from './frame-cache';
 import { getKeyframeIndex } from './keyframe-index';
 import { SequenceDecoder } from './sequence';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { KeyframeIndex } from './keyframe-index';
 import type { VideoAsset } from '@diffusionstudio/assets';
 

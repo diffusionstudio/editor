@@ -20,7 +20,7 @@ import {
 
 import { getDocumentEditor } from './editor';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 
 function reportCamera(world: World): void {
 	getDocumentEditor(world).reportEdit(world.get(Root)!, 'camera', getCameraMatrix(world));

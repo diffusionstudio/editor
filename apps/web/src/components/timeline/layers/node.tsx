@@ -42,7 +42,7 @@ import { NESTED_INDENT_PX } from './config';
 import { useLayerContext } from './context';
 import { setRowHover } from './hover';
 
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 import type { TimelineNode } from '@diffusionstudio/runtime';
 import type { LayerRowProps } from './layer';
 

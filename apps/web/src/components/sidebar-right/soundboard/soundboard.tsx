@@ -14,11 +14,11 @@ import {
 } from '@/components/ui/select';
 import { useQuery, useTrait, useWorld } from '@diffusionstudio/koota-solid';
 import { AudioBusHandle, Computed, Name, Volume } from '@diffusionstudio/runtime';
-import { Or } from 'koota';
+import { Or } from '@diffusionstudio/koota';
 import { useDerived, useEditor, useTimelineIndex } from '@/engine/hooks';
 import { syncKeyframe } from '@/engine/keyframes';
 
-import type { Entity } from 'koota';
+import type { Entity } from '@diffusionstudio/koota';
 
 /** A layer's name, following a rename. */
 function LayerName(props: { entity: Entity | undefined }) {

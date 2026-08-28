@@ -16,7 +16,7 @@ import { createProjectFS } from '@/projects/fs';
 import { getDocumentEditor } from './editor';
 
 import type { Asset } from '@diffusionstudio/assets';
-import type { World } from 'koota';
+import type { World } from '@diffusionstudio/koota';
 
 /**
  * Creates the library of the project at `dir`, attaches it to the world and

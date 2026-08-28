@@ -28,7 +28,7 @@ import {
 } from "@diffusionstudio/runtime";
 
 import type { AnimatableProperty } from "@diffusionstudio/jsx";
-import type { Entity, World } from "koota";
+import type { Entity, World } from "@diffusionstudio/koota";
 import type { DocumentEditor } from "./editor";
 
 /** The track driving `target`'s `property`, if any. */

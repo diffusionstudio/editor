@@ -7,7 +7,7 @@ import { derivePeaks } from '@diffusionstudio/assets';
 import { Library, WaveformHandle, AssetId } from '../traits';
 import { getAsset, getAssetFile } from '../actions/assets';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 import type { AssetCache, AudioAsset, VideoAsset } from '@diffusionstudio/assets';
 
 /**

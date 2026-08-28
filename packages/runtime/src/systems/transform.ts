@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Not, Or } from 'koota';
+import { Not, Or } from '@diffusionstudio/koota';
 
 import { store } from '../world/store';
 import {
@@ -25,7 +25,7 @@ import {
 	type Mat2D,
 } from '../math';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 // This system writes derived per-frame data (LocalTransform, WorldTransform,
 // WorldBounds, Computed group bounds) straight into trait stores: no

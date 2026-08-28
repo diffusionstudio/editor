@@ -35,7 +35,7 @@ import { ConstraintsRow } from "./constraints-row";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
 
-import type { Entity } from "koota";
+import type { Entity } from "@diffusionstudio/koota";
 
 type TransformSettingsProps = {
   selection: Entity[];

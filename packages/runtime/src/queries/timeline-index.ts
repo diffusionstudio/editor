@@ -9,7 +9,7 @@ import {
 import { isSequence } from './predicates';
 import { sortByItemIndex } from '../utils/sort';
 
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export type TimelineNodeKind = 'geometry' | 'sub-item' | 'keyframe-track';
 

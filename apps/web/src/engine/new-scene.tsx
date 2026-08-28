@@ -16,7 +16,7 @@ import { AUDIO_SIZE, insertAsset } from './insert-asset';
 
 import type { Asset } from '@diffusionstudio/assets';
 import type { Rect } from '@diffusionstudio/runtime';
-import type { Entity, World } from 'koota';
+import type { Entity, World } from '@diffusionstudio/koota';
 
 export interface Size {
 	width: number;
