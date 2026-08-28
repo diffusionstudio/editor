@@ -103,20 +103,46 @@ export const relation = createRelation;
 
 const EMPTY_ENTITY_ARRAY: readonly Entity[] = Object.freeze([]) as readonly Entity[];
 
+/** Bumps the version of a target's source bucket so cached orderings can detect changes. */
+/* @inline */ function bumpRelationSourceVersion(traitData: TraitInstance, targetId: number): void {
+  const versions = (traitData.relationSourceVersions ??= []);
+  versions[targetId] = (versions[targetId] ?? 0) + 1;
+}
+
+/**
+ * Version of the source bucket of `target`. Changes whenever an entity starts or stops
+ * pointing at `target` through `relation`.
+ */
+export function getRelationSourceVersion(
+  world: World,
+  relation: Relation<Trait>,
+  target: Entity
+): number {
+  const traitData = getTraitInstance(
+    world[$internal].traitInstances,
+    relation[$internal].trait
+  );
+  return traitData?.relationSourceVersions?.[getEntityId(target)] ?? 0;
+}
+
 function addToRelationSources(traitData: TraitInstance, entity: Entity, target: Entity): void {
+  const targetId = getEntityId(target);
   const buckets = (traitData.relationSourcesByTarget ??= []);
-  const bucket = (buckets[getEntityId(target)] ??= []);
+  const bucket = (buckets[targetId] ??= []);
   bucket.push(entity);
+  bumpRelationSourceVersion(traitData, targetId);
 }
 
 function removeFromRelationSources(traitData: TraitInstance, entity: Entity, target: Entity): void {
-  const bucket = traitData.relationSourcesByTarget?.[getEntityId(target)];
+  const targetId = getEntityId(target);
+  const bucket = traitData.relationSourcesByTarget?.[targetId];
   if (!bucket) return;
   const idx = bucket.indexOf(entity);
   if (idx === -1) return;
   const last = bucket.length - 1;
   if (idx !== last) bucket[idx] = bucket[last];
   bucket.pop();
+  bumpRelationSourceVersion(traitData, targetId);
 }
 
 /**

@@ -97,6 +97,8 @@ export interface TraitInstance<T extends Trait = Trait, S extends Schema = Extra
   relationTargets?: number[] | number[][];
   /** Reverse index: target entity ID → source entities pointing at it. */
   relationSourcesByTarget?: Entity[][];
+  /** Bumped whenever the source bucket of a target changes, indexed by target entity ID. */
+  relationSourceVersions?: number[];
 }
 
 export type TraitOrRelation = Trait | Relation<Trait>;

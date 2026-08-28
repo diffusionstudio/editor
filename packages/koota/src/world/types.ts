@@ -8,6 +8,7 @@ import type {
   QueryParameter,
   QueryResult,
   QueryUnsubscriber,
+  SortCache,
 } from '../query/types';
 import type { Relation, RelationPair } from '../relation/types';
 import type {
@@ -43,6 +44,7 @@ export type WorldInternal = {
   worldEntity: Entity;
   trackedTraits: Set<Trait>;
   resetSubscriptions: Set<(world: World) => void>;
+  sortCaches: Map<string, SortCache>;
 };
 
 export type World = {

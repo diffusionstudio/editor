@@ -24,6 +24,8 @@ export type {
   QuerySubscriber,
   QueryUnsubscriber,
   QueryHash,
+  SortableKeys,
+  SortDirection,
   StoresFromParameters,
 } from './query/types';
 export { $queryRef } from './query/symbols';

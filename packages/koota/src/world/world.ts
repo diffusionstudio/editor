@@ -92,6 +92,7 @@ export function createWorld(
       worldEntity: null!,
       trackedTraits: new Set(),
       resetSubscriptions: new Set(),
+      sortCaches: new Map(),
     } as WorldInternal,
 
     traits: new Set<Trait>(),
@@ -198,6 +199,7 @@ export function createWorld(
       ctx.dirtyMasks.clear();
       ctx.changedMasks.clear();
       ctx.trackedTraits.clear();
+      ctx.sortCaches.clear();
 
       // Create new world entity.
       ctx.worldEntity = createEntity(world, IsExcluded);
@@ -244,7 +246,11 @@ export function createWorld(
               relation as Relation<Trait>,
               target as Entity
             );
-            return createRelationOnlyQueryResult(entities as Entity[]);
+            return createRelationOnlyQueryResult(entities as Entity[], {
+              world,
+              relationTrait: (relation as Relation<Trait>)[$internal].trait,
+              target: target as Entity,
+            });
           }
         }
 

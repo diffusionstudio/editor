@@ -31,6 +31,52 @@ point, which is all the published `koota` package re-exported.
 There is no build step — the package is consumed as TypeScript source, like every
 other package in this workspace.
 
+## `QueryResult.sortBy` — cached ordering
+
+`sortBy` orders a query result by a trait value:
+
+```ts
+const children = world.query(ChildOf(parent)).sortBy(OrderIndex, 'value', 'asc');
+```
+
+It returns a `QueryResult` with exactly the same shape as the unsorted one, so
+`readEach`, `updateEach`, `useStores`, `select`, `sort` and array access all work as
+usual. The direction defaults to `'asc'`.
+
+The order is cached per world, keyed by the source entity set plus the trait, key and
+direction, and is only recomputed when one of two things happens:
+
+- the matched entities change — tracked through the query's version counter, or, for
+  the single-relation-pair fast path (`world.query(ChildOf(parent))`), through a
+  per-target version on the relation's reverse index;
+- a sort value moves on an entity that is currently in the order — tracked through
+  `onChange` / `onAdd` / `onRemove` subscriptions on the sort trait, filtered by
+  membership so unrelated entities do not invalidate anything.
+
+When neither happened, `sortBy` is a version comparison and hands back the same result
+object as last time. `world.query(...)` still allocates its own snapshot array before
+`sortBy` runs, so the end-to-end call stays O(n) — but the sorting itself drops out.
+At 20k children: 21.1 µs for the bare query, 20.4 µs for query + `sortBy` on a cache
+hit, 239 µs for query + `sort()` with a comparator.
+
+Details worth knowing:
+
+- **The returned result is owned by the cache.** Its backing array is mutated in place
+  when the order is recomputed. Copy it (`.slice()`) if you need a stable snapshot.
+- **The sort is stable.** Entities that compare equal keep their order from the query,
+  which is insertion order for a relation pair.
+- **Entities without the trait sort last**, in both directions, as do `null`,
+  `undefined` and `NaN`. Presence is read from the entity bitmask, not from the store,
+  since stores keep stale values after a trait is removed and entity ids are recycled.
+- **Chaining sorts by more than one key**, least significant first:
+  `.sortBy(Name, 'last').sortBy(Name, 'first')`. Each link gets its own cache entry.
+- **Subscribing to the sort trait marks it tracked**, so `updateEach` runs change
+  detection on it for the lifetime of the world. That is what makes writes through
+  `updateEach` invalidate the order.
+- **Tracking queries** (`Added`/`Removed`/`Changed`) rebuild their result on every run,
+  so there is nothing stable to cache against; `sortBy` sorts them in place instead.
+- `world.reset()` clears every cached order.
+
 ## Fork changes
 
 One behavioural change on top of upstream, previously carried as

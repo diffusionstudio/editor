@@ -12,7 +12,7 @@ import type {
 } from '../trait/types';
 import type { World } from '../world';
 import { $modifier } from './modifier';
-import { $parameters, $queryRef } from './symbols';
+import { $parameters, $queryRef, $sortSource } from './symbols';
 
 export type QueryModifier = (...components: Trait[]) => Modifier;
 export type QueryParameter = Trait | RelationPair | ReturnType<QueryModifier>;
@@ -23,7 +23,62 @@ export type QueryResultOptions = {
   changeDetection?: 'always' | 'auto' | 'never';
 };
 
+/** Direction accepted by `QueryResult.sortBy`. */
+export type SortDirection = 'asc' | 'desc';
+
+/** Trait values that define a natural order. */
+type SortableValue = string | number | bigint | boolean;
+
+/** Keys of a trait whose value can be used as a sort key. */
+export type SortableKeys<T extends Trait> = {
+  // The `[never]` guard keeps tag traits — whose record is `Record<string, never>` — from
+  // reporting every string key as sortable, since `never extends SortableValue` is true.
+  [K in keyof TraitRecord<T>]-?: [TraitRecord<T>[K]] extends [never]
+    ? never
+    : NonNullable<TraitRecord<T>[K]> extends SortableValue
+      ? K
+      : never;
+}[keyof TraitRecord<T>];
+
+/** Identity and invalidation hooks for the entity set feeding a `sortBy` cache. */
+export type SortSource = {
+  /** Stable identity of the entity set being sorted. */
+  key: string;
+  /** Monotonic version of the entity set; changes whenever entities enter or leave it. */
+  version(): number;
+  /**
+   * Builds the cached result wrapper around the (mutable) ordered array. `cacheKey` is the
+   * full identity of this ordering and becomes the source key of any further `sortBy` on
+   * it, so chained sorts do not collide with a direct sort of the same query.
+   */
+  createResult(order: Entity[], cacheKey: string): QueryResult<any>;
+};
+
+/** A cached ordering produced by `QueryResult.sortBy`. */
+export type SortCache = {
+  /** Ordered entities backing `result`. Mutated in place so `result` stays stable. */
+  order: Entity[];
+  /** Result wrapper handed back on a cache hit. */
+  result: QueryResult<any>;
+  /** Source-set version this order was built from. */
+  version: number;
+  /** Set when a sort value changed on one of `members`. */
+  dirty: boolean;
+  /** Entities currently in the order, used to filter trait events. */
+  members: Set<Entity>;
+};
+
+/** Context stashed on relation-only results so `sortBy` can find its cache. */
+export type RelationSortContext = {
+  world: World;
+  relationTrait: Trait;
+  target: Entity;
+  sortKey?: string;
+};
+
 export type QueryResult<T extends QueryParameter[] = QueryParameter[]> = readonly Entity[] & {
+  /** @internal Present on relation-only results to support `sortBy`. */
+  [$sortSource]?: RelationSortContext;
   readEach: (
     callback: (state: InstancesFromParameters<T>, entity: Entity, index: number) => void
   ) => QueryResult<T>;
@@ -36,6 +91,11 @@ export type QueryResult<T extends QueryParameter[] = QueryParameter[]> = readonl
   ) => QueryResult<T>;
   select<U extends QueryParameter[]>(...params: U): QueryResult<U>;
   sort(callback?: (a: Entity, b: Entity) => number): QueryResult<T>;
+  sortBy<S extends Trait>(
+    trait: S,
+    key: SortableKeys<S>,
+    direction?: SortDirection
+  ): QueryResult<T>;
 };
 
 type UnwrapModifierData<T> = T extends Modifier<infer C> ? C : never;

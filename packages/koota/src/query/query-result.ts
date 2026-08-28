@@ -10,25 +10,38 @@ import { shallowEqual } from '../utils/shallow-equal';
 import type { World } from '../world';
 import { isModifier } from './modifier';
 import { setChanged } from './modifiers/changed';
+import { getRelationSourceVersion } from '../relation/relation';
+import { getSortedResult, sortEntitiesInto } from './sort';
+import { $sortSource } from './symbols';
 import type {
   InstancesFromParameters,
   QueryInstance,
   QueryParameter,
   QueryResult,
   QueryResultOptions,
+  RelationSortContext,
+  SortableKeys,
+  SortDirection,
   StoresFromParameters,
 } from './types';
+import { createQueryHash } from './utils/create-query-hash';
 
 export function createQueryResult<T extends QueryParameter[]>(
   world: World,
   entities: Entity[],
   query: QueryInstance,
-  params: QueryParameter[]
+  params: QueryParameter[],
+  sortKey?: string
 ): QueryResult<T> {
   const traits: Trait[] = [];
   const stores: Store<any>[] = [];
 
   getQueryStores(params, traits, stores, world);
+
+  // `select` swaps the projected params, which changes the shape of a cached sorted result.
+  let currentParams = params;
+  const sortBaseKey = sortKey ?? `q${query.hash}`;
+  let sortSourceKey = sortBaseKey;
 
   const results = Object.assign(entities, {
     readEach(callback: (state: InstancesFromParameters<T>, entity: Entity, index: number) => void) {
@@ -180,6 +193,8 @@ export function createQueryResult<T extends QueryParameter[]>(
       traits.length = 0;
       stores.length = 0;
       getQueryStores(params, traits, stores, world);
+      currentParams = params;
+      sortSourceKey = `${sortBaseKey}#${createQueryHash(params)}`;
       return results as unknown as QueryResult<U>;
     },
 
@@ -188,6 +203,34 @@ export function createQueryResult<T extends QueryParameter[]>(
     ): QueryResult<T> {
       Array.prototype.sort.call(entities, callback);
       return results;
+    },
+
+    sortBy<S extends Trait>(
+      trait: S,
+      key: SortableKeys<S>,
+      direction: SortDirection = 'asc'
+    ): QueryResult<T> {
+      // Tracking queries rebuild their result on every run, so there is no stable
+      // entity set to cache an order against. Sort in place instead.
+      if (query.isTracking) {
+        sortEntitiesInto(world, entities, entities, trait, key as string, direction);
+        return results;
+      }
+
+      return getSortedResult(
+        world,
+        {
+          key: sortSourceKey,
+          version: () => query.version,
+          createResult: (order, cacheKey) =>
+            createQueryResult(world, order, query, currentParams, cacheKey),
+        },
+        results,
+        entities,
+        trait,
+        key as string,
+        direction
+      );
     },
   });
 
@@ -287,6 +330,7 @@ export function createEmptyQueryResult(): QueryResult<QueryParameter[]> {
     useStores: () => results,
     select: () => results,
     sort: () => results,
+    sortBy: () => results,
   }) as QueryResult<QueryParameter[]>;
 
   return results;
@@ -320,17 +364,52 @@ const relationOnlyMethods = {
     Array.prototype.sort.call(this, callback);
     return this;
   },
+  sortBy(
+    this: QueryResult<any>,
+    trait: Trait,
+    key: string,
+    direction: SortDirection = 'asc'
+  ): QueryResult<any> {
+    const source = this[$sortSource];
+    if (!source) return this;
+
+    const { world, relationTrait, target } = source;
+    const relation = relationTrait[$internal].relation as Relation<Trait>;
+
+    return getSortedResult(
+      world,
+      {
+        key: source.sortKey ?? `r${relationTrait.id}:${getEntityId(target)}`,
+        version: () => getRelationSourceVersion(world, relation, target),
+        createResult: (order, cacheKey) =>
+          createRelationOnlyQueryResult(order, { ...source, sortKey: cacheKey }),
+      },
+      this,
+      this,
+      trait,
+      key,
+      direction
+    );
+  },
 };
 
 /**
  * Lightweight query result for relation-only queries.
  * Skips store/trait setup since we only need to iterate entities.
+ *
+ * `sortSource` identifies the source set and is only needed to support `sortBy`; without
+ * it `sortBy` returns the result unchanged.
  */
 export function createRelationOnlyQueryResult<T extends QueryParameter[]>(
-  entities: Entity[]
+  entities: Entity[],
+  sortSource?: RelationSortContext
 ): QueryResult<T> {
   if (entities.length === 0) return cachedEmptyRelationResult as unknown as QueryResult<T>;
-  return Object.assign(entities, relationOnlyMethods) as unknown as QueryResult<T>;
+
+  const result = Object.assign(entities, relationOnlyMethods) as unknown as QueryResult<T>;
+  if (sortSource !== undefined) (result as any)[$sortSource] = sortSource;
+
+  return result;
 }
 
 const cachedEmptyRelationResult = Object.assign([], relationOnlyMethods) as QueryResult<any>;
