@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * One-shot Autocut on a selected timeline clip: analyze silences + transcript,
+ * Remove silences on a selected timeline clip: analyze silences + transcript,
  * then replace the clip with a row of trimmed copies in a sequence.
  */
 
@@ -23,25 +23,69 @@ import {
   isGroup,
   isSequence,
   planAutocutTimeline,
+  transcodeForTranscription,
   waveformAsset,
   type AutocutClipSpec,
   type AutocutResult,
   type Transcript,
 } from "@diffusionstudio/runtime";
+import { trpc } from "@/lib/trpc";
+import { uploadBlob } from "@/lib/uploads";
 
 import { getDocumentEditor } from "./editor";
 import { authoredTime } from "./timing";
-import { transcribeAsset } from "@/media/transcribe-asset";
-import { mediaSrcFromAuthored, isAutocutAssetType, mergeAuthoredTiming, trimmedClipTiming } from "./autocut-helpers";
 
-import type { AudioAsset, VideoAsset } from "@diffusionstudio/assets";
+import type { Asset, AudioAsset, VideoAsset } from "@diffusionstudio/assets";
 import type { Entity, World } from "koota";
 
 export { autocutWouldChange, planAutocutTimeline };
 
 const TIMING_PROPS = new Set(["start", "end", "sourceIn", "sourceOut"]);
+const transcriptCache = new Map<string, Transcript["segments"]>();
 
-export { isAutocutAssetType, mediaSrcFromAuthored, mergeAuthoredTiming, trimmedClipTiming } from "./autocut-helpers";
+function isAutocutAssetType(type: string | undefined): boolean {
+  return type === "VIDEO" || type === "SEQUENCE" || type === "AUDIO";
+}
+
+function mediaSrcFromAuthored(tag: string | undefined, src: unknown): string | null {
+  if (tag !== "video" && tag !== "audio") return null;
+  return typeof src === "string" && src.length > 0 ? src : null;
+}
+
+function trimmedClipTiming(spec: AutocutClipSpec) {
+  return {
+    start: spec.timelineStart,
+    end: spec.timelineEnd,
+    sourceIn: spec.sourceIn,
+    sourceOut: spec.sourceOut,
+  };
+}
+
+function mergeAuthoredTiming(props: Record<string, unknown>, spec: AutocutClipSpec): Record<string, unknown> {
+  return { ...props, ...trimmedClipTiming(spec) };
+}
+
+async function transcribeForAutocut(asset: Asset): Promise<Transcript> {
+  let segments = transcriptCache.get(asset.id);
+  if (segments) return { segments };
+
+  try {
+    const audioFile = await transcodeForTranscription(asset);
+    const fileRef = await uploadBlob(audioFile, crypto.randomUUID());
+    if (!fileRef) throw new Error("Failed to upload asset for transcription.");
+
+    ({ results: segments } = await trpc.transcribe.mutate({ audio: fileRef }));
+  } catch {
+    return { segments: [] };
+  }
+
+  if (!segments.length || segments.every((s) => s.words.length === 0)) {
+    return { segments: [] };
+  }
+
+  transcriptCache.set(asset.id, segments);
+  return { segments };
+}
 
 /** Whether a selected timeline node is a single Autocut target (library or path-based). */
 export function isAutocutClip(world: World, entity: Entity): boolean {
@@ -56,7 +100,7 @@ export function isAutocutClip(world: World, entity: Entity): boolean {
   return false;
 }
 
-export function clipSourcePath(world: World, entity: Entity): string | null {
+function clipSourcePath(world: World, entity: Entity): string | null {
   const authored = authoredElement(entity);
   if (!authored) return null;
 
@@ -73,8 +117,7 @@ export function clipSourcePath(world: World, entity: Entity): string | null {
   return null;
 }
 
-/** Resolve media for waveform/transcribe: library AssetId or transient `src`. */
-export async function resolveTimelineMediaAsset(
+async function resolveTimelineMediaAsset(
   world: World,
   entity: Entity,
 ): Promise<VideoAsset | AudioAsset | null> {
@@ -91,11 +134,7 @@ export async function resolveTimelineMediaAsset(
   return asset;
 }
 
-export async function analyzeClipForAutocut(
-  world: World,
-  entity: Entity,
-  projectDir: string | undefined,
-): Promise<AutocutResult> {
+export async function analyzeClipForAutocut(world: World, entity: Entity): Promise<AutocutResult> {
   const asset = await resolveTimelineMediaAsset(world, entity);
   if (!asset) throw new Error("Could not resolve the clip's media source.");
 
@@ -105,7 +144,7 @@ export async function analyzeClipForAutocut(
   const sourceOut = framesToSeconds(source.out, fps);
 
   const { silences } = await waveformAsset(asset, { scale: 0.25 });
-  const transcript: Transcript = await transcribeAsset(asset, projectDir);
+  const transcript = await transcribeForAutocut(asset);
 
   return computeAutocut(
     {
@@ -151,11 +190,7 @@ function renderDirectClip(tag: string, src: unknown, spec: AutocutClipSpec, prop
 }
 
 /** Replace one clip with trimmed copies on one timeline row. Returns the new entities. */
-export function applyAutocutToClip(
-  world: World,
-  entity: Entity,
-  specs: AutocutClipSpec[],
-): Entity[] {
+export function applyAutocutToClip(world: World, entity: Entity, specs: AutocutClipSpec[]): Entity[] {
   const editor = getDocumentEditor(world);
   const authored = authoredElement(entity);
   if (!authored) return [];

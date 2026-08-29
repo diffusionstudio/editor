@@ -39,7 +39,6 @@ import {
   writeManifest,
   writeProject,
 } from "./projects";
-import { transcribeLocal } from "@diffusionstudio/cli/local-transcribe";
 import type { DeepLinkChannel } from "./main-channels";
 import type { LogEntry } from "@diffusionstudio/cli/protocol";
 
@@ -300,11 +299,6 @@ if (app.requestSingleInstanceLock()) {
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_FS_STAT, ({ dir, source }) => statEntry(dir, source));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_FS_REMOVE, ({ dir, path }) => removeEntry(dir, path));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_FS_REAL_PATH, ({ dir, source }) => realPathEntry(dir, source));
-  mainBridge.handle(MAIN_CHANNELS.MEDIA_TRANSCRIBE_LOCAL, async ({ dir, source }) => {
-    const absolute = await realPathEntry(dir, source);
-    if (!absolute) throw new Error(`Could not resolve media path: ${source}`);
-    return transcribeLocal(absolute);
-  });
   mainBridge.handle(MAIN_CHANNELS.FILE_TRANSFER, ({ selector, absolutePath }) =>
     setFileInputFiles(selector, absolutePath),
   );

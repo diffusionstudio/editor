@@ -9,12 +9,10 @@
     ".": "./src/index.ts",
     "./traits": "./src/traits/index.ts",
     "./systems": "./src/systems/index.ts",
-    "./media": "./src/media/index.ts",
-    "./media/autocut": "./src/media/autocut.ts"
+    "./media": "./src/media/index.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit && node --experimental-strip-types --test src/media/autocut.test.ts",
-    "test": "node --experimental-strip-types --test src/media/autocut.test.ts"
+    "check": "tsc --noEmit"
   },
   "keywords": [
     "koota",

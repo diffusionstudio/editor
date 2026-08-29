@@ -489,7 +489,6 @@ const SCRIPTS: Record<string, string> = {
   grab: "dapi media grab",
   filmstrip: "dapi media filmstrip",
   waveform: "dapi media waveform",
-  autocut: "dapi media autocut",
   listen: "dapi media listen",
   models: "dapi models",
   voices: "dapi voices",
@@ -651,7 +650,6 @@ All of them talk to the running app, except \`fonts\` and \`fetch\`.
 | \`grab\` | \`dapi media grab <id\\|path>\` | Decode frames of a video to labelled PNG contact sheets. |
 | \`filmstrip\` | \`dapi media filmstrip <id\\|path>\` | Thumbnail grid across a window of a video. |
 | \`waveform\` | \`dapi media waveform <id\\|path>\` | Loudness over time, with the silences marked. |
-| \`autocut\` | \`dapi media autocut <id\\|path>\` | Keep-ranges after dropping silences, stutters, and fillers. |
 | \`listen\` | \`dapi media listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
 | \`models\` | \`dapi models [type]\` | Generation models and their per-model constraints. |
 | \`voices\` | \`dapi voices\` | Speech voices for \`generate.voice\`. |

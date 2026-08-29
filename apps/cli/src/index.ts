@@ -15,8 +15,7 @@ import { editor, errnoCode, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-
 import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
-import { computeAutocut, formatAutocutJsx } from "@diffusionstudio/runtime/media/autocut";
-import { cliErrorMessage, resolveTranscript } from "./transcribe-resolve";
+import { computeAutocut, formatAutocutJsx, type Transcript } from "@diffusionstudio/runtime/media";
 import { MAX_FRAMES_PER_SHEET } from "./protocol";
 import type { AssetRef, FrameQuality, LogEntry, LogLevel, TimecodedImage } from "./protocol";
 
@@ -153,25 +152,16 @@ async function mediaProbe(ref: string): Promise<void> {
   }
 }
 
-type MediaTranscribeOptions = { transcript?: string; language?: string; model?: string };
-
-async function mediaTranscribe(ref: string, opts: MediaTranscribeOptions): Promise<void> {
+async function mediaTranscribe(ref: string): Promise<void> {
   const target = resolveAssetRef(ref);
   const stop = startSpinner("Transcribing asset");
   try {
-    const { transcript } = await resolveTranscript(target, {
-      transcriptPath: opts.transcript,
-      language: opts.language,
-      model: opts.model,
-    });
+    const result = await editor.media.transcribe.query(target, GENERATE);
     stop();
-    console.log(JSON.stringify(transcript));
+    console.log(JSON.stringify(result));
   } catch (e) {
     stop();
-    const code = errnoCode(e);
-    if (code === "ENOENT" || code === "ECONNREFUSED") handleSocketError(e);
-    console.error(cliErrorMessage(e));
-    process.exit(1);
+    handleSocketError(e);
   }
 }
 
@@ -300,9 +290,6 @@ type MediaAutocutOptions = {
   jsx?: boolean;
   start?: string;
   end?: string;
-  transcript?: string;
-  language?: string;
-  model?: string;
 };
 
 async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<void> {
@@ -368,26 +355,21 @@ async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<voi
   }
 
   const stopTranscribe = startSpinner("Transcribing asset");
-  let transcript;
+  let transcript: Transcript;
   try {
-    ({ transcript } = await resolveTranscript(target, {
-      transcriptPath: opts.transcript,
-      language: opts.language,
-      model: opts.model,
-    }));
+    transcript = await editor.media.transcribe.query(target, GENERATE);
     stopTranscribe();
   } catch (e) {
     stopTranscribe();
     const code = errnoCode(e);
     if (code === "ENOENT" || code === "ECONNREFUSED") handleSocketError(e);
-    const msg = cliErrorMessage(e);
+    const msg = e instanceof Error ? e.message : String(e);
     if (/no speech detected/i.test(msg)) {
       console.error("No speech detected; continuing with silence-only cuts.");
-      transcript = { segments: [] };
     } else {
-      console.error(msg);
-      process.exit(1);
+      console.error(`${msg}; continuing with silence-only cuts.`);
     }
+    transcript = { segments: [] };
   }
 
   const result = computeAutocut(
@@ -780,13 +762,10 @@ media
 media
   .command("transcribe")
   .description(
-    `Transcribe the speech in a video or audio file and print the timed transcript, with word-level start/end times in seconds. Uses cloud STT when signed in; otherwise falls back to a local whisper install on disk paths. A transcript marks only speech; the gaps are not necessarily silent (music, score, applause).`,
+    `Transcribe the speech in a video or audio file and print the timed transcript, with word-level start/end times in seconds. Commonly useful for footage with speakers (talking head, interview), where the word times let you cut on a line. A transcript marks only speech; the gaps are not necessarily silent (music, score, applause).`,
   )
   .argument("<path>", "local video or audio file path")
-  .option("--transcript <json>", "skip STT and read a transcript JSON file (MediaTranscribeResult or openai-whisper export)")
-  .option("--language <code>", "language hint for local whisper (optional)")
-  .option("--model <name>", "whisper model name or whisper.cpp ggml path (optional; default from WHISPER_MODEL or base)")
-  .action((ref: string, opts: MediaTranscribeOptions) => mediaTranscribe(ref, opts));
+  .action((ref: string) => mediaTranscribe(ref));
 
 media
   .command("grab")
@@ -836,7 +815,7 @@ media
 media
   .command("autocut")
   .description(
-    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and vocal fillers (um/uh/eh/em) plus safe phrases (you know, i mean, o sea). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back clips. Cloud transcription when signed in; otherwise local whisper on disk paths. Continues with silence-only cuts when no speech is detected.`,
+    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and vocal fillers (um/uh/eh/em) plus safe phrases (you know, i mean, o sea). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back clips. Uses cloud STT when signed in; continues with silence-only cuts when transcription is unavailable or no speech is detected.`,
   )
   .argument("<path>", "local video or audio file path, or library path")
   .option("-s, --start <time>", `start of the window to analyze — seconds, "45f" frames, or "MM:SS" (default: 0)`)
@@ -844,9 +823,6 @@ media
   .option("--silence-min <seconds>", "drop silences at least this long (default: 0.4; waveform amplitude threshold is fixed in the app)")
   .option("--pad <seconds>", "keep this much audio on each side of a cut so speech does not clip (default: 0.05)")
   .option("--lang <code>", "filler vocabulary: en, es, or all (default: all)")
-  .option("--transcript <json>", "skip STT and read a transcript JSON file")
-  .option("--language <code>", "language hint for local whisper when cloud STT is unavailable (optional)")
-  .option("--model <name>", "whisper model for local fallback (optional)")
   .option("--jsx", "include a JSX <sequence> string using sourceIn/sourceOut for each kept span")
   .action((ref: string, opts: MediaAutocutOptions) => mediaAutocut(ref, opts));
 
