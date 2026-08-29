@@ -9,7 +9,6 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
-import { TRPCClientError } from "@trpc/client";
 import { version } from "../../../package.json";
 import { parseTime, TIME_FPS } from "@diffusionstudio/jsx";
 import { editor, errnoCode, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-client";
@@ -17,9 +16,9 @@ import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
 import { computeAutocut, formatAutocutJsx } from "./autocut";
+import { cliErrorMessage, resolveTranscript } from "./transcribe-resolve";
 import { MAX_FRAMES_PER_SHEET } from "./protocol";
 import type { AssetRef, FrameQuality, LogEntry, LogLevel, TimecodedImage } from "./protocol";
-import type { MediaTranscribeResult } from "./cli-channels";
 
 // Long-running commands (renders, AI generation) override the default 60s.
 const GENERATE = { context: { timeoutMs: GENERATE_TIMEOUT_MS } };
@@ -154,16 +153,25 @@ async function mediaProbe(ref: string): Promise<void> {
   }
 }
 
-async function mediaTranscribe(ref: string): Promise<void> {
+type MediaTranscribeOptions = { transcript?: string; language?: string; model?: string };
+
+async function mediaTranscribe(ref: string, opts: MediaTranscribeOptions): Promise<void> {
   const target = resolveAssetRef(ref);
   const stop = startSpinner("Transcribing asset");
   try {
-    const result = await editor.media.transcribe.query(target, GENERATE);
+    const { transcript } = await resolveTranscript(target, {
+      transcriptPath: opts.transcript,
+      language: opts.language,
+      model: opts.model,
+    });
     stop();
-    console.log(JSON.stringify(result));
+    console.log(JSON.stringify(transcript));
   } catch (e) {
     stop();
-    handleSocketError(e);
+    const code = errnoCode(e);
+    if (code === "ENOENT" || code === "ECONNREFUSED") handleSocketError(e);
+    console.error(cliErrorMessage(e));
+    process.exit(1);
   }
 }
 
@@ -292,13 +300,10 @@ type MediaAutocutOptions = {
   jsx?: boolean;
   start?: string;
   end?: string;
+  transcript?: string;
+  language?: string;
+  model?: string;
 };
-
-function cliErrorMessage(e: unknown): string {
-  if (e instanceof TRPCClientError) return e.message;
-  if (e instanceof Error) return e.message;
-  return String(e);
-}
 
 async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<void> {
   const { start, end } = parsePreviewWindow(opts);
@@ -363,17 +368,25 @@ async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<voi
   }
 
   const stopTranscribe = startSpinner("Transcribing asset");
-  let transcript: MediaTranscribeResult = { segments: [] };
+  let transcript;
   try {
-    transcript = await editor.media.transcribe.query(target, GENERATE);
+    ({ transcript } = await resolveTranscript(target, {
+      transcriptPath: opts.transcript,
+      language: opts.language,
+      model: opts.model,
+    }));
     stopTranscribe();
   } catch (e) {
     stopTranscribe();
+    const code = errnoCode(e);
+    if (code === "ENOENT" || code === "ECONNREFUSED") handleSocketError(e);
     const msg = cliErrorMessage(e);
     if (/no speech detected/i.test(msg)) {
       console.error("No speech detected; continuing with silence-only cuts.");
+      transcript = { segments: [] };
     } else {
-      handleSocketError(e);
+      console.error(msg);
+      process.exit(1);
     }
   }
 
@@ -767,10 +780,13 @@ media
 media
   .command("transcribe")
   .description(
-    `Transcribe the speech in a video or audio file and print the timed transcript, with word-level start/end times in seconds. Commonly useful for footage with speakers (talking head, interview), where the word times let you cut on a line. A transcript marks only speech; the gaps are not necessarily silent (music, score, applause).`,
+    `Transcribe the speech in a video or audio file and print the timed transcript, with word-level start/end times in seconds. Uses cloud STT when signed in; otherwise falls back to a local whisper install on disk paths. A transcript marks only speech; the gaps are not necessarily silent (music, score, applause).`,
   )
   .argument("<path>", "local video or audio file path")
-  .action((ref: string) => mediaTranscribe(ref));
+  .option("--transcript <json>", "skip STT and read a transcript JSON file (MediaTranscribeResult or openai-whisper export)")
+  .option("--language <code>", "language hint for local whisper (optional)")
+  .option("--model <name>", "whisper model name or whisper.cpp ggml path (optional; default from WHISPER_MODEL or base)")
+  .action((ref: string, opts: MediaTranscribeOptions) => mediaTranscribe(ref, opts));
 
 media
   .command("grab")
@@ -820,7 +836,7 @@ media
 media
   .command("autocut")
   .description(
-    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and vocal fillers (um/uh/eh/em) plus safe phrases (you know, i mean, o sea). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back clips. Local analysis uses \`media waveform\` and \`media transcribe\`; transcription may use credits when not cached. Continues with silence-only cuts when no speech is detected.`,
+    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and vocal fillers (um/uh/eh/em) plus safe phrases (you know, i mean, o sea). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back clips. Cloud transcription when signed in; otherwise local whisper on disk paths. Continues with silence-only cuts when no speech is detected.`,
   )
   .argument("<path>", "local video or audio file path, or library path")
   .option("-s, --start <time>", `start of the window to analyze — seconds, "45f" frames, or "MM:SS" (default: 0)`)
@@ -828,6 +844,9 @@ media
   .option("--silence-min <seconds>", "drop silences at least this long (default: 0.4; waveform amplitude threshold is fixed in the app)")
   .option("--pad <seconds>", "keep this much audio on each side of a cut so speech does not clip (default: 0.05)")
   .option("--lang <code>", "filler vocabulary: en, es, or all (default: all)")
+  .option("--transcript <json>", "skip STT and read a transcript JSON file")
+  .option("--language <code>", "language hint for local whisper when cloud STT is unavailable (optional)")
+  .option("--model <name>", "whisper model for local fallback (optional)")
   .option("--jsx", "include a JSX <sequence> string using sourceIn/sourceOut for each kept span")
   .action((ref: string, opts: MediaAutocutOptions) => mediaAutocut(ref, opts));
 

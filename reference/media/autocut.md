@@ -18,9 +18,12 @@ All times are **source/content seconds**, the same clock as [`media transcribe`]
 - `--silence-min <seconds>`: drop silences at least this long (optional; default `0.4`). The waveform's amplitude threshold is fixed in the app.
 - `--pad <seconds>`: keep this much audio on each side of a cut (optional; default `0.05`).
 - `--lang <code>`: filler vocabulary — `en`, `es`, or `all` (optional; default `all`).
-- `--jsx`: include a JSX `<sequence>` of `<video>` clips with `sourceIn` / `sourceOut` for each kept span (optional).
+- `--transcript <json>`: skip STT and read a transcript JSON file (optional).
+- `--language <code>`: language hint for local whisper when cloud STT is unavailable (optional).
+- `--model <name>`: whisper model for local fallback (optional).
+- `--jsx`: include a JSX `<sequence>` of `<video>` or `<audio>` clips with `sourceIn` / `sourceOut` for each kept span (optional).
 
-Transcription runs once per app session (cached like `media transcribe`) and may use credits when not cached.
+Transcription uses cloud STT when signed in (cached like `media transcribe`). **Without sign-in**, local file paths fall back to whisper on disk; use `--transcript` to supply timings yourself.
 
 ## Output
 
@@ -43,9 +46,9 @@ Times are in **source/content seconds**, the same clock as `transcribe` and `wav
 
 ## Errors
 
-Exits non-zero if the path can't be resolved, probe can't read a duration, the asset has no decodable audio, transcription fails for a reason other than no speech, or `--start`/`--end`/`--silence-min`/`--pad`/`--lang` are invalid.
+Exits non-zero if the path can't be resolved, probe can't read a duration, the asset has no decodable audio, transcription fails for a reason other than no speech / missing auth without a local fallback, or flags are invalid.
 
-When the audio has no recognizable speech, the command continues with silence-only cuts and prints a note to stderr.
+When the audio has no recognizable speech, the command continues with silence-only cuts and prints a note to stderr. When cloud STT is unavailable and no local whisper is installed, stderr lists install options — not a sign-in prompt alone.
 
 ## Example
 
