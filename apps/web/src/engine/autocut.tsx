@@ -12,8 +12,10 @@ import {
   FrameRate,
   autocutWouldChange,
   computeAutocut,
+  findGeometryAsset,
   framesToSeconds,
   getEntityChildren,
+  getLibrary,
   getNextName,
   getParentEntity,
   getSourceWindow,
@@ -29,6 +31,7 @@ import {
 import { getDocumentEditor } from "./editor";
 import { authoredTime } from "./timing";
 import { transcribeAsset } from "@/media/transcribe-asset";
+import { mediaSrcFromAuthored, trimmedClipTiming } from "./autocut-helpers";
 
 import type { AudioAsset, VideoAsset } from "@diffusionstudio/assets";
 import type { Entity, World } from "koota";
@@ -37,12 +40,40 @@ export { autocutWouldChange, planAutocutTimeline };
 
 const TIMING_PROPS = new Set(["start", "end", "sourceIn", "sourceOut"]);
 
+export { mediaSrcFromAuthored, singleTimelineMediaTag, trimmedClipTiming } from "./autocut-helpers";
+
+export function clipSourcePath(entity: Entity): string | null {
+  const authored = authoredElement(entity);
+  if (!authored) return null;
+  return mediaSrcFromAuthored(authored.tag, authored.props.src);
+}
+
+/** Resolve media for waveform/transcribe: library AssetId or transient `src`. */
+export async function resolveTimelineMediaAsset(
+  world: World,
+  entity: Entity,
+): Promise<VideoAsset | AudioAsset | null> {
+  const bound = findGeometryAsset(world, entity);
+  if (bound && (bound.type === "VIDEO" || bound.type === "AUDIO")) {
+    return bound;
+  }
+
+  const path = clipSourcePath(entity);
+  if (!path) return null;
+
+  const asset = await getLibrary(world).resolve(path);
+  if (asset.type !== "VIDEO" && asset.type !== "AUDIO") return null;
+  return asset;
+}
+
 export async function analyzeClipForAutocut(
   world: World,
   entity: Entity,
-  asset: VideoAsset | AudioAsset,
   projectDir: string | undefined,
 ): Promise<AutocutResult> {
+  const asset = await resolveTimelineMediaAsset(world, entity);
+  if (!asset) throw new Error("Could not resolve the clip's media source.");
+
   const fps = world.get(FrameRate)?.value ?? 30;
   const source = getSourceWindow(entity);
   const sourceIn = framesToSeconds(source.in, fps);
@@ -71,12 +102,7 @@ function staticProps(props: Record<string, unknown>): Record<string, unknown> {
 }
 
 function renderClip(tag: string, src: unknown, spec: AutocutClipSpec, props: Record<string, unknown>) {
-  const timing = {
-    start: spec.timelineStart,
-    end: spec.timelineEnd,
-    sourceIn: spec.sourceIn,
-    sourceOut: spec.sourceOut,
-  };
+  const timing = trimmedClipTiming(spec);
   if (tag === "audio") {
     return <Audio src={src as string} {...props} {...timing} />;
   }

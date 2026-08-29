@@ -36,6 +36,7 @@ export function useMediaSelection() {
 
   const imageNodes = tagged("image");
   const videoNodes = tagged("video");
+  const audioNodes = tagged("audio");
 
   const bound = createMemo(() => {
     const lib = library();
@@ -52,5 +53,5 @@ export function useMediaSelection() {
 
   const images = createMemo(() => bound().filter((entry) => entry.asset.type === "IMAGE"));
 
-  return { bound, images, imageNodes, videoNodes };
+  return { bound, images, imageNodes, videoNodes, audioNodes };
 }

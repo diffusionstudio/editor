@@ -42,7 +42,7 @@ export async function transcribeAsset(asset: Asset, projectDir: string | undefin
 
     const local = await mainBridge.call(MAIN_CHANNELS.MEDIA_TRANSCRIBE_LOCAL, {
       dir: projectDir,
-      source: asset.path,
+      source: asset.source,
     });
     segments = (local as { segments: TranscriptSegment[] }).segments;
   }

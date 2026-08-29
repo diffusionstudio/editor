@@ -3,10 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createMemo } from "solid-js";
-import { Audio } from "@diffusionstudio/runtime";
-import { authoredElement } from "@diffusionstudio/reconciler";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { useSelection } from "@/engine/hooks";
 import { useMediaSelection } from "./selection";
 import { editorSession } from "@/context/dapi/session";
 import {
@@ -19,34 +16,25 @@ import {
 import { getEditHistory } from "@/engine/history";
 import { toast } from "somoto";
 
-import type { AudioAsset, VideoAsset } from "@diffusionstudio/assets";
 import type { Entity } from "koota";
-
-function isMediaClip(entity: Entity): boolean {
-  const tag = authoredElement(entity)?.tag;
-  return tag === "video" || tag === "audio" || entity.has(Audio);
-}
 
 export function useAutocut() {
   const world = useWorld();
-  const { nodes } = useSelection();
-  const { bound } = useMediaSelection();
+  const { videoNodes, audioNodes } = useMediaSelection();
 
-  const clips = createMemo(() => {
-    const selected = nodes().filter(isMediaClip);
-    if (selected.length !== 1) return [];
-    const entity = selected[0];
-    const match = bound().find((entry) => entry.entity === entity);
-    if (!match) return [];
-    if (match.asset.type !== "VIDEO" && match.asset.type !== "AUDIO") return [];
-    return [{ entity, asset: match.asset as VideoAsset | AudioAsset }];
+  const clip = createMemo((): Entity | null => {
+    const videos = videoNodes();
+    const audios = audioNodes();
+    if (videos.length === 1 && audios.length === 0) return videos[0];
+    if (audios.length === 1 && videos.length === 0) return audios[0];
+    return null;
   });
 
-  const hasClip = () => clips().length === 1;
+  const hasClip = () => clip() !== null;
 
   const run = async () => {
-    const [clip] = clips();
-    if (!clip) {
+    const entity = clip();
+    if (!entity) {
       toast("Select one video or audio clip on the timeline.");
       return;
     }
@@ -55,13 +43,13 @@ export function useAutocut() {
     const history = getEditHistory(world);
 
     try {
-      const result = await analyzeClipForAutocut(world, clip.entity, clip.asset, projectDir);
+      const result = await analyzeClipForAutocut(world, entity, projectDir);
       if (!autocutWouldChange(result.removed)) {
         toast("Nothing to cut", { description: "No silences, fillers, or stutters were found in this clip." });
         return;
       }
 
-      const specs = planAutocutTimeline(result.keep, timelineStartSeconds(world, clip.entity));
+      const specs = planAutocutTimeline(result.keep, timelineStartSeconds(world, entity));
       if (specs.length === 0) {
         toast("Nothing to cut", { description: "Autocut would remove the entire clip." });
         return;
@@ -69,7 +57,7 @@ export function useAutocut() {
 
       history.beginGesture();
       try {
-        applyAutocutToClip(world, clip.entity, specs);
+        applyAutocutToClip(world, entity, specs);
       } finally {
         history.endGesture();
       }
