@@ -15,6 +15,7 @@ import { editor, errnoCode, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-
 import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
+import { computeAutocut, formatAutocutJsx } from "./autocut";
 import { MAX_FRAMES_PER_SHEET } from "./protocol";
 import type { AssetRef, FrameQuality, LogEntry, LogLevel, TimecodedImage } from "./protocol";
 
@@ -280,6 +281,100 @@ async function mediaWaveform(ref: string, opts: MediaPreviewOptions): Promise<vo
     stop();
     handleSocketError(e);
   }
+}
+
+type MediaAutocutOptions = {
+  silenceMin?: string;
+  pad?: string;
+  lang?: string;
+  jsx?: boolean;
+  start?: string;
+  end?: string;
+};
+
+async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<void> {
+  const { start, end } = parsePreviewWindow(opts);
+  const target = resolveAssetRef(ref);
+
+  let silenceMin = 0.4;
+  if (opts.silenceMin !== undefined) {
+    silenceMin = Number(opts.silenceMin);
+    if (!Number.isFinite(silenceMin) || silenceMin < 0) {
+      console.error(`--silence-min must be a non-negative number (got "${opts.silenceMin}")`);
+      process.exit(1);
+    }
+  }
+
+  let pad = 0.05;
+  if (opts.pad !== undefined) {
+    pad = Number(opts.pad);
+    if (!Number.isFinite(pad) || pad < 0) {
+      console.error(`--pad must be a non-negative number (got "${opts.pad}")`);
+      process.exit(1);
+    }
+  }
+
+  const lang = opts.lang ?? "all";
+  if (lang !== "en" && lang !== "es" && lang !== "all") {
+    console.error(`--lang must be one of en, es, all (got "${opts.lang}")`);
+    process.exit(1);
+  }
+
+  const stopProbe = startSpinner("Probing asset");
+  let duration: number;
+  try {
+    const probe = (await editor.media.probe.query(target)) as { duration?: number };
+    stopProbe();
+    if (typeof probe.duration !== "number" || !Number.isFinite(probe.duration) || probe.duration <= 0) {
+      console.error("Could not determine asset duration from probe metadata.");
+      process.exit(1);
+    }
+    duration = probe.duration;
+  } catch (e) {
+    stopProbe();
+    handleSocketError(e);
+  }
+
+  const stopWave = startSpinner("Analyzing silences");
+  let silences: Array<{ start: number; end: number }>;
+  try {
+    const { silences: spans } = await editor.media.waveform.query({
+      ...target,
+      start,
+      end,
+      scale: 0.25,
+    });
+    stopWave();
+    silences = spans;
+  } catch (e) {
+    stopWave();
+    handleSocketError(e);
+  }
+
+  const stopTranscribe = startSpinner("Transcribing asset");
+  let transcript;
+  try {
+    transcript = await editor.media.transcribe.query(target, GENERATE);
+    stopTranscribe();
+  } catch (e) {
+    stopTranscribe();
+    handleSocketError(e);
+  }
+
+  const result = computeAutocut(
+    {
+      duration,
+      silences,
+      transcript,
+      ...(start !== undefined || end !== undefined ? { window: { start: start ?? 0, end: end ?? duration } } : {}),
+    },
+    { silenceMin, pad, lang: lang as "en" | "es" | "all" },
+  );
+
+  const output: Record<string, unknown> = { ...result };
+  if (opts.jsx) output.jsx = formatAutocutJsx(ref, result.keep);
+
+  console.log(JSON.stringify(output));
 }
 
 type CaptureOptions = { time?: string[]; output?: string; separate?: boolean; perSheet?: string };
@@ -699,6 +794,20 @@ media
   .option("-x, --scale <factor>", "scale factor for the waveform; smaller fits more rows and columns, larger fits fewer (default: 1)")
   .option("-o, --output <path>", "write the PNG here instead of a temp file")
   .action((ref: string, opts: MediaPreviewOptions) => mediaWaveform(ref, opts));
+
+media
+  .command("autocut")
+  .description(
+    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and common filler words (English and Spanish). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back \`<video>\` clips. Local analysis uses \`media waveform\` and \`media transcribe\`; transcription may use credits when not cached.`,
+  )
+  .argument("<path>", "local video or audio file path, or library path")
+  .option("-s, --start <time>", `start of the window to analyze — seconds, "45f" frames, or "MM:SS" (default: 0)`)
+  .option("-e, --end <time>", `end of the window to analyze — seconds, "45f" frames, or "MM:SS" (default: asset duration)`)
+  .option("--silence-min <seconds>", "drop silences at least this long (default: 0.4; waveform amplitude threshold is fixed in the app)")
+  .option("--pad <seconds>", "keep this much audio on each side of a cut so speech does not clip (default: 0.05)")
+  .option("--lang <code>", "filler vocabulary: en, es, or all (default: all)")
+  .option("--jsx", "include a JSX <sequence> string using sourceIn/sourceOut for each kept span")
+  .action((ref: string, opts: MediaAutocutOptions) => mediaAutocut(ref, opts));
 
 media
   .command("listen")
