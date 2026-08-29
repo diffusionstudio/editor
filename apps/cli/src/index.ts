@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
+import { TRPCClientError } from "@trpc/client";
 import { version } from "../../../package.json";
 import { parseTime, TIME_FPS } from "@diffusionstudio/jsx";
 import { editor, errnoCode, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-client";
@@ -18,6 +19,7 @@ import { fetchVideo } from "./ytdlp";
 import { computeAutocut, formatAutocutJsx } from "./autocut";
 import { MAX_FRAMES_PER_SHEET } from "./protocol";
 import type { AssetRef, FrameQuality, LogEntry, LogLevel, TimecodedImage } from "./protocol";
+import type { MediaTranscribeResult } from "./cli-channels";
 
 // Long-running commands (renders, AI generation) override the default 60s.
 const GENERATE = { context: { timeoutMs: GENERATE_TIMEOUT_MS } };
@@ -292,6 +294,12 @@ type MediaAutocutOptions = {
   end?: string;
 };
 
+function cliErrorMessage(e: unknown): string {
+  if (e instanceof TRPCClientError) return e.message;
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
+
 async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<void> {
   const { start, end } = parsePreviewWindow(opts);
   const target = resolveAssetRef(ref);
@@ -320,20 +328,23 @@ async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<voi
     process.exit(1);
   }
 
+  type ProbeResult = { duration?: number; width?: number; height?: number; type?: string };
+
   const stopProbe = startSpinner("Probing asset");
-  let duration: number;
+  let probe: ProbeResult;
   try {
-    const probe = (await editor.media.probe.query(target)) as { duration?: number };
+    probe = (await editor.media.probe.query(target)) as ProbeResult;
     stopProbe();
     if (typeof probe.duration !== "number" || !Number.isFinite(probe.duration) || probe.duration <= 0) {
       console.error("Could not determine asset duration from probe metadata.");
       process.exit(1);
     }
-    duration = probe.duration;
   } catch (e) {
     stopProbe();
     handleSocketError(e);
   }
+
+  const duration = probe.duration!;
 
   const stopWave = startSpinner("Analyzing silences");
   let silences: Array<{ start: number; end: number }>;
@@ -352,13 +363,18 @@ async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<voi
   }
 
   const stopTranscribe = startSpinner("Transcribing asset");
-  let transcript;
+  let transcript: MediaTranscribeResult = { segments: [] };
   try {
     transcript = await editor.media.transcribe.query(target, GENERATE);
     stopTranscribe();
   } catch (e) {
     stopTranscribe();
-    handleSocketError(e);
+    const msg = cliErrorMessage(e);
+    if (/no speech detected/i.test(msg)) {
+      console.error("No speech detected; continuing with silence-only cuts.");
+    } else {
+      handleSocketError(e);
+    }
   }
 
   const result = computeAutocut(
@@ -372,7 +388,13 @@ async function mediaAutocut(ref: string, opts: MediaAutocutOptions): Promise<voi
   );
 
   const output: Record<string, unknown> = { ...result };
-  if (opts.jsx) output.jsx = formatAutocutJsx(ref, result.keep);
+  if (opts.jsx) {
+    output.jsx = formatAutocutJsx(ref, result.keep, {
+      width: probe.width,
+      height: probe.height,
+      kind: probe.type === "AUDIO" ? "audio" : "video",
+    });
+  }
 
   console.log(JSON.stringify(output));
 }
@@ -798,7 +820,7 @@ media
 media
   .command("autocut")
   .description(
-    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and common filler words (English and Spanish). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back \`<video>\` clips. Local analysis uses \`media waveform\` and \`media transcribe\`; transcription may use credits when not cached.`,
+    `Propose keep-ranges for a jump-cut edit by composing waveform silence detection with a timed transcript: drops silent stretches, immediate word repeats (stutters), and vocal fillers (um/uh/eh/em) plus safe phrases (you know, i mean, o sea). Does not re-encode — returns second ranges to trim with \`sourceIn\`/\`sourceOut\`, and optionally a JSX \`<sequence>\` of back-to-back clips. Local analysis uses \`media waveform\` and \`media transcribe\`; transcription may use credits when not cached. Continues with silence-only cuts when no speech is detected.`,
   )
   .argument("<path>", "local video or audio file path, or library path")
   .option("-s, --start <time>", `start of the window to analyze — seconds, "45f" frames, or "MM:SS" (default: 0)`)

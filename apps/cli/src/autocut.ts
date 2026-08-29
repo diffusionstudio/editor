@@ -37,41 +37,11 @@ export type AutocutResult = {
 
 const STUTTER_MAX_GAP = 0.35;
 
-const FILLERS_EN = new Set([
-  "eh",
-  "um",
-  "uh",
-  "er",
-  "ah",
-  "hmm",
-  "hm",
-  "like",
-  "well",
-  "so",
-  "okay",
-  "ok",
-  "right",
-  "basically",
-  "literally",
-  "actually",
-]);
+// Vocalized pauses only — not conjunctions/adverbs that carry meaning ("so", "like", "well", …).
+const FILLERS_EN = new Set(["eh", "um", "uh", "er", "ah", "hmm", "hm", "uhm", "erm"]);
+const FILLERS_ES = new Set(["eh", "em", "um", "uh", "er", "ah", "hmm", "hm"]);
 
-const FILLERS_ES = new Set([
-  "eh",
-  "em",
-  "um",
-  "este",
-  "pues",
-  "bueno",
-  "vale",
-  "okey",
-  "ok",
-  "entonces",
-  "nada",
-  "tipo",
-]);
-
-const FILLER_PHRASES_EN: string[][] = [["you", "know"], ["i", "mean"], ["sort", "of"], ["kind", "of"]];
+const FILLER_PHRASES_EN: string[][] = [["you", "know"], ["i", "mean"]];
 const FILLER_PHRASES_ES: string[][] = [["o", "sea"], ["es", "decir"]];
 
 function normalizeToken(text: string): string {
@@ -213,7 +183,19 @@ function invertRangesWithPad(drop: TimeRange[], duration: number, pad: number): 
   );
 }
 
-export function formatAutocutJsx(src: string, keep: TimeRange[]): string {
+export type AutocutJsxOptions = {
+  width?: number;
+  height?: number;
+  kind?: "video" | "audio";
+};
+
+export function formatAutocutJsx(src: string, keep: TimeRange[], opts: AutocutJsxOptions = {}): string {
+  const tag = opts.kind === "audio" ? "audio" : "video";
+  const dims =
+    tag === "video" && typeof opts.width === "number" && typeof opts.height === "number"
+      ? ` width={${opts.width}} height={${opts.height}}`
+      : "";
+
   const clips = keep
     .map((range, i) => {
       const timelineStart = keep.slice(0, i).reduce((acc, r) => acc + (r.end - r.start), 0);
@@ -223,7 +205,7 @@ export function formatAutocutJsx(src: string, keep: TimeRange[]): string {
       const srcOut = formatJsxTime(range.end);
       const start = formatJsxTime(timelineStart);
       const end = formatJsxTime(timelineEnd);
-      return `  <video src="${escapeJsxAttr(src)}" width={1920} height={1080} start={${start}} end={${end}} sourceIn={${srcIn}} sourceOut={${srcOut}} />`;
+      return `  <${tag} src="${escapeJsxAttr(src)}"${dims} start={${start}} end={${end}} sourceIn={${srcIn}} sourceOut={${srcOut}} />`;
     })
     .join("\n");
 

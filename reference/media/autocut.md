@@ -6,7 +6,9 @@ Dropped spans:
 
 - **Silences** — from the waveform analyzer (same amplitude threshold as `media waveform`), kept only when at least `--silence-min` long.
 - **Stutters** — immediate repeated words (`"I I think"`).
-- **Fillers** — a small English/Spanish list (`um`, `like`, `you know`, `o sea`, `vale`, …) matched on transcript words and short phrases.
+- **Fillers** — vocal pauses (`um`, `uh`, `eh`, `em`, …) and a few safe phrases (`you know`, `i mean`, `o sea`, `es decir`). Real conjunctions and adverbs (`so`, `like`, `well`, `vale`, …) are not dropped.
+
+All times are **source/content seconds**, the same clock as [`media transcribe`](./transcribe.md) and [`media waveform`](./waveform.md). Waveform `silences[]` are absolute source seconds (when `--start`/`--end` narrow the window, silence timestamps are still offset into source time, not relative to the window).
 
 ## Input
 
@@ -33,7 +35,7 @@ One JSON object:
     fillers: Array<{ start: number, end: number }>,
     stutters: Array<{ start: number, end: number }>,
   },
-  jsx?: string,  // when --jsx; placeholder width/height 1920×1080
+  jsx?: string,  // when --jsx; video uses probe width/height when present, audio uses <audio>
 }
 ```
 
@@ -41,7 +43,9 @@ Times are in **source/content seconds**, the same clock as `transcribe` and `wav
 
 ## Errors
 
-Exits non-zero if the path can't be resolved, probe can't read a duration, the asset has no decodable audio, transcription fails (`No speech detected`), or `--start`/`--end`/`--silence-min`/`--pad`/`--lang` are invalid.
+Exits non-zero if the path can't be resolved, probe can't read a duration, the asset has no decodable audio, transcription fails for a reason other than no speech, or `--start`/`--end`/`--silence-min`/`--pad`/`--lang` are invalid.
+
+When the audio has no recognizable speech, the command continues with silence-only cuts and prints a note to stderr.
 
 ## Example
 
