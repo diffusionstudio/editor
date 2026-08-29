@@ -62,6 +62,7 @@ export const MAIN_CHANNELS = {
   PROJECTS_FS_STAT: "projects:fs-stat",
   PROJECTS_FS_REMOVE: "projects:fs-remove",
   PROJECTS_FS_REAL_PATH: "projects:fs-real-path",
+  MEDIA_TRANSCRIBE_LOCAL: "media:transcribe-local",
 
   // Main→Renderer events
   AUTH_CALLBACK: "auth:callback",
@@ -183,6 +184,10 @@ export type MainRequestMap = {
   [MAIN_CHANNELS.PROJECTS_FS_STAT]: { request: { dir: string; source: string }; response: FsStat | null };
   [MAIN_CHANNELS.PROJECTS_FS_REMOVE]: { request: { dir: string; path: string }; response: void };
   [MAIN_CHANNELS.PROJECTS_FS_REAL_PATH]: { request: { dir: string; source: string }; response: string | null };
+  [MAIN_CHANNELS.MEDIA_TRANSCRIBE_LOCAL]: {
+    request: { dir: string; source: string };
+    response: { segments: Array<{ text: string; words: Array<{ text: string; start: number; end: number }> }> };
+  };
 };
 
 export type FsEntry = {

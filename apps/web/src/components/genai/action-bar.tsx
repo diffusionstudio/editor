@@ -20,6 +20,7 @@ import { useGenerateVideo } from "./use-generate-video";
 import { useGenerateVoice } from "./use-generate-voice";
 import { useGenerateAudio } from "./use-generate-audio";
 import { useAutoCaptions } from "./use-auto-captions";
+import { useAutocut } from "./use-autocut";
 import { useMediaSelection } from "./selection";
 import { useModifiers } from "./use-modifiers";
 import { createDefaultConfig } from "./prompt-input";
@@ -40,14 +41,15 @@ export function ActionBar(props: ActionBarProps) {
   const { generate: generateVoice } = useGenerateVoice();
   const { generate: generateAudio } = useGenerateAudio();
   const { generate: autoCaptions, hasScene } = useAutoCaptions();
+  const { hasClip, run: runAutocut } = useAutocut();
   const { isGenerated, totalCredits, firstConfig } = useGenerationRecords();
 
   const isImage = createMemo(() => imageNodes().length > 0);
   const isVideo = createMemo(() => videoNodes().length > 0);
 
   const visible = createMemo(() => {
-    return isImage() || isVideo() || hasScene();
-  })
+    return isImage() || isVideo() || hasScene() || hasClip();
+  });
 
   const handleRerun = () => {
     const config = firstConfig();
@@ -101,6 +103,12 @@ export function ActionBar(props: ActionBarProps) {
             <Button variant="ghost" class="gap-0 pl-0.5 text-muted-foreground" onClick={autoCaptions}>
               <Icon name="captions" />
               Auto-Captions
+            </Button>
+          </Show>
+          <Show when={hasClip()}>
+            <Button variant="ghost" class="gap-0 pl-0.5 text-muted-foreground" onClick={() => void runAutocut()}>
+              <Icon name="split" />
+              Autocut
             </Button>
           </Show>
           <Show when={isImage()}>

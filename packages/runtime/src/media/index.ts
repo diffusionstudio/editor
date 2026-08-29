@@ -17,4 +17,5 @@ export * from './sequence';
 export * from './shader';
 export * from './time-stretcher';
 export * from './transcode';
+export * from './autocut';
 export * from './video';

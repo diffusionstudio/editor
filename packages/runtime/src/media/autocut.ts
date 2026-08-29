@@ -2,24 +2,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { MediaTranscribeResult, TranscriptWord } from "./cli-channels";
-
 export type TimeRange = { start: number; end: number };
 
+export type TranscriptWord = { text: string; start: number; end: number };
+export type TranscriptSegment = { text: string; words: TranscriptWord[] };
+export type Transcript = { segments: TranscriptSegment[] };
+
 export type AutocutOptions = {
-  /** Drop silences at least this long (seconds). Waveform already filters by amplitude. */
   silenceMin?: number;
-  /** Pad kept speech on each side (seconds). */
   pad?: number;
-  /** Filler vocabulary: English, Spanish, or both. */
   lang?: "en" | "es" | "all";
 };
 
 export type AutocutInput = {
   duration: number;
   silences: TimeRange[];
-  transcript: MediaTranscribeResult;
-  /** When set, everything outside [start, end) is dropped. */
+  transcript: Transcript;
   window?: { start: number; end: number };
 };
 
@@ -35,9 +33,15 @@ export type AutocutResult = {
   removed: AutocutRemoved;
 };
 
+export type AutocutClipSpec = {
+  timelineStart: number;
+  timelineEnd: number;
+  sourceIn: number;
+  sourceOut: number;
+};
+
 const STUTTER_MAX_GAP = 0.35;
 
-// Vocalized pauses only — not conjunctions/adverbs that carry meaning ("so", "like", "well", …).
 const FILLERS_EN = new Set(["eh", "um", "uh", "er", "ah", "hmm", "hm", "uhm", "erm"]);
 const FILLERS_ES = new Set(["eh", "em", "um", "uh", "er", "ah", "hmm", "hm"]);
 
@@ -64,7 +68,7 @@ function mergeRanges(ranges: TimeRange[]): TimeRange[] {
   return merged;
 }
 
-function flattenWords(transcript: MediaTranscribeResult): TranscriptWord[] {
+function flattenWords(transcript: Transcript): TranscriptWord[] {
   return transcript.segments.flatMap((s) => s.words);
 }
 
@@ -147,6 +151,25 @@ export function computeAutocut(input: AutocutInput, opts: AutocutOptions = {}): 
   const keep = invertRangesWithPad(drop, duration, pad);
 
   return { duration, keep, removed };
+}
+
+export function autocutWouldChange(removed: AutocutRemoved): boolean {
+  return removed.silences.length + removed.fillers.length + removed.stutters.length > 0;
+}
+
+export function planAutocutTimeline(keep: TimeRange[], timelineStartSec: number): AutocutClipSpec[] {
+  let cursor = timelineStartSec;
+  return keep.map((range) => {
+    const dur = range.end - range.start;
+    const spec = {
+      timelineStart: cursor,
+      timelineEnd: cursor + dur,
+      sourceIn: range.start,
+      sourceOut: range.end,
+    };
+    cursor += dur;
+    return spec;
+  });
 }
 
 function invertRangesWithPad(drop: TimeRange[], duration: number, pad: number): TimeRange[] {

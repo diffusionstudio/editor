@@ -15,7 +15,7 @@ import { editor, errnoCode, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-
 import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
-import { computeAutocut, formatAutocutJsx } from "./autocut";
+import { computeAutocut, formatAutocutJsx } from "@diffusionstudio/runtime/media/autocut";
 import { cliErrorMessage, resolveTranscript } from "./transcribe-resolve";
 import { MAX_FRAMES_PER_SHEET } from "./protocol";
 import type { AssetRef, FrameQuality, LogEntry, LogLevel, TimecodedImage } from "./protocol";
