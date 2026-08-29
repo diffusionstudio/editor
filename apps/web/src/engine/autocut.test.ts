@@ -2,22 +2,41 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { computeAutocut, planAutocutTimeline } from "@diffusionstudio/runtime/media/autocut";
 import {
+  isAutocutAssetType,
   mediaSrcFromAuthored,
-  singleTimelineMediaTag,
+  mergeAuthoredTiming,
   trimmedClipTiming,
 } from "./autocut-helpers.ts";
 
-test("singleTimelineMediaTag shows Autocut for one path-based video selection", () => {
-  assert.equal(singleTimelineMediaTag(["video"]), "video");
-  assert.equal(singleTimelineMediaTag(["video", "video"]), null);
-  assert.equal(singleTimelineMediaTag(["video", "audio"]), null);
-  assert.equal(singleTimelineMediaTag([]), null);
+test("isAutocutAssetType matches timeline video/audio/sequence clips", () => {
+  assert.equal(isAutocutAssetType("VIDEO"), true);
+  assert.equal(isAutocutAssetType("SEQUENCE"), true);
+  assert.equal(isAutocutAssetType("AUDIO"), true);
+  assert.equal(isAutocutAssetType("IMAGE"), false);
+  assert.equal(isAutocutAssetType(undefined), false);
 });
 
 test("mediaSrcFromAuthored reads absolute src without a library AssetId", () => {
   assert.equal(mediaSrcFromAuthored("video", "/absolute/talking-head.mp4"), "/absolute/talking-head.mp4");
   assert.equal(mediaSrcFromAuthored("video", ""), null);
-  assert.equal(mediaSrcFromAuthored("image", "/absolute/talking-head.mp4"), null);
+  assert.equal(mediaSrcFromAuthored("rect", "/absolute/talking-head.mp4"), null);
+});
+
+test("mergeAuthoredTiming writes trim props on a Rect shell", () => {
+  const merged = mergeAuthoredTiming(
+    { name: "Talking head", width: 1280, height: 720, keepAspectRatio: true },
+    { timelineStart: 2, timelineEnd: 5, sourceIn: 0.5, sourceOut: 3.5 },
+  );
+  assert.deepEqual(merged, {
+    name: "Talking head",
+    width: 1280,
+    height: 720,
+    keepAspectRatio: true,
+    start: 2,
+    end: 5,
+    sourceIn: 0.5,
+    sourceOut: 3.5,
+  });
 });
 
 test("apply path writes back-to-back copies with sourceIn and sourceOut", () => {

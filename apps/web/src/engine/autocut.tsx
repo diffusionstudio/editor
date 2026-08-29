@@ -7,7 +7,8 @@
  * then replace the clip with a row of trimmed copies in a sequence.
  */
 
-import { Audio, Sequence, Video, authoredElement } from "@diffusionstudio/reconciler";
+import { Audio, Sequence, Video, authoredElement, authoredTree, renderAuthored } from "@diffusionstudio/reconciler";
+import type { AuthoredTree } from "@diffusionstudio/reconciler";
 import {
   FrameRate,
   autocutWouldChange,
@@ -31,7 +32,7 @@ import {
 import { getDocumentEditor } from "./editor";
 import { authoredTime } from "./timing";
 import { transcribeAsset } from "@/media/transcribe-asset";
-import { mediaSrcFromAuthored, trimmedClipTiming } from "./autocut-helpers";
+import { mediaSrcFromAuthored, isAutocutAssetType, mergeAuthoredTiming, trimmedClipTiming } from "./autocut-helpers";
 
 import type { AudioAsset, VideoAsset } from "@diffusionstudio/assets";
 import type { Entity, World } from "koota";
@@ -40,12 +41,36 @@ export { autocutWouldChange, planAutocutTimeline };
 
 const TIMING_PROPS = new Set(["start", "end", "sourceIn", "sourceOut"]);
 
-export { mediaSrcFromAuthored, singleTimelineMediaTag, trimmedClipTiming } from "./autocut-helpers";
+export { isAutocutAssetType, mediaSrcFromAuthored, mergeAuthoredTiming, trimmedClipTiming } from "./autocut-helpers";
 
-export function clipSourcePath(entity: Entity): string | null {
+/** Whether a selected timeline node is a single Autocut target (library or path-based). */
+export function isAutocutClip(world: World, entity: Entity): boolean {
+  const asset = findGeometryAsset(world, entity);
+  if (asset && isAutocutAssetType(asset.type)) return true;
+
+  const authored = authoredElement(entity);
+  if (!authored) return false;
+  if (authored.tag === "video" || authored.tag === "audio") {
+    return mediaSrcFromAuthored(authored.tag, authored.props.src) !== null;
+  }
+  return false;
+}
+
+export function clipSourcePath(world: World, entity: Entity): string | null {
   const authored = authoredElement(entity);
   if (!authored) return null;
-  return mediaSrcFromAuthored(authored.tag, authored.props.src);
+
+  const direct = mediaSrcFromAuthored(authored.tag, authored.props.src);
+  if (direct) return direct;
+
+  const tree = authoredTree(world, entity);
+  if (!tree) return null;
+  for (const child of tree.children) {
+    if (child.tag !== "videoPaint") continue;
+    const src = child.props.src;
+    if (typeof src === "string" && src.length > 0) return src;
+  }
+  return null;
 }
 
 /** Resolve media for waveform/transcribe: library AssetId or transient `src`. */
@@ -54,11 +79,11 @@ export async function resolveTimelineMediaAsset(
   entity: Entity,
 ): Promise<VideoAsset | AudioAsset | null> {
   const bound = findGeometryAsset(world, entity);
-  if (bound && (bound.type === "VIDEO" || bound.type === "AUDIO")) {
-    return bound;
+  if (bound && isAutocutAssetType(bound.type)) {
+    return bound as VideoAsset | AudioAsset;
   }
 
-  const path = clipSourcePath(entity);
+  const path = clipSourcePath(world, entity);
   if (!path) return null;
 
   const asset = await getLibrary(world).resolve(path);
@@ -101,7 +126,23 @@ function staticProps(props: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-function renderClip(tag: string, src: unknown, spec: AutocutClipSpec, props: Record<string, unknown>) {
+function spellClip(world: World, entity: Entity): AuthoredTree | undefined {
+  const tree = authoredTree(world, entity);
+  if (!tree) return undefined;
+  const props = { ...tree.props };
+  delete props.selected;
+  delete props.active;
+  return { ...tree, props };
+}
+
+function renderAuthoredCopy(tree: AuthoredTree, spec: AutocutClipSpec) {
+  return renderAuthored({
+    ...tree,
+    props: mergeAuthoredTiming(tree.props as Record<string, unknown>, spec),
+  });
+}
+
+function renderDirectClip(tag: string, src: unknown, spec: AutocutClipSpec, props: Record<string, unknown>) {
   const timing = trimmedClipTiming(spec);
   if (tag === "audio") {
     return <Audio src={src as string} {...props} {...timing} />;
@@ -123,22 +164,28 @@ export function applyAutocutToClip(
   if (!parent) return [];
 
   const tag = authored.tag;
-  if (tag !== "video" && tag !== "audio") return [];
+  const isDirect = tag === "video" || tag === "audio";
+  const geometryTree = isDirect ? undefined : spellClip(world, entity);
+  if (!isDirect && !geometryTree) return [];
 
-  const src = authored.props.src;
-  const props = staticProps(authored.props as Record<string, unknown>);
+  const src = isDirect ? authored.props.src : undefined;
+  const props = isDirect ? staticProps(authored.props as Record<string, unknown>) : undefined;
 
   const siblings = getEntityChildren(world, parent);
   const anchor = siblings[siblings.indexOf(entity) + 1];
 
   editor.remove(entity);
 
+  const insertCopy = (spec: AutocutClipSpec) =>
+    isDirect
+      ? () => renderDirectClip(tag, src, spec, props!)
+      : () => renderAuthoredCopy(geometryTree!, spec);
+
   const rowParent = isGroup(parent) || isSequence(parent) ? parent : null;
   if (rowParent) {
     const created: Entity[] = [];
     for (const spec of specs) {
-      const inserted = editor.insertElement(rowParent, () => renderClip(tag, src, spec, props), anchor);
-      created.push(...inserted);
+      created.push(...editor.insertElement(rowParent, insertCopy(spec), anchor));
     }
     if (created.length) editor.select(created);
     return created;
@@ -153,7 +200,7 @@ export function applyAutocutToClip(
 
   const created: Entity[] = [];
   for (const spec of specs) {
-    created.push(...editor.insertElement(sequence, () => renderClip(tag, src, spec, props)));
+    created.push(...editor.insertElement(sequence, insertCopy(spec)));
   }
   if (created.length) editor.select(created);
   return created;

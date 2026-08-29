@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && vite build --mode desktop --base=./ --outDir=../desktop/web",
     "preview": "vite preview",
-    "check": "tsc -p tsconfig.app.json --noEmit && node --experimental-strip-types --test src/engine/autocut.test.ts",
+    "check": "tsc -p tsconfig.app.json --noEmit && npx --yes tsx --test src/engine/autocut.test.ts",
     "lint": "eslint ."
   },
   "dependencies": {

@@ -4,30 +4,26 @@
 
 import { createMemo } from "solid-js";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { useMediaSelection } from "./selection";
+import { useSelection } from "@/engine/hooks";
 import { editorSession } from "@/context/dapi/session";
 import {
   analyzeClipForAutocut,
   applyAutocutToClip,
   autocutWouldChange,
+  isAutocutClip,
   planAutocutTimeline,
   timelineStartSeconds,
 } from "@/engine/autocut";
 import { getEditHistory } from "@/engine/history";
 import { toast } from "somoto";
 
-import type { Entity } from "koota";
-
 export function useAutocut() {
   const world = useWorld();
-  const { videoNodes, audioNodes } = useMediaSelection();
+  const { nodes } = useSelection();
 
-  const clip = createMemo((): Entity | null => {
-    const videos = videoNodes();
-    const audios = audioNodes();
-    if (videos.length === 1 && audios.length === 0) return videos[0];
-    if (audios.length === 1 && videos.length === 0) return audios[0];
-    return null;
+  const clip = createMemo(() => {
+    const eligible = nodes().filter((entity) => isAutocutClip(world, entity));
+    return eligible.length === 1 ? eligible[0] : null;
   });
 
   const hasClip = () => clip() !== null;

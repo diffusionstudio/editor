@@ -4,11 +4,9 @@
 
 import type { AutocutClipSpec } from "@diffusionstudio/runtime/media/autocut";
 
-/** Exactly one selected timeline clip tag — library binding not required. */
-export function singleTimelineMediaTag(tags: ReadonlyArray<string | undefined>): "video" | "audio" | null {
-  const media = tags.filter((tag): tag is "video" | "audio" => tag === "video" || tag === "audio");
-  if (media.length !== 1) return null;
-  return media[0];
+/** Asset kinds the timeline treats as Autocut media clips. */
+export function isAutocutAssetType(type: string | undefined): boolean {
+  return type === "VIDEO" || type === "SEQUENCE" || type === "AUDIO";
 }
 
 /** `src` on a timeline `<video>` / `<audio>`, including path-based clips. */
@@ -25,4 +23,12 @@ export function trimmedClipTiming(spec: AutocutClipSpec) {
     sourceIn: spec.sourceIn,
     sourceOut: spec.sourceOut,
   };
+}
+
+/** Merges timeline/source trim onto an authored element's static props. */
+export function mergeAuthoredTiming(
+  props: Record<string, unknown>,
+  spec: AutocutClipSpec,
+): Record<string, unknown> {
+  return { ...props, ...trimmedClipTiming(spec) };
 }
