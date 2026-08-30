@@ -35,20 +35,30 @@ function requestConnection(handshake: CliHandshake, timeoutMs: number): Promise<
     sock.setTimeout(timeoutMs, () =>
       settle(() => reject(new Error("Timed out waiting for the app to accept the connection"))),
     );
-    sock.on("connect", () => sock.end(JSON.stringify(handshake)));
+    // Windows named pipes tear down the whole duplex connection when the
+    // client half-closes with sock.end() — the server never gets to write
+    // its reply (EPIPE). Write only, keep reading, and close ourselves once
+    // we've read the newline-delimited reply.
+    sock.on("connect", () => sock.write(JSON.stringify(handshake) + "\n"));
     sock.on("data", (chunk) => {
       buf += chunk;
-    });
-    sock.on("end", () => {
+      const newlineAt = buf.indexOf("\n");
+      if (newlineAt === -1) return;
+      const line = buf.slice(0, newlineAt);
       let reply: CliHandshakeReply;
       try {
-        reply = JSON.parse(buf) as CliHandshakeReply;
+        reply = JSON.parse(line) as CliHandshakeReply;
       } catch (e) {
         settle(() => reject(e instanceof Error ? e : new Error(String(e))));
         return;
       }
       if (reply.ok) settle(resolve);
       else settle(() => reject(new Error(reply.error)));
+    });
+    sock.on("end", () => {
+      // Server closed without ever sending a complete line — surface something
+      // useful instead of leaving the promise hanging until the timeout.
+      settle(() => reject(new Error("App closed the connection before replying")));
     });
     sock.on("error", (err) => settle(() => reject(err)));
   });
