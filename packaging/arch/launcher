@@ -1,0 +1,5 @@
+#!/bin/sh
+# Launcher for the installed Arch package. The binary keeps its original name
+# ("Diffusion Studio", with a space), so this space-free entry point is what
+# /usr/bin/diffusion-studio and the .desktop Exec point at.
+exec "/usr/lib/diffusion-studio/Diffusion Studio" "$@"

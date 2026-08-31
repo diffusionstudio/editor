@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Diffusion Studio
+Comment=The professional video editor built for agents
+Exec=diffusion-studio %U
+Icon=diffusion-studio
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Graphics;
+StartupWMClass=Diffusion Studio
+MimeType=x-scheme-handler/diffusion;

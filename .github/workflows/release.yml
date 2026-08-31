@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   publish-macos:
@@ -18,6 +19,7 @@ jobs:
           cache: npm
 
       - name: Check versions match tag
+        if: github.event_name != 'workflow_dispatch'
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           for PKG in package.json apps/desktop/package.json apps/cli/package.json apps/web/package.json; do
@@ -54,3 +56,83 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run publish --workspace=@diffusionstudio/desktop
+
+  publish-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
+
+      - run: npm ci
+
+      - name: Provide client env for web build
+        run: cp apps/web/.env.example apps/web/.env
+
+      - name: Build deb and zip
+        run: npm run make --workspace=@diffusionstudio/desktop
+
+      - name: Build rpm
+        run: npm run make:rpm --workspace=@diffusionstudio/desktop
+
+      - name: Build AppImage
+        run: npm run make:appimage --workspace=@diffusionstudio/desktop
+
+      - name: Upload Linux assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" \
+            apps/desktop/out/make/deb/x64/*.deb \
+            apps/desktop/out/make/rpm/x64/*.rpm \
+            apps/desktop/out/make/zip/linux/x64/*.zip \
+            apps/desktop/out/make/*.AppImage \
+            --clobber
+
+  publish-arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    permissions:
+      contents: write
+    steps:
+      # Install git before checkout; the archlinux image is minimal and
+      # actions/checkout needs it.
+      - name: Install build tools
+        run: |
+          pacman -Sy --noconfirm archlinux-keyring
+          pacman -Syu --noconfirm base-devel git gh curl
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Provide client env for web build
+        run: cp apps/web/.env.example apps/web/.env
+
+      - name: Package app (no makers)
+        run: npm run package --workspace=@diffusionstudio/desktop
+
+      - name: Build Arch package
+        run: npm run make:arch --workspace=@diffusionstudio/desktop
+
+      - name: Upload Arch package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" apps/desktop/out/arch/*.pkg.tar.zst --clobber

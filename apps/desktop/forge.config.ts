@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import type { ForgeConfig } from '@electron-forge/shared-types';
+import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { PublisherGithub } from '@electron-forge/publisher-github';
@@ -41,7 +42,24 @@ const config: ForgeConfig = {
         : undefined,
   },
   makers: [
-    new MakerZIP({}, ['darwin']),
+    new MakerZIP({}, ['darwin', 'linux']),
+    new MakerDeb(
+      {
+        options: {
+          name: 'diffusion-studio',
+          productName: 'Diffusion Studio',
+          genericName: 'Video Editor',
+          bin: 'Diffusion Studio',
+          description: 'The professional video editor built for agents',
+          maintainer: 'Diffusion Studio <support@diffusion.studio>',
+          homepage: 'https://diffusion.studio',
+          section: 'video',
+          categories: ['AudioVideo', 'Video'],
+          icon: './assets/icon.png',
+        },
+      },
+      ['linux'],
+    ),
     new MakerDMG({
       name: `Diffusion-Studio-${process.arch}`,
       icon: './assets/icon.icns',
