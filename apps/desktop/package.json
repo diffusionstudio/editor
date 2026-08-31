@@ -20,11 +20,16 @@
     "dev": "npm run build && electron-forge start",
     "package": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && electron-forge package",
     "make": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && electron-forge make",
+    "make:linux": "npm run make && npm run make:rpm && npm run make:appimage",
+    "make:rpm": "node scripts/make-rpm.mjs",
+    "make:appimage": "node scripts/make-appimage.mjs",
+    "make:arch": "node scripts/make-arch.mjs",
     "publish": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && electron-forge publish",
     "make:icns": "sh scripts/make-icns.sh"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-deb": "^7.11.2",
     "@electron-forge/maker-dmg": "^7.11.1",
     "@electron-forge/maker-zip": "^7.11.1",
     "@electron-forge/publisher-github": "^7.11.1",

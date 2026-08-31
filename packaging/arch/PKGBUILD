@@ -1,0 +1,48 @@
+# Maintainer: Diffusion Studio <support@diffusion.studio>
+# Packages the prebuilt Electron app produced by `electron-forge package`
+# into an Arch Linux package. The source tarball (and this file) are staged by
+# apps/desktop/scripts/stage-arch.mjs, which substitutes __VERSION__.
+
+pkgname=diffusion-studio
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc="The professional video editor built for agents"
+arch=('x86_64')
+url="https://diffusion.studio"
+license=('MPL-2.0')
+# Electron's shared libraries ship pre-stripped release builds; stripping them
+# again yields gdb-add-index warnings and a useless -debug package.
+options=(!strip !debug)
+depends=(
+  'gtk3'
+  'nss'
+  'libxss'
+  'alsa-lib'
+  'libxtst'
+  'libxcursor'
+  'libxrandr'
+  'libxcomposite'
+  'libxdamage'
+  'libxfixes'
+  'mesa'
+  'at-spi2-core'
+  'ca-certificates'
+)
+# Built locally from the forge package output; the tarball is staged next to
+# this file by stage-arch.mjs rather than downloaded from a URL.
+source=("diffusion-studio-$pkgver-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/diffusion-studio-$pkgver-linux-x64"
+
+  install -d "$pkgdir/usr/lib/$pkgname"
+  cp -a . "$pkgdir/usr/lib/$pkgname/"
+
+  install -Dm755 launcher "$pkgdir/usr/bin/$pkgname"
+  install -Dm644 "$pkgname.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 "$pkgname.png" "$pkgdir/usr/share/pixmaps/$pkgname.png"
+
+  # The dapi CLI is shipped inside the app's resources; expose it on PATH.
+  ln -sf "/usr/lib/$pkgname/resources/cli/bin/dapi" "$pkgdir/usr/bin/dapi"
+}

@@ -8,6 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/diffusionstudio/editor/releases/latest/download/Diffusion-Studio-arm64.dmg"><img src="https://img.shields.io/badge/Download-macOS%20Apple%20Silicon-161616?style=flat&logo=apple&logoColor=F8F8F8&labelColor=000000" alt="Download for macOS (Apple Silicon)" /></a>
+  <a href="https://github.com/diffusionstudio/editor/releases/latest"><img src="https://img.shields.io/badge/Download-Linux-161616?style=flat&logo=linux&logoColor=F8F8F8&labelColor=000000" alt="Download for Linux" /></a>
   <a href="https://discord.com/invite/zPQJrNGuFB"><img src="https://img.shields.io/discord/1115673443141156924?style=flat&logo=discord&logoColor=F8F8F8&label=Discord&labelColor=000000&color=161616" alt="Discord" /></a>
   <a href="https://x.com/diffusionhq"><img src="https://img.shields.io/badge/Follow%20for-Updates-161616?style=flat&logo=x&logoColor=F8F8F8&labelColor=000000" alt="Follow on X" /></a>
   <a href="https://www.ycombinator.com/companies/diffusion-studio"><img src="https://img.shields.io/badge/Combinator-F24-161616?style=flat&logo=ycombinator&logoColor=F8F8F8&labelColor=000000" alt="Y Combinator F24" /></a>
@@ -52,6 +53,32 @@ npx skills add diffusionstudio/skills
 ```
 
 `/editor` is the main skill you'll use. Ask for what you want in plain language. Behind it is `dapi`, the CLI that drives the app.
+
+## Install
+
+Download the latest release from the [releases page](https://github.com/diffusionstudio/editor/releases/latest). Linux packages are published alongside the macOS build:
+
+**Linux**
+
+```sh
+# Arch Linux (and derivatives)
+sudo pacman -U diffusion-studio-<version>-x86_64.pkg.tar.zst
+
+# Debian / Ubuntu
+sudo dpkg -i diffusion-studio_<version>_amd64.deb
+
+# Fedora / RHEL
+sudo dnf install diffusion-studio-<version>-1.x86_64.rpm
+```
+
+Or run the portable [AppImage](https://appimage.org) with no installation:
+
+```sh
+chmod +x Diffusion-Studio-<version>-x86_64.AppImage
+./Diffusion-Studio-<version>-x86_64.AppImage
+```
+
+The packages put both the editor (`diffusion-studio`) and the agent CLI (`dapi`) on your `PATH`.
 
 ## Prompt examples
 
@@ -234,6 +261,19 @@ npm run symlink:create --workspace=@diffusionstudio/cli
 ```
 
 The link points at the CLI build, which `npm run dev:desktop` refreshes on every start, so the linked `dapi` always runs the latest code.
+
+### Building Linux packages
+
+```sh
+npm run make:linux --workspace=@diffusionstudio/desktop   # deb, rpm, zip, AppImage
+npm run make:arch --workspace=@diffusionstudio/desktop    # Arch (.pkg.tar.zst)
+```
+
+Builds require Node 20 (newer Node versions can break Electron Packager's zip
+extraction) plus system tools for each format: `dpkg` and `fakeroot` (deb),
+`rpmbuild` (rpm), and `makepkg` (Arch). AppImage builds fetch `appimagetool`
+automatically. Artifacts land in `apps/desktop/out/make/` and
+`apps/desktop/out/arch/`.
 
 Before sending a PR:
 

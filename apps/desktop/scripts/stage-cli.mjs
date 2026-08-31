@@ -51,6 +51,14 @@ execFileSync("npm", ["install", "--omit=dev", "--no-audit", "--no-fund", "--no-p
 // The wrapper runs the CLI bundle on the app's own Electron binary in Node
 // mode, so users need no separate Node install. It resolves symlinks first
 // because both Homebrew and the in-app installer link it into PATH.
+//
+// The path from the staged `cli/bin` directory to the app binary differs per
+// platform: on macOS the binary lives inside the .app bundle at
+// Contents/MacOS/Diffusion Studio, while on Linux it sits at the packaged
+// directory root (e.g. `Diffusion Studio-linux-x64/Diffusion Studio`).
+const isDarwin = process.platform === "darwin";
+const appPathRel = isDarwin ? "$DIR/../../../.." : "$DIR/../../..";
+const binaryRel = isDarwin ? "$DIR/../../../MacOS/Diffusion Studio" : "$DIR/../../../Diffusion Studio";
 const wrapper = `#!/bin/sh
 SELF="$0"
 while [ -L "$SELF" ]; do
@@ -61,8 +69,8 @@ while [ -L "$SELF" ]; do
   esac
 done
 DIR="$(cd "$(dirname "$SELF")" && pwd)"
-export DIFFUSION_APP_PATH="$(cd "$DIR/../../../.." && pwd)"
-ELECTRON_RUN_AS_NODE=1 exec "$DIR/../../../MacOS/Diffusion Studio" "$DIR/../dapi.js" "$@"
+export DIFFUSION_APP_PATH="$(cd "${appPathRel}" && pwd)"
+ELECTRON_RUN_AS_NODE=1 exec "${binaryRel}" "$DIR/../dapi.js" "$@"
 `;
 writeFileSync(join(stageDir, "bin", "dapi"), wrapper);
 chmodSync(join(stageDir, "bin", "dapi"), 0o755);
