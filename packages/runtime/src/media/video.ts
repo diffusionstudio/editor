@@ -444,6 +444,10 @@ export class VideoBuffer {
 			this.settleTimer = null;
 		}
 
+		// Invalidates any fillCache/decodeKeyframe still in flight, so it stops
+		// before touching the cache/iterator being torn down below.
+		this.seekGeneration++;
+
 		this.pendingScrub.clear();
 		this.cache.dispose();
 		this.queue.dispose();
@@ -464,6 +468,10 @@ export class VideoBuffer {
 			clearTimeout(this.settleTimer);
 			this.settleTimer = null;
 		}
+
+		// Invalidates any fillCache/decodeKeyframe still in flight, so it stops
+		// before touching the cache/iterator being torn down below.
+		this.seekGeneration++;
 
 		this.pendingScrub.clear();
 		this.cache.dispose();

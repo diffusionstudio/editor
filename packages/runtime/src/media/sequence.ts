@@ -227,6 +227,10 @@ export class SequenceDecoder {
 			this.idleTimer = null;
 		}
 
+		// Invalidates any fillCache still in flight, so it stops before inserting
+		// into the cache being disposed below.
+		this.seekGeneration++;
+
 		this.cache.dispose();
 	}
 
@@ -239,6 +243,10 @@ export class SequenceDecoder {
 			clearTimeout(this.idleTimer);
 			this.idleTimer = null;
 		}
+
+		// Invalidates any fillCache still in flight, so it stops before inserting
+		// into the cache being disposed below.
+		this.seekGeneration++;
 
 		this.cache.dispose();
 
