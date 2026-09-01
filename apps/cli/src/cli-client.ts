@@ -36,14 +36,22 @@ function requestConnection(handshake: CliHandshake, timeoutMs: number): Promise<
     sock.setTimeout(timeoutMs, () =>
       settle(() => reject(new Error("Timed out waiting for the app to accept the connection"))),
     );
-    sock.on("connect", () => sock.end(JSON.stringify(handshake)));
+    sock.on("connect", () => sock.write(JSON.stringify(handshake) + "\n"));
     sock.on("data", (chunk) => {
       buf += chunk;
+      try {
+        const reply = JSON.parse(buf.trim()) as CliHandshakeReply;
+        if (reply.ok) settle(resolve);
+        else settle(() => reject(new Error(reply.error)));
+      } catch {
+        // waiting for full json
+      }
     });
     sock.on("end", () => {
+      if (settled) return;
       let reply: CliHandshakeReply;
       try {
-        reply = JSON.parse(buf) as CliHandshakeReply;
+        reply = JSON.parse(buf.trim()) as CliHandshakeReply;
       } catch (e) {
         settle(() => reject(e instanceof Error ? e : new Error(String(e))));
         return;
