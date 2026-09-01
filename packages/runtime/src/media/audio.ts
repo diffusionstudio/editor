@@ -64,6 +64,7 @@ export class AudioDecoder {
 	private readonly audioNodes = new Set<AudioBufferSourceNode>();
 
 	private iterator: AsyncGenerator<WrappedAudioBuffer, void, unknown> | null = null;
+	private generation = 0;
 	private firstBuffer: WrappedAudioBuffer | null = null;
 	private lastBuffer: WrappedAudioBuffer | null = null;
 	private stretcher: TimeStretcher | null = null;
@@ -156,6 +157,10 @@ export class AudioDecoder {
 
 		const { relativeFrom, relativeTo } = options;
 
+		// Sampled before the mutex so a reset() that lands while we are queued behind
+		// another playTo is still observed: by then the iterator is null both before
+		// and after the reset, so identity alone cannot detect it.
+		const generation = this.generation;
 		const release = await this.mutex.acquire();
 
 		const firstTs = this.firstBuffer?.timestamp ?? Number.POSITIVE_INFINITY;
@@ -163,9 +168,12 @@ export class AudioDecoder {
 		const isBufferOutOfRange = relativeFrom < firstTs || lastTs < relativeFrom - 1;
 
 		try {
+			if (this.generation !== generation) return;
+
 			if (this.iterator == null || this.stretcher == null || isBufferOutOfRange) {
 				// Close the previous iterator so its pre-decoded AudioSamples get released.
 				await this.iterator?.return();
+				if (this.generation !== generation) return;
 				this.iterator = this.sink.buffers(relativeFrom);
 				this.firstBuffer = null;
 				this.lastBuffer = null;
@@ -183,7 +191,7 @@ export class AudioDecoder {
 				try {
 					result = await iterator.next();
 				} catch (err) {
-					// A concurrent reset()/dispose() can cause the pending next() to reject.
+					// A concurrent reset() can cause the pending next() to reject.
 					if (this.iterator !== iterator) break;
 					throw err;
 				}
@@ -244,6 +252,10 @@ export class AudioDecoder {
 	}
 
 	public reset() {
+		// Bumped unconditionally: an in-flight playTo must be invalidated even when
+		// there is no iterator left to null out.
+		this.generation++;
+
 		if (!this.iterator) return;
 
 		this.iterator?.return();

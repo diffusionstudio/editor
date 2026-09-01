@@ -77,6 +77,7 @@ interface DecoderInternals {
   stretcher: { append(...args: unknown[]): unknown; finalize(): unknown } | null;
   nextTimestamp: number;
   audioNodes: Set<unknown>;
+  sink: unknown;
 }
 
 /** Routes playTo down the "reuse existing iterator" branch, so it loops on our
@@ -96,9 +97,9 @@ function setupDecoder(): { decoder: AudioDecoder; internals: DecoderInternals } 
 }
 
 /** Mirrors the fire-and-forget call in systems/playback.ts:188. */
-function startPlayTo(decoder: AudioDecoder): Promise<Error | null> {
+function startPlayTo(decoder: AudioDecoder, bus: AudioBus = fakeBus): Promise<Error | null> {
   return (decoder.playTo as (bus: AudioBus, o: typeof playOptions) => Promise<void>)
-    .call(decoder, fakeBus, playOptions)
+    .call(decoder, bus, playOptions)
     .then(
       () => null,
       (err) => err as Error,
@@ -162,6 +163,67 @@ describe('AudioDecoder.playTo vs reset race', () => {
     rejectNext(new Error('Worker terminated'));
 
     expect(await playPromise).toBeNull();
+  });
+
+  it('does not resurrect a decode when reset() lands while a queued playTo waits on the mutex', async () => {
+    const { decoder, internals } = setupDecoder();
+
+    // Count every audio node the decoder schedules, so the test can assert that a
+    // paused decoder never starts playback.
+    const started: number[] = [];
+    const bus = {
+      context: {
+        ...(fakeBus as unknown as { context: Record<string, unknown> }).context,
+        createBufferSource: () => ({
+          connect() {},
+          start(when: number) { started.push(when); },
+          stop() {},
+        }),
+      },
+      input: {},
+    } as unknown as AudioBus;
+
+    const queueA: Array<Deferred<{ value: WrappedAudioBuffer | undefined; done: boolean }>> = [];
+    internals.iterator = {
+      next: () => {
+        const d = deferred<{ value: WrappedAudioBuffer | undefined; done: boolean }>();
+        queueA.push(d);
+        return d.promise;
+      },
+      return: () => Promise.resolve({ value: undefined, done: true }),
+    } as never;
+
+    // A holds the mutex, suspended on next().
+    const a = startPlayTo(decoder, bus);
+    await waitForNext(queueA);
+
+    // B is queued behind the mutex, and cannot observe anything about the reset
+    // below from the iterator alone: it is null both before and after.
+    const b = startPlayTo(decoder, bus);
+
+    let reseeds = 0;
+    internals.sink = {
+      buffers: () => {
+        reseeds++;
+        return {
+          next: () => Promise.resolve({ value: undefined, done: true }),
+          return: () => Promise.resolve({ value: undefined, done: true }),
+        };
+      },
+    };
+
+    // User pauses.
+    decoder.reset();
+
+    // A resumes, notices the iterator changed, breaks, and releases the mutex to B.
+    queueA.shift()!.resolve({ value: sample(0.5), done: false });
+
+    expect(await a).toBeNull();
+    expect(await b).toBeNull();
+
+    expect(reseeds).toBe(0);
+    expect(internals.iterator).toBeNull();
+    expect(started).toEqual([]);
   });
 });
 
