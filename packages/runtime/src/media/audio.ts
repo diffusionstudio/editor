@@ -173,7 +173,23 @@ export class AudioDecoder {
 			}
 
 			while (true) {
-				const nextBuffer = (await this.iterator.next()).value;
+				// reset() nulls this.iterator without acquiring the mutex, so it can run
+				// while we're suspended below. Snapshot it and re-check identity after
+				// each await instead of trusting this.iterator directly.
+				const iterator: AsyncGenerator<WrappedAudioBuffer, void, unknown> | null = this.iterator;
+				if (iterator == null) break;
+
+				let result: IteratorResult<WrappedAudioBuffer, void>;
+				try {
+					result = await iterator.next();
+				} catch (err) {
+					// A concurrent reset()/dispose() can cause the pending next() to reject.
+					if (this.iterator !== iterator) break;
+					throw err;
+				}
+
+				if (this.iterator !== iterator) break;
+				const nextBuffer = result.value;
 				// Use the actual decoded sample rate if available
 				const sampleRate = nextBuffer?.buffer.sampleRate ?? this.asset.sampleRate;
 				const numberOfChannels = nextBuffer?.buffer.numberOfChannels ?? this.asset.channels;
