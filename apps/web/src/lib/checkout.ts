@@ -13,6 +13,7 @@ import type {
 import { trpc } from "./trpc";
 import { mainBridge } from "./ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
+import { isLocalOnly } from "./local-only";
 
 function toastMessage(err: unknown, fallback: string): string {
   // Empty / non-JSON 500 bodies (e.g. upstream crashed before tRPC could
@@ -21,6 +22,12 @@ function toastMessage(err: unknown, fallback: string): string {
     return fallback;
   }
   return err instanceof Error ? err.message : fallback;
+}
+
+function assertCheckoutEnabled(): void {
+  if (isLocalOnly()) {
+    throw new Error("Checkout is disabled in the browser companion's zero-credit local-only mode.");
+  }
 }
 
 export const CREDIT_RATE = 0.01;
@@ -103,6 +110,7 @@ export async function startSubscriptionCheckout(input: {
   billingPeriod: BillingPeriod;
 }): Promise<void> {
   try {
+    assertCheckoutEnabled();
     const { url } = await trpc.createSubscription.mutate({
       ...input,
       ...successAndCancelUrls(),
@@ -117,6 +125,7 @@ export async function startTopupCheckout(
   creditQuantity: TopupCredits,
 ): Promise<void> {
   try {
+    assertCheckoutEnabled();
     const { url } = await trpc.createTopup.mutate({
       creditQuantity,
       ...successAndCancelUrls(),
@@ -128,6 +137,10 @@ export async function startTopupCheckout(
 }
 
 export async function openBillingPortal(): Promise<void> {
+  if (isLocalOnly()) {
+    toast.error("Billing is disabled in the browser companion's zero-credit local-only mode.");
+    return;
+  }
   if (window.desktop) {
     try {
       const { url } = await trpc.createBillingPortal.mutate();

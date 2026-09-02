@@ -5,6 +5,261 @@
     <link rel="icon" type="image/svg+xml" href="/mark.svg" />
     <script>
       (function () {
+        // A companion is another renderer of the Electron-owned project, not
+        // a browser host. Its capability stays in the fragment (never an HTTP
+        // request/referrer), is cleared immediately, and authenticates one
+        // narrow session WebSocket after the built web client supplies its
+        // protocol/app/schema versions.
+        var fragment = new URLSearchParams(location.hash.replace(/^#/, ""));
+        var companionShell = new URLSearchParams(location.search).has("companion-shell");
+        var capability = fragment.get("companion") || sessionStorage.getItem("diffusion-companion-capability");
+        var expectedBuildHash = fragment.get("build") || sessionStorage.getItem("diffusion-companion-build");
+        if (fragment.get("companion")) {
+          sessionStorage.setItem("diffusion-companion-capability", capability);
+          sessionStorage.setItem("diffusion-companion-build", expectedBuildHash || "");
+          history.replaceState(null, "", location.pathname + location.search);
+        }
+        if (capability && expectedBuildHash) {
+          document.documentElement.dataset.companion = "1";
+          var handlers = new Set();
+          var outbound = [];
+          var authenticated = false;
+          var activeSessionId = "";
+          var disconnectRedirecting = false;
+          var connectResolve;
+          var connectReject;
+          var NativeWebSocket = window.WebSocket;
+          var nativeFetch = window.fetch.bind(window);
+          var socket = new NativeWebSocket("ws://" + location.host + "/__companion/session");
+          var send = function (message) {
+            if (!authenticated && message.type !== "authenticate") { outbound.push(message); return; }
+            if (socket.readyState === NativeWebSocket.OPEN) socket.send(JSON.stringify(message));
+          };
+          var reloadDisconnectedShell = function () {
+            if (disconnectRedirecting) return;
+            disconnectRedirecting = true;
+            sessionStorage.removeItem("diffusion-companion-capability");
+            sessionStorage.removeItem("diffusion-companion-build");
+            document.documentElement.dataset.companionDisconnected = "1";
+            // A refused pre-auth replay must never fall through to the
+            // ordinary dashboard. Replace the document with a capability-free
+            // local shell; the inline bootstrap renders its disconnected state
+            // before the application module can mount.
+            location.replace("/?companion-shell=1");
+          };
+          var safeTarget = function (value) {
+            try {
+              var url = new URL(String(value), location.href);
+              return url.protocol === "blob:" || url.protocol === "data:" ? url.protocol : url.origin;
+            } catch (_error) { return "invalid-url"; }
+          };
+          var isLocal = function (value) {
+            try {
+              var url = new URL(String(value), location.href);
+              return url.protocol === "blob:" || url.protocol === "data:" ||
+                (url.hostname === "127.0.0.1" && url.port === location.port);
+            } catch (_error) { return false; }
+          };
+          var recordOutboundAttempt = function (kind, target) {
+            send({ type: "outbound-attempt", kind: kind, target: safeTarget(target) });
+          };
+          var api = Object.freeze({
+            enabled: true,
+            localOnly: true,
+            expectedBuildHash: expectedBuildHash,
+            connect: function (client) {
+              return new Promise(function (resolve, reject) {
+                connectResolve = resolve;
+                connectReject = reject;
+                var authenticate = function () { send({ type: "authenticate", capability: capability, buildHash: expectedBuildHash, client: client }); };
+                if (socket.readyState === NativeWebSocket.OPEN) authenticate();
+                else socket.addEventListener("open", authenticate, { once: true });
+              });
+            },
+            subscribe: function (handler) { handlers.add(handler); return function () { handlers.delete(handler); }; },
+            semantic: function (event, data) { send({ type: "semantic", event: event, data: data || {} }); },
+            applied: function (acknowledgement) { send({ type: "applied", acknowledgement: acknowledgement }); },
+            recordOutboundAttempt: recordOutboundAttempt
+          });
+          Object.defineProperty(window, "browserCompanion", {
+            value: api,
+            writable: false,
+            configurable: false,
+            enumerable: false
+          });
+          var nativeOpen = window.open.bind(window);
+          window.open = function (url, target, features) {
+            if (url && !isLocal(url)) {
+              recordOutboundAttempt("window.open", url);
+              return null;
+            }
+            return nativeOpen(url, target, features);
+          };
+          document.addEventListener("click", function (event) {
+            var element = event.target instanceof Element ? event.target.closest("a[href]") : null;
+            if (element && !isLocal(element.href)) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              recordOutboundAttempt("navigation", element.href);
+            }
+          }, true);
+          if (window.navigation) {
+            window.navigation.addEventListener("navigate", function (event) {
+              if (!isLocal(event.destination.url) && event.canIntercept) {
+                event.preventDefault();
+                recordOutboundAttempt("navigation", event.destination.url);
+              }
+            });
+          }
+          if (navigator.sendBeacon) {
+            var nativeSendBeacon = navigator.sendBeacon.bind(navigator);
+            navigator.sendBeacon = function (url, data) {
+              if (!isLocal(url)) {
+                recordOutboundAttempt("sendBeacon", url);
+                return false;
+              }
+              return nativeSendBeacon(url, data);
+            };
+          }
+          var nativeXhrOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            if (!isLocal(url)) {
+              recordOutboundAttempt("xhr", url);
+              throw new Error("Non-loopback network access is disabled in companion local-only mode.");
+            }
+            return nativeXhrOpen.apply(this, arguments);
+          };
+          window.fetch = function (input, init) {
+            var target = input instanceof Request ? input.url : input;
+            if (!isLocal(target)) {
+              recordOutboundAttempt("fetch", target);
+              return Promise.reject(new Error("Non-loopback network access is disabled in companion local-only mode."));
+            }
+            return nativeFetch(input, init);
+          };
+          var guardedConstructor = function (name, Native, targetAt, allowLocal) {
+            if (!Native) return;
+            var Guarded = function () {
+              var args = Array.prototype.slice.call(arguments);
+              var target = args[targetAt];
+              if (!allowLocal(target)) {
+                recordOutboundAttempt(name, target);
+                throw new Error("Non-loopback network access is disabled in companion local-only mode.");
+              }
+              return Reflect.construct(Native, args, new.target || Native);
+            };
+            Guarded.prototype = Native.prototype;
+            Object.setPrototypeOf(Guarded, Native);
+            window[name] = Guarded;
+          };
+          guardedConstructor("WebSocket", NativeWebSocket, 0, isLocal);
+          guardedConstructor("EventSource", window.EventSource, 0, isLocal);
+          guardedConstructor("Worker", window.Worker, 0, isLocal);
+          guardedConstructor("SharedWorker", window.SharedWorker, 0, isLocal);
+
+          var guardUrlProperty = function (prototype, property, kind) {
+            if (!prototype) return;
+            var descriptor = Object.getOwnPropertyDescriptor(prototype, property);
+            if (!descriptor || !descriptor.get || !descriptor.set) return;
+            Object.defineProperty(prototype, property, {
+              configurable: descriptor.configurable,
+              enumerable: descriptor.enumerable,
+              get: descriptor.get,
+              set: function (value) {
+                if (value && !isLocal(value)) {
+                  recordOutboundAttempt(kind, value);
+                  throw new Error("Non-loopback resource loading is disabled in companion local-only mode.");
+                }
+                return descriptor.set.call(this, value);
+              }
+            });
+          };
+          guardUrlProperty(window.HTMLImageElement && HTMLImageElement.prototype, "src", "image");
+          guardUrlProperty(window.HTMLMediaElement && HTMLMediaElement.prototype, "src", "media");
+          guardUrlProperty(window.HTMLSourceElement && HTMLSourceElement.prototype, "src", "source");
+          guardUrlProperty(window.HTMLLinkElement && HTMLLinkElement.prototype, "href", "link");
+          guardUrlProperty(window.HTMLScriptElement && HTMLScriptElement.prototype, "src", "script");
+          guardUrlProperty(window.HTMLIFrameElement && HTMLIFrameElement.prototype, "src", "frame");
+          guardUrlProperty(window.HTMLFormElement && HTMLFormElement.prototype, "action", "form");
+
+          if (window.FontFace) {
+            var NativeFontFace = window.FontFace;
+            window.FontFace = function (family, source, descriptors) {
+              if (typeof source === "string") {
+                var urls = source.match(/url\((?:["']?)([^"')]+)(?:["']?)\)/g) || [];
+                urls.forEach(function (token) {
+                  var match = token.match(/url\((?:["']?)([^"')]+)(?:["']?)\)/);
+                  if (match && !isLocal(match[1])) {
+                    recordOutboundAttempt("font", match[1]);
+                    throw new Error("Remote font loading is disabled in companion local-only mode.");
+                  }
+                });
+              }
+              return new NativeFontFace(family, source, descriptors);
+            };
+            window.FontFace.prototype = NativeFontFace.prototype;
+            Object.setPrototypeOf(window.FontFace, NativeFontFace);
+          }
+          window.addEventListener("securitypolicyviolation", function (event) {
+            recordOutboundAttempt("csp:" + event.violatedDirective, event.blockedURI || "blocked");
+          });
+          ["debug", "info", "warn", "error"].forEach(function (level) {
+            var original = console[level].bind(console);
+            console[level] = function () {
+              var args = Array.prototype.slice.call(arguments);
+              original.apply(console, args);
+              var message = args.map(function (value) {
+                if (value instanceof Error) return value.name + ": " + value.message;
+                if (typeof value === "string") return value;
+                try { return JSON.stringify(value); } catch (_error) { return String(value); }
+              }).join(" ").slice(0, 4000);
+              send({ type: "renderer-log", level: level === "warn" ? "warning" : level, message: message, source: "console" });
+            };
+          });
+          window.addEventListener("error", function (event) {
+            send({ type: "renderer-log", level: "error", message: event.message || "Unhandled window error", source: "window.error" });
+          });
+          window.addEventListener("unhandledrejection", function (event) {
+            send({ type: "renderer-log", level: "error", message: event.reason instanceof Error ? event.reason.message : String(event.reason), source: "unhandledrejection" });
+          });
+          socket.addEventListener("message", function (event) {
+            var message;
+            try { message = JSON.parse(event.data); } catch (_error) { return; }
+            if (message.type === "authenticated") {
+              authenticated = true;
+              activeSessionId = message.snapshot && message.snapshot.sessionId || "";
+              sessionStorage.removeItem("diffusion-companion-capability");
+              sessionStorage.removeItem("diffusion-companion-build");
+              if (connectResolve) connectResolve(message.snapshot);
+              var held = outbound;
+              outbound = [];
+              held.forEach(send);
+              return;
+            }
+            if (message.type === "fatal") {
+              if (connectReject) connectReject(new Error(message.error));
+              reloadDisconnectedShell();
+              return;
+            }
+            handlers.forEach(function (handler) { handler(message); });
+          });
+          socket.addEventListener("close", function () {
+            var wasAuthenticated = authenticated;
+            authenticated = false;
+            sessionStorage.removeItem("diffusion-companion-capability");
+            sessionStorage.removeItem("diffusion-companion-build");
+            document.documentElement.dataset.companionDisconnected = "1";
+            if (connectReject) connectReject(new Error("Browser companion connection closed before authentication"));
+            handlers.forEach(function (handler) {
+              handler({ type: "disconnected", sessionId: activeSessionId, reason: "socket-closed" });
+            });
+            if (!wasAuthenticated) reloadDisconnectedShell();
+          });
+        } else if (companionShell) {
+          document.documentElement.dataset.companion = "1";
+          document.documentElement.dataset.companionDisconnected = "1";
+        }
+
         try {
           var apply = function (mode) {
             var resolved =

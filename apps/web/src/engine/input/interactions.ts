@@ -35,6 +35,7 @@ import { syncKeyframe } from '../keyframes';
 import { AssetSelection, Hud, Keys, Pointer, SnapLines } from '../traits';
 import { getToolCursor, updateCursor, type CursorType } from './cursor';
 import { mountNameInput } from '../hud/name-input';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 import {
 	buildSnapCandidatesFromCorners, buildSnapCandidatesFromQuad, findSnapTarget,
 	getMarqueeQuad, getSelectionMaskSnapshot, getSnapCandidatesSnapshot,
@@ -130,6 +131,7 @@ export function editTransform(
 	entity: Entity,
 	writes: readonly TransformWrite[],
 ): void {
+	if (!documentMutationsEnabled()) return;
 	const changed = writes.filter(([name, value]) => value !== shownTransform(world, entity, name));
 
 	for (const [name, value] of changed) syncKeyframe(world, editor, entity, name, value);
@@ -281,7 +283,7 @@ export function handleLabelInteraction(world: World, event: DispatchedPointerEve
 	}
 
 	if (event.type === 'dblclick') {
-		mountNameInput(world, entity);
+		if (documentMutationsEnabled()) mountNameInput(world, entity);
 	}
 
 	if (event.type === 'click' && entity.has(Scene)) {
@@ -294,6 +296,7 @@ export function handleLabelInteraction(world: World, event: DispatchedPointerEve
 /** A resize handle on the selection mask: an edge, or a corner. */
 export function handleResizeInteraction(world: World, event: DispatchedPointerEvent): void {
 	if (event.target.kind !== 'hud' || !isHandle(event.target.id)) return;
+	if (!documentMutationsEnabled()) return;
 
 	const handle = event.target.id;
 	const factor = HANDLE_FACTOR[handle];
@@ -564,6 +567,7 @@ function keepGroupPlaced(world: World, group: Entity): void {
 
 /** A rotation handle, just outside a corner of the selection mask. */
 export function handleRotateInteraction(world: World, event: DispatchedPointerEvent): void {
+	if (!documentMutationsEnabled()) return;
 	if (event.type === 'dragstart') {
 		snapshotSelectionTransforms(world);
 		snapshotSelectionMask(world);
@@ -648,6 +652,8 @@ export function handleMaskInteraction(world: World, event: DispatchedPointerEven
 		if (child !== null) editor.select(child);
 		return;
 	}
+
+	if (!documentMutationsEnabled()) return;
 
 	if (event.type === 'dragstart') {
 		snapshotSelectionMask(world);

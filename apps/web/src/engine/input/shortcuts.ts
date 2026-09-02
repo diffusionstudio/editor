@@ -37,6 +37,7 @@ import { getEditHistory } from '../history';
 import { splitAtPlayhead } from '../split';
 import { Keys, MODIFIER_KEYS, Pointer } from '../traits';
 import { editTransform } from './interactions';
+import { companionUiCapabilities } from '@/lib/companion-capabilities';
 
 import type { TransformWrite } from './interactions';
 import type { CameraMatrix } from '@diffusionstudio/runtime';
@@ -45,6 +46,7 @@ import type { Entity, World } from 'koota';
 type Shortcut = {
 	keys: string[];
 	action: (world: World) => void;
+	projectWrite?: boolean;
 }
 
 /** The node kinds a shortcut selects, hides or seeks around. */
@@ -382,21 +384,21 @@ function deselect(world: World): void {
 }
 
 const PRESSED_SHORTCUTS: readonly Shortcut[] = [
-	{ keys: ['z', 'mod', '!shift'], action: undoEdit },
-	{ keys: ['z', 'mod', 'shift'], action: redoEdit },
-	{ keys: ['backspace'], action: deleteSelection },
-	{ keys: ['delete'], action: deleteSelection },
-	{ keys: ['d', 'mod', '!shift'], action: duplicateSelection },
-	{ keys: ['g', 'mod', '!shift'], action: groupSelection },
-	{ keys: ['g', 'mod', 'shift'], action: ungroupSelection },
-	{ keys: ['enter', 'mod', '!shift', '!alt'], action: wrapSelectionInScene },
-	{ keys: ['enter', 'mod', 'alt', '!shift'], action: wrapSelectionInSequence },
-	{ keys: ['enter', 'mod', 'alt', 'shift'], action: unwrapSequenceSelection },
-	{ keys: ['b', 'mod'], action: splitAtPlayhead },
+	{ keys: ['z', 'mod', '!shift'], action: undoEdit, projectWrite: true },
+	{ keys: ['z', 'mod', 'shift'], action: redoEdit, projectWrite: true },
+	{ keys: ['backspace'], action: deleteSelection, projectWrite: true },
+	{ keys: ['delete'], action: deleteSelection, projectWrite: true },
+	{ keys: ['d', 'mod', '!shift'], action: duplicateSelection, projectWrite: true },
+	{ keys: ['g', 'mod', '!shift'], action: groupSelection, projectWrite: true },
+	{ keys: ['g', 'mod', 'shift'], action: ungroupSelection, projectWrite: true },
+	{ keys: ['enter', 'mod', '!shift', '!alt'], action: wrapSelectionInScene, projectWrite: true },
+	{ keys: ['enter', 'mod', 'alt', '!shift'], action: wrapSelectionInSequence, projectWrite: true },
+	{ keys: ['enter', 'mod', 'alt', 'shift'], action: unwrapSequenceSelection, projectWrite: true },
+	{ keys: ['b', 'mod'], action: splitAtPlayhead, projectWrite: true },
 	{ keys: ['c', 'mod'], action: copySelection },
-	{ keys: ['v', 'mod'], action: pasteSelection },
-	{ keys: ['x', 'mod'], action: cutSelection },
-	{ keys: ['h', 'mod', 'shift'], action: toggleSelectionHidden },
+	{ keys: ['v', 'mod'], action: pasteSelection, projectWrite: true },
+	{ keys: ['x', 'mod'], action: cutSelection, projectWrite: true },
+	{ keys: ['h', 'mod', 'shift'], action: toggleSelectionHidden, projectWrite: true },
 	{ keys: ['a', 'mod'], action: selectAll },
 	{ keys: ['=', 'mod'], action: zoom(ZOOM_STEP) },
 	{ keys: ['+', 'mod'], action: zoom(ZOOM_STEP) },
@@ -406,26 +408,26 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['2', 'mod'], action: zoomToSelection },
 	{ keys: ['v', '!mod'], action: selectTool(ToolType.MOVE) },
 	{ keys: ['h', '!mod'], action: selectTool(ToolType.HAND) },
-	{ keys: ['f', '!mod'], action: selectTool(ToolType.SCENE) },
-	{ keys: ['t', '!mod'], action: selectTool(ToolType.TEXT) },
-	{ keys: ['r', '!mod'], action: selectTool(ToolType.RECT) },
+	{ keys: ['f', '!mod'], action: selectTool(ToolType.SCENE), projectWrite: true },
+	{ keys: ['t', '!mod'], action: selectTool(ToolType.TEXT), projectWrite: true },
+	{ keys: ['r', '!mod'], action: selectTool(ToolType.RECT), projectWrite: true },
 	{ keys: ['a', '!mod'], action: seekFrames(-1) },
 	{ keys: ['d', '!mod'], action: seekFrames(1) },
 	{ keys: ['w', '!mod'], action: seekSeconds(1) },
 	{ keys: ['s', '!mod'], action: seekSeconds(-1) },
-	{ keys: [']', '!mod'], action: restack('front') },
-	{ keys: ['[', '!mod'], action: restack('back') },
+	{ keys: [']', '!mod'], action: restack('front'), projectWrite: true },
+	{ keys: ['[', '!mod'], action: restack('back'), projectWrite: true },
 	{ keys: ['\\', '!mod'], action: selectParents },
 	{ keys: ['enter', '!mod'], action: selectChildren },
 	{ keys: ['escape'], action: deselect },
-	{ keys: ['arrowleft', '!shift'], action: nudge(-NUDGE, 0) },
-	{ keys: ['arrowright', '!shift'], action: nudge(NUDGE, 0) },
-	{ keys: ['arrowup', '!shift'], action: nudge(0, -NUDGE) },
-	{ keys: ['arrowdown', '!shift'], action: nudge(0, NUDGE) },
-	{ keys: ['arrowleft', 'shift'], action: nudge(-NUDGE_FAST, 0) },
-	{ keys: ['arrowright', 'shift'], action: nudge(NUDGE_FAST, 0) },
-	{ keys: ['arrowup', 'shift'], action: nudge(0, -NUDGE_FAST) },
-	{ keys: ['arrowdown', 'shift'], action: nudge(0, NUDGE_FAST) },
+	{ keys: ['arrowleft', '!shift'], action: nudge(-NUDGE, 0), projectWrite: true },
+	{ keys: ['arrowright', '!shift'], action: nudge(NUDGE, 0), projectWrite: true },
+	{ keys: ['arrowup', '!shift'], action: nudge(0, -NUDGE), projectWrite: true },
+	{ keys: ['arrowdown', '!shift'], action: nudge(0, NUDGE), projectWrite: true },
+	{ keys: ['arrowleft', 'shift'], action: nudge(-NUDGE_FAST, 0), projectWrite: true },
+	{ keys: ['arrowright', 'shift'], action: nudge(NUDGE_FAST, 0), projectWrite: true },
+	{ keys: ['arrowup', 'shift'], action: nudge(0, -NUDGE_FAST), projectWrite: true },
+	{ keys: ['arrowdown', 'shift'], action: nudge(0, NUDGE_FAST), projectWrite: true },
 	{ keys: [' '], action: onSpacePressed },
 ];
 
@@ -467,7 +469,10 @@ export function shortcutSystem(world: World): void {
 	if (!keys) return;
 
 	if (keys.pressed.size) {
-		PRESSED_SHORTCUTS.find(shortcut => matches(shortcut, keys.pressed, keys.held))?.action(world);
+		const capabilities = companionUiCapabilities();
+		PRESSED_SHORTCUTS.find(shortcut =>
+			(!shortcut.projectWrite || capabilities.projectWrite) && matches(shortcut, keys.pressed, keys.held)
+		)?.action(world);
 	}
 
 	if (keys.lifted.size) {

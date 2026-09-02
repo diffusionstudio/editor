@@ -10,6 +10,7 @@
     "build:desktop": "tsc -b && vite build --mode desktop --base=./ --outDir=../desktop/web",
     "preview": "vite preview",
     "check": "tsc -p tsconfig.app.json --noEmit",
+    "test:browser-companion": "node --test --experimental-strip-types tests/companion-*.test.ts",
     "lint": "eslint ."
   },
   "dependencies": {

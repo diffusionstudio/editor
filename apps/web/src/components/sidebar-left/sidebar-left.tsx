@@ -12,13 +12,17 @@ import { Icon } from "../ui/icon";
 import { ProjectMenu } from "./project-menu";
 import { useProject } from "@/context/project";
 import { cx } from "@/lib/cva";
+import { companionUiCapabilities } from "@/lib/companion-capabilities";
 
 export function SidebarLeft() {
+  const capabilities = companionUiCapabilities();
   return (
     <div class="flex flex-col h-full overflow-hidden">
       <ElectronHeader />
       <ProjectHeader />
-      <Assets />
+      <Show when={capabilities.assetWrite}>
+        <Assets />
+      </Show>
     </div>
   );
 }
@@ -50,6 +54,7 @@ type ProjectHeaderProps = {
 
 export function ProjectHeader(props: ProjectHeaderProps) {
   const project = useProject();
+  const capabilities = companionUiCapabilities();
   const [projectNameDraft, setProjectNameDraft] = createSignal<string | null>(null);
 
   const handleProjectNameInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
@@ -94,16 +99,21 @@ export function ProjectHeader(props: ProjectHeaderProps) {
     <div class={cx("h-12 shrink-0 flex items-center gap-1 pr-4 pl-2.5", props.class)}>
       <ProjectMenu />
       <div class="flex items-center w-full">
-        <input
-          type="text"
-          value={projectNameDraft() ?? project.name()}
-          onInput={handleProjectNameInput}
-          onFocus={handleFocusNameInput}
-          onBlur={handleBlurNameInput}
-          onKeyDown={handleKeyDownNameInput}
-          placeholder="Project name"
-          class="w-full bg-transparent focus-ring px-1 h-5 ml-1 rounded text-xs text-muted-foreground font-450 outline-none"
-        />
+        <Show
+          when={capabilities.projectWrite}
+          fallback={<span class="w-full px-1 ml-1 truncate text-xs text-muted-foreground font-450">{project.name()}</span>}
+        >
+          <input
+            type="text"
+            value={projectNameDraft() ?? project.name()}
+            onInput={handleProjectNameInput}
+            onFocus={handleFocusNameInput}
+            onBlur={handleBlurNameInput}
+            onKeyDown={handleKeyDownNameInput}
+            placeholder="Project name"
+            class="w-full bg-transparent focus-ring px-1 h-5 ml-1 rounded text-xs text-muted-foreground font-450 outline-none"
+          />
+        </Show>
       </div>
     </div>
   )

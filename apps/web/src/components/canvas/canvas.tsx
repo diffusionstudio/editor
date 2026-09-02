@@ -13,11 +13,14 @@ import { DesktopAppBanner } from "./desktop-app-banner";
 import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
+import { Show } from "solid-js";
+import { companionUiCapabilities } from "@/lib/companion-capabilities";
 
 import type { Asset } from "@diffusionstudio/assets";
 
 export function Canvas() {
   const world = useWorld();
+  const capabilities = companionUiCapabilities();
 
   /**
    * Drops onto the canvas: library assets (dragged from the panel) land where
@@ -31,6 +34,7 @@ export function Canvas() {
   const handleDropEvent = async (event: DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!capabilities.assetWrite || !capabilities.projectWrite) return;
 
     const library = world.get(Library);
     if (!library) return;
@@ -77,8 +81,10 @@ export function Canvas() {
       >
         <Toolbar />
         <DesktopAppBanner />
-        <DrawOverlay />
-        <SceneInitOverlay />
+        <Show when={capabilities.projectWrite}>
+          <DrawOverlay />
+          <SceneInitOverlay />
+        </Show>
         <EngineCanvas />
         <CameraController />
       </div>

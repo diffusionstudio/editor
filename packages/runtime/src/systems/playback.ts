@@ -20,7 +20,7 @@ import {
 	Mode, FrameRate, Time, AudioEngine, FramePromises, Tickers,
 	Root,
 } from '../traits';
-import { getParentNode } from '../queries/hierarchy';
+import { getNodeChildren, getParentNode } from '../queries/hierarchy';
 import { getIntrinsicPaint, getSourceWindow } from '../utils/time';
 import { clamp } from '../math/common';
 import { getTransitionWindow } from '../utils/transition';
@@ -278,7 +278,8 @@ function forwardDecoders(world: World, scene: Entity, entity: Entity): void {
 		forwardAudioDecoder(world, scene, entity, paintAudioSource);
 	}
 
-	for (const child of world.query(ChildOf(entity), Or(Geometry, Group, AdjustmentLayer), Not(Hidden))) {
+	const children = getNodeChildren(world, entity).filter((child) => !child.has(Hidden));
+	for (const child of children) {
 		forwardDecoders(world, scene, child);
 	}
 }
@@ -302,7 +303,8 @@ function updateVisibility(world: World, scene: Entity, entity: Entity): void {
 		computed.visibility[eid] = globalFrame >= start && globalFrame < end ? 1 : 0;
 	}
 
-	for (const child of world.query(Or(Geometry, Group, AdjustmentLayer), ChildOf(entity))) {
+	const children = getNodeChildren(world, entity);
+	for (const child of children) {
 		updateVisibility(world, scene, child);
 	}
 }
@@ -386,13 +388,18 @@ export function playbackSystem(world: World): void {
 		advancePlayhead(world, entity);
 	}
 
-	for (const entity of world.query(Or(Geometry, Group, AdjustmentLayer), ChildOf(world.get(Root)!))) {
+	const roots = getNodeChildren(world, world.get(Root)!);
+	for (const entity of roots) {
 		updateVisibility(world, entity, entity);
 		forwardDecoders(world, entity, entity);
 	}
 
 	// handle transition visibility
-	for (const clip of world.query(Or(Geometry, Group, AdjustmentLayer), Transition)) {
+	const transitions = [
+		...world.query(Or(Geometry, Group), Transition),
+		...world.query(AdjustmentLayer, Transition),
+	];
+	for (const clip of transitions) {
 		const parent = getParentNode(clip);
 
 		if (parent == null || !parent.has(Sequential)) {
@@ -402,7 +409,7 @@ export function playbackSystem(world: World): void {
 			continue;
 		}
 
-		const children = world.query(ChildOf(parent), Or(Geometry, Group, AdjustmentLayer));
+		const children = getNodeChildren(world, parent);
 		const partner = children.find(sibling => computed.start[sibling.id()] === computed.end[clip.id()]);
 		if (!partner) continue;
 		const window = getTransitionWindow(world, clip, partner);

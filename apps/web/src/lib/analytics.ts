@@ -11,6 +11,8 @@
  * via the History API — call `track` only for custom product events.
  */
 
+import { isLocalOnly } from "./local-only";
+
 type UmamiEventData = Record<string, string | number | boolean | undefined>;
 
 type UmamiClient = {
@@ -31,7 +33,7 @@ const domains = import.meta.env.VITE_UMAMI_DOMAINS ?? '';
 let initialized = false;
 
 export function initAnalytics(): void {
-  if (initialized) return;
+  if (initialized || isLocalOnly()) return;
   initialized = true;
 
   const script = document.createElement("script");

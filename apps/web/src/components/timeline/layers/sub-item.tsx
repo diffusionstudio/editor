@@ -22,6 +22,7 @@ import { KEYFRAME_TRACK_HEIGHT } from '@/engine/timeline';
 import { effectOption } from '@/components/sidebar-right/inspector/effect-types';
 import { NESTED_INDENT_PX } from './config';
 import { setRowHover } from './hover';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 import type { Entity } from 'koota';
 import type { LayerRowProps } from './layer';
@@ -54,6 +55,11 @@ export function SubItemLayer(props: LayerRowProps) {
   const name = createMemo(() => describe(entity()));
 
   const toggleExpanded = () => {
+    if (!documentMutationsEnabled()) {
+      if (entity().has(Expanded)) entity().remove(Expanded);
+      else entity().add(Expanded);
+      return;
+    }
     editor.editProperty(entity(), 'expanded', !entity().has(Expanded));
   };
 

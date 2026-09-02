@@ -18,6 +18,8 @@
     "stage:docs": "node scripts/stage-docs.mjs",
     "stage:skills": "node scripts/stage-skills.mjs",
     "check": "tsc --noEmit",
+    "test:browser-companion": "node --test --experimental-strip-types tests/browser-companion-*.test.ts",
+    "test:browser-companion:integration": "node --test tests/browser-companion-lifecycle.integration.mjs",
     "dev": "npm run build && electron-forge start",
     "package": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge package",
     "make": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge make",
@@ -31,6 +33,7 @@
     "@electron-forge/publisher-github": "^7.11.1",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
     "electron": "^43.1.1",
     "typescript": "~5.9.3"
   },
@@ -44,6 +47,7 @@
     "nanoid": "^6.0.1",
     "ts-morph": "^28.0.0",
     "update-electron-app": "^3.0.0",
+    "ws": "^8.18.3",
     "yaml": "^2.9.0"
   }
 }

@@ -41,6 +41,7 @@ import { DEFAULT_CLIP_HEIGHT, MAX_CLIP_HEIGHT, MIN_CLIP_HEIGHT, getClipFallbackN
 import { NESTED_INDENT_PX } from './config';
 import { useLayerContext } from './context';
 import { setRowHover } from './hover';
+import { companionUiCapabilities } from '@/lib/companion-capabilities';
 
 import type { World } from 'koota';
 import type { TimelineNode } from '@diffusionstudio/runtime';
@@ -49,6 +50,7 @@ import type { LayerRowProps } from './layer';
 export function NodeLayer(props: LayerRowProps) {
   const world = useWorld();
   const editor = useEditor();
+  const capabilities = companionUiCapabilities();
 
   const entity = () => props.layer.entity;
 
@@ -74,16 +76,23 @@ export function NodeLayer(props: LayerRowProps) {
 
   const toggleMuted = (e?: Event) => {
     e?.stopPropagation();
+    if (!capabilities.projectWrite) return;
     editor.editProperty(entity(), 'muted', !muted());
   };
 
   const toggleHidden = (e?: Event) => {
     e?.stopPropagation();
+    if (!capabilities.projectWrite) return;
     editor.editProperty(entity(), 'hidden', !hidden());
   };
 
   const toggleExpanded = (e?: Event) => {
     e?.stopPropagation();
+    if (!capabilities.projectWrite) {
+      if (entity().has(Expanded)) entity().remove(Expanded);
+      else entity().add(Expanded);
+      return;
+    }
     editor.editProperty(entity(), 'expanded', !entity().has(Expanded));
   };
 
@@ -94,6 +103,7 @@ export function NodeLayer(props: LayerRowProps) {
    */
   const toggleSoloed = (e?: Event) => {
     e?.stopPropagation();
+    if (!capabilities.projectWrite) return;
 
     const wasSoloed = soloed();
     for (const other of world.query(Soloed)) other.remove(Soloed);
@@ -110,7 +120,7 @@ export function NodeLayer(props: LayerRowProps) {
     if ((e.target as HTMLElement | null)?.closest('button')) return;
 
     editor.select(entity(), { extend: e.shiftKey });
-    if (!e.shiftKey) drag.begin(e, entity());
+    if (capabilities.projectWrite && !e.shiftKey) drag.begin(e, entity());
   };
 
   let resizeStartY = 0;
@@ -128,6 +138,7 @@ export function NodeLayer(props: LayerRowProps) {
   };
 
   const handleResizeStart = (e: PointerEvent) => {
+    if (!capabilities.projectWrite) return;
     e.preventDefault();
     e.stopPropagation();
     resizeStartY = e.clientY;
@@ -154,6 +165,7 @@ export function NodeLayer(props: LayerRowProps) {
   };
 
   const startEditing = () => {
+    if (!capabilities.projectWrite) return;
     originalName = name();
     setEditing(true);
   };
@@ -237,7 +249,10 @@ export function NodeLayer(props: LayerRowProps) {
               <Show
                 when={editing()}
                 fallback={
-                  <span class="text-xs px-0.5 shrink-0 whitespace-nowrap text-foreground" onDblClick={startEditing}>
+                  <span
+                    class="text-xs px-0.5 shrink-0 whitespace-nowrap text-foreground"
+                    onDblClick={capabilities.projectWrite ? startEditing : undefined}
+                  >
                     {name()}
                   </span>
                 }
@@ -273,6 +288,7 @@ export function NodeLayer(props: LayerRowProps) {
                 class="invisible group-hover:visible"
                 style={{ visibility: muted() ? 'visible' : undefined }}
                 onClick={toggleMuted}
+                disabled={!capabilities.projectWrite}
               >
                 <Icon name="mute" class="size-6" />
               </TooltipTrigger>
@@ -288,6 +304,7 @@ export function NodeLayer(props: LayerRowProps) {
                 class="invisible group-hover:visible"
                 style={{ visibility: soloed() ? 'visible' : undefined }}
                 onClick={toggleSoloed}
+                disabled={!capabilities.projectWrite}
               >
                 <Icon name="solo" class="size-6" />
               </TooltipTrigger>
@@ -303,6 +320,7 @@ export function NodeLayer(props: LayerRowProps) {
                 class="invisible group-hover:visible"
                 onClick={toggleHidden}
                 style={{ visibility: hidden() ? 'visible' : undefined }}
+                disabled={!capabilities.projectWrite}
               >
                 <Show when={!hidden()} fallback={<Icon name="eye-off" class="size-6" />}>
                   <Icon name="eye-on" class="size-6" />
@@ -315,35 +333,39 @@ export function NodeLayer(props: LayerRowProps) {
           </div>
         </div>
 
-        {/* Drag the bottom edge to make the row taller. */}
-        <div
-          class="absolute bottom-0 left-0 right-0 h-[3px] cursor-ns-resize translate-y-0.5 z-20 group/resize"
-          onPointerDown={handleResizeStart}
-        >
+        <Show when={capabilities.projectWrite}>
+          {/* Drag the bottom edge to make the row taller. */}
           <div
-            class="absolute left-0 right-0 top-px h-px transition-colors group-hover/resize:bg-primary"
-            classList={{ 'bg-primary': resized() === entity() }}
-          />
-        </div>
+            class="absolute bottom-0 left-0 right-0 h-[3px] cursor-ns-resize translate-y-0.5 z-20 group/resize"
+            onPointerDown={handleResizeStart}
+          >
+            <div
+              class="absolute left-0 right-0 top-px h-px transition-colors group-hover/resize:bg-primary"
+              classList={{ 'bg-primary': resized() === entity() }}
+            />
+          </div>
+        </Show>
       </ContextMenuTrigger>
-      <ContextMenuPortal>
-        <ContextMenuContent class="w-[160px]">
-          <ContextMenuItem onSelect={toggleMuted}>{muted() ? 'Unmute' : 'Mute'}</ContextMenuItem>
-          <ContextMenuItem onSelect={toggleSoloed}>{soloed() ? 'Unsolo' : 'Solo'}</ContextMenuItem>
-          <ContextMenuItem onSelect={toggleHidden}>{hidden() ? 'Unhide' : 'Hide'}</ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onSelect={() => handleReorder('front')}>
-            Bring to front
-            <ContextMenuShortcut>]</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem onSelect={() => handleReorder('back')}>
-            Send to back
-            <ContextMenuShortcut>[</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onSelect={handleRemove}>Remove</ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenuPortal>
+      <Show when={capabilities.projectWrite}>
+        <ContextMenuPortal>
+          <ContextMenuContent class="w-[160px]">
+            <ContextMenuItem onSelect={toggleMuted}>{muted() ? 'Unmute' : 'Mute'}</ContextMenuItem>
+            <ContextMenuItem onSelect={toggleSoloed}>{soloed() ? 'Unsolo' : 'Solo'}</ContextMenuItem>
+            <ContextMenuItem onSelect={toggleHidden}>{hidden() ? 'Unhide' : 'Hide'}</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onSelect={() => handleReorder('front')}>
+              Bring to front
+              <ContextMenuShortcut>]</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => handleReorder('back')}>
+              Send to back
+              <ContextMenuShortcut>[</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onSelect={handleRemove}>Remove</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenuPortal>
+      </Show>
     </ContextMenu>
   )
 }

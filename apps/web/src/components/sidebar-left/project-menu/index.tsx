@@ -27,10 +27,12 @@ import { ViewMenu } from "./view-menu";
 import { ToolMenu } from "./tool-menu";
 import { AiCreditsMenu } from "./ai-credits-menu";
 import { HelpMenu } from "./help-menu";
+import { companionUiCapabilities } from "@/lib/companion-capabilities";
 
 export function ProjectMenu() {
   const navigate = useNavigate();
   const { isDesktop } = useEditorApi();
+  const capabilities = companionUiCapabilities();
 
   const handleOpenDashboard = () => {
     (document.activeElement as HTMLElement)?.blur?.();
@@ -47,6 +49,7 @@ export function ProjectMenu() {
    * key is bound here, with the item that offers it.
    */
   const handleShortcut = (event: KeyboardEvent) => {
+    if (!capabilities.projectWrite) return;
     if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
     if (event.key.toLowerCase() !== "d" || isInputTarget(event)) return;
 
@@ -74,33 +77,37 @@ export function ProjectMenu() {
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
           <DropdownMenuContent class="w-[196px]">
+            <Show when={capabilities.projectWrite}>
+              <DropdownMenuGroup>
+                <DropdownMenuItem onSelect={handleOpenDashboard}>
+                  Go to dashboard
+                  <DropdownMenuShortcut>⇧⌘D</DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+            </Show>
+
             <DropdownMenuGroup>
-              <DropdownMenuItem onSelect={handleOpenDashboard}>
-                Go to dashboard
-                <DropdownMenuShortcut>⇧⌘D</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+              <Show when={capabilities.projectWrite}>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>File</DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent class="w-[196px]">
+                      <FileMenu />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
 
-            <DropdownMenuSeparator />
-
-            <DropdownMenuGroup>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>File</DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent class="w-[196px]">
-                    <FileMenu />
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
-
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Edit</DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent class="w-[196px]">
-                    <EditMenu />
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Edit</DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent class="w-[196px]">
+                      <EditMenu />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+              </Show>
 
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>View</DropdownMenuSubTrigger>
@@ -111,41 +118,51 @@ export function ProjectMenu() {
                 </DropdownMenuPortal>
               </DropdownMenuSub>
 
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Tool</DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent class="w-[172px]">
-                    <ToolMenu />
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
+              <Show when={capabilities.projectWrite}>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Tool</DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent class="w-[172px]">
+                      <ToolMenu />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+              </Show>
             </DropdownMenuGroup>
 
-            <DropdownMenuSeparator />
+            <Show when={capabilities.account || capabilities.externalNavigation}>
+              <DropdownMenuSeparator />
 
-            <DropdownMenuGroup>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>AI credits</DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent class="w-[188px]">
-                    <AiCreditsMenu />
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
+              <DropdownMenuGroup>
+                <Show when={capabilities.ai}>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>AI credits</DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent class="w-[188px]">
+                        <AiCreditsMenu />
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                </Show>
 
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Help</DropdownMenuSubTrigger>
-                <DropdownMenuPortal>
-                  <DropdownMenuSubContent class="w-[188px]">
-                    <HelpMenu />
-                  </DropdownMenuSubContent>
-                </DropdownMenuPortal>
-              </DropdownMenuSub>
+                <Show when={capabilities.externalNavigation}>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Help</DropdownMenuSubTrigger>
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent class="w-[188px]">
+                        <HelpMenu />
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                </Show>
 
-              <DropdownMenuItem onSelect={handleOpenAccount}>Account</DropdownMenuItem>
-            </DropdownMenuGroup>
+                <Show when={capabilities.account}>
+                  <DropdownMenuItem onSelect={handleOpenAccount}>Account</DropdownMenuItem>
+                </Show>
+              </DropdownMenuGroup>
+            </Show>
 
-            <Show when={!isDesktop}>
+            <Show when={!isDesktop && capabilities.desktopPromotion}>
               <DropdownMenuSeparator />
 
               <DropdownMenuGroup>

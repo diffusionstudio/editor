@@ -41,6 +41,8 @@ import { TransitionSettings } from "./transition";
 import { MasksSettings } from "./masks";
 import { AudioSettings } from "./audio";
 import { InterpolationSettings } from "./interpolation";
+import { isCompanionExportDisabled } from "@/lib/companion-export";
+import { CompanionAuthoringBoundary } from "@/components/companion-authoring-boundary";
 
 import type { Entity } from "koota";
 
@@ -108,93 +110,97 @@ export function Inspector() {
       <InspectorHeader />
       <Show when={selectionHash()} keyed>
         <ControlScrollArea class="flex-1 min-h-0" scrollKey={selectionHash()}>
-          <Show when={includesTarget("scene-tool")}>
-            <SceneTemplatePanel />
-          </Show>
+          <CompanionAuthoringBoundary>
+            <Show when={includesTarget("scene-tool")}>
+              <SceneTemplatePanel />
+            </Show>
 
-          <Show when={nodes().length > 1}>
-            <Alignment />
-          </Show>
+            <Show when={nodes().length > 1}>
+              <Alignment />
+            </Show>
 
-          <Show when={includesTarget("scene") && !isNested()}>
-            <ExportPanel selection={nodes()} />
-          </Show>
+            <Show when={!isCompanionExportDisabled() && includesTarget("scene") && !isNested()}>
+              <ExportPanel selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("stage")}>
-            <BackgroundSettings />
-          </Show>
+            <Show when={includesTarget("stage")}>
+              <BackgroundSettings />
+            </Show>
 
-          <Show when={includesTarget("stage")}>
-            <VariablesSettings />
-          </Show>
+            <Show when={includesTarget("stage")}>
+              <VariablesSettings />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "mask", "adjustment")}>
-            <TimeSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "mask", "adjustment")}>
+              <TimeSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "mask", "adjustment")}>
-            <TransformSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "mask", "adjustment")}>
+              <TransformSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "mask")}>
-            <LayoutPanel selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "audio", "scene", "mask")}>
+              <LayoutPanel selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "scene", "caption", "group", "audio", "mask")}>
-            <AppearanceSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "scene", "caption", "group", "audio", "mask")}>
+              <AppearanceSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("caption")}>
-            <CaptionSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("caption")}>
+              <CaptionSettings selection={nodes()} />
+            </Show>
+          </CompanionAuthoringBoundary>
 
           <Show when={includesTarget("text", "caption")}>
             <TextPanel selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "scene")}>
-            <FillsSettings selection={nodes()} />
-          </Show>
+          <CompanionAuthoringBoundary>
+            <Show when={includesTarget("shape", "text", "scene")}>
+              <FillsSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "caption")}>
-            <SourceSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "caption")}>
+              <SourceSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "scene", "caption")}>
-            <StrokesSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "scene", "caption")}>
+              <StrokesSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "scene")}>
-            <ShadowsSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "scene")}>
+              <ShadowsSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "scene", "caption")}>
-            <EffectsSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "scene", "caption")}>
+              <EffectsSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "caption", "group", "mask")}>
-            <AnimationsSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "caption", "group", "mask")}>
+              <AnimationsSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape") && isSequenceChild()}>
-            <TransitionSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape") && isSequenceChild()}>
+              <TransitionSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "text", "caption", "group")}>
-            <MasksSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "text", "caption", "group")}>
+              <MasksSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("shape", "audio", "group")}>
-            <AudioSettings selection={nodes()} />
-          </Show>
+            <Show when={includesTarget("shape", "audio", "group")}>
+              <AudioSettings selection={nodes()} />
+            </Show>
 
-          <Show when={includesTarget("asset")}>
-            <AssetInfoPanel />
-          </Show>
+            <Show when={includesTarget("asset")}>
+              <AssetInfoPanel />
+            </Show>
 
-          <Show when={includesTarget("keyframe")}>
-            <InterpolationSettings selection={keyframes()} />
-          </Show>
+            <Show when={includesTarget("keyframe")}>
+              <InterpolationSettings selection={keyframes()} />
+            </Show>
+          </CompanionAuthoringBoundary>
         </ControlScrollArea>
       </Show>
     </div>

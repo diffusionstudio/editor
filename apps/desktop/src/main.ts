@@ -43,6 +43,15 @@ import {
 } from "./projects";
 import type { DeepLinkChannel } from "./main-channels";
 import type { LogEntry } from "@diffusionstudio/cli/protocol";
+import {
+  acknowledgeBrowserCompanionHostBundle,
+  configureBrowserCompanion,
+  publishBrowserCompanionBundle,
+  recordBrowserCompanionHostEgress,
+  resetBrowserCompanionHostEgressAudit,
+  stopBrowserCompanion,
+} from "./browser-companion";
+import { isLoopbackCompanionUrl } from "./browser-companion-security";
 
 const DEV_URL = "http://localhost:5173";
 const AUTH_PROTOCOL = "diffusion";
@@ -86,6 +95,65 @@ if (app.isPackaged && !process.argv.includes("--hidden")) {
 const openWrites = new Map<string, { handle: FileHandle; path: string }>();
 
 let mainWindow: BrowserWindow | null = null;
+let browserCompanionHostMode = isBrowserCompanionHostLaunch(process.argv);
+let browserCompanionRestoreUrl: string | null = null;
+configureBrowserCompanion(
+  () => mainWindow,
+  async () => {
+    resetBrowserCompanionHostEgressAudit();
+    installBrowserCompanionHostNetworkGuard();
+    if (browserCompanionHostMode && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.hide();
+      await loadMainWindow(true);
+      return;
+    }
+    browserCompanionRestoreUrl = mainWindow && !mainWindow.isDestroyed()
+      ? mainWindow.webContents.getURL() || null
+      : null;
+    browserCompanionHostMode = true;
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createWindow(false);
+      return;
+    }
+    mainWindow.hide();
+    await loadMainWindow(true);
+  },
+  async () => {
+    const currentHash = mainWindow && !mainWindow.isDestroyed()
+      ? new URL(mainWindow.webContents.getURL()).hash || "#/"
+      : "#/";
+    browserCompanionHostMode = false;
+    uninstallBrowserCompanionHostNetworkGuard();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.hide();
+    const restoreUrl = browserCompanionRestoreUrl;
+    browserCompanionRestoreUrl = null;
+    if (restoreUrl) await mainWindow.loadURL(restoreUrl);
+    // A process launched directly as a hidden companion has no pre-companion
+    // URL to restore. Keep its currently open project route while reloading
+    // without the local-only host identity so DAPI stays on that project.
+    else await loadMainWindow(false, currentHash);
+    mainWindow.hide();
+  },
+);
+
+let companionNetworkGuardInstalled = false;
+
+function installBrowserCompanionHostNetworkGuard(): void {
+  if (companionNetworkGuardInstalled) return;
+  companionNetworkGuardInstalled = true;
+  session.defaultSession.webRequest.onBeforeRequest({ urls: ["*://*/*"] }, (details, callback) => {
+    const loopback = isLoopbackCompanionUrl(details.url);
+    if (!loopback) recordBrowserCompanionHostEgress(details.url);
+    callback({ cancel: !loopback });
+  });
+}
+
+function uninstallBrowserCompanionHostNetworkGuard(): void {
+  if (!companionNetworkGuardInstalled) return;
+  session.defaultSession.webRequest.onBeforeRequest(null);
+  companionNetworkGuardInstalled = false;
+}
 
 // Deep links that arrived before the renderer could take them, keyed by the
 // channel they belong to so auth and checkout never drain each other's link.
@@ -120,6 +188,10 @@ function findProtocolUrl(argv: string[]): string | null {
 
 function isHiddenLaunch(argv: string[]): boolean {
   return argv.includes("--hidden");
+}
+
+function isBrowserCompanionHostLaunch(argv: string[]): boolean {
+  return argv.includes("--browser-companion-host");
 }
 
 // diffusion://auth/callback → auth, diffusion://checkout/callback → checkout.
@@ -188,6 +260,7 @@ function createWindow(show = true) {
       : { backgroundColor: "#1c1c1c" }),
     webPreferences: {
       preload: join(app.getAppPath(), "dist", "preload.js"),
+      additionalArguments: browserCompanionHostMode ? ["--browser-companion-host"] : [],
     },
   });
 
@@ -222,11 +295,21 @@ function createWindow(show = true) {
     mainWindow = null;
   });
 
-  if (!app.isPackaged) {
-    mainWindow.loadURL(DEV_URL);
-  } else {
-    mainWindow.loadFile(join(app.getAppPath(), "web", "index.html"));
-  }
+  void loadMainWindow();
+}
+
+async function loadMainWindow(resetRoute = false, routeHash?: string): Promise<void> {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const query = browserCompanionHostMode ? "?browser-companion-host=1" : "";
+  const hash = routeHash?.replace(/^#/, "") || (resetRoute ? "/" : undefined);
+  // Companion mode uses the packaged apps/web output even in development so
+  // the hidden host and ordinary browser execute the exact same files whose
+  // complete tree hash is exchanged during authentication.
+  if (!app.isPackaged && !browserCompanionHostMode) await mainWindow.loadURL(`${DEV_URL}${query}${hash ? `#${hash}` : ""}`);
+  else await mainWindow.loadFile(join(app.getAppPath(), "web", "index.html"), {
+    query: browserCompanionHostMode ? { "browser-companion-host": "1" } : {},
+    ...(hash ? { hash } : {}),
+  });
 }
 
 if (process.defaultApp && process.argv.length >= 2) {
@@ -243,8 +326,17 @@ if (app.requestSingleInstanceLock()) {
     if (url) deliverDeepLink(url);
 
     const hidden = isHiddenLaunch(argv);
+    if (isBrowserCompanionHostLaunch(argv) && !browserCompanionHostMode) {
+      browserCompanionHostMode = true;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.hide();
+        void loadMainWindow();
+      } else createWindow(false);
+      return;
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (hidden) return;
+      app.dock?.show();
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
@@ -291,7 +383,33 @@ if (app.requestSingleInstanceLock()) {
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_RENAME, ({ dir, displayName }) => renameProject(dir, displayName));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_DUPLICATE, ({ dir }) => duplicateProject(dir));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_DELETE, ({ dir }) => deleteProject(dir));
-  mainBridge.handle(MAIN_CHANNELS.PROJECTS_COMPILE, ({ dir }) => compileProject(dir));
+  mainBridge.handle(MAIN_CHANNELS.PROJECTS_COMPILE, async ({ dir, companionSurfaceMount }) => {
+    const started = performance.now();
+    const bundle = await compileProject(dir);
+    if (!companionSurfaceMount) return bundle;
+    const companionMount = await publishBrowserCompanionBundle(
+      dir,
+      bundle,
+      Math.round(performance.now() - started),
+    );
+    return companionMount ? { ...bundle, companionMount } : bundle;
+  });
+  mainBridge.handle(MAIN_CHANNELS.PROJECTS_BUNDLE_APPLIED, ({ dir, sessionId, revision, bundleHash, ok, error }) => {
+    if (
+      !browserCompanionHostMode ||
+      !/^[0-9a-f-]{36}$/.test(sessionId) ||
+      !Number.isInteger(revision) ||
+      revision < 1 ||
+      !/^[a-f0-9]{64}$/.test(bundleHash)
+    ) return;
+    acknowledgeBrowserCompanionHostBundle(dir, {
+      sessionId,
+      revision,
+      bundleHash,
+      ok,
+      ...(error ? { error: error.slice(0, 4000) } : {}),
+    });
+  });
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_WRITE, ({ dir, edits }) => writeProject(dir, edits));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_WATCH, ({ dir }, event) =>
     watchProject(BrowserWindow.fromWebContents(event.sender), dir),
@@ -346,6 +464,7 @@ if (app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    if (browserCompanionHostMode) installBrowserCompanionHostNetworkGuard();
     if (!app.isPackaged && process.platform === "darwin") {
       const devIcon = nativeImage.createFromPath(join(app.getAppPath(), "assets", "icon-dev.png"));
       if (!devIcon.isEmpty()) app.dock?.setIcon(devIcon);
@@ -361,12 +480,13 @@ if (app.requestSingleInstanceLock()) {
 
     startCliServer();
     healSkillsLinks();
-    trackInstall();
+    if (!browserCompanionHostMode) trackInstall();
     createWindow(!isHiddenLaunch(process.argv));
   });
 
   app.on("before-quit", () => {
     unwatchAll();
+    void stopBrowserCompanion();
     stopCliServer();
   });
 
@@ -377,6 +497,7 @@ if (app.requestSingleInstanceLock()) {
   });
 
   app.on("activate", () => {
+    app.dock?.show();
     if (!mainWindow || mainWindow.isDestroyed()) {
       createWindow();
       return;

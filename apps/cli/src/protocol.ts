@@ -9,3 +9,4 @@
 // own repo.
 export * from "./cli-channels";
 export * from "./cli-socket-path";
+export * from "./browser-companion-protocol";

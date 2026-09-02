@@ -12,6 +12,7 @@ import { insertAssetsInNewScene } from '@/engine/new-scene';
 import { useLibrary } from '@/engine/library';
 import { useTimeline } from '@/context/timeline';
 import { ASSET_DRAG_TYPE } from '@/components/sidebar-left/folder-item';
+import { companionUiCapabilities } from '@/lib/companion-capabilities';
 
 /**
  * The timeline's canvas. What is drawn on it is the timeline system's
@@ -22,6 +23,7 @@ export function Timeline() {
   const world = useWorld();
   const timeline = useTimeline();
   const library = useLibrary();
+  const capabilities = companionUiCapabilities();
 
   onMount(() => timeline.attachCanvas());
   onCleanup(() => timeline.detachCanvas());
@@ -38,6 +40,7 @@ export function Timeline() {
   const handleDrop = async (event: DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    if (!capabilities.assetWrite || !capabilities.projectWrite) return;
 
     const lib = library();
     if (!lib) return;
@@ -70,7 +73,7 @@ export function Timeline() {
 
   const handleDragOver = (event: DragEvent) => {
     event.preventDefault();
-    event.dataTransfer!.dropEffect = 'copy';
+    event.dataTransfer!.dropEffect = capabilities.assetWrite && capabilities.projectWrite ? 'copy' : 'none';
   };
 
   return (

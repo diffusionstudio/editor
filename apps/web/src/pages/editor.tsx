@@ -22,14 +22,18 @@ import { attachAi } from '@/utils/gen-ai';
 import { attachProjectConfig, isProjectConfigFile } from '@/engine/project-config';
 import { loadProjectBundle, rememberProjectBundle } from '@/lib/db';
 import { isCacheFile } from '@diffusionstudio/assets';
+import { Paint, PaintType } from '@diffusionstudio/runtime';
 import { createEditWriter } from '@/projects/edits';
-import { compileProject, watchProject } from '@/projects/host';
+import { compileProject, reportProjectBundleApplied, watchProject } from '@/projects/host';
 import { captureProjectCover } from '@/projects/cover';
 import { useProject } from "@/context/project";
 import { useEngineContext } from "@/engine";
+import { BrowserCompanionIndicator, BrowserCompanionSemanticReporter } from "@/components/browser-companion-indicator";
 
 import type { Mount } from '@diffusionstudio/reconciler';
 import type { EditWriter } from '@/projects/edits';
+import { isBrowserCompanionRenderer } from '@/lib/companion-authority';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 const MIN_CANVAS_HEIGHT = 200;
 
@@ -82,14 +86,24 @@ export function EditorPage() {
       // The old render goes first: there is only one stage per world.
       unmount();
       mounted = mount(code, world);
+      if (isBrowserCompanionRenderer() && world.query(Paint).some((entity) => entity.get(Paint)?.value === PaintType.HTML)) {
+        mounted.dispose();
+        mounted = undefined;
+        throw new Error(
+          "This project contains <html>/<htmlPaint> content, which requires Chromium's experimental CanvasDrawElement API. " +
+          "The browser gateway fails closed instead of silently misrendering it; use the Electron app for this project.",
+        );
+      }
       mountedCode = code;
       // The `@inspect` variables this mount declared, for the inspector.
       setInspectEntries(world, mounted.inspect);
       // The rendered scene knows which element every entity came from, so
       // from here on an edit in the editor can find its way back.
-      writer = createEditWriter(dir, world);
-      const editor = getDocumentEditor(world);
-      unlisten = editor.onEdit((edit) => writer?.push(edit));
+      if (documentMutationsEnabled()) {
+        writer = createEditWriter(dir, world);
+        const editor = getDocumentEditor(world);
+        unlisten = editor.onEdit((edit) => writer?.push(edit));
+      }
       // A mount comes from the file: edits recorded against the document it
       // replaced cannot be replayed against this one.
       getEditHistory(world).reset();
@@ -97,7 +111,10 @@ export function EditorPage() {
 
     const loadProject = async (): Promise<void> => {
       const current = ++generation;
-      const compiling = compileProject(dir);
+      // Only the editor surface's compile can advance companion readiness.
+      // Offline capture/export compiles use the same compiler but never mount
+      // this world and therefore must not be published as surface revisions.
+      const compiling = compileProject(dir, { companionSurfaceMount: true });
       const loading = library.load();
 
       // First open only: the bundle the last session mounted, straight from
@@ -135,12 +152,15 @@ export function EditorPage() {
 
       try {
         applyBundle(result.code);
+        await reportProjectBundleApplied(dir, result, true);
         // What an export renders a second time, and the next open's head
         // start (see `rememberProjectBundle`) — recorded only once it has
         // actually mounted, so the record never runs ahead of the canvas.
         rememberProjectBundle(untrack(project.id), result.code).catch((error) =>
           console.error('[projects] could not save the bundle', error));
       } catch (error) {
+        await reportProjectBundleApplied(dir, result, false, (error as Error).message).catch((reportError) =>
+          console.error('[projects] could not report bundle mount failure', reportError));
         console.error('[projects] render failed:', error);
         toast.error('Project failed to render', { description: (error as Error).message });
       }
@@ -228,6 +248,8 @@ export function EditorPage() {
       }}
       style={timelineStyles()}
     >
+      <BrowserCompanionIndicator />
+      <BrowserCompanionSemanticReporter />
       <Show when={isDesktop && !isFullscreen()}>
         <div class="fixed top-0 left-0 right-0 h-10 z-20" style="-webkit-app-region: drag;" />
       </Show>

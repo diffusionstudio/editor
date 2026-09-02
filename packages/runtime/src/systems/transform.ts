@@ -2,16 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Not, Or } from 'koota';
-
 import { store } from '../world/store';
 import {
-	ChildOf, Geometry, Group, Hidden, IsMask, Sequential, AdjustmentLayer,
+	Group, Hidden, IsMask, Sequential, AdjustmentLayer,
 	Culled, Flip, Anchor, Computed, Cache, LocalTransform, WorldTransform,
 	WorldBounds, RenderSurface,
 	Root,
 } from '../traits';
-import { getParentNode } from '../queries/hierarchy';
+import { getDrawableChildren, getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
 
 import {
@@ -209,7 +207,8 @@ export function computeGroupBounds(world: World, entity: Entity): void {
 		let maxY = -Infinity;
 		let any = false;
 
-		for (const child of world.query(Or(Geometry, Group), ChildOf(entity), Not(Hidden), Not(IsMask))) {
+		for (const child of getDrawableChildren(world, entity)) {
+			if (child.has(Hidden) || child.has(IsMask)) continue;
 			const cid = child.id();
 			const mat: Mat2D = {
 				a: localStore.a[cid] ?? 1, b: localStore.b[cid] ?? 0,
@@ -289,7 +288,7 @@ function adjustLayers(world: World, adjust: Entity): void {
 		computeWorldBounds(world, entity);
 		cullEntity(world, entity, parentEntity);
 
-		for (const child of world.query(Or(Geometry, Group), ChildOf(entity))) {
+		for (const child of getDrawableChildren(world, entity)) {
 			reworld(child, entity);
 		}
 	};
@@ -308,12 +307,12 @@ export function transformSystem(world: World): void {
 		computeWorldBounds(world, entity);
 		cullEntity(world, entity, parentEntity);
 
-		for (const child of world.query(Or(Geometry, Group), ChildOf(entity))) {
+		for (const child of getDrawableChildren(world, entity)) {
 			walk(child, entity);
 		}
 	};
 
-	for (const entity of world.query(Or(Geometry, Group), ChildOf(world.get(Root)!))) {
+	for (const entity of getDrawableChildren(world, world.get(Root)!)) {
 		walk(entity, null);
 	}
 

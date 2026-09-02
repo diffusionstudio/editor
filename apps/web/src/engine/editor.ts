@@ -17,6 +17,7 @@ import { createRoot } from 'solid-js';
 import { authoredElement, authoredTree, getRuntimeDocument, insert, isSceneNode, renderAuthored, withDocument } from '@diffusionstudio/reconciler';
 
 import { findInspectEntry } from './inspect';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 import type { SceneNode } from '@diffusionstudio/runtime';
 import type { InspectValue, PropValue, SerializedAssetRef } from '@diffusionstudio/jsx';
@@ -326,6 +327,7 @@ export class DocumentEditor {
 
 	/** Writes a prop to the document and reports it. */
 	public editProperty(entity: Entity, name: string, value: PropValue): void {
+		if (!documentMutationsEnabled()) return;
 		const node = this.document.node(entity);
 		let previous = node.props[name];
 		// The stage keeps no authored record (see RuntimeDocument.setProperty),
@@ -347,6 +349,7 @@ export class DocumentEditor {
 	 * was recorded against.
 	 */
 	public editVariable(file: string, name: string, value: InspectValue): void {
+		if (!documentMutationsEnabled()) return;
 		const entry = findInspectEntry(this.world, file, name);
 		if (!entry) return;
 		// Against the committed value, not the live one
@@ -362,6 +365,7 @@ export class DocumentEditor {
 	 * something the others do not.
 	 */
 	public editText(entity: Entity, text: string): void {
+		if (!documentMutationsEnabled()) return;
 		const previous = entity.get(Chars)?.value ?? '';
 		this.document.setText(entity, text);
 		this.settle(entity);
@@ -381,6 +385,7 @@ export class DocumentEditor {
 	 * out, and the edit is not undoable.
 	 */
 	public reportEdit(entity: Entity, name: string, value: PropValue, previous?: unknown): void {
+		if (!documentMutationsEnabled()) return;
 		this.settle(entity);
 		const source = entity.get(Source)?.value;
 
@@ -532,6 +537,7 @@ export class DocumentEditor {
 	 * loop still renders them, it just cannot be written to.
 	 */
 	public unsettle(edit: UnrollEdit): void {
+		if (!documentMutationsEnabled()) return;
 		const originals = new Map<string, string>();
 		const members = new Set<string>();
 		for (const iteration of edit.iterations) {
@@ -569,6 +575,7 @@ export class DocumentEditor {
 	 * written under.
 	 */
 	public insertElement(parent: Entity, element: () => unknown, anchor?: Entity): Entity[] {
+		if (!documentMutationsEnabled()) return [];
 		if (!parent.get(Source)?.value) return [];
 		// A child of one iteration's element, not of every iteration's.
 		this.settle(parent);
@@ -636,6 +643,7 @@ export class DocumentEditor {
 	 * `active`: one entity holds it). Returns the copies' top-level entities.
 	 */
 	public duplicate(entities: Entity | Entity[]): Entity[] {
+		if (!documentMutationsEnabled()) return [];
 		const copies: Entity[] = [];
 		for (const source of this.subtreeRoots(entities)) {
 			const tree = this.spell(source);
@@ -675,6 +683,7 @@ export class DocumentEditor {
 	 * pairs it made, in the order of the originals.
 	 */
 	public duplicateInPlace(entities: Entity | Entity[]): { original: Entity; copy: Entity }[] {
+		if (!documentMutationsEnabled()) return [];
 		const pairs: { original: Entity; copy: Entity }[] = [];
 
 		for (const original of this.subtreeRoots(entities)) {
@@ -711,6 +720,7 @@ export class DocumentEditor {
 	 * empty element is not worth putting in the file.
 	 */
 	public wrap(entities: Entity | Entity[], element: () => unknown): Entity | null {
+		if (!documentMutationsEnabled()) return null;
 		const roots = new Set(this.subtreeRoots(entities));
 		const first = [...roots][0];
 		if (!first) return null;
@@ -759,6 +769,7 @@ export class DocumentEditor {
 	 * or null when the node has no intrinsic media to remove.
 	 */
 	public removeIntrinsicPaint(node: Entity): Entity | null {
+		if (!documentMutationsEnabled()) return null;
 		const intrinsic = getIntrinsicPaint(node);
 		if (intrinsic !== PaintType.VIDEO && intrinsic !== PaintType.IMAGE) return null;
 
@@ -829,6 +840,7 @@ export class DocumentEditor {
 	 * copies. Returns their top-level entities.
 	 */
 	public paste(parent: Entity, anchor?: Entity): Entity[] {
+		if (!documentMutationsEnabled()) return [];
 		const { trees, parent: copiedFrom } = this.clipboard;
 		if (!trees.length) return [];
 
@@ -887,6 +899,7 @@ export class DocumentEditor {
 	 * way would have put it (ordering included).
 	 */
 	public reparent(entity: Entity, parent: Entity, anchor?: Entity): boolean {
+		if (!documentMutationsEnabled()) return false;
 		if (!entity.get(Source)?.value || !parent.get(Source)?.value) return false;
 		// Appending where it already is, last, is the one move that changes
 		// nothing. Appending from anywhere else in the same parent is a real
@@ -951,6 +964,7 @@ export class DocumentEditor {
 	 * source), stays. Returns the entities that were removed at the top level.
 	 */
 	public remove(entities: Entity | Entity[]): Entity[] {
+		if (!documentMutationsEnabled()) return [];
 		const doomed = new Set(
 			(Array.isArray(entities) ? entities : [entities]).filter(
 				(entity) => entity.isAlive() && !entity.has(Stage) && !!entity.get(Source)?.value,
@@ -994,6 +1008,7 @@ export class DocumentEditor {
 	 * the world still holds.
 	 */
 	public restamp(ids: Record<string, string>): void {
+		if (!documentMutationsEnabled()) return;
 		for (const entity of this.world.query(Source)) {
 			const next = ids[entity.get(Source)!.value];
 			if (next) entity.set(Source, { value: next });
@@ -1006,6 +1021,7 @@ export class DocumentEditor {
 	 * place in the file, so it has no place on the canvas either.
 	 */
 	public discardPending(source: string): void {
+		if (!documentMutationsEnabled()) return;
 		if (!isPendingSource(source)) return;
 		const document = this.document;
 		// Snapshot: destroying cascades through the subtree, and a live query

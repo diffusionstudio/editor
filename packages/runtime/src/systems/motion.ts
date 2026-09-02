@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Not, Or } from 'koota';
 import { cubicBezier, steps, spring } from 'animejs';
 
 import { store } from '../world/store';
@@ -194,9 +193,16 @@ export function motionSystem(world: World): void {
 	const keyframeTrack = store(world, KeyframeTrack);
 	const worldProps = getPropertyPaths(world);
 
-	for (const entity of world.query(
-		Or(Geometry, Group, AdjustmentLayer), Not(Hidden), Not(Culled),
-	)) {
+	// Keep the node union and exclusions out of Koota's compound query. In the
+	// editor world these traits span internal bitmask generations, and Koota
+	// 0.6 can otherwise drop valid nodes entirely.
+	const nodes = new Set([
+		...world.query(Geometry),
+		...world.query(Group),
+		...world.query(AdjustmentLayer),
+	]);
+	for (const entity of nodes) {
+		if (entity.has(Hidden) || entity.has(Culled)) continue;
 		const eid = entity.id();
 
 		if (computed.visibility[eid] === 0) continue;

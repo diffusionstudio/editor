@@ -17,6 +17,7 @@ const ALLOWED_MAIN_TO_RENDERER: ReadonlySet<string> = new Set([
 ]);
 
 contextBridge.exposeInMainWorld("desktop", {
+  browserCompanionHost: process.argv.includes("--browser-companion-host"),
   getPathForFile,
   platform: process.platform,
   send,

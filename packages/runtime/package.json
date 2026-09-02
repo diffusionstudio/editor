@@ -12,7 +12,9 @@
     "./media": "./src/media/index.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:cache": "esbuild tests/cache-observer.test.ts --bundle --platform=node --format=esm --outfile=/dev/stdout | node --input-type=module",
+    "test:font-policy": "node --test --experimental-strip-types tests/web-font-policy.test.ts"
   },
   "keywords": [
     "koota",

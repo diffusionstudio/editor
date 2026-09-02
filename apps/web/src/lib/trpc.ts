@@ -6,6 +6,8 @@ import { createTRPCClient, httpBatchLink, TRPCClientError, type TRPCLink } from 
 import { observable } from "@trpc/server/observable";
 import { supabase } from "./supabase";
 import { showUpgradeDialog } from "@/components/upgrade-dialog";
+import { isLocalOnly } from "./local-only";
+import { browserCompanionAuthority } from "./companion-authority";
 
 import type { AppRouter } from "@diffusionstudio/api-contract";
 
@@ -24,16 +26,26 @@ const paymentRequiredLink: TRPCLink<AppRouter> = () => ({ next, op }) =>
     return () => sub.unsubscribe();
   });
 
+const localOnlyLink: TRPCLink<AppRouter> = () => () =>
+  observable((observer) => {
+    const error = new Error("Diffusion API access is disabled in browser gateway zero-credit local-only mode.");
+    browserCompanionAuthority?.recordOutboundAttempt("trpc", "/api/trpc");
+    observer.error(TRPCClientError.from(error));
+    return () => {};
+  });
+
 export const trpc = createTRPCClient<AppRouter>({
-  links: [
-    paymentRequiredLink,
-    httpBatchLink({
-      url: `${import.meta.env.VITE_API_URL ?? ""}/api/trpc`,
-      async headers() {
-        const session = await supabase?.auth.getSession();
-        const token = session?.data.session?.access_token;
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      },
-    }),
-  ],
+  links: isLocalOnly()
+    ? [localOnlyLink]
+    : [
+        paymentRequiredLink,
+        httpBatchLink({
+          url: `${import.meta.env.VITE_API_URL ?? ""}/api/trpc`,
+          async headers() {
+            const session = await supabase?.auth.getSession();
+            const token = session?.data.session?.access_token;
+            return token ? { Authorization: `Bearer ${token}` } : {};
+          },
+        }),
+      ],
 });

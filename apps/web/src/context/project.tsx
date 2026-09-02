@@ -14,6 +14,7 @@ import { createContext, createMemo, createSignal, useContext, type Accessor, typ
 import { getProject, renameProject } from '@/projects';
 
 import type { ProjectInfo } from '@/projects';
+import { isBrowserCompanionRenderer } from '@/lib/companion-authority';
 
 export type ProjectContextValue = {
 	/** package.json `projectId`: what the project is, whatever it is called. */
@@ -42,6 +43,7 @@ export function ProjectProvider(props: { project: ProjectInfo; children: JSX.Ele
 	const name = createMemo(() => info().displayName);
 
 	const rename = async (displayName: string): Promise<void> => {
+		if (isBrowserCompanionRenderer()) throw new Error('Browser companion is read-only');
 		setInfo(await renameProject(dir(), displayName));
 	};
 

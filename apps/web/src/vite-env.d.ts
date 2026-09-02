@@ -14,10 +14,22 @@ declare global {
     chrome: any;
     desktop?: {
       platform: string;
+      browserCompanionHost: boolean;
       send(channel: string, payload: unknown): void;
       on(channel: string, cb: (payload: unknown) => void): (() => void);
       getPathForFile(file: File): string;
     };
+    readonly browserCompanion?: Readonly<{
+      readonly enabled: true;
+      readonly localOnly: true;
+      readonly expectedBuildHash: string;
+      connect(client: { protocol: number; schemaHash: string; appVersion: string }): Promise<import("./lib/companion-protocol").CompanionSnapshot>;
+      subscribe(handler: (message: import("./lib/companion-protocol").CompanionServerMessage) => void): () => void;
+      semantic(event: string, data: Record<string, unknown>): void;
+      applied(acknowledgement: import("./lib/companion-protocol").CompanionApplyAcknowledgement): void;
+      recordOutboundAttempt(kind: string, target: string): void;
+    }>;
+    showDirectoryPicker(options?: { mode?: "read" | "readwrite" }): Promise<FileSystemDirectoryHandle>;
     showOpenFilePicker(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
     EyeDropper?: {
       new(): EyeDropper;

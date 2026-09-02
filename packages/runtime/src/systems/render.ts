@@ -8,16 +8,14 @@
 // regions are pushed callback-less (see HitRegions); the app's input layer
 // attaches its handlers.
 
-import { Not, Or } from 'koota';
-
 import { store } from '../world/store';
 import {
 	COMPOSITE_OPERATIONS, EffectType, GeometryType, PaintType, ScaleModeType,
 	TransitionType,
 } from '../constants';
 import {
-	ChildOf, Hidden, Culled, Interactive, IsMask,
-	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
+	Hidden, Culled, Interactive, IsMask,
+	ClipsContent, Geometry, Paint, Color, Caption, ScaleMode, Shader,
 	BlendMode, Effect, Transition, MixedCornerRadius,
 	LocalTransform, WorldTransform, Computed, Cache,
 	Host,
@@ -25,7 +23,7 @@ import {
 	HitRegions,
 	Root,
 } from '../traits';
-import { getParentNode } from '../queries/hierarchy';
+import { getDrawableChildren, getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
 import { FAILED_COLOR, getGeneratingColor, getSourceFailure, isGenerating } from '../utils/generating';
@@ -865,6 +863,21 @@ export function renderNode(world: World, entity: Entity): void {
 }
 
 /**
+ * Visible node roots in paint order.
+ *
+ * Do not fold `Not(Culled)` into the Koota relation query. In a world with
+ * the editor's later trait generations, Koota 0.6 can omit a scene from that
+ * compound query even after its `Culled` tag has been removed. `renderNode`
+ * checks the tag again, so filtering this stable query is equivalent and
+ * cannot blank the entire document.
+ */
+export function getRenderableRoots(world: World): Entity[] {
+	const stage = world.get(Root)!;
+	return getDrawableChildren(world, stage)
+		.filter((entity) => !entity.has(Culled));
+}
+
+/**
  * Render system entry point. Call after transformSystem.
  *
  * Reads camera, background, and canvas size from world state and applies
@@ -900,8 +913,7 @@ export function renderSystem(world: World): void {
 	ctx.setTransform(view.a, view.b, view.c, view.d, view.e, view.f);
 
 	// Render top-level nodes.
-	const stage = world.get(Root)!;
-	for (const entity of world.query(Or(Geometry, Group), ChildOf(stage), Not(Culled))) {
+	for (const entity of getRenderableRoots(world)) {
 		renderNode(world, entity);
 	}
 }

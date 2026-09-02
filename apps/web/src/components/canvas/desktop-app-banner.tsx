@@ -10,6 +10,7 @@ import { createStoredSignal } from "@/lib/store";
 import { downloadDesktopApp } from "@/lib/desktop-app";
 import { track } from "@/lib/analytics";
 import { store } from "@/init";
+import { companionUiCapabilities } from "@/lib/companion-capabilities";
 
 const BANNER_IMAGE = new URL("@/assets/images/desktop-app-banner.png", import.meta.url).href;
 
@@ -19,6 +20,7 @@ const BANNER_IMAGE = new URL("@/assets/images/desktop-app-banner.png", import.me
  */
 export function DesktopAppBanner() {
   const { isDesktop } = useEditorApi();
+  const capabilities = companionUiCapabilities();
   const [dismissed, setDismissed] = createStoredSignal(
     store.define("canvas.desktop-app-banner-dismissed", false),
   );
@@ -31,7 +33,7 @@ export function DesktopAppBanner() {
   const handleDownload = () => downloadDesktopApp("canvas_banner");
 
   return (
-    <Show when={!dismissed() && !isDesktop}>
+    <Show when={capabilities.desktopPromotion && !dismissed() && !isDesktop}>
       <div class="absolute bottom-4 left-4 z-10 flex w-[220px] flex-col gap-1 rounded-md border border-border bg-background pb-3 shadow-[0px_0px_1px_2px_rgba(0,0,0,0.12),0px_4px_12px_8px_rgba(0,0,0,0.12)]">
         <div class="relative aspect-[220/122] w-full overflow-hidden rounded-t-md">
           <img src={BANNER_IMAGE} alt="" class="pointer-events-none size-full object-cover" />

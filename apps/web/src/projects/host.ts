@@ -21,9 +21,13 @@ import { MAIN_CHANNELS } from '@desktop/main-channels';
 import { mainBridge } from '@/lib/ipc';
 import { lastUsedProjectRoot, listProjectRoots, rememberProjectRoot } from '@/lib/db';
 
-import type { CompileResult, ProjectInfo, SourceEdit, WriteResult } from '@desktop/main-channels';
+import type { CompileResponse, ProjectInfo, SourceEdit, WriteResult } from '@desktop/main-channels';
+import { companionSnapshot, initializeBrowserCompanion, onCompanionMessage, reportCompanionApplied } from '@/lib/browser-companion';
+import { isBrowserCompanionRenderer } from '@/lib/companion-authority';
+import { isBrowserCompanionHostRenderer } from '@/lib/local-only';
+import { readCompanionProjectConfig } from './companion-fs';
 
-export type { CompileResult, ProjectInfo, SourceEdit, WriteResult };
+export type { CompileResult, ProjectInfo, SourceEdit, WriteResult } from '@desktop/main-channels';
 
 // The roots live in the app's IndexedDB (see @/lib/db) as a list
 // keyed by path. The app works against one of them — the one used last — but
@@ -36,6 +40,13 @@ export type { CompileResult, ProjectInfo, SourceEdit, WriteResult };
 
 const [projectsRoot, setProjectsRoot] = createSignal<string | null>(null);
 const [rootsReady, setRootsReady] = createSignal(false);
+const companionCompileIdentities = new WeakMap<object, { sessionId: string; revision: number; bundleHash: string }>();
+
+async function hashCompileResult(result: CompileResponse): Promise<string> {
+	const source = result.ok ? result.code : `compile-error:\n${result.error}`;
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 /** The projects root folder: null until one is picked, and until `rootsReady`. */
 export { projectsRoot };
@@ -57,6 +68,7 @@ export const isDesktop = (): boolean => !!window.desktop;
 
 /** The projects root, waited for: null off the desktop and until one is picked. */
 export async function getProjectsRoot(): Promise<string | null> {
+	if (isBrowserCompanionRenderer()) return null;
 	await ready;
 	return projectsRoot();
 }
@@ -117,8 +129,13 @@ export async function createProject(displayName: string): Promise<ProjectInfo> {
  * matched by id or folder name, most recently used first.
  */
 export async function resolveProject(ref: string): Promise<ProjectInfo | null> {
-	await ready;
-	if (!ref || !isDesktop()) return null;
+	if (isBrowserCompanionRenderer()) {
+		const current = await initializeBrowserCompanion();
+		if (!current || (ref !== current.project.id && ref !== 'active')) return null;
+		return companionProjectInfo(current);
+	}
+  await ready;
+  if (!ref || !isDesktop()) return null;
 
 	const root = projectsRoot();
 	if (root) {
@@ -156,6 +173,10 @@ export async function openProjectFolder(dir: string): Promise<ProjectInfo> {
 
 /** The project in the folder `dir`, or null when there is none. */
 export async function getProject(dir: string): Promise<ProjectInfo | null> {
+	if (isBrowserCompanionRenderer()) {
+		const current = companionSnapshot();
+		return current && dir === `companion:${current.project.id}` ? companionProjectInfo(current) : null;
+	}
 	if (!dir || !isDesktop()) return null;
 	return mainBridge.call(MAIN_CHANNELS.PROJECTS_GET, { dir });
 }
@@ -188,8 +209,52 @@ export async function deleteProject(dir: string): Promise<void> {
  */
 export const projectKey = (project: ProjectInfo): string => project.id || project.name;
 
-export function compileProject(dir: string): Promise<CompileResult> {
-	return mainBridge.call(MAIN_CHANNELS.PROJECTS_COMPILE, { dir });
+export function compileProject(
+	dir: string,
+	options: { companionSurfaceMount?: boolean } = {},
+): Promise<CompileResponse> {
+	if (isBrowserCompanionRenderer()) {
+		const current = companionSnapshot();
+		if (!current || dir !== `companion:${current.project.id}`) return Promise.resolve({ ok: false, error: 'Companion project unavailable' });
+		companionCompileIdentities.set(current.bundle, {
+			sessionId: current.sessionId,
+			revision: current.revision,
+			bundleHash: current.bundleHash,
+		});
+		return Promise.resolve(current.bundle);
+	}
+	return mainBridge.call(MAIN_CHANNELS.PROJECTS_COMPILE, {
+		dir,
+		...(options.companionSurfaceMount ? { companionSurfaceMount: true } : {}),
+	});
+}
+
+/** A mount acknowledgement is emitted only after reconciler mount succeeds or fails. */
+export async function reportProjectBundleApplied(
+	dir: string,
+	result: CompileResponse,
+	ok: boolean,
+	error?: string,
+): Promise<void> {
+	if (isBrowserCompanionRenderer()) {
+		const identity = companionCompileIdentities.get(result);
+		if (!identity) throw new Error('Companion bundle identity is unavailable');
+		reportCompanionApplied({ ...identity, ok, ...(error ? { error: error.slice(0, 4000) } : {}) });
+		return;
+	}
+	if (!isBrowserCompanionHostRenderer()) return;
+	// A cold hidden host may restore its last DAPI project before a companion
+	// prepare has armed a root/session. It still mounts normally, but there is
+	// no companion revision to acknowledge. Once prepare is armed, main adds
+	// the exact identity; absence then fails readiness by bounded timeout.
+	if (!result.companionMount) return;
+	await mainBridge.call(MAIN_CHANNELS.PROJECTS_BUNDLE_APPLIED, {
+		dir,
+		...result.companionMount,
+		bundleHash: await hashCompileResult(result),
+		ok,
+		...(error ? { error: error.slice(0, 4000) } : {}),
+	});
 }
 
 /**
@@ -198,16 +263,19 @@ export function compileProject(dir: string): Promise<CompileResult> {
  * reaching the watcher (see `markSelfWrite` in the desktop's projects.ts).
  */
 export function writeProject(dir: string, edits: SourceEdit[]): Promise<WriteResult> {
+	if (isBrowserCompanionRenderer()) return Promise.reject(new Error('Browser companion is read-only'));
 	return mainBridge.call(MAIN_CHANNELS.PROJECTS_WRITE, { dir, edits });
 }
 
 /** The project's config (the `diffusion` field of its package.json), unparsed; null when absent. */
 export function readProjectConfig(dir: string): Promise<unknown> {
+	if (isBrowserCompanionRenderer()) return readCompanionProjectConfig();
 	return mainBridge.call(MAIN_CHANNELS.PROJECTS_CONFIG_READ, { dir });
 }
 
 /** Replaces the project's config (null removes the field). Kept from the watcher like `writeProject`. */
 export function writeProjectConfig(dir: string, config: unknown): Promise<void> {
+	if (isBrowserCompanionRenderer()) return Promise.reject(new Error('Browser companion is read-only'));
 	return mainBridge.call(MAIN_CHANNELS.PROJECTS_CONFIG_WRITE, { dir, config });
 }
 
@@ -216,6 +284,17 @@ export function writeProjectConfig(dir: string, config: unknown): Promise<void> 
  * inside it changes. Returns the unwatch function.
  */
 export function watchProject(dir: string, onChange: (path: string) => void, debounceMs = 80): () => void {
+	if (isBrowserCompanionRenderer()) {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const changed = (path: string) => {
+			clearTimeout(timer);
+			timer = setTimeout(() => onChange(path), debounceMs);
+		};
+		const stopBundle = onCompanionMessage((message) => {
+			if (message.type === 'bundle') changed('index.tsx');
+		});
+		return () => { clearTimeout(timer); stopBundle(); };
+	}
 	if (!isDesktop()) return () => {};
 
 	let pending: ReturnType<typeof setTimeout> | undefined;
@@ -232,5 +311,17 @@ export function watchProject(dir: string, onChange: (path: string) => void, debo
 		clearTimeout(pending);
 		stop();
 		void mainBridge.call(MAIN_CHANNELS.PROJECTS_UNWATCH, { dir }).catch(() => {});
+	};
+}
+
+function companionProjectInfo(current: NonNullable<ReturnType<typeof companionSnapshot>>): ProjectInfo {
+	return {
+		id: current.project.id,
+		name: current.project.name,
+		displayName: current.project.displayName,
+		dir: `companion:${current.project.id}`,
+		entry: 'index.tsx',
+		modifiedAt: new Date(0).toISOString(),
+		createdAt: new Date(0).toISOString(),
 	};
 }

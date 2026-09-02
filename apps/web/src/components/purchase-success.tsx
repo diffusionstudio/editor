@@ -8,13 +8,14 @@ import { Show, createSignal, onCleanup, onMount } from "solid-js";
 import { Icon } from "@/components/ui/icon";
 import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
+import { isLocalOnly } from "@/lib/local-only";
 
 export function PurchaseSuccess() {
   const [params, setParams] = useSearchParams();
   const [deepLinkSuccess, setDeepLinkSuccess] = createSignal(false);
 
   onMount(() => {
-    if (!window.desktop) return;
+    if (!window.desktop || isLocalOnly()) return;
 
     // Desktop returns from Stripe through a diffusion:// deep link rather than a
     // query param — the app window never navigates away in the first place.

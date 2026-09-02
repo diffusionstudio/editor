@@ -50,6 +50,10 @@ import {
 import { getLocalFonts } from '@/engine/fonts';
 import { useDerived, useEditor, useTool } from '@/engine/hooks';
 import { removeKeyframeTrack, syncKeyframe } from '@/engine/keyframes';
+import { fontSourcesForMode } from '@/lib/companion-fonts';
+import { isLocalOnly } from '@/lib/local-only';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
+import { CompanionAuthoringBoundary } from '@/components/companion-authoring-boundary';
 
 import type { Entity } from 'koota';
 
@@ -89,6 +93,7 @@ export function TextPanel(props: TextPanelProps) {
   const world = useWorld();
   const editor = useEditor();
   const tool = useTool();
+  const authoring = documentMutationsEnabled();
   const entity = () => props.selection[0]!;
 
   const style = useTrait(entity, TextStyle);
@@ -121,20 +126,23 @@ export function TextPanel(props: TextPanelProps) {
 
   /** Writes a family or weight to the trait alone, for the picker to show. */
   const previewFont = (params: { fontFamily?: string; fontWeight?: string }) => {
+    if (!authoring) return;
     entity().add(TextStyle);
     entity().set(TextStyle, params);
   };
 
   const handleFontFamilyChange = (family: string) => {
+    if (!authoring) return;
     setSelectedFamily(family);
     editor.editProperty(entity(), 'fontFamily', family);
 
-    if (family in WebFonts) {
+    if (!isLocalOnly() && family in WebFonts) {
       void loadWebFont(world, family as keyof typeof WebFonts);
     }
   };
 
   const handleFontWeightChange = (weight: string) => {
+    if (!authoring) return;
     if (weight === selectedWeight()) return;
 
     setSelectedWeight(weight);
@@ -144,6 +152,7 @@ export function TextPanel(props: TextPanelProps) {
   };
 
   const handleResizeModeChange = (mode: 'auto' | 'fixed') => {
+    if (!authoring) return;
     if (mode === 'fixed') {
       // Pinned at what the glyphs came to, so the switch changes nothing yet.
       const [w, h] = [Math.round(width()), Math.round(height())];
@@ -163,18 +172,21 @@ export function TextPanel(props: TextPanelProps) {
 
   return (
     <PanelSection title="Typography">
-      <Show when={textSelected()}>
-        <ControlRow label="Content" contentClass="flex flex-col">
-          <GrowingTextArea
-            value={chars()?.value ?? ''}
-            maxRows={8}
-            onInput={(v) => editor.editText(entity(), v)}
-            focused={tool() === ToolType.TEXT_EDIT}
-            onFocus={() => world.set(Tool, { value: ToolType.TEXT_EDIT })}
-            onBlur={() => world.set(Tool, { value: ToolType.MOVE })}
-          />
-        </ControlRow>
-      </Show>
+      <CompanionAuthoringBoundary>
+        <Show when={textSelected()}>
+          <ControlRow label="Content" contentClass="flex flex-col">
+            <GrowingTextArea
+              value={chars()?.value ?? ''}
+              maxRows={8}
+              onInput={(v) => editor.editText(entity(), v)}
+              focused={authoring && tool() === ToolType.TEXT_EDIT}
+              onFocus={() => authoring && world.set(Tool, { value: ToolType.TEXT_EDIT })}
+              onBlur={() => authoring && world.set(Tool, { value: ToolType.MOVE })}
+              readOnly={!authoring}
+            />
+          </ControlRow>
+        </Show>
+      </CompanionAuthoringBoundary>
 
       <ControlRow label="Font">
         <FontDropdown
@@ -182,100 +194,103 @@ export function TextPanel(props: TextPanelProps) {
           onPreview={(family) => previewFont({ fontFamily: family })}
           onFamilyChange={handleFontFamilyChange}
           onWeightsChange={setAvailableWeights}
+          readOnly={!authoring}
         />
       </ControlRow>
 
-      <ControlRow label="Sizing" contentClass="flex gap-2 items-center">
-        <Select
-          class="flex-1 min-w-0"
-          value={selectedWeight()}
-          onChange={v => handleFontWeightChange(v ?? '400')}
-          options={weightOptions().map(w => w.value)}
-          itemComponent={itemProps => (
-            <SelectItem
-              item={itemProps.item}
-              onPointerEnter={() => previewFont({ fontWeight: itemProps.item.rawValue })}
-            >
-              {weightOptions().find(w => w.value === itemProps.item.rawValue)?.label}
-            </SelectItem>
-          )}
-        >
-          <SelectTrigger>
-            <SelectValue>
-              {weightOptions().find(w => w.value === selectedWeight())?.label}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPortal>
-            <SelectContent onCloseAutoFocus={() => previewFont({ fontWeight: selectedWeight() })} />
-          </SelectPortal>
-        </Select>
+      <CompanionAuthoringBoundary>
+        <ControlRow label="Sizing" contentClass="flex gap-2 items-center">
+          <Select
+            class="flex-1 min-w-0"
+            value={selectedWeight()}
+            onChange={v => handleFontWeightChange(v ?? '400')}
+            options={weightOptions().map(w => w.value)}
+            itemComponent={itemProps => (
+              <SelectItem
+                item={itemProps.item}
+                onPointerEnter={() => previewFont({ fontWeight: itemProps.item.rawValue })}
+              >
+                {weightOptions().find(w => w.value === itemProps.item.rawValue)?.label}
+              </SelectItem>
+            )}
+          >
+            <SelectTrigger>
+              <SelectValue>
+                {weightOptions().find(w => w.value === selectedWeight())?.label}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectPortal>
+              <SelectContent onCloseAutoFocus={() => previewFont({ fontWeight: selectedWeight() })} />
+            </SelectPortal>
+          </Select>
 
-        <ControlledTextField
-          class="flex-1"
-          value={fontSize()}
-          onNumber={(v) => editor.editProperty(entity(), 'fontSize', v)}
-          step={1}
-          min={1}
-          autoSelect
-          limitEvents
-        />
-      </ControlRow>
-
-      <ControlRow
-        label="Flow"
-        labelClass="opacity-0"
-        contentClass="grid grid-cols-2 gap-2"
-      >
-        <ControlledTextField
-          icon={<Icon name="text.line-height" />}
-          value={Math.round(leading() * 100)}
-          onNumber={(v) => editor.editProperty(entity(), 'leading', v === 100 ? false : v / 100)}
-          unit="%"
-          step={1}
-          min={0}
-          max={1200}
-          autoSelect
-          sliderEnabled
-          limitEvents
-        />
-        <ControlledTextField
-          icon={<Icon name="text.letter-spacing" />}
-          value={letterSpacing()}
-          onNumber={(v) => editor.editProperty(entity(), 'letterSpacing', v === 0 ? false : v)}
-          unit="px"
-          step={1}
-          min={-1200}
-          max={1200}
-          autoSelect
-          sliderEnabled
-          limitEvents
-        />
-      </ControlRow>
-
-      <Show when={textSelected()}>
-        <ControlRow label="Grow">
-          <SegmentedIconTabs
-            value={resizeMode}
-            onChange={handleResizeModeChange}
-            items={RESIZE_MODE_ITEMS}
+          <ControlledTextField
+            class="flex-1"
+            value={fontSize()}
+            onNumber={(v) => editor.editProperty(entity(), 'fontSize', v)}
+            step={1}
+            min={1}
+            autoSelect
+            limitEvents
           />
         </ControlRow>
-      </Show>
 
-      <ControlRow label="Align" contentClass="flex gap-2">
-        <SegmentedIconTabs
-          class="flex-1"
-          value={() => HORIZONTAL_ALIGNS[textAlign()] ?? 'left'}
-          onChange={(v) => editor.editProperty(entity(), 'textAlign', v === 'left' ? false : v)}
-          items={HORIZONTAL_ALIGN_TABS}
-        />
-        <SegmentedIconTabs
-          class="flex-1"
-          value={() => VERTICAL_ALIGNS[textBaseline()] ?? 'top'}
-          onChange={(v) => editor.editProperty(entity(), 'textBaseline', v === 'top' ? false : v)}
-          items={VERTICAL_ALIGN_TABS}
-        />
-      </ControlRow>
+        <ControlRow
+          label="Flow"
+          labelClass="opacity-0"
+          contentClass="grid grid-cols-2 gap-2"
+        >
+          <ControlledTextField
+            icon={<Icon name="text.line-height" />}
+            value={Math.round(leading() * 100)}
+            onNumber={(v) => editor.editProperty(entity(), 'leading', v === 100 ? false : v / 100)}
+            unit="%"
+            step={1}
+            min={0}
+            max={1200}
+            autoSelect
+            sliderEnabled
+            limitEvents
+          />
+          <ControlledTextField
+            icon={<Icon name="text.letter-spacing" />}
+            value={letterSpacing()}
+            onNumber={(v) => editor.editProperty(entity(), 'letterSpacing', v === 0 ? false : v)}
+            unit="px"
+            step={1}
+            min={-1200}
+            max={1200}
+            autoSelect
+            sliderEnabled
+            limitEvents
+          />
+        </ControlRow>
+
+        <Show when={textSelected()}>
+          <ControlRow label="Grow">
+            <SegmentedIconTabs
+              value={resizeMode}
+              onChange={handleResizeModeChange}
+              items={RESIZE_MODE_ITEMS}
+            />
+          </ControlRow>
+        </Show>
+
+        <ControlRow label="Align" contentClass="flex gap-2">
+          <SegmentedIconTabs
+            class="flex-1"
+            value={() => HORIZONTAL_ALIGNS[textAlign()] ?? 'left'}
+            onChange={(v) => editor.editProperty(entity(), 'textAlign', v === 'left' ? false : v)}
+            items={HORIZONTAL_ALIGN_TABS}
+          />
+          <SegmentedIconTabs
+            class="flex-1"
+            value={() => VERTICAL_ALIGNS[textBaseline()] ?? 'top'}
+            onChange={(v) => editor.editProperty(entity(), 'textBaseline', v === 'top' ? false : v)}
+            items={VERTICAL_ALIGN_TABS}
+          />
+        </ControlRow>
+      </CompanionAuthoringBoundary>
     </PanelSection>
   );
 }
@@ -285,15 +300,18 @@ type FontDropdownProps = {
   onPreview(family: string): void;
   onFamilyChange(family: string): void;
   onWeightsChange(weights: string[]): void;
+  readOnly?: boolean;
 };
 
 export function FontDropdown(props: FontDropdownProps) {
-  const [webfonts] = createSignal(getWebFonts());
+  const localOnly = isLocalOnly();
+  const [webfonts] = createSignal(fontSourcesForMode(localOnly, getWebFonts));
   const [fontQuery, setFontQuery] = createSignal('');
   const fontsPermission = usePermissionState('local-fonts');
 
   // Preload web fonts for preview
   onMount(() => {
+    if (localOnly) return;
     if (document.visibilityState !== 'visible') return;
     for (const family of Object.keys(WebFonts)) {
       const config = WebFonts[family as keyof typeof WebFonts];
@@ -339,7 +357,7 @@ export function FontDropdown(props: FontDropdownProps) {
     setFontQuery('');
     // Whatever was hovered last goes: only a selection authors a family, and
     // `family` is the authored one whether or not this picker changed it.
-    if (!isOpen) props.onPreview(props.family);
+    if (!isOpen && !props.readOnly) props.onPreview(props.family);
   };
 
   const handleGrantAccess = async () => {
@@ -388,14 +406,14 @@ export function FontDropdown(props: FontDropdownProps) {
           <DropdownMenuSeparator />
           <div class="overflow-y-auto flex-1 flex flex-col gap-2">
             <DropdownMenuGroup>
-              <DropdownMenuGroupLabel>Web Fonts</DropdownMenuGroupLabel>
+              <DropdownMenuGroupLabel>{localOnly ? "Local fallback fonts" : "Web Fonts"}</DropdownMenuGroupLabel>
               <For each={filteredWebFonts()}>
                 {(font) => (
                   <LazyFontItem
                     family={font.family}
                     checked={props.family === font.family}
-                    onPointerEnter={props.onPreview}
-                    onSelect={props.onFamilyChange}
+                    onPointerEnter={(family) => !props.readOnly && props.onPreview(family)}
+                    onSelect={(family) => !props.readOnly && props.onFamilyChange(family)}
                   >
                     {font.family}
                   </LazyFontItem>
@@ -403,34 +421,36 @@ export function FontDropdown(props: FontDropdownProps) {
               </For>
             </DropdownMenuGroup>
 
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuGroupLabel>System Fonts</DropdownMenuGroupLabel>
-              <Show when={!localFonts.latest?.length}>
-                <Button
-                  variant="secondary"
-                  class="text-foreground gap-0"
-                  onClick={handleGrantAccess}
-                >
-                  <Icon name="lock-closed-small" class="size-6" />
-                  <span class="mr-3">Grant Access</span>
-                </Button>
-              </Show>
-              <Show when={filteredLocalFonts().length}>
-                <For each={filteredLocalFonts()}>
-                  {(font) => (
-                    <LazyFontItem
-                      family={font.family}
-                      checked={props.family === font.family}
-                      onPointerEnter={props.onPreview}
-                      onSelect={props.onFamilyChange}
-                    >
-                      {font.family}
-                    </LazyFontItem>
-                  )}
-                </For>
-              </Show>
-            </DropdownMenuGroup>
+            <Show when={!localOnly}>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuGroupLabel>System Fonts</DropdownMenuGroupLabel>
+                <Show when={!localFonts.latest?.length}>
+                  <Button
+                    variant="secondary"
+                    class="text-foreground gap-0"
+                    onClick={handleGrantAccess}
+                  >
+                    <Icon name="lock-closed-small" class="size-6" />
+                    <span class="mr-3">Grant Access</span>
+                  </Button>
+                </Show>
+                <Show when={filteredLocalFonts().length}>
+                  <For each={filteredLocalFonts()}>
+                    {(font) => (
+                      <LazyFontItem
+                        family={font.family}
+                        checked={props.family === font.family}
+                        onPointerEnter={(family) => !props.readOnly && props.onPreview(family)}
+                        onSelect={(family) => !props.readOnly && props.onFamilyChange(family)}
+                      >
+                        {font.family}
+                      </LazyFontItem>
+                    )}
+                  </For>
+                </Show>
+              </DropdownMenuGroup>
+            </Show>
           </div>
         </DropdownMenuContent>
       </DropdownMenuPortal>
@@ -445,6 +465,7 @@ type GrowingTextAreaProps = {
   focused?: boolean;
   onBlur?(): void;
   onFocus?(): void;
+  readOnly?: boolean;
 };
 
 export function GrowingTextArea(props: GrowingTextAreaProps) {
@@ -473,6 +494,7 @@ export function GrowingTextArea(props: GrowingTextAreaProps) {
   });
 
   const handleInput = (e: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
+    if (props.readOnly) return;
     props.onInput(e.currentTarget.value);
     resize();
   };
@@ -496,6 +518,8 @@ export function GrowingTextArea(props: GrowingTextAreaProps) {
       onKeyDown={handleKeyDown}
       onFocus={props.onFocus}
       onBlur={props.onBlur}
+      readOnly={props.readOnly}
+      aria-readonly={props.readOnly}
       rows={1}
       class="bg-input h-7 rounded-md px-2 py-1 text-xxs text-foreground placeholder:text-muted-foreground outline-none resize-none w-full focus-ring overflow-y-auto"
       style={{ 'line-height': `${lineHeight}px` }}
