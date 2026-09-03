@@ -141,7 +141,86 @@ export function nudgeSelection(world: World, dx: number, dy: number): void {
 	}
 }
 
-const nudge = (dx: number, dy: number) => (world: World): void => nudgeSelection(world, dx, dy);
+
+/**
+ * Collects all distinct cut/boundary frame positions across the active scene and its timeline items.
+ */
+function getTimelinePoints(world: World): number[] {
+	const scene = getActiveEntity(world);
+	if (scene === null) return [];
+
+	const computed = store(world, Computed);
+	const points = new Set<number>([0]);
+
+	const sceneEnd = computed.end[scene.id()];
+	if (sceneEnd !== undefined && sceneEnd > 0) {
+		points.add(Math.round(sceneEnd));
+	}
+
+	const walk = (parent: Entity): void => {
+		for (const child of world.query(NODES, ChildOf(parent))) {
+			const cid = child.id();
+			const start = computed.start[cid];
+			const end = computed.end[cid];
+			if (start !== undefined) points.add(Math.round(start));
+			if (end !== undefined) points.add(Math.round(end));
+			walk(child);
+		}
+	};
+	walk(scene);
+
+	return [...points].sort((a, b) => a - b);
+}
+
+/**
+ * Seeks the playhead to the previous item / cut boundary in the timeline.
+ */
+export function seekToPreviousItem(world: World): void {
+	const scene = getActiveEntity(world);
+	if (scene === null) return;
+
+	const currentFrame = Math.round(store(world, Computed).localTime[scene.id()] ?? 0);
+	const points = getTimelinePoints(world);
+
+	const prev = points.filter(p => p < currentFrame).pop();
+	setPlayhead(world, scene, prev !== undefined ? prev : 0);
+}
+
+/**
+ * Seeks the playhead to the next item / cut boundary in the timeline.
+ */
+export function seekToNextItem(world: World): void {
+	const scene = getActiveEntity(world);
+	if (scene === null) return;
+
+	const currentFrame = Math.round(store(world, Computed).localTime[scene.id()] ?? 0);
+	const points = getTimelinePoints(world);
+
+	const next = points.find(p => p > currentFrame);
+	if (next !== undefined) {
+		setPlayhead(world, scene, next);
+	}
+}
+
+const nudgeOrSeekHorizontal = (deltaFrames: number, nudgeDistance: number) => (world: World): void => {
+	const selection = getSelection(world);
+	if (selection.length > 0) {
+		nudgeSelection(world, deltaFrames < 0 ? -nudgeDistance : nudgeDistance, 0);
+	} else {
+		seekBy(world, deltaFrames);
+	}
+};
+
+const nudgeOrSeekVertical = (direction: 'prev' | 'next', nudgeDistance: number) => (world: World): void => {
+	const selection = getSelection(world);
+	if (selection.length > 0) {
+		nudgeSelection(world, 0, direction === 'prev' ? -nudgeDistance : nudgeDistance);
+	} else if (direction === 'prev') {
+		seekToPreviousItem(world);
+	} else {
+		seekToNextItem(world);
+	}
+};
 
 /** How long space has to be held to read as a pan and not as a tap. */
 const SPACE_HAND_DELAY = 200;
@@ -418,14 +497,14 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['\\', '!mod'], action: selectParents },
 	{ keys: ['enter', '!mod'], action: selectChildren },
 	{ keys: ['escape'], action: deselect },
-	{ keys: ['arrowleft', '!shift'], action: nudge(-NUDGE, 0) },
-	{ keys: ['arrowright', '!shift'], action: nudge(NUDGE, 0) },
-	{ keys: ['arrowup', '!shift'], action: nudge(0, -NUDGE) },
-	{ keys: ['arrowdown', '!shift'], action: nudge(0, NUDGE) },
-	{ keys: ['arrowleft', 'shift'], action: nudge(-NUDGE_FAST, 0) },
-	{ keys: ['arrowright', 'shift'], action: nudge(NUDGE_FAST, 0) },
-	{ keys: ['arrowup', 'shift'], action: nudge(0, -NUDGE_FAST) },
-	{ keys: ['arrowdown', 'shift'], action: nudge(0, NUDGE_FAST) },
+	{ keys: ['arrowleft', '!shift'], action: nudgeOrSeekHorizontal(-1, NUDGE) },
+	{ keys: ['arrowright', '!shift'], action: nudgeOrSeekHorizontal(1, NUDGE) },
+	{ keys: ['arrowup', '!shift'], action: nudgeOrSeekVertical('prev', NUDGE) },
+	{ keys: ['arrowdown', '!shift'], action: nudgeOrSeekVertical('next', NUDGE) },
+	{ keys: ['arrowleft', 'shift'], action: nudgeOrSeekHorizontal(-NUDGE_FAST, NUDGE_FAST) },
+	{ keys: ['arrowright', 'shift'], action: nudgeOrSeekHorizontal(NUDGE_FAST, NUDGE_FAST) },
+	{ keys: ['arrowup', 'shift'], action: nudgeOrSeekVertical('prev', NUDGE_FAST) },
+	{ keys: ['arrowdown', 'shift'], action: nudgeOrSeekVertical('next', NUDGE_FAST) },
 	{ keys: [' '], action: onSpacePressed },
 ];
 
