@@ -8,8 +8,8 @@ import { join } from "node:path";
 // One socket / named pipe per host. On macOS tmpdir is per-user; on Linux /tmp
 // is global but the socket file's owner-only mode 0600 keeps it isolated.
 //
-// Kept separate from cli-channels so the renderer can import the channel
-// registry and envelope types without pulling in node:os / node:path.
+// Its own entry point (`@diffusionstudio/dapi/socket`) so the renderer can
+// import the catalog without pulling in node:os / node:path.
 export const SOCKET_PATH =
   platform() === "win32"
     ? "\\\\.\\pipe\\diffusion-studio"

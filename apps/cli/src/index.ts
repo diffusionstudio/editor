@@ -15,8 +15,8 @@ import { editor, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, waitForCliSo
 import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
-import { MAX_FRAMES_PER_SHEET } from "./protocol";
-import type { AssetRef, FrameQuality, LogEntry, LogLevel, TimecodedImage } from "./protocol";
+import { MAX_FRAMES_PER_SHEET } from "@diffusionstudio/dapi";
+import type { FrameQuality, LogEntry, LogLevel, TimecodedImage } from "@diffusionstudio/dapi";
 
 // Long-running commands (renders, AI generation) override the default 60s.
 const GENERATE = { context: { timeoutMs: GENERATE_TIMEOUT_MS } };
@@ -129,7 +129,7 @@ async function mediaFrame(ref: string, opts: MediaFrameOptions): Promise<void> {
  * anything else — a URL, or a library path (`b-roll/clip.mp4`) — is passed
  * through for the app to resolve. Library paths need an open project.
  */
-function resolveAssetRef(ref: string): AssetRef {
+function resolveAssetRef(ref: string): { path: string } {
   const absPath = isAbsolute(ref) ? ref : resolve(process.cwd(), ref);
   if (existsSync(absPath)) return { path: absPath };
   if (isAbsolute(ref)) {

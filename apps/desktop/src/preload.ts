@@ -4,7 +4,7 @@
 
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { MAIN_WIRE } from "./main-channels";
-import { CLI_WIRE } from "@diffusionstudio/cli/channels";
+import { CLI_WIRE } from "@diffusionstudio/cli/protocol";
 
 import type { IpcRendererEvent } from "electron";
 

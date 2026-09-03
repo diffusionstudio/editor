@@ -7,8 +7,7 @@
     "dapi": "./dist/index.js"
   },
   "exports": {
-    "./protocol": "./src/protocol.ts",
-    "./channels": "./src/cli-channels.ts"
+    "./protocol": "./src/protocol.ts"
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --external:bufferutil --external:utf-8-validate --outfile=dist/index.js && chmod +x dist/index.js",
@@ -24,7 +23,8 @@
     "babel-preset-solid": "^1.9.12",
     "commander": "^14.0.3",
     "esbuild": "^0.28.1",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "@diffusionstudio/dapi": "*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",

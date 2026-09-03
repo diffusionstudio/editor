@@ -16,7 +16,7 @@ import { createProjectFS } from '@/projects/fs';
 import type { Accessor } from 'solid-js';
 import type { Asset } from '@diffusionstudio/assets';
 import type { EditorSession } from './session';
-import type { MediaListenRequest, MediaListenResult, MediaFrameRequest, MediaFrameResult, TimecodedImage, MediaProbeRequest, MediaTranscribeRequest, MediaTranscribeResult, MediaFilmstripRequest, MediaFilmstripResult, MediaWaveformRequest, MediaWaveformResult, TranscriptSegment } from "@diffusionstudio/cli/channels";
+import type { MediaListenRequest, MediaListenResult, MediaFrameRequest, MediaFrameResult, TimecodedImage, MediaProbeRequest, MediaTranscribeRequest, MediaTranscribeResult, MediaFilmstripRequest, MediaFilmstripResult, MediaWaveformRequest, MediaWaveformResult, TranscriptSegment } from "@diffusionstudio/dapi";
 
 type ResolveAsset = (path: string) => Promise<Asset>;
 

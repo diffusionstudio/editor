@@ -12,8 +12,8 @@ import type {
   MainRequestChannel,
   MainRequestMap,
 } from "@desktop/main-channels";
-import { CLI_WIRE } from "@diffusionstudio/cli/channels";
-import type { CliHandshake, CliReply, CliRequest } from "@diffusionstudio/cli/channels";
+import { CLI_WIRE } from "@diffusionstudio/cli/protocol";
+import type { CliHandshake, CliReply, CliRequest } from "@diffusionstudio/cli/protocol";
 
 type EventHandler<C extends MainEventChannel> = (data: MainEventMap[C]) => void;
 

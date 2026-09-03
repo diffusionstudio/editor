@@ -1,0 +1,30 @@
+{
+  "name": "@diffusionstudio/dapi",
+  "version": "0.1.0",
+  "description": "The dapi tool catalog: every tool the Diffusion Studio app exposes to agents and the CLI, as a name, a description, and zod input/output schemas. The one definition the app serves, the CLI derives its commands from, and the renderer validates against. Depends on zod and the Time parser only; the socket path lives behind the Node-only `./socket` export.",
+  "license": "MPL-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./socket": "./src/socket.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "dapi",
+    "mcp",
+    "zod"
+  ],
+  "dependencies": {
+    "@diffusionstudio/jsx": "*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

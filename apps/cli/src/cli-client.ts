@@ -9,7 +9,7 @@ import { WebSocketServer } from "ws";
 import { createTRPCClient, TRPCClientError } from "@trpc/client";
 import type { TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
-import { SOCKET_PATH } from "./protocol";
+import { SOCKET_PATH } from "@diffusionstudio/dapi/socket";
 import type { CliHandshake, CliHandshakeReply, CliReply, CliRequest } from "./protocol";
 import type { AppRouter } from "../../web/src/context/dapi";
 

@@ -4,7 +4,7 @@
 
 import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
-import type { LogsRequest, LogLevel } from "@diffusionstudio/cli/channels";
+import type { LogsRequest, LogLevel } from "@diffusionstudio/dapi";
 
 const LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warning: 2, error: 3 };
 

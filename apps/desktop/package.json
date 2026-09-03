@@ -44,6 +44,7 @@
     "nanoid": "^6.0.1",
     "ts-morph": "^28.0.0",
     "update-electron-app": "^3.0.0",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.0",
+    "@diffusionstudio/dapi": "*"
   }
 }

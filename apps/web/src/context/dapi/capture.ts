@@ -16,7 +16,7 @@ import { getParentNode, isScene, Source } from "@diffusionstudio/runtime";
 import { createCapture } from "@/engine/capture";
 import { resolveNode } from "./nodes";
 
-import type { CaptureRequest, CaptureResult, TimecodedImage } from "@diffusionstudio/cli/channels";
+import type { CaptureRequest, CaptureResult, TimecodedImage } from "@diffusionstudio/dapi";
 import type { EditorSession } from "./session";
 
 // Ceiling on the height a sheet cell renders a node at.

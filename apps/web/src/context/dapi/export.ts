@@ -18,7 +18,7 @@ import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
 import { resolveNode } from "./nodes";
 
-import type { ExportRequest, ExportResult, ExportSettings } from "@diffusionstudio/cli/channels";
+import type { ExportRequest, ExportResult, ExportSettings } from "@diffusionstudio/dapi";
 import type { ContainerFormat, ExportConfig } from "@/engine/project-config";
 import type { EditorSession } from "./session";
 

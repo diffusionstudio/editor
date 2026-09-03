@@ -42,7 +42,7 @@ import {
   writeProject,
 } from "./projects";
 import type { DeepLinkChannel } from "./main-channels";
-import type { LogEntry } from "@diffusionstudio/cli/protocol";
+import type { LogEntry } from "@diffusionstudio/dapi";
 
 const DEV_URL = "http://localhost:5173";
 const AUTH_PROTOCOL = "diffusion";

@@ -7,7 +7,7 @@ import {
   PROMPT_INPUT_VIDEO_MODEL_OPTIONS,
   PROMPT_INPUT_AUDIO_MODEL_OPTIONS,
 } from "@/components/genai/config";
-import type { ModelsRequest, ModelInfo } from "@diffusionstudio/cli/channels";
+import type { ModelsRequest, ModelInfo } from "@diffusionstudio/dapi";
 
 export function handleModels() {
   return async (req: ModelsRequest) => {
