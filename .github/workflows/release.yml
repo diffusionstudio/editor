@@ -54,3 +54,39 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: npm run publish --workspace=@diffusionstudio/desktop
+
+  publish-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Check versions match tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for PKG in package.json apps/desktop/package.json apps/cli/package.json apps/web/package.json; do
+            V="$(node -p "require('./$PKG').version")"
+            if [ "$V" != "$TAG" ]; then
+              echo "Version mismatch in $PKG: $V, tag is $TAG"
+              exit 1
+            fi
+          done
+
+      - run: npm ci
+
+      - name: Provide client env for web build
+        run: cp apps/web/.env.example apps/web/.env
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev fakeroot rpm
+
+      - name: Build and publish draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run publish --workspace=@diffusionstudio/desktop

@@ -7,10 +7,10 @@ import { toast } from "somoto";
 import { track } from "@/lib/analytics";
 
 /**
- * Electron Forge only makes darwin artifacts, so releases are macOS-only, and
- * the DMG name is version-independent (see `MakerDMG` in `forge.config.ts`) —
- * which is what lets GitHub's `/releases/latest/download/` alias resolve to the
- * newest build.
+ * The download promos point at the macOS DMG, which is the release asset the
+ * Homebrew cask consumes too. Its name is version-independent (see `MakerDMG` in
+ * `forge.config.ts`) — which is what lets GitHub's `/releases/latest/download/`
+ * alias resolve to the newest build.
  */
 const DOWNLOAD_URL =
   "https://github.com/diffusionstudio/editor/releases/latest/download/Diffusion-Studio-arm64.dmg";

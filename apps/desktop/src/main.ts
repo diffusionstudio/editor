@@ -57,6 +57,15 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
 
+// No ozone hint is set here on purpose. Native Wayland would buy fractional
+// scaling, but on a KDE 6.7 Wayland session with the proprietary NVIDIA driver
+// it presents a broken surface — Chromium logs that Wayland and Vulkan are
+// incompatible, the renderer paints correctly (a DevTools capture is right)
+// and the window still comes up blank or without glyphs. XWayland, which is
+// what Chromium picks by default, is correct there. Electron reads
+// `ELECTRON_OZONE_PLATFORM_HINT=auto` from the environment, so anyone whose
+// session handles native Wayland can opt in without a build of their own.
+
 let setNativeCornerRadius: ((handle: Buffer, radius: number) => void) | null = null;
 let setNativeBackdrop:
   | ((handle: Buffer, blur: number, r: number, g: number, b: number, a: number) => void)

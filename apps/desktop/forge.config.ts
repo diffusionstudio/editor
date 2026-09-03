@@ -3,7 +3,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import type { ForgeConfig } from '@electron-forge/shared-types';
+import { MakerDeb, type MakerDebConfig } from '@electron-forge/maker-deb';
 import { MakerDMG } from '@electron-forge/maker-dmg';
+import { MakerRpm, type MakerRpmConfig } from '@electron-forge/maker-rpm';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { PublisherGithub } from '@electron-forge/publisher-github';
 import { readFileSync } from 'node:fs';
@@ -11,9 +13,35 @@ import { join } from 'node:path';
 
 const { version } = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'));
 
+// electron-packager derives the executable name from `name` and keeps the space
+// in it, which is fine inside a .app bundle but not for a binary on $PATH. The
+// deb and rpm packages symlink this into /usr/bin and the staged CLI wrapper
+// execs it, so both sides agree on the lowercase form.
+const LINUX_EXECUTABLE = 'diffusion-studio';
+
+// FreeDesktop metadata shared by both Linux packages. The mime type is what
+// registers `diffusion://` with xdg, so the auth and checkout deep links reach
+// the app the same way the macOS bundle's protocol handler does.
+const linuxPackage = {
+  name: LINUX_EXECUTABLE,
+  productName: 'Diffusion Studio',
+  genericName: 'Video Editor',
+  description: 'Edit videos with coding agents, and refine any output in a full editing environment',
+  homepage: 'https://diffusion.studio',
+  icon: './assets/icon.png',
+  categories: ['AudioVideo', 'Video'],
+  mimeType: ['x-scheme-handler/diffusion'],
+} satisfies NonNullable<MakerDebConfig['options']> & NonNullable<MakerRpmConfig['options']>;
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'Diffusion Studio',
+    // Only Linux renames the binary; on macOS it stays inside the bundle as
+    // `Contents/MacOS/Diffusion Studio`, which the staged CLI wrapper and the
+    // signing pass both address by that name. Read from the build host, since
+    // that is what packages a platform here — cross-packaging Linux from macOS
+    // would have to set it.
+    executableName: process.platform === 'linux' ? LINUX_EXECUTABLE : undefined,
     appBundleId: 'studio.diffusion.editor',
     appCategoryType: 'public.app-category.video',
     appVersion: version,
@@ -28,7 +56,7 @@ const config: ForgeConfig = {
       path !== '/web' &&
       !path.startsWith('/web/'),
     // Staged by scripts/stage-{cli,docs,skills}.mjs; end up at
-    // Contents/Resources/{cli,docs,skills}.
+    // Contents/Resources/{cli,docs,skills} on macOS and resources/{...} on Linux.
     extraResource: ['./cli', './docs', './skills'],
     osxSign: process.env.SKIP_SIGN ? undefined : {},
     osxNotarize:
@@ -41,22 +69,27 @@ const config: ForgeConfig = {
         : undefined,
   },
   makers: [
-    new MakerZIP({}, ['darwin']),
-    new MakerDMG({
-      name: `Diffusion-Studio-${process.arch}`,
-      icon: './assets/icon.icns',
-      // Dark, on-brand window; @2x sibling is picked up automatically for retina.
-      background: './assets/dmg-background.png',
-      iconSize: 120,
-      additionalDMGOptions: {
-        'background-color': '#1c1c1c',
-        window: { size: { width: 658, height: 498 } },
+    new MakerZIP({}, ['darwin', 'linux']),
+    new MakerDMG(
+      {
+        name: `Diffusion-Studio-${process.arch}`,
+        icon: './assets/icon.icns',
+        // Dark, on-brand window; @2x sibling is picked up automatically for retina.
+        background: './assets/dmg-background.png',
+        iconSize: 120,
+        additionalDMGOptions: {
+          'background-color': '#1c1c1c',
+          window: { size: { width: 658, height: 498 } },
+        },
+        contents: (opts) => [
+          { x: 188, y: 217, type: 'file', path: opts.appPath },
+          { x: 470, y: 217, type: 'link', path: '/Applications' },
+        ],
       },
-      contents: (opts) => [
-        { x: 188, y: 217, type: 'file', path: opts.appPath },
-        { x: 470, y: 217, type: 'link', path: '/Applications' },
-      ],
-    }),
+      ['darwin'],
+    ),
+    new MakerDeb({ options: linuxPackage }, ['linux']),
+    new MakerRpm({ options: linuxPackage }, ['linux']),
   ],
   publishers: [
     new PublisherGithub({
