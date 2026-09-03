@@ -52,6 +52,20 @@ export async function installCli(): Promise<CliInstallResult> {
       error: "Installing the CLI is only available in the packaged app. Use `npm run symlink:create` in development.",
     };
   }
+
+  // An AppImage runs from a mount that only exists while it does
+  // (`/tmp/.mount_*`), so a link into its resources would dangle the moment
+  // the app quits. The bundled `dapi` works fine from inside a running one —
+  // it just has no path worth linking.
+  if (process.env.APPIMAGE) {
+    return {
+      status: "error",
+      error:
+        "An AppImage has no stable path to link from. Install the deb or rpm package to get dapi on PATH, " +
+        "or unpack this file once (`--appimage-extract`) and link the dapi wrapper under " +
+        "usr/lib/diffusion-studio/resources/cli/bin from the unpacked tree.",
+    };
+  }
   try {
     if (process.platform === "linux") linkCliDirectly();
     else await linkCliWithPrompt();

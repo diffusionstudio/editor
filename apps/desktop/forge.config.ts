@@ -4,6 +4,7 @@
 
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerDeb, type MakerDebConfig } from '@electron-forge/maker-deb';
+import MakerAppImage, { type MakerAppImageConfig } from '@reforged/maker-appimage';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm, type MakerRpmConfig } from '@electron-forge/maker-rpm';
 import { MakerZIP } from '@electron-forge/maker-zip';
@@ -19,18 +20,30 @@ const { version } = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package
 // execs it, so both sides agree on the lowercase form.
 const LINUX_EXECUTABLE = 'diffusion-studio';
 
-// FreeDesktop metadata shared by both Linux packages. The mime type is what
+// FreeDesktop metadata shared by every Linux artifact. The mime type is what
 // registers `diffusion://` with xdg, so the auth and checkout deep links reach
-// the app the same way the macOS bundle's protocol handler does.
-const linuxPackage = {
+// the app the same way the macOS bundle's protocol handler does — for the
+// AppImage only once its desktop file is integrated (by the desktop
+// environment's prompt, or AppImageLauncher).
+const linuxDesktop = {
   name: LINUX_EXECUTABLE,
+  // What lands in the desktop entry's `Exec`, and the file the AppImage maker
+  // looks for inside the packaged tree. Both default to the sanitized
+  // package name (`diffusionstudio-desktop`), which is not what is packaged.
+  bin: LINUX_EXECUTABLE,
   productName: 'Diffusion Studio',
   genericName: 'Video Editor',
-  description: 'Edit videos with coding agents, and refine any output in a full editing environment',
-  homepage: 'https://diffusion.studio',
+  keywords: ['video', 'editor', 'agent'],
   icon: './assets/icon.png',
   categories: ['AudioVideo', 'Video'],
   mimeType: ['x-scheme-handler/diffusion'],
+} satisfies NonNullable<MakerAppImageConfig['options']>;
+
+// deb and rpm carry package metadata the desktop entry has no field for.
+const linuxPackage = {
+  ...linuxDesktop,
+  description: 'Edit videos with coding agents, and refine any output in a full editing environment',
+  homepage: 'https://diffusion.studio',
 } satisfies NonNullable<MakerDebConfig['options']> & NonNullable<MakerRpmConfig['options']>;
 
 const config: ForgeConfig = {
@@ -90,6 +103,10 @@ const config: ForgeConfig = {
     ),
     new MakerDeb({ options: linuxPackage }, ['linux']),
     new MakerRpm({ options: linuxPackage }, ['linux']),
+    // The format that runs on a distribution the deb and rpm do not cover:
+    // one file, no root, no package manager. Needs `mksquashfs` on the build
+    // host (squashfs-tools).
+    new MakerAppImage({ options: linuxDesktop }, ['linux']),
   ],
   publishers: [
     new PublisherGithub({

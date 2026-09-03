@@ -251,6 +251,10 @@ npm run symlink:create --workspace=@diffusionstudio/cli
 
 The link points at the CLI build, which `npm run dev:desktop` refreshes on every start, so the linked `dapi` always runs the latest code.
 
+`npm run make` builds the artifacts for the host platform: a ZIP and a DMG on macOS, and a ZIP, a `.deb`, an `.rpm` and an AppImage on Linux. The Linux makers need their own tools on the build host — `dpkg-dev` and `fakeroot` for the deb, `rpm` for the rpm, `squashfs-tools` for the AppImage — and each maker only runs when its tool is there.
+
+On a Wayland session the app runs through XWayland, which is what Chromium picks by default; native Wayland (fractional scaling, no XWayland blur) is available with `ELECTRON_OZONE_PLATFORM_HINT=auto`, though it renders incorrectly on some drivers.
+
 Before sending a PR:
 
 ```sh
