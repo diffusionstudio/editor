@@ -50,7 +50,12 @@ execFileSync("npm", ["install", "--omit=dev", "--no-audit", "--no-fund", "--no-p
 
 // The wrapper runs the CLI bundle on the app's own Electron binary in Node
 // mode, so users need no separate Node install. It resolves symlinks first
-// because both Homebrew and the in-app installer link it into PATH.
+// because both Homebrew and the in-app installer link it into PATH, then
+// works out which packaged layout it sits in: on macOS the wrapper is at
+// Contents/Resources/cli/bin, beside Contents/MacOS, while electron-packager
+// emits a flat Linux tree with resources/ next to the executable — one level
+// closer to the app root. The Linux name is packagerConfig.executableName
+// (see forge.config.ts), which only that build renames.
 const wrapper = `#!/bin/sh
 SELF="$0"
 while [ -L "$SELF" ]; do
@@ -61,8 +66,19 @@ while [ -L "$SELF" ]; do
   esac
 done
 DIR="$(cd "$(dirname "$SELF")" && pwd)"
-export DIFFUSION_APP_PATH="$(cd "$DIR/../../../.." && pwd)"
-ELECTRON_RUN_AS_NODE=1 exec "$DIR/../../../MacOS/Diffusion Studio" "$DIR/../dapi.js" "$@"
+if [ -x "$DIR/../../../MacOS/Diffusion Studio" ]; then
+  ELECTRON="$DIR/../../../MacOS/Diffusion Studio"
+  APP_ROOT="$DIR/../../../.."
+else
+  APP_ROOT="$DIR/../../.."
+  ELECTRON="$APP_ROOT/diffusion-studio"
+  if [ ! -x "$ELECTRON" ]; then
+    echo "dapi: no application executable at $ELECTRON" >&2
+    exit 1
+  fi
+fi
+export DIFFUSION_APP_PATH="$(cd "$APP_ROOT" && pwd)"
+ELECTRON_RUN_AS_NODE=1 exec "$ELECTRON" "$DIR/../dapi.js" "$@"
 `;
 writeFileSync(join(stageDir, "bin", "dapi"), wrapper);
 chmodSync(join(stageDir, "bin", "dapi"), 0o755);
