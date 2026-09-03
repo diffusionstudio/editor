@@ -22,6 +22,7 @@ import { renderCaption } from './caption';
 import { renderGroup } from './group';
 import { renderStillThumbnails, renderVideoThumbnails } from './thumbnails';
 import { renderWaveform } from './waveform';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 import type { Entity, World } from 'koota';
 import type { Asset } from '@diffusionstudio/assets';
@@ -144,6 +145,7 @@ function handleTrim(
 	row: RowCursor,
 	resolution: number,
 ): void {
+	if (!documentMutationsEnabled()) return;
 	// A container that takes its bounds from its children has no edge of its
 	// own to take hold of — moving one would be moving a child. One that
 	// authors its own end does, and is trimmed like any other clip.
@@ -246,10 +248,11 @@ function handleBody(
 	// A press that travels starts a move. The press selected the clip first,
 	// so a drag of an unselected clip moves that one and a drag of a selected
 	// one moves everything selected (see `updateDragGestures`).
-	if (dragging && !entity.has(ClipDragOrigin) && !entity.has(TrimDragOrigin)) {
+	const canMove = documentMutationsEnabled();
+	if (canMove && dragging && !entity.has(ClipDragOrigin) && !entity.has(TrimDragOrigin)) {
 		beginClipDrag(world, entity);
 	}
-	if (entity.has(ClipDragOrigin)) {
+	if (canMove && entity.has(ClipDragOrigin)) {
 		applyClipDrag(world, surface, entity, resolution);
 	}
 

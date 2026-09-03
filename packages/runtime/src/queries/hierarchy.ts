@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { ChildOf, Computed, Name, Playback } from '../traits';
+import { AdjustmentLayer, ChildOf, Computed, Geometry, Group, Name, Playback } from '../traits';
 import { isStage, isScene } from './predicates';
 // Direct module, not the utils barrel: utils/time reaches back into this file.
 import { sortByItemIndex } from '../utils/sort';
@@ -16,6 +16,26 @@ export function getParentEntity(entity: Entity | null | undefined): Entity | nul
 
 export function getEntityChildren(world: World, parent: Entity): Entity[] {
 	return [...world.query(ChildOf(parent))].sort(sortByItemIndex);
+}
+
+/**
+ * A direct child that participates in the runtime node tree.
+ *
+ * Keep this as trait checks over the one-clause relation query. Koota 0.6 can
+ * lose valid entities when `ChildOf` is combined with `Or(...)` in editor
+ * worlds whose traits span multiple internal bitmask generations.
+ */
+export function isNodeEntity(entity: Entity): boolean {
+	return entity.has(Geometry) || entity.has(Group) || entity.has(AdjustmentLayer);
+}
+
+export function getNodeChildren(world: World, parent: Entity): Entity[] {
+	return getEntityChildren(world, parent).filter(isNodeEntity);
+}
+
+export function getDrawableChildren(world: World, parent: Entity): Entity[] {
+	return getEntityChildren(world, parent)
+		.filter((entity) => entity.has(Geometry) || entity.has(Group));
 }
 
 /**

@@ -21,11 +21,13 @@ import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { useTool } from "@/engine";
 import { usePromptInput } from "@/context/prompt-input";
+import { companionUiCapabilities } from "@/lib/companion-capabilities";
 
 export function Toolbar() {
   const world = useWorld();
   const { promptInputOpen, promptInputConfig, openPromptInput, setPromptInputOpen } = usePromptInput();
   const selectedTool = useTool();
+  const capabilities = companionUiCapabilities();
 
   const handleToolChange = (tool: ToolType) => {
     world.set(Tool, { value: tool });
@@ -33,10 +35,10 @@ export function Toolbar() {
 
   return (
     <>
-      <Show when={promptInputOpen()}>
+      <Show when={capabilities.ai && promptInputOpen()}>
         <PromptInput initialConfig={promptInputConfig()} />
       </Show>
-      <Show when={!promptInputOpen()}>
+      <Show when={capabilities.ai && !promptInputOpen()}>
         <ActionBar openPromptInput={openPromptInput} />
       </Show>
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl p-1.5 bg-background border border-border-strong flex gap-2 items-center z-10">
@@ -95,59 +97,65 @@ export function Toolbar() {
             </DropdownMenuPortal>
           </DropdownMenu>
         </div>
-        <Separator orientation="vertical" class="min-h-5" />
-        <Tooltip>
-          <TooltipTrigger
-            as={Button}
-            size="icon-square"
-            variant={selectedTool() === ToolType.SCENE ? 'default' : 'ghost'}
-            onClick={() => handleToolChange(ToolType.SCENE)}
-            class={selectedTool() === ToolType.SCENE ? 'text-foreground' : 'text-muted-foreground'}
-          >
-            <Icon name="frame" class="size-5" />
-          </TooltipTrigger>
-          <TooltipContent shortcut="F">Frame</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
-            as={Button}
-            size="icon-square"
-            variant={selectedTool() === ToolType.RECT ? 'default' : 'ghost'}
-            onClick={() => handleToolChange(ToolType.RECT)}
-            class={selectedTool() === ToolType.RECT ? 'text-foreground' : 'text-muted-foreground'}
-          >
-            <Icon name="tool.rectangle" />
-          </TooltipTrigger>
-          <TooltipContent shortcut="R">Rectangle</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
-            as={Button}
-            size="icon-square"
-            variant={selectedTool() === ToolType.TEXT ? 'default' : 'ghost'}
-            onClick={() => handleToolChange(ToolType.TEXT)}
-            class={selectedTool() === ToolType.TEXT ? 'text-foreground' : 'text-muted-foreground'}
-          >
-            <Icon name="tool.text" />
-          </TooltipTrigger>
-          <TooltipContent shortcut="T">Text</TooltipContent>
-        </Tooltip>
-        <Separator
-          orientation="vertical"
-          class="data-[orientation=vertical]:h-5 rounded-md"
-        />
-        <Tooltip>
-          <TooltipTrigger
-            as={Button}
-            size="icon-square"
-            class={promptInputOpen() ? 'text-foreground' : 'text-muted-foreground'}
-            variant={promptInputOpen() ? 'default' : 'ghost'}
-            onClick={() => setPromptInputOpen(!promptInputOpen())}
-          >
-            <Icon name="ai-generate" class="size-7" />
-          </TooltipTrigger>
-          <TooltipContent>AI generate</TooltipContent>
-        </Tooltip>
+        <Show when={capabilities.projectWrite || capabilities.ai}>
+          <Separator orientation="vertical" class="min-h-5" />
+        </Show>
+        <Show when={capabilities.projectWrite}>
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon-square"
+              variant={selectedTool() === ToolType.SCENE ? 'default' : 'ghost'}
+              onClick={() => handleToolChange(ToolType.SCENE)}
+              class={selectedTool() === ToolType.SCENE ? 'text-foreground' : 'text-muted-foreground'}
+            >
+              <Icon name="frame" class="size-5" />
+            </TooltipTrigger>
+            <TooltipContent shortcut="F">Frame</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon-square"
+              variant={selectedTool() === ToolType.RECT ? 'default' : 'ghost'}
+              onClick={() => handleToolChange(ToolType.RECT)}
+              class={selectedTool() === ToolType.RECT ? 'text-foreground' : 'text-muted-foreground'}
+            >
+              <Icon name="tool.rectangle" />
+            </TooltipTrigger>
+            <TooltipContent shortcut="R">Rectangle</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon-square"
+              variant={selectedTool() === ToolType.TEXT ? 'default' : 'ghost'}
+              onClick={() => handleToolChange(ToolType.TEXT)}
+              class={selectedTool() === ToolType.TEXT ? 'text-foreground' : 'text-muted-foreground'}
+            >
+              <Icon name="tool.text" />
+            </TooltipTrigger>
+            <TooltipContent shortcut="T">Text</TooltipContent>
+          </Tooltip>
+        </Show>
+        <Show when={capabilities.ai}>
+          <Separator
+            orientation="vertical"
+            class="data-[orientation=vertical]:h-5 rounded-md"
+          />
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon-square"
+              class={promptInputOpen() ? 'text-foreground' : 'text-muted-foreground'}
+              variant={promptInputOpen() ? 'default' : 'ghost'}
+              onClick={() => setPromptInputOpen(!promptInputOpen())}
+            >
+              <Icon name="ai-generate" class="size-7" />
+            </TooltipTrigger>
+            <TooltipContent>AI generate</TooltipContent>
+          </Tooltip>
+        </Show>
       </div>
     </>
   );

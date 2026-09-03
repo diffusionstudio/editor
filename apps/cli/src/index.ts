@@ -11,7 +11,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
 import { version } from "../../../package.json";
 import { parseTime, TIME_FPS } from "@diffusionstudio/jsx";
-import { editor, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-client";
+import { browserCompanion, editor, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-client";
 import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
@@ -331,10 +331,13 @@ async function checkNode(id: string): Promise<void> {
 }
 
 type OpenOptions = { background?: boolean };
+type BrowserOptions = { status?: boolean; logs?: boolean; stop?: boolean };
 
 /** `open -a` on a running app only activates it, so this is safe to always run. */
-function launchApp(background: boolean): Promise<boolean> {
-  const args = background ? ["-g", "-a", APP_NAME, "--args", "--hidden"] : ["-a", APP_NAME];
+function launchApp(background: boolean, companionHost = false): Promise<boolean> {
+  const args = background
+    ? ["-g", "-a", APP_NAME, "--args", "--hidden", ...(companionHost ? ["--browser-companion-host"] : [])]
+    : ["-a", APP_NAME];
   return new Promise((res) => execFile("open", args, (err) => res(!err)));
 }
 
@@ -356,6 +359,58 @@ async function openProject(path: string | undefined, opts: OpenOptions): Promise
     }
   } catch (e) {
     handleSocketError(e);
+  }
+}
+
+async function browserProject(path: string | undefined, opts: BrowserOptions): Promise<void> {
+  const actions = [opts.status, opts.logs, opts.stop].filter(Boolean).length;
+  if (actions > 1 || (actions && path)) {
+    console.error("Pass one of --status, --logs, or --stop without a project path.");
+    process.exit(1);
+  }
+  try {
+    if (opts.status) console.log(JSON.stringify(await browserCompanion({ kind: "browser-companion", action: "status" })));
+    else if (opts.logs) console.log(JSON.stringify(await browserCompanion({ kind: "browser-companion", action: "logs" })));
+    else if (opts.stop) console.log(JSON.stringify(await browserCompanion({ kind: "browser-companion", action: "stop" })));
+    else {
+      if (!path) {
+        console.error("A project folder is required: dapi browser <project>");
+        process.exit(1);
+      }
+      let running = false;
+      try {
+        await editor.ping.query();
+        running = true;
+      } catch (error) {
+        const code = errnoCode(error);
+        if (code !== "ENOENT" && code !== "ECONNREFUSED") throw error;
+      }
+      if (!running) {
+        const launched = process.platform === "darwin" && (await launchApp(true, true));
+        if (launched) await waitForCliSocket();
+        else await editor.ping.query();
+      }
+      const projectDir = resolve(path);
+      await browserCompanion({ kind: "browser-companion", action: "prepare", projectDir });
+      await waitForCliSocket();
+      const opened = await editor.open.mutate({ dir: projectDir });
+      const readyBy = Date.now() + 30_000;
+      while (true) {
+        const context = await editor.context.query();
+        if (context.projectDir === projectDir) break;
+        if (Date.now() >= readyBy) throw new Error("The hidden Electron renderer did not finish opening the project");
+        await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+      }
+      const result = await browserCompanion({
+        kind: "browser-companion",
+        action: "start",
+        projectDir,
+        ...(opened.id ? { projectId: opened.id } : {}),
+      });
+      console.log(JSON.stringify(result));
+    }
+  } catch (error) {
+    handleSocketError(error);
   }
 }
 
@@ -620,6 +675,15 @@ program
   .argument("[path]", "project folder to open or create (default: none — just launch the app)")
   .option("-b, --background", "launch or keep the app in the background, without raising a window")
   .action((path: string | undefined, opts: OpenOptions) => openProject(path, opts));
+
+program
+  .command("browser")
+  .description("Open a read-only local browser companion backed by the hidden Electron host. Prints JSON; never opens an OS browser.")
+  .argument("[path]", "project folder for a new companion session")
+  .option("--status", "print companion and hidden-host status")
+  .option("--logs", "print structured companion logs")
+  .option("--stop", "stop the companion listener and release its resources")
+  .action((path: string | undefined, opts: BrowserOptions) => browserProject(path, opts));
 
 program
   .command("context")

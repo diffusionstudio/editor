@@ -24,6 +24,7 @@ import { useTrait } from "@diffusionstudio/koota-solid";
 import { AssetId, isScene } from "@diffusionstudio/runtime";
 import { useLibrary } from "@/engine/library";
 import { pickAndImport } from "@/engine/asset-actions";
+import { companionUiCapabilities } from "@/lib/companion-capabilities";
 
 import type { Asset } from "@diffusionstudio/assets";
 import type { Entity } from "koota";
@@ -56,6 +57,7 @@ export type AssetFillPickerProps = {
 export function AssetFillPicker(props: AssetFillPickerProps) {
   const { openPromptInput } = usePromptInput();
   const library = useLibrary();
+  const capabilities = companionUiCapabilities();
 
   const [query, setQuery] = createSignal("");
   const [assetFilter, setAssetFilter] = createSignal<AssetFilter>("ALL");
@@ -173,18 +175,24 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
         <Separator class="col-span-2" />
       </div>
 
-      <div class="flex flex-col gap-2 px-4 pb-4 pt-3">
-        <Button
-          variant="secondary"
-          class="w-full"
-          onClick={() => openPromptInput(createDefaultConfig("IMAGE"))}
-        >
-          Generate with AI
-        </Button>
-        <Button class="w-full" onClick={() => void handleImportAssets()}>
-          Import from computer
-        </Button>
-      </div>
+      <Show when={capabilities.ai || capabilities.assetWrite}>
+        <div class="flex flex-col gap-2 px-4 pb-4 pt-3">
+          <Show when={capabilities.ai}>
+            <Button
+              variant="secondary"
+              class="w-full"
+              onClick={() => openPromptInput(createDefaultConfig("IMAGE"))}
+            >
+              Generate with AI
+            </Button>
+          </Show>
+          <Show when={capabilities.assetWrite}>
+            <Button class="w-full" onClick={() => void handleImportAssets()}>
+              Import from computer
+            </Button>
+          </Show>
+        </div>
+      </Show>
     </div>
   );
 }

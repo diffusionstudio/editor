@@ -55,6 +55,7 @@ export const MAIN_CHANNELS = {
   PROJECTS_DUPLICATE: "projects:duplicate",
   PROJECTS_DELETE: "projects:delete",
   PROJECTS_COMPILE: "projects:compile",
+  PROJECTS_BUNDLE_APPLIED: "projects:bundle-applied",
   PROJECTS_WRITE: "projects:write",
   PROJECTS_WATCH: "projects:watch",
   PROJECTS_UNWATCH: "projects:unwatch",
@@ -104,6 +105,17 @@ export type ProjectInfo = {
 export type CompileResult =
   | { ok: true; code: string }
   | { ok: false; error: string };
+
+/** Exact identity assigned by main to a companion editor-surface mount. */
+export type CompanionMountIdentity = {
+  sessionId: string;
+  revision: number;
+  bundleHash: string;
+};
+
+export type CompileResponse = CompileResult & {
+  companionMount?: CompanionMountIdentity;
+};
 
 // Outcome of linking the bundled dapi CLI into PATH. "cancelled" means the
 // user dismissed the macOS admin prompt — not an error, not installed.
@@ -181,7 +193,14 @@ export type MainRequestMap = {
   };
   [MAIN_CHANNELS.PROJECTS_DUPLICATE]: { request: { dir: string }; response: ProjectInfo };
   [MAIN_CHANNELS.PROJECTS_DELETE]: { request: { dir: string }; response: void };
-  [MAIN_CHANNELS.PROJECTS_COMPILE]: { request: { dir: string }; response: CompileResult };
+  [MAIN_CHANNELS.PROJECTS_COMPILE]: {
+    request: { dir: string; companionSurfaceMount?: boolean };
+    response: CompileResponse;
+  };
+  [MAIN_CHANNELS.PROJECTS_BUNDLE_APPLIED]: {
+    request: { dir: string; sessionId: string; revision: number; bundleHash: string; ok: boolean; error?: string };
+    response: void;
+  };
   [MAIN_CHANNELS.PROJECTS_WRITE]: {
     request: { dir: string; edits: SourceEdit[] };
     response: WriteResult;

@@ -18,6 +18,7 @@ import { getDocumentEditor } from '../../editor';
 import { KEYFRAME_TRACK_HEIGHT } from '../config';
 import { getRowTransform } from '../layout';
 import { framesToPixels, getFrameRate, getResolution, getViewport, pixelsToFrames } from '../view';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 import type { Entity, World } from 'koota';
 import type { RowCursor } from '../layout';
@@ -151,6 +152,8 @@ function handleKeyframe(
 	} else if (clicked) {
 		editor.select(keyframe, { extend: pointer.shiftPressed });
 	}
+
+	if (!documentMutationsEnabled()) return;
 
 	if (dragging && !keyframe.has(KeyframeDragOrigin)) {
 		keyframe.add(KeyframeDragOrigin);

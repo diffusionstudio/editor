@@ -23,6 +23,7 @@ import { identify, resetIdentity, track } from '@/lib/analytics';
 import { mainBridge } from '@/lib/ipc';
 import { MAIN_CHANNELS } from '@desktop/main-channels';
 import { assert } from '@/utils';
+import { isBrowserCompanionRenderer } from '@/lib/companion-authority';
 
 type OAuthProvider = 'google' | 'apple' | 'github';
 
@@ -70,6 +71,10 @@ export function AuthProvider(props: { children: JSX.Element }) {
   const [headless, setHeadless] = createSignal(false);
 
   onMount(() => {
+	if (isBrowserCompanionRenderer()) {
+		setHeadless(true);
+		return;
+	}
     if (!window.desktop) return;
 
     mainBridge

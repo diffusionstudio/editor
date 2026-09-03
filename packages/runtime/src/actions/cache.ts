@@ -34,17 +34,25 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 
 	const cache = store(world, Cache);
 	const pid = parent.id();
-	const collect = (...params: Parameters<World['query']>) =>
-		[...world.query(...params)].filter(e => e !== exclude);
+	const collect = (existing: Entity[] | undefined, ...params: Parameters<World['query']>) => {
+		const members = [...(existing ?? []), ...world.query(...params)]
+			.filter((e, index, all) => e !== exclude && world.has(e) && all.indexOf(e) === index);
+		// Koota fires a relation add observer before the new pair is visible to
+		// queries. Every branch below is selected from `entity`'s own traits, so
+		// on attach it belongs in that branch even when the fresh query cannot
+		// see it yet. Later trait/index changes do see it and are deduplicated.
+		if (exclude === null && !members.includes(entity)) members.push(entity);
+		return members;
+	};
 
 	if (entity.has(Geometry) || entity.has(Group) || entity.has(AdjustmentLayer)) {
-		cache.children[pid] = collect(
+		cache.children[pid] = collect(cache.children[pid],
 			Or(Geometry, Group, AdjustmentLayer), ChildOf(parent), Not(IsMask),
 		).sort(sortByItemIndex);
 	}
 
 	if (entity.has(IsMask)) {
-		cache.masks[pid] = collect(Geometry, IsMask, ChildOf(parent))
+		cache.masks[pid] = collect(cache.masks[pid], Geometry, IsMask, ChildOf(parent))
 			.sort(sortByItemIndex);
 	}
 
@@ -53,17 +61,17 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 	// bottom-up, so a paint's tracks exist before the paint meets its node.
 	if (entity.has(KeyframeTrack) || (!isNodeEntity(entity) && carriesKeyframeTrack(world, entity))) {
 		const node = findClosestParentGeometry(parent);
-		aggregateKeyframeTracks(world, node, exclude);
+		aggregateKeyframeTracks(world, node, exclude, exclude === null ? entity : null);
 		resetAnimatedValues(world, node);
 	}
 
 	if (entity.has(Keyframe)) {
-		cache.keyframes[pid] = collect(Keyframe, ChildOf(parent))
+		cache.keyframes[pid] = collect(cache.keyframes[pid], Keyframe, ChildOf(parent))
 			.sort(sortByFrame);
 	}
 
 	if (entity.has(Animation)) {
-		cache.animations[pid] = collect(Animation, ChildOf(parent))
+		cache.animations[pid] = collect(cache.animations[pid], Animation, ChildOf(parent))
 			.sort(sortByItemIndex);
 		resetAnimatedValues(world, parent);
 	}
@@ -72,27 +80,27 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 	// intrinsic paint (see getIntrinsicPaint). Nor is a stroke: its Paint is
 	// what the outline is drawn with.
 	if (entity.has(Paint) && !entity.has(Geometry) && !entity.has(Stroke)) {
-		cache.fills[pid] = collect(Paint, Not(Geometry), Not(Stroke), ChildOf(parent))
+		cache.fills[pid] = collect(cache.fills[pid], Paint, Not(Geometry), Not(Stroke), ChildOf(parent))
 			.sort(sortByItemIndex);
 	}
 
 	if (entity.has(Stroke)) {
-		cache.strokes[pid] = collect(Stroke, ChildOf(parent))
+		cache.strokes[pid] = collect(cache.strokes[pid], Stroke, ChildOf(parent))
 			.sort(sortByItemIndex);
 	}
 
 	if (entity.has(Effect)) {
-		cache.effects[pid] = collect(Effect, ChildOf(parent), Not(Shadow))
+		cache.effects[pid] = collect(cache.effects[pid], Effect, ChildOf(parent), Not(Shadow))
 			.sort(sortByItemIndex);
 	}
 
 	if (entity.has(Shadow)) {
-		cache.shadows[pid] = collect(Shadow, ChildOf(parent), Not(Effect))
+		cache.shadows[pid] = collect(cache.shadows[pid], Shadow, ChildOf(parent), Not(Effect))
 			.sort(sortByItemIndex);
 	}
 
 	if (entity.has(TextRange)) {
-		cache.textRanges[pid] = collect(TextRange, ChildOf(parent))
+		cache.textRanges[pid] = collect(cache.textRanges[pid], TextRange, ChildOf(parent))
 			.sort(sortByItemIndex);
 	}
 }
@@ -186,19 +194,31 @@ export function findClosestParentGeometry(entity: Entity): Entity | null {
  * `target` field on each track so consumers iterating the cache can look up
  * the animated entity without walking ChildOf.
  */
-export function aggregateKeyframeTracks(world: World, node: Entity | null, exclude: Entity | null = null): void {
+export function aggregateKeyframeTracks(
+	world: World,
+	node: Entity | null,
+	exclude: Entity | null = null,
+	include: Entity | null = null,
+): void {
 	if (node === null) return;
 	if (!node.has(Cache)) node.add(Cache);
 
 	const keyframeTrack = store(world, KeyframeTrack);
-	const tracks: Entity[] = [];
+	const tracks: Entity[] = include === null
+		? []
+		: [...(store(world, Cache).keyframeTracks[node.id()] ?? [])]
+			.filter((track) => track !== exclude && world.has(track));
+	const addTrack = (track: Entity) => {
+		if (track === exclude || tracks.includes(track)) return;
+		keyframeTrack.target[track.id()] = getParentNode(track);
+		tracks.push(track);
+	};
 
 	const walk = (entity: Entity) => {
 		for (const child of world.query(ChildOf(entity))) {
 			if (child === exclude) continue;
 			if (child.has(KeyframeTrack)) {
-				keyframeTrack.target[child.id()] = getParentNode(child);
-				tracks.push(child);
+				addTrack(child);
 				continue;
 			}
 			// Stop at nested nodes; each owns its own cache entry.
@@ -208,5 +228,10 @@ export function aggregateKeyframeTracks(world: World, node: Entity | null, exclu
 	};
 
 	walk(node);
+	// The newly attached relation may not be query-visible yet. A direct track
+	// belongs to this node; a newly attached paint/style may already carry a
+	// subtree of tracks that must be folded into the node cache with it.
+	if (include?.has(KeyframeTrack)) addTrack(include);
+	else if (include && !isNodeEntity(include)) walk(include);
 	store(world, Cache).keyframeTracks[node.id()] = tracks;
 }

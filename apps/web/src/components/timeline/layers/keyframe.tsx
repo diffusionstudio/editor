@@ -24,6 +24,7 @@ import { useDerived } from '@/engine/hooks';
 import { KEYFRAME_TRACK_HEIGHT } from '@/engine/timeline';
 import { NESTED_INDENT_PX } from './config';
 import { setRowHover } from './hover';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 import type { Entity } from 'koota';
 import type { PropertyPath } from '@diffusionstudio/runtime';
@@ -126,7 +127,13 @@ export function KeyframeLayer(props: LayerRowProps) {
           </TooltipPortal>
         </Tooltip>
         <Show when={property() && target()}>
-          {(holder) => <Keyframe property={property()!} target={holder() as Entity} />}
+          {(holder) => (
+            <Keyframe
+              property={property()!}
+              target={holder() as Entity}
+              disabled={!documentMutationsEnabled()}
+            />
+          )}
         </Show>
         <Tooltip placement="top">
           <TooltipTrigger

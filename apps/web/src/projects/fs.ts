@@ -14,6 +14,8 @@ import { ElectronWritableFileHandle } from '@/lib/electron-file-writable';
 import { isAbsoluteSource } from '@diffusionstudio/assets';
 
 import type { Manifest, ProjectFS } from '@diffusionstudio/assets';
+import { createCompanionProjectFS } from './companion-fs';
+import { isBrowserCompanionRenderer } from '@/lib/companion-authority';
 
 /** Streams `blob` to an absolute path in chunks. */
 async function writeBlob(path: string, blob: Blob): Promise<void> {
@@ -38,6 +40,10 @@ async function writeBlob(path: string, blob: Blob): Promise<void> {
 
 /** The `ProjectFS` of the project folder at `dir`. */
 export function createProjectFS(dir: string): ProjectFS {
+	if (isBrowserCompanionRenderer()) {
+		const projectId = dir.startsWith('companion:') ? dir.slice('companion:'.length) : dir;
+		return createCompanionProjectFS(projectId);
+	}
 	const separator = dir.includes('\\') ? '\\' : '/';
 	const absolute = (source: string): string =>
 		isAbsoluteSource(source) ? source : `${dir}${separator}${source.split('/').join(separator)}`;

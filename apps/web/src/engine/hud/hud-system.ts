@@ -20,6 +20,7 @@ import {
 } from '../input/interactions';
 import { getMarqueeQuad } from '../input/snapping';
 import { getMountedNameInput } from './name-input';
+import { documentMutationsEnabled } from '@/lib/companion-capabilities';
 
 import type { Entity, World } from 'koota';
 import type { Mat2D } from '@diffusionstudio/runtime';
@@ -251,6 +252,9 @@ function drawSelectionMask(world: World, ctx: Ctx2D, mask: { width: number; heig
 		target: { kind: 'hud', id: 'selection', quad: rectToQuad(mat, width, height) },
 		callback: handleMaskInteraction,
 	});
+
+	// A companion selection is an inspection outline, not a transform affordance.
+	if (!documentMutationsEnabled()) return;
 
 	const rotate = Math.round(16 * resolution);
 	const rotateRegions: Record<string, [x: number, y: number]> = {

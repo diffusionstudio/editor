@@ -43,6 +43,7 @@ import { Layer } from './layer';
 import { LayerContextProvider } from './context';
 import { DropIndicator } from './drop-indicator';
 import { formatFrames, TIME_FORMAT_OPTIONS, type TimeFormat } from '../time-format';
+import { companionUiCapabilities } from '@/lib/companion-capabilities';
 
 import type { TimelineNode } from '@diffusionstudio/runtime';
 import type { Entity } from 'koota';
@@ -62,6 +63,7 @@ export function Layers() {
   const timeline = useTimeline();
   const index = useTimelineIndex();
   const { timelineMinimized, toggleTimeline } = useLayout();
+  const capabilities = companionUiCapabilities();
 
   const layers = createMemo(() => index().layers);
   const scene = createMemo(() => index().root);
@@ -184,18 +186,20 @@ export function Layers() {
             </TooltipPortal>
           </Tooltip>
           <Show when={!timelineMinimized()}>
-            <Tooltip placement="top">
-              <TooltipTrigger<typeof Button>
-                as={(triggerProps) => (
-                  <Button {...triggerProps} variant="ghost" size="icon" onClick={() => splitAtPlayhead(world)}>
-                    <Icon name="split" class="size-6" />
-                  </Button>
-                )}
-              />
-              <TooltipPortal>
-                <TooltipContent shortcut="⌘B">Split at playhead</TooltipContent>
-              </TooltipPortal>
-            </Tooltip>
+            <Show when={capabilities.projectWrite}>
+              <Tooltip placement="top">
+                <TooltipTrigger<typeof Button>
+                  as={(triggerProps) => (
+                    <Button {...triggerProps} variant="ghost" size="icon" onClick={() => splitAtPlayhead(world)}>
+                      <Icon name="split" class="size-6" />
+                    </Button>
+                  )}
+                />
+                <TooltipPortal>
+                  <TooltipContent shortcut="⌘B">Split at playhead</TooltipContent>
+                </TooltipPortal>
+              </Tooltip>
+            </Show>
             <DropdownMenu>
               <Tooltip placement="top">
                 <TooltipTrigger<typeof DropdownMenuTrigger>
@@ -216,27 +220,29 @@ export function Layers() {
               </Tooltip>
               <DropdownMenuPortal>
                 <DropdownMenuContent class="w-[180px]">
-                  <DropdownMenuItem onSelect={addLayer}>Add layer</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>Layer height</DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent class="w-[140px]">
-                        <Index each={HEIGHT_PRESETS}>
-                          {(preset) => (
-                            <DropdownMenuCheckboxItem
-                              onSelect={() => setCommonHeight(preset().height)}
-                              checked={commonHeight() === preset().height}
-                            >
-                              {preset().label}
-                              <span class="text-xxs text-muted-foreground ml-auto">{preset().height}</span>
-                            </DropdownMenuCheckboxItem>
-                          )}
-                        </Index>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                  <DropdownMenuSeparator />
+                  <Show when={capabilities.projectWrite}>
+                    <DropdownMenuItem onSelect={addLayer}>Add layer</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Layer height</DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent class="w-[140px]">
+                          <Index each={HEIGHT_PRESETS}>
+                            {(preset) => (
+                              <DropdownMenuCheckboxItem
+                                onSelect={() => setCommonHeight(preset().height)}
+                                checked={commonHeight() === preset().height}
+                              >
+                                {preset().label}
+                                <span class="text-xxs text-muted-foreground ml-auto">{preset().height}</span>
+                              </DropdownMenuCheckboxItem>
+                            )}
+                          </Index>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                  </Show>
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Time format</DropdownMenuSubTrigger>
                     <DropdownMenuPortal>

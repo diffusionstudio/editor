@@ -11,6 +11,7 @@ import { useTimeline } from "@/context/timeline";
 import { resolveSequentialOverlaps } from "@/engine/overlap";
 import { assert, clamp } from "@/utils";
 import { flattenRows, getListBottom, hitRows, resolveGap } from "./drag";
+import { documentMutationsEnabled } from "@/lib/companion-capabilities";
 
 import type { Entity } from "koota";
 import type { DropTarget, FlatRow, GapContext, LayerDrag } from "./drag";
@@ -59,6 +60,7 @@ export function LayerContextProvider(props: { children: JSX.Element }) {
   let raf = 0;
 
   const begin = (event: PointerEvent, entity: Entity): void => {
+    if (!documentMutationsEnabled()) return;
     if (pending !== null || active !== null) return;
 
     pending = { entity, startX: event.clientX, startY: event.clientY };

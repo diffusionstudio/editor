@@ -6,10 +6,13 @@ import { existsSync, unlinkSync } from "node:fs";
 import { createServer } from "node:net";
 import type { Server, Socket } from "node:net";
 import { app, BrowserWindow } from "electron";
-import { CLI_WIRE, SOCKET_PATH } from "@diffusionstudio/cli/protocol";
+import { CLI_WIRE, SOCKET_PATH, isBrowserCompanionCommand } from "@diffusionstudio/cli/protocol";
 import type { CliHandshake, CliHandshakeReply } from "@diffusionstudio/cli/protocol";
 import { mainBridge } from "./main-manager";
 import { MAIN_CHANNELS } from "./main-channels";
+import { handleBrowserCompanionCommand, stopBrowserCompanion } from "./browser-companion";
+
+const MAX_CONTROL_FRAME_BYTES = 64 * 1024;
 
 let cliServer: Server | null = null;
 let currentWindow: BrowserWindow | null = null;
@@ -105,26 +108,49 @@ export function startCliServer() {
   bindWindowLifecycle();
 
   cliServer = createServer({ allowHalfOpen: true }, (sock: Socket) => {
-    enableHeadless();
     let buf = "";
+    let oversized = false;
     sock.setEncoding("utf8");
     sock.setTimeout(60000, () => sock.destroy());
     sock.on("data", (chunk) => {
+      if (oversized) return;
       buf += chunk;
+      if (Buffer.byteLength(buf, "utf8") > MAX_CONTROL_FRAME_BYTES) {
+        oversized = true;
+        buf = "";
+      }
     });
     sock.on("end", async () => {
       sock.setTimeout(0);
-      let handshake: CliHandshake;
+      if (oversized) {
+        sock.end(JSON.stringify({ ok: false, error: "Control frame exceeds 64 KiB" }));
+        return;
+      }
+      let value: unknown;
       try {
-        handshake = JSON.parse(buf) as CliHandshake;
-        if (typeof handshake.port !== "number" || typeof handshake.token !== "string") {
-          throw new Error("Malformed handshake");
-        }
+        value = JSON.parse(buf) as unknown;
       } catch {
+        sock.end(JSON.stringify({ ok: false, error: "Invalid control message" }));
+        return;
+      }
+
+      if (isBrowserCompanionCommand(value)) {
+        const response = await handleBrowserCompanionCommand(value);
+        if (!sock.destroyed) sock.end(JSON.stringify(response));
+        return;
+      }
+
+      const handshake = value as Partial<CliHandshake>;
+      if (
+        typeof handshake.port !== "number" || !Number.isInteger(handshake.port) ||
+        handshake.port < 1 || handshake.port > 65535 ||
+        typeof handshake.token !== "string" || handshake.token.length < 16 || handshake.token.length > 256
+      ) {
         sock.end(JSON.stringify({ ok: false, error: "Invalid handshake" }));
         return;
       }
-      await deliverHandshake(handshake, sock);
+      enableHeadless();
+      await deliverHandshake(handshake as CliHandshake, sock);
     });
     sock.on("error", () => {
       // Client hung up; nothing to do.
@@ -139,6 +165,7 @@ export function startCliServer() {
 }
 
 export function stopCliServer() {
+  void stopBrowserCompanion();
   if (!cliServer) return;
   cliServer.close();
   cliServer = null;

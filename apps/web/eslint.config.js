@@ -62,6 +62,7 @@ export default [
       "node_modules/**",
       "dist/**",
       "dist-ssr/**",
+      "tests/companion-*.test.ts",
       "*.config.js",
       "*.config.ts",
     ],

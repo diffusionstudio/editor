@@ -13,6 +13,7 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --external:bufferutil --external:utf-8-validate --outfile=dist/index.js && chmod +x dist/index.js",
     "check": "tsc --noEmit",
+    "test:browser-companion": "node --test --experimental-strip-types tests/browser-companion-protocol.test.ts",
     "symlink:remove": "rm -f /opt/homebrew/bin/dapi",
     "symlink:create": "npm run build && ln -sf \"$PWD/dist/index.js\" /opt/homebrew/bin/dapi"
   },

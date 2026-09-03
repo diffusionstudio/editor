@@ -12,6 +12,7 @@ import { observable } from "@trpc/server/observable";
 import { SOCKET_PATH } from "./protocol";
 import type { CliHandshake, CliHandshakeReply, CliReply, CliRequest } from "./protocol";
 import type { AppRouter } from "../../web/src/context/dapi";
+import type { BrowserCompanionCommand, BrowserCompanionReply } from "./browser-companion-protocol";
 
 const DEFAULT_TIMEOUT_MS = 60000;
 export const GENERATE_TIMEOUT_MS = 600000;
@@ -138,7 +139,7 @@ export const editor = createTRPCClient<AppRouter>({ links: [cliLink] });
 // Transport failures surface as TRPCClientError wrapping the socket error;
 // unwrap to reach errno codes like ENOENT/ECONNREFUSED.
 export function errnoCode(e: unknown): string | undefined {
-  if (!(e instanceof TRPCClientError)) return undefined;
+  if (!(e instanceof TRPCClientError)) return (e as NodeJS.ErrnoException | undefined)?.code;
   return (e.cause as NodeJS.ErrnoException | undefined)?.code;
 }
 
@@ -164,4 +165,24 @@ export async function waitForCliSocket(timeoutMs = 30000): Promise<void> {
   throw lastError instanceof Error
     ? lastError
     : new Error("Timed out waiting for the app to start");
+}
+
+/** Main-owned companion management; no request is forwarded to either renderer. */
+export function browserCompanion(command: BrowserCompanionCommand, timeoutMs = 60_000): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const socket = connect(SOCKET_PATH);
+    let buffer = "";
+    socket.setEncoding("utf8");
+    socket.setTimeout(timeoutMs, () => socket.destroy(new Error("Timed out waiting for browser companion host")));
+    socket.on("connect", () => socket.end(JSON.stringify(command)));
+    socket.on("data", (chunk) => { buffer += chunk; });
+    socket.on("error", reject);
+    socket.on("end", () => {
+      try {
+        const reply = JSON.parse(buffer) as BrowserCompanionReply;
+        if (!reply.ok) throw new Error(reply.error);
+        resolve(reply.data);
+      } catch (error) { reject(error); }
+    });
+  });
 }

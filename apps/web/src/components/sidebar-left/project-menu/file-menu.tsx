@@ -27,6 +27,7 @@ import { useProject } from "@/context/project";
 import { useExport } from "@/context/export";
 import { getDefaultExportTemplate } from "@/components/sidebar-right/inspector/export-templates";
 import { mimeTypeToExtension } from "@/utils";
+import { isCompanionExportDisabled } from "@/lib/companion-export";
 
 import type { Entity } from "koota";
 
@@ -103,18 +104,20 @@ export function FileMenu() {
         </DropdownMenuSub>
       </DropdownMenuGroup>
 
-      <DropdownMenuSeparator />
+      <Show when={!isCompanionExportDisabled()}>
+        <DropdownMenuSeparator />
 
-      <DropdownMenuGroup>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Export</DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent class="w-[246px]">
-              <FileExportMenu />
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
-      </DropdownMenuGroup>
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Export</DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent class="w-[246px]">
+                <FileExportMenu />
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+      </Show>
 
       <DropdownMenuSeparator />
 

@@ -12,6 +12,7 @@ import { assert, downloadObject, isInputTarget } from "@/utils";
 import { useEngineContext } from "@/engine";
 import { useProject } from "@/context/project";
 import { track } from "@/lib/analytics";
+import { isCompanionExportDisabled, runExportAction } from "@/lib/companion-export";
 import { ExportProgress, type ExportConfig } from "@/components/sidebar-right/inspector/export-progress";
 import { renderScene, renderOverlay, cancelRender } from "@/context/render";
 import {
@@ -40,7 +41,7 @@ export function ExportProvider(props: { children: JSX.Element }) {
   const sceneDurationSeconds = (scene: Entity) =>
     (scene.get(Computed)?.duration ?? 0) / (world.get(FrameRate)?.value || 30);
 
-  const exportScene: ExportContextValue["exportScene"] = async (scene, config) => {
+  const exportScene: ExportContextValue["exportScene"] = (scene, config) => runExportAction("scene", async () => {
     if (!scene?.isAlive()) return;
 
     const format = config.format ?? "mp4";
@@ -142,9 +143,9 @@ export function ExportProvider(props: { children: JSX.Element }) {
         error: (e as Error).message?.slice(0, 200) ?? 'unknown',
       });
     }
-  };
+  });
 
-  const exportCurrentFrame: ExportContextValue["exportCurrentFrame"] = async () => {
+  const exportCurrentFrame: ExportContextValue["exportCurrentFrame"] = () => runExportAction("frame", async () => {
     const blob = await engine.snapshot();
 
     if (!blob) {
@@ -154,7 +155,7 @@ export function ExportProvider(props: { children: JSX.Element }) {
 
     const projectName = project.name().replace(/\s+/g, "-").toLowerCase();
     await downloadObject(blob, `${projectName}-frame.png`);
-  };
+  });
 
   const exportActiveScene = () => {
     const scene = getActiveEntity(world);
@@ -174,6 +175,7 @@ export function ExportProvider(props: { children: JSX.Element }) {
     if (isInputTarget(event)) return;
 
     event.preventDefault();
+    if (isCompanionExportDisabled()) return;
     if (event.shiftKey) void exportCurrentFrame();
     else exportActiveScene();
   };

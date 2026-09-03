@@ -169,7 +169,6 @@ export async function createCapture(source: World, node: Entity, options: Captur
 	for (const root of world.query(ChildOf(world.get(Root)!))) {
 		if (root !== rendered) root.destroy();
 	}
-
 	// The project may have spelled `<stage camera={…}>`, which is where the
 	// editor was last looking — no part of the composition, and the view an
 	// encode draws with is the plain one.

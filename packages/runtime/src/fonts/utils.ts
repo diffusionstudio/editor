@@ -9,6 +9,7 @@
 import { WebFonts } from './fixtures';
 import { FontStyle } from '../constants';
 import { Fonts } from '../traits';
+import { canLoadRemoteWebFonts, resolveWebFontSource } from './policy';
 
 import type { World } from 'koota';
 import type * as types from './types';
@@ -29,6 +30,7 @@ function getFontFaceSet(): FontFaceSet | null {
  * Get common web fonts
  */
 export function getWebFonts(): types.FontSources[] {
+	if (!canLoadRemoteWebFonts()) return [];
 	return Object.keys(WebFonts).map((family) => {
 		return {
 			family,
@@ -49,7 +51,7 @@ export async function loadWebFont(
 	style: FontStyle = FontStyle.NORMAL,
 	weight?: string,
 ): Promise<types.FontSource> {
-	const source = `url(${WebFonts[family].url})`;
+	const source = resolveWebFontSource(family, WebFonts[family].url);
 	const font: types.FontSource = {
 		source,
 		family,
@@ -68,6 +70,10 @@ export async function loadWebFont(
 	}
 
 	fonts.push(font);
+
+	// Do not ask FontFace to resolve a URL in local-only mode. The authored
+	// family remains intact and Chromium uses a bundled/system fallback.
+	if (!canLoadRemoteWebFonts()) return font;
 
 	// Load all weights if no weight is specified
 	if (!weight) {

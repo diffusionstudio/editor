@@ -23,6 +23,7 @@ import { uploadBlob } from "@/lib/uploads";
 import { track } from "@/lib/analytics";
 import { trpc } from "@/lib/trpc";
 import { toast } from "somoto";
+import { isLocalOnly } from "@/lib/local-only";
 
 import type { AspectRatio, AssetInput, AssetRef, AssetSpecInput } from "@diffusionstudio/jsx";
 import type { Asset, AssetLibrary, AssetType } from "@diffusionstudio/assets";
@@ -75,10 +76,27 @@ type ResolvedSpec =
   | { type: "audio"; model: string; prompt: string; duration?: number; seed?: number };
 
 /** Creates the project's GenAi over `library` and attaches it as the world's Ai. */
-export function attachAi(world: World, library: AssetLibrary, dir?: string): EditorGenAi {
-  const ai = new EditorGenAi(library, world.get(Project)?.id ?? "project", dir);
+export function attachAi(world: World, library: AssetLibrary, dir?: string): GenAi {
+  const ai = isLocalOnly()
+    ? new LocalOnlyGenAi()
+    : new EditorGenAi(library, world.get(Project)?.id ?? "project", dir);
   world.set(Ai, ai);
   return ai;
+}
+
+const LOCAL_ONLY_ERROR =
+  "Diffusion AI generation, transcription, listening, and source transforms are disabled in the browser companion's zero-credit local-only mode. " +
+  "Reference local assets or a local transcript file from the project instead.";
+
+class LocalOnlyGenAi extends GenAi {
+  private refuse(): Promise<never> {
+    console.error(`[local-only] ${LOCAL_ONLY_ERROR}`);
+    return Promise.reject(new Error(LOCAL_ONLY_ERROR));
+  }
+
+  resolve(_ref: AssetRef): Promise<Asset> { return this.refuse(); }
+  transcribe(_world: World, _scene: Entity, _seed: number): Promise<Asset> { return this.refuse(); }
+  derive(_asset: Asset, _modifiers: SourceModifierValues): Promise<Asset> { return this.refuse(); }
 }
 
 export class EditorGenAi extends GenAi {
