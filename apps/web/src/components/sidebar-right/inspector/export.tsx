@@ -3,8 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Show, createMemo, createResource, createSignal } from "solid-js";
-import { canEncodeVideo } from "mediabunny";
-import { computeOutputSize } from "@diffusionstudio/encoder";
+import { canEncodeVideo, getEncodableAudioCodecs } from "mediabunny";
+import { audioCodecsForFormat, computeOutputSize, resolveAudioCodec } from "@diffusionstudio/encoder";
 import { PanelSection } from "@/components/ui/panel-section";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -158,6 +158,28 @@ export function ExportPanel(props: ExportPanelProps) {
     ({ codec, bitrate, width, height }) => canEncodeVideo(codec, { width, height, bitrate }),
   );
 
+  // Which audio codecs are worth offering: those the container takes and
+  // this browser can encode. AAC is a platform encoder in WebCodecs
+  // (AudioToolbox on macOS, Media Foundation on Windows) and simply absent
+  // on Linux, so offering it there would only fail the export.
+  const [audioCodecs] = createResource(
+    () => {
+      const current = settings();
+      return {
+        format: current?.format ?? ("mp4" as const),
+        sampleRate: current?.audio?.sampleRate,
+        bitrate: current?.audio?.bitrate,
+      };
+    },
+    async ({ format, ...options }) => {
+      const [supported, encodable] = await Promise.all([
+        audioCodecsForFormat(format),
+        getEncodableAudioCodecs([...AUDIO_CODEC_OPTIONS], options),
+      ]);
+      return encodable.filter((codec) => supported.includes(codec));
+    },
+  );
+
   // Audio-only exports always encode
   const exportSupported = createMemo(() => {
     const current = settings();
@@ -180,14 +202,21 @@ export function ExportPanel(props: ExportPanelProps) {
     void config()?.setExport(entity(), value);
   };
 
-  // Replaces the settings with a preset's, wholesale.
-  const applyTemplate = (id: string) => {
+  // Replaces the settings with a preset's, wholesale. A preset names AAC for
+  // mp4, which is a preference rather than a demand — what is written is the
+  // codec this browser can encode into the container.
+  const applyTemplate = async (id: string) => {
     const next = templateSettings(id);
-    if (next) write(next);
+    if (!next) return;
+    const codec = await resolveAudioCodec(next.format, next.audio?.codec, {
+      sampleRate: next.audio?.sampleRate,
+      bitrate: next.audio?.bitrate,
+    });
+    write(codec ? { ...next, audio: { ...next.audio, codec } } : next);
   };
 
   const addSettings = () => {
-    applyTemplate(DEFAULT_EXPORT_TEMPLATE_ID);
+    void applyTemplate(DEFAULT_EXPORT_TEMPLATE_ID);
     setIsInspectorOpen(true);
   };
 
@@ -294,6 +323,7 @@ export function ExportPanel(props: ExportPanelProps) {
             settings={current()}
             resolutionOptions={resolutionOptions()}
             selectedResolution={selectedResolution()}
+            audioCodecOptions={audioCodecs() ?? AUDIO_CODEC_OPTIONS}
             anchorRef={inspectorAnchorRef}
             onClose={() => setIsInspectorOpen(false)}
             onSelectTemplate={applyTemplate}
@@ -309,6 +339,7 @@ type ExportInspectorProps = {
   settings: ProjectExportConfig;
   resolutionOptions: ResolutionOption[];
   selectedResolution: ResolutionOption | null;
+  audioCodecOptions: AudioCodec[];
   anchorRef: HTMLDivElement | undefined;
   onClose: () => void;
   onSelectTemplate: (id: string) => void;
@@ -507,7 +538,7 @@ function ExportInspector(props: ExportInspectorProps) {
             <ControlRow label="Codec">
               <Select
                 value={config().audio?.codec ?? "aac"}
-                options={[...AUDIO_CODEC_OPTIONS]}
+                options={[...props.audioCodecOptions]}
                 onChange={(value) => value && write({ audio: { codec: value } })}
                 itemComponent={(itemProps) => (
                   <SelectItem item={itemProps.item}>{itemProps.item.rawValue.toUpperCase()}</SelectItem>

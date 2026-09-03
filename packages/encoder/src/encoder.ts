@@ -23,6 +23,7 @@ import {
 } from '@diffusionstudio/runtime';
 
 import { TargetBuffer } from './buffer';
+import { resolveAudioCodec } from './codecs';
 import { createOutputFormat } from './format';
 import { computeOutputSize, createRenderEventDetail } from './utils';
 
@@ -96,7 +97,7 @@ export async function createEncoder(world: World, config: EncoderConfig) {
 	const sampleRate = config.audio?.sampleRate ?? 48000;
 	const audioBitrate = config.audio?.bitrate ?? 128e3;
 	const videoBitrate = config.video?.bitrate ?? 10e6;
-	const audioCodec = config.audio?.codec ?? 'aac';
+	const requestedAudioCodec = config.audio?.codec ?? 'aac';
 	const videoCodec = config.video?.codec ?? 'avc';
 	const containerFormat = config.format ?? 'mp4';
 	const resolution = config.video?.resolution ?? 1080;
@@ -115,6 +116,24 @@ export async function createEncoder(world: World, config: EncoderConfig) {
 			'Choose a lower resolution, a lower bitrate, or another codec.',
 		);
 	}
+
+	// Same, for audio: what a browser can encode depends on the platform
+	// underneath it (no AAC encoder on Linux, where WebCodecs has no system
+	// one to hand it to), so the codec asked for is only a preference — the
+	// container's next encodable choice is written instead of failing.
+	const audioCodec = audioEnabled
+		? await resolveAudioCodec(containerFormat, requestedAudioCodec, {
+			numberOfChannels,
+			sampleRate,
+			bitrate: audioBitrate,
+		})
+		: requestedAudioCodec;
+
+	assert(
+		audioCodec,
+		`This browser cannot encode audio into ${containerFormat.toUpperCase()}. ` +
+		'Choose another format, or turn audio off.',
+	);
 
 	const canvas = world.get(RenderSurface)?.canvas;
 	assert(canvas instanceof HTMLCanvasElement, 'The capture world has no canvas to draw into');
@@ -146,7 +165,7 @@ export async function createEncoder(world: World, config: EncoderConfig) {
 
 	// Set up mediabunny output
 	const buffer = await TargetBuffer.create(config.target);
-	const format = await createOutputFormat(buffer, config.format);
+	const format = await createOutputFormat(config.format, { fastStart: buffer.fastStart });
 	const output = new Output({ format, target: buffer.target });
 
 	if (config.comment) {
