@@ -17,8 +17,6 @@
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
-    "@trpc/client": "^11.18.0",
-    "@trpc/server": "^11.18.0",
     "@babel/preset-typescript": "^7.27.1",
     "babel-preset-solid": "^1.9.12",
     "commander": "^14.0.3",

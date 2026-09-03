@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { stampTimestampLabel } from '@diffusionstudio/runtime';
+import { encodePng } from './png';
 
 /**
  * Contact sheets: a handful of frames merged into one labelled image, so a
@@ -112,7 +113,7 @@ export function planSheetSizes(total: number, perSheet?: number): number[] {
 export async function composeSheet(
 	frames: Array<{ image: CanvasImageSource; label: string }>,
 	plan: SheetPlan,
-): Promise<string> {
+): Promise<Uint8Array> {
 	const canvas = new OffscreenCanvas(plan.width, plan.height);
 	const ctx = canvas.getContext('2d')!;
 
@@ -133,17 +134,5 @@ export async function composeSheet(
 		ctx.restore();
 	}
 
-	const blob = await canvas.convertToBlob({ type: 'image/png' });
-	const dataUrl = await new Promise<string>((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(reader.result as string);
-		reader.onerror = () => reject(reader.error);
-		reader.readAsDataURL(blob);
-	});
-	return dataUrl.slice(dataUrl.indexOf(',') + 1);
-}
-
-export async function decodePngBase64(base64: string): Promise<ImageBitmap> {
-	const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-	return createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+	return encodePng(canvas);
 }

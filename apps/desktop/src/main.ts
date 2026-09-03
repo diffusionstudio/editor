@@ -275,7 +275,9 @@ if (app.requestSingleInstanceLock()) {
     if (!mainWindow || mainWindow.isDestroyed()) throw new Error("No main window");
     const image = await mainWindow.webContents.capturePage(undefined, { stayHidden: true });
     const { width, height } = image.getSize();
-    return { base64: image.toPNG().toString("base64"), width, height };
+    const png = image.toPNG();
+    // A plain Uint8Array over the PNG, so the renderer sees bytes and not a Buffer.
+    return { png: new Uint8Array(png.buffer, png.byteOffset, png.byteLength), width, height };
   });
   mainBridge.handle(MAIN_CHANNELS.HEADLESS_GET_MODE, () => isHeadless());
   mainBridge.handle(MAIN_CHANNELS.LOGS_GET, () => logBuffer);

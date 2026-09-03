@@ -29,12 +29,18 @@ export const AssetPath = z
 export const MAX_FRAMES_PER_SHEET = 12;
 
 /**
- * One written image: a single frame stamped with its timecode, or a contact
- * sheet stamped with the span it covers (`0f-08s10f`).
+ * Raw bytes as a handler produces them. How they travel is the transport's
+ * business: base64 on a JSON wire, structured clone over IPC, a file on disk.
+ */
+export const Bytes = z.custom<Uint8Array>((value) => value instanceof Uint8Array, "expected bytes (a Uint8Array)");
+
+/**
+ * One image: a single frame stamped with its timecode, or a contact sheet
+ * stamped with the span it covers (`0f-08s10f`).
  */
 export const TimecodedImage = z.object({
   timecode: z.string(),
-  base64: z.string().describe("PNG bytes, base64"),
+  png: Bytes,
 });
 
 /**

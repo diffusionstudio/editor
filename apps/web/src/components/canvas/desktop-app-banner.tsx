@@ -5,7 +5,7 @@
 import { Show } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { useEditorApi } from "@/context/dapi";
+import { useEditorApi } from "@/dapi";
 import { createStoredSignal } from "@/lib/store";
 import { downloadDesktopApp } from "@/lib/desktop-app";
 import { track } from "@/lib/analytics";

@@ -2,40 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
-    // The AppRouter type import in cli-client.ts pulls renderer sources into
-    // this program, so the web app's compiler settings (DOM, solid JSX, vite
-    // types, aliases) apply here on top of the node ones.
-    "useDefineForClassFields": true,
-    "erasableSyntaxOnly": false,
-    "lib": [
-      "es2024",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "types": [
-      "node",
-      "vite-plugin-solid-svg/types-component-solid",
-      "vite/client",
-      "@types/audioworklet",
-      "@types/wicg-file-system-access",
-      "@webgpu/types"
-    ],
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "baseUrl": "./",
-    "paths": {
-      "@/*": [
-        "../web/src/*"
-      ],
-      "@desktop/*": [
-        "../desktop/src/*"
-      ]
-    }
+    "lib": ["es2024"],
+    "types": ["node"],
+    "resolveJsonModule": true
   },
-  "include": [
-    "src",
-    "../web/src/vite-env.d.ts"
-  ]
+  "include": ["src"]
 }

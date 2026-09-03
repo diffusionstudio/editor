@@ -19,7 +19,8 @@ export type { TimeInput } from "./time";
 export { DapiError, isDapiError } from "./errors";
 export type { DapiErrorCode } from "./errors";
 
-export { MAX_FRAMES_PER_SHEET } from "./schemas";
+export { MAX_FRAMES_PER_SHEET, Bytes } from "./schemas";
+export { parseToolArgs } from "./validate";
 export { FRAME_CAP } from "./tools/media-grab";
 export { ISSUE_LOG_TAIL } from "./tools/report";
 

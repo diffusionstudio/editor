@@ -2,4 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-export * from './api';
+import type { ToolHandler } from "../handler";
+
+export const whoami: ToolHandler<"whoami"> = async (_, ctx) => ctx.app.user();

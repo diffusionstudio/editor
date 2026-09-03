@@ -12,23 +12,15 @@ import type {
   MainRequestChannel,
   MainRequestMap,
 } from "@desktop/main-channels";
-import { CLI_WIRE } from "@diffusionstudio/cli/protocol";
-import type { CliHandshake, CliReply, CliRequest } from "@diffusionstudio/cli/protocol";
 
 type EventHandler<C extends MainEventChannel> = (data: MainEventMap[C]) => void;
-
-export type ProcedureCaller = (input: unknown) => Promise<unknown>;
-
-// Resolves a dot-joined tRPC procedure path to an invocable, or undefined
-// when the router doesn't own that path.
-export type RouterCaller = (path: string) => ProcedureCaller | undefined;
 
 type Pending = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
 };
 
-// Renderer↔main bridge. Symmetric with cliBridge: `handle` registers a
+// Renderer↔main bridge: `handle` registers a
 // single-subscriber receiver for inbound channels (events from main); `call`
 // sends a request to main and awaits the reply.
 class MainBridge {
@@ -94,87 +86,3 @@ class MainBridge {
 }
 
 export const mainBridge = new MainBridge();
-
-type PendingCliRequest = { req: CliRequest; ws: WebSocket };
-
-// CLI bridge — answers CLI requests. Each CLI command hosts a short-lived
-// WebSocket server; main relays only the connect info (CLI_WIRE.CONNECT) and
-// we dial the CLI directly, so payloads never pass through main. One request
-// and one reply per connection. The bridge is transport-only: the tRPC
-// router registers as a path resolver, and requests arriving before it
-// mounts (or between remounts on project switches) are held and retried on
-// the next registration — no explicit ready signal needed.
-class CliBridge {
-  // Several routers coexist: the shell router (always mounted, owns `ping`
-  // and `open`) and the editor router (mounted per open project). Paths are
-  // disjoint; a request is answered by whichever router owns its path.
-  private routers = new Set<RouterCaller>();
-  private pending: PendingCliRequest[] = [];
-
-  constructor() {
-    // Bind eagerly so CONNECT arrivals during page bootstrap are caught
-    // rather than silently dropped before any router registers.
-    if (window.desktop) {
-      window.desktop.on(CLI_WIRE.CONNECT, (payload) => {
-        const { port, token } = payload as CliHandshake;
-        const ws = new WebSocket(`ws://127.0.0.1:${port}/?token=${token}`);
-        ws.onmessage = (event) => {
-          try {
-            const req = JSON.parse(event.data as string) as CliRequest;
-            void this.dispatch({ req, ws });
-          } catch (err) {
-            console.error("[cli-bridge] malformed CLI request", err);
-            ws.close();
-          }
-        };
-      });
-    }
-  }
-
-  private resolve(path: string): ProcedureCaller | undefined {
-    for (const router of this.routers) {
-      const proc = router(path);
-      if (proc) return proc;
-    }
-    return undefined;
-  }
-
-  private async dispatch(pending: PendingCliRequest): Promise<void> {
-    const { req, ws } = pending;
-    const proc = this.resolve(req.path);
-    if (!proc) {
-      this.pending.push(pending);
-      return;
-    }
-    let reply: CliReply;
-    try {
-      const data = await proc(req.input);
-      reply = { ok: true, data };
-    } catch (err) {
-      reply = { ok: false, error: (err as Error).message };
-    }
-    try {
-      ws.send(JSON.stringify(reply));
-    } catch (err) {
-      ws.send(
-        JSON.stringify({
-          ok: false,
-          error: `Failed to serialize reply for ${req.path}: ${(err as Error).message}`,
-        }),
-      );
-    }
-  }
-
-  register(router: RouterCaller): () => void {
-    if (!window.desktop) return () => {};
-    this.routers.add(router);
-    const held = this.pending;
-    this.pending = [];
-    for (const pending of held) void this.dispatch(pending);
-    return () => {
-      this.routers.delete(router);
-    };
-  }
-}
-
-export const cliBridge = new CliBridge();

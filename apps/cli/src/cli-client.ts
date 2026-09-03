@@ -6,16 +6,35 @@ import { connect } from "node:net";
 import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer } from "ws";
-import { createTRPCClient, TRPCClientError } from "@trpc/client";
-import type { TRPCLink } from "@trpc/client";
-import { observable } from "@trpc/server/observable";
 import { SOCKET_PATH } from "@diffusionstudio/dapi/socket";
+import { decodeReply } from "./protocol";
+
+import type { ToolInput, ToolName, ToolResult } from "@diffusionstudio/dapi";
 import type { CliHandshake, CliHandshakeReply, CliReply, CliRequest } from "./protocol";
-import type { AppRouter } from "../../web/src/context/dapi";
 
 const DEFAULT_TIMEOUT_MS = 60000;
 export const GENERATE_TIMEOUT_MS = 600000;
 export const EXPORT_TIMEOUT_MS = 3600000;
+
+export type CallOptions = { timeoutMs?: number };
+
+/**
+ * Calls one tool in the running app. Typed by the catalog: the input is what
+ * the tool's schema accepts, the result what its handler returns (bytes come
+ * back as bytes; the wire's base64 is decoded here).
+ */
+export async function call<N extends ToolName>(
+  name: N,
+  input: ToolInput<N>,
+  options: CallOptions = {},
+): Promise<ToolResult<N>> {
+  return (await transport({ path: name, input }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS)) as ToolResult<N>;
+}
+
+/** Liveness: answered by the renderer's transport before any handler registers. */
+export async function ping(): Promise<void> {
+  await transport({ path: "ping", input: undefined }, DEFAULT_TIMEOUT_MS);
+}
 
 // Asks the app (via the unix socket) to have the renderer dial our WebSocket
 // server. Main replies once the connect info has been delivered, so a
@@ -55,10 +74,12 @@ function requestConnection(handshake: CliHandshake, timeoutMs: number): Promise<
   });
 }
 
+// Each call runs over its own short-lived WebSocket server that the renderer
+// dials in to. No cancellation: the CLI process exits when the command settles.
 async function transport(request: CliRequest, timeoutMs: number): Promise<unknown> {
   const token = randomBytes(16).toString("hex");
-  // Frame batches and other base64 replies can exceed ws's 100 MiB default,
-  // so disable the payload cap; the server only lives for one request.
+  // Frame batches can exceed ws's 100 MiB default, so disable the payload
+  // cap; the server only lives for one request.
   const wss = new WebSocketServer({ host: "127.0.0.1", port: 0, maxPayload: 0 });
 
   try {
@@ -83,15 +104,13 @@ async function transport(request: CliRequest, timeoutMs: number): Promise<unknow
         }
         ws.on("message", (raw) => {
           try {
-            const parsed = JSON.parse(raw.toString()) as CliReply;
+            const parsed = decodeReply(raw.toString());
             settle(() => resolve(parsed));
           } catch (e) {
             settle(() => reject(e instanceof Error ? e : new Error(String(e))));
           }
         });
-        ws.on("close", () =>
-          settle(() => reject(new Error("App disconnected before replying"))),
-        );
+        ws.on("close", () => settle(() => reject(new Error("App disconnected before replying"))));
         ws.on("error", (err) => settle(() => reject(err)));
         ws.send(JSON.stringify(request));
       });
@@ -114,45 +133,22 @@ async function transport(request: CliRequest, timeoutMs: number): Promise<unknow
   }
 }
 
-// Terminating link: each operation runs over its own short-lived WebSocket
-// server that the renderer dials in to. Long-running procedures pass
-// { context: { timeoutMs } } at the call site.
-const cliLink: TRPCLink<AppRouter> =
-  () =>
-  ({ op }) =>
-    observable((observer) => {
-      const timeoutMs =
-        typeof op.context.timeoutMs === "number" ? op.context.timeoutMs : DEFAULT_TIMEOUT_MS;
-      transport({ path: op.path, input: op.input }, timeoutMs)
-        .then((data) => {
-          observer.next({ result: { data } });
-          observer.complete();
-        })
-        .catch((err) => observer.error(TRPCClientError.from(err as Error)));
-      // No cancellation: the CLI process exits when the command settles.
-      return () => {};
-    });
-
-export const editor = createTRPCClient<AppRouter>({ links: [cliLink] });
-
-// Transport failures surface as TRPCClientError wrapping the socket error;
-// unwrap to reach errno codes like ENOENT/ECONNREFUSED.
+/** The errno of a transport failure (ENOENT/ECONNREFUSED when the app is down), if any. */
 export function errnoCode(e: unknown): string | undefined {
-  if (!(e instanceof TRPCClientError)) return undefined;
-  return (e.cause as NodeJS.ErrnoException | undefined)?.code;
+  return (e as NodeJS.ErrnoException | undefined)?.code;
 }
 
 // Bridges the cold-start gap after launching the app. Main only delivers the
-// handshake once the renderer has finished loading, and `ping` is answered
-// by the always-mounted app router, so a single round-trip proves the app is
-// fully up. The retry loop only handles the brief window before the handshake
+// handshake once the renderer has finished loading, and `ping` is answered by
+// the renderer's transport, so a single round-trip proves the app is fully
+// up. The retry loop only handles the brief window before the handshake
 // socket itself binds (ENOENT/ECONNREFUSED).
 export async function waitForCliSocket(timeoutMs = 30000): Promise<void> {
   const start = Date.now();
   let lastError: unknown = null;
   while (Date.now() - start < timeoutMs) {
     try {
-      await editor.ping.query();
+      await ping();
       return;
     } catch (e) {
       lastError = e;

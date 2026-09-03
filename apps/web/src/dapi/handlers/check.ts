@@ -8,11 +8,11 @@ import {
   SourceError, Workarea, framesToSeconds, getIntrinsicPaint, isText,
 } from "@diffusionstudio/runtime";
 
-import { resolveNode } from "./nodes";
+import { resolveNode } from "../lib/nodes";
 
-import type { CheckIssue, CheckRequest, CheckResult } from "@diffusionstudio/dapi";
+import type { CheckIssue } from "@diffusionstudio/dapi";
 import type { Entity } from "koota";
-import type { EditorSession } from "./session";
+import type { ToolHandler } from "../handler";
 
 // Absolute frames, [start, end).
 type Interval = { start: number; end: number };
@@ -147,9 +147,8 @@ function findGaps(window: Interval, coverage: Interval[]): Interval[] {
   return gaps.filter((gap) => gap.end - gap.start >= 1);
 }
 
-export function handleCheck(session: () => EditorSession) {
-  return async ({ id }: CheckRequest): Promise<CheckResult> => {
-    const { world } = session();
+export const check: ToolHandler<"check"> = async ({ id }, ctx) => {
+    const { world } = ctx.requireSession();
     const target = resolveNode(world, id);
     const fps = world.get(FrameRate)?.value ?? 30;
 
@@ -207,5 +206,4 @@ export function handleCheck(session: () => EditorSession) {
       },
       issues,
     };
-  };
-}
+};

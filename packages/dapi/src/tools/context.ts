@@ -32,11 +32,11 @@ export const context = defineTool({
   input: z.object({}),
   output: z.union([
     z.object({
-      rootDir: z.string().describe("folder projects live under"),
+      rootDir: z.string().nullable().describe("folder projects live under; null until one has been chosen"),
       projectDir: z.null(),
     }),
     z.object({
-      rootDir: z.string().describe("folder projects live under"),
+      rootDir: z.string().nullable().describe("folder projects live under; null until one has been chosen"),
       projectDir: z.string().describe("absolute path of the open project"),
       currentTime: z
         .number()

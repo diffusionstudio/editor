@@ -10,6 +10,6 @@ export const whoami = defineTool({
   title: "Signed-in account",
   description: "Report the authenticated account, or null if signed out.",
   input: z.object({}),
-  output: z.looseObject({ id: z.string(), email: z.string().optional() }).nullable(),
+  output: z.object({ id: z.string(), email: z.string().optional() }).nullable(),
   runsIn: "renderer",
 });

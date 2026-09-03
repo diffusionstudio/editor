@@ -4,7 +4,6 @@
 
 import { createEffect, createResource, onCleanup, onMount } from "solid-js";
 
-import { handleGetFullscreenState, handleWindowFullscreenChange } from "@/context/dapi/window";
 import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
 
@@ -18,9 +17,10 @@ import { MAIN_CHANNELS } from "@desktop/main-channels";
  * lives here rather than inside the editor-only API provider.
  */
 export function useFullscreenState() {
-  const [isFullscreen, { mutate }] = createResource(handleGetFullscreenState, {
-    initialValue: false,
-  });
+  const [isFullscreen, { mutate }] = createResource(
+    () => (window.desktop ? mainBridge.call(MAIN_CHANNELS.WINDOW_IS_FULLSCREEN, undefined) : Promise.resolve(false)),
+    { initialValue: false },
+  );
 
   createEffect(() => {
     document.documentElement.dataset.fullscreen = String(isFullscreen());
@@ -29,10 +29,7 @@ export function useFullscreenState() {
   onMount(() => {
     if (!window.desktop) return;
     onCleanup(
-      mainBridge.handle(
-        MAIN_CHANNELS.WINDOW_FULLSCREEN_CHANGE,
-        handleWindowFullscreenChange(mutate),
-      ),
+      mainBridge.handle(MAIN_CHANNELS.WINDOW_FULLSCREEN_CHANGE, ({ fullscreen }) => mutate(fullscreen)),
     );
   });
 

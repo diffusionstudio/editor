@@ -11,16 +11,16 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
 import { version } from "../../../package.json";
 import { parseTime, TIME_FPS } from "@diffusionstudio/jsx";
-import { editor, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, waitForCliSocket } from "./cli-client";
+import { call, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, ping, waitForCliSocket } from "./cli-client";
 import { listLocalFonts } from "./fonts";
 import { buildIssueBody, createIssue } from "./report";
 import { fetchVideo } from "./ytdlp";
-import { MAX_FRAMES_PER_SHEET } from "@diffusionstudio/dapi";
+import { ISSUE_LOG_TAIL, MAX_FRAMES_PER_SHEET } from "@diffusionstudio/dapi";
 import type { FrameQuality, LogEntry, LogLevel, TimecodedImage } from "@diffusionstudio/dapi";
 
 // Long-running commands (renders, AI generation) override the default 60s.
-const GENERATE = { context: { timeoutMs: GENERATE_TIMEOUT_MS } };
-const EXPORT = { context: { timeoutMs: EXPORT_TIMEOUT_MS } };
+const GENERATE = { timeoutMs: GENERATE_TIMEOUT_MS };
+const EXPORT = { timeoutMs: EXPORT_TIMEOUT_MS };
 
 const APP_NAME = "Diffusion Studio";
 
@@ -107,7 +107,7 @@ async function mediaFrame(ref: string, opts: MediaFrameOptions): Promise<void> {
   const dir = opts.output ?? join(tmpdir(), `dapi-grab-${randomUUID().slice(0, 8)}`);
   mkdirSync(dir, { recursive: true });
   try {
-    const images = await editor.media.frame.query({
+    const images = await call("media_grab", {
       ...target,
       times,
       count,
@@ -117,6 +117,7 @@ async function mediaFrame(ref: string, opts: MediaFrameOptions): Promise<void> {
       auto: opts.auto,
       combine: !opts.separate,
       perSheet,
+      uncapped: opts.uncapped,
     });
     writeImages(images, dir);
   } catch (e) {
@@ -143,7 +144,7 @@ async function mediaProbe(ref: string): Promise<void> {
   const target = resolveAssetRef(ref);
   const stop = startSpinner("Probing asset");
   try {
-    const result = await editor.media.probe.query(target);
+    const result = await call("media_probe", target);
     stop();
     console.log(JSON.stringify(result));
   } catch (e) {
@@ -156,7 +157,7 @@ async function mediaTranscribe(ref: string): Promise<void> {
   const target = resolveAssetRef(ref);
   const stop = startSpinner("Transcribing asset");
   try {
-    const result = await editor.media.transcribe.query(target, GENERATE);
+    const result = await call("media_transcribe", target, GENERATE);
     stop();
     console.log(JSON.stringify(result));
   } catch (e) {
@@ -178,7 +179,8 @@ async function mediaListen(ref: string, opts: MediaListenOptions): Promise<void>
   const target = resolveAssetRef(ref);
   const stop = startSpinner("Analyzing asset");
   try {
-    const result = await editor.media.listen.query(
+    const result = await call(
+      "media_listen",
       { ...target, prompt: opts.prompt, start, end, stripVideo: !opts.keepVideo },
       GENERATE,
     );
@@ -207,9 +209,9 @@ function parseTimeArg(value: string, flag: string, allowNegative = false): numbe
 // image with its timecode (`08s10f`, or `0f-08s10f` for a sheet), which is the
 // filename too.
 function writeImages(images: TimecodedImage[], dir: string): void {
-  for (const { timecode, base64 } of images) {
+  for (const { timecode, png } of images) {
     const path = join(dir, `${timecode}.png`);
-    writeFileSync(path, Buffer.from(base64, "base64"));
+    writeFileSync(path, png);
     console.log(JSON.stringify({ timecode, path }));
   }
 }
@@ -256,9 +258,9 @@ async function mediaFilmstrip(ref: string, opts: MediaPreviewOptions): Promise<v
   mkdirSync(dirname(resolve(path)), { recursive: true });
   const stop = startSpinner("Rendering filmstrip");
   try {
-    const { base64, ...rest } = await editor.media.filmstrip.query({ ...target, start, end, scale });
+    const { png, ...rest } = await call("media_filmstrip", { ...target, start, end, scale });
     stop();
-    writeFileSync(path, Buffer.from(base64, "base64"));
+    writeFileSync(path, png);
     console.log(JSON.stringify({ path, ...rest }));
   } catch (e) {
     stop();
@@ -273,9 +275,9 @@ async function mediaWaveform(ref: string, opts: MediaPreviewOptions): Promise<vo
   mkdirSync(dirname(resolve(path)), { recursive: true });
   const stop = startSpinner("Rendering waveform");
   try {
-    const { base64, ...rest } = await editor.media.waveform.query({ ...target, start, end, scale });
+    const { png, ...rest } = await call("media_waveform", { ...target, start, end, scale });
     stop();
-    writeFileSync(path, Buffer.from(base64, "base64"));
+    writeFileSync(path, png);
     console.log(JSON.stringify({ path, ...rest }));
   } catch (e) {
     stop();
@@ -293,10 +295,7 @@ async function captureNode(id: string, opts: CaptureOptions): Promise<void> {
   const dir = opts.output ?? join(tmpdir(), `dapi-capture-${randomUUID().slice(0, 8)}`);
   mkdirSync(dir, { recursive: true });
   try {
-    const images = await editor.capture.query(
-      { id, frames, combine: !opts.separate, perSheet },
-      GENERATE,
-    );
+    const images = await call("capture", { id, frames, combine: !opts.separate, perSheet }, GENERATE);
     writeImages(images, dir);
   } catch (e) {
     handleSocketError(e);
@@ -310,7 +309,7 @@ async function exportScene(id: string, output: string | undefined): Promise<void
   const path = output !== undefined ? resolve(process.cwd(), output) : undefined;
   const stop = startSpinner("Exporting scene");
   try {
-    const result = await editor.export.mutate({ id, path }, EXPORT);
+    const result = await call("export", { id, path }, EXPORT);
     stop();
     console.log(JSON.stringify(result));
   } catch (e) {
@@ -321,7 +320,7 @@ async function exportScene(id: string, output: string | undefined): Promise<void
 
 async function checkNode(id: string): Promise<void> {
   try {
-    const result = await editor.check.query({ id });
+    const result = await call("check", { id });
     console.log(JSON.stringify(result));
     // Linter convention: issues found is a different failure than "could not run".
     if (result.issues.some((issue) => issue.severity === "error")) process.exitCode = 1;
@@ -348,10 +347,10 @@ async function openProject(path: string | undefined, opts: OpenOptions): Promise
     // A cold launch needs the renderer up before the app can answer; when
     // nothing was launched there is nothing to wait for, so fail fast.
     if (launched) await waitForCliSocket();
-    else await editor.ping.query();
+    else await ping();
 
     if (path !== undefined) {
-      const result = await editor.open.mutate({ dir: resolve(path) });
+      const result = await call("open", { dir: resolve(path) });
       console.log(JSON.stringify(result));
     }
   } catch (e) {
@@ -361,7 +360,7 @@ async function openProject(path: string | undefined, opts: OpenOptions): Promise
 
 async function context(): Promise<void> {
   try {
-    const result = await editor.context.query();
+    const result = await call("context", {});
     console.log(JSON.stringify(result));
   } catch (e) {
     handleSocketError(e);
@@ -370,7 +369,7 @@ async function context(): Promise<void> {
 
 async function whoami(): Promise<void> {
   try {
-    const result = await editor.whoami.query();
+    const result = await call("whoami", {});
     console.log(JSON.stringify(result));
   } catch (e) {
     handleSocketError(e);
@@ -397,7 +396,7 @@ async function showLogs(opts: LogsOptions): Promise<void> {
   }
 
   try {
-    const entries = await editor.logs.query({ tail, level: opts.level as LogLevel | undefined });
+    const entries = await call("logs", { tail, level: opts.level as LogLevel | undefined });
     for (const entry of entries) console.log(formatLogEntry(entry));
   } catch (e) {
     handleSocketError(e);
@@ -427,14 +426,14 @@ async function appScreenshot(opts: ScreenshotOptions): Promise<void> {
   const dir = opts.output ?? tmpdir();
   mkdirSync(dir, { recursive: true });
   try {
-    const { base64, width, height } = await editor.screenshot.query();
+    const { png, width, height } = await call("screenshot", {});
     const taken = new Date();
     let attempt = 1;
     let path = join(dir, screenshotFilename(taken, attempt));
     while (existsSync(path)) {
       path = join(dir, screenshotFilename(taken, ++attempt));
     }
-    writeFileSync(path, Buffer.from(base64, "base64"));
+    writeFileSync(path, png);
     console.log(JSON.stringify({ path, width, height }));
   } catch (e) {
     handleSocketError(e);
@@ -442,8 +441,6 @@ async function appScreenshot(opts: ScreenshotOptions): Promise<void> {
 }
 
 type IssueOptions = { body?: string; command?: string[]; logs?: string };
-
-const ISSUE_LOG_TAIL = 50;
 
 async function reportIssue(title: string, opts: IssueOptions): Promise<void> {
   const summary = title.trim();
@@ -468,7 +465,7 @@ async function reportIssue(title: string, opts: IssueOptions): Promise<void> {
   let appStatus = "not checked";
   if (tail > 0) {
     try {
-      logs = (await editor.logs.query({ tail })).map(formatLogEntry);
+      logs = (await call("logs", { tail })).map(formatLogEntry);
       appStatus = "running";
     } catch (e) {
       const code = errnoCode(e);
@@ -525,7 +522,7 @@ async function listModels(type: string | undefined): Promise<void> {
     process.exit(1);
   }
   try {
-    const models = await editor.models.query({ type: type as "image" | "video" | "audio" | undefined });
+    const models = await call("models", { type: type as "image" | "video" | "audio" | undefined });
     for (const model of models) console.log(JSON.stringify(model));
   } catch (e) {
     handleSocketError(e);
@@ -534,7 +531,7 @@ async function listModels(type: string | undefined): Promise<void> {
 
 async function listVoices(): Promise<void> {
   try {
-    const voices = await editor.voices.query();
+    const voices = await call("voices", {});
     for (const voice of voices) console.log(JSON.stringify(voice));
   } catch (e) {
     handleSocketError(e);

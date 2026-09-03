@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { defineTool } from "../tool";
-import { AssetPath, checkWindow, windowFields } from "../schemas";
+import { AssetPath, Bytes, checkWindow, windowFields } from "../schemas";
 
 /** The window and scale that filmstrip and waveform share. */
 export const previewFields = {
@@ -22,6 +22,6 @@ export const mediaFilmstrip = defineTool({
   description:
     "Render a grid of thumbnails sampled across the timeline to a PNG (local render, no credits), each row stamped with an HH:MM:SS:FF ruler. A fast, token-efficient video track preview; narrow the window to zoom into a region of interest. Video only (use media_waveform for audio).",
   input: z.object({ path: AssetPath, ...previewFields }).superRefine(checkWindow),
-  output: z.looseObject({ base64: z.string().describe("PNG bytes, base64") }),
+  output: z.looseObject({ png: Bytes }),
   runsIn: "renderer",
 });
