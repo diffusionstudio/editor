@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
+    "@diffusionstudio/runtime": "*",
     "@trpc/client": "^11.18.0",
     "@trpc/server": "^11.18.0",
     "@babel/preset-typescript": "^7.27.1",

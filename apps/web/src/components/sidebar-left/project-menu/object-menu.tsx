@@ -22,6 +22,16 @@ import {
   wrapSelectionInScene,
   wrapSelectionInSequence,
 } from "@/engine";
+import {
+  analyzeClipForAutocut,
+  applyAutocutToClip,
+  autocutWouldChange,
+  isAutocutClip,
+  planAutocutTimeline,
+  timelineStartSeconds,
+} from "@/engine/autocut";
+import { getEditHistory } from "@/engine/history";
+import { toast } from "somoto";
 
 export function ObjectMenu() {
   const world = useWorld();
@@ -186,6 +196,51 @@ export function ObjectMenu() {
 }
 
 export function ObjectAiMenu() {
+  const world = useWorld();
+  const { nodes } = useSelection();
+
+  const canRemoveSilences = () => {
+    const eligible = nodes().filter((entity) => isAutocutClip(world, entity));
+    return eligible.length === 1;
+  };
+
+  const removeSilences = async () => {
+    const eligible = nodes().filter((entity) => isAutocutClip(world, entity));
+    const entity = eligible.length === 1 ? eligible[0] : null;
+    if (!entity) return;
+
+    const history = getEditHistory(world);
+
+    try {
+      const result = await analyzeClipForAutocut(world, entity);
+      if (!autocutWouldChange(result.removed)) {
+        toast("Nothing to cut", { description: "No silences, fillers, or stutters were found in this clip." });
+        return;
+      }
+
+      const specs = planAutocutTimeline(result.keep, timelineStartSeconds(world, entity));
+      if (specs.length === 0) {
+        toast("Nothing to cut", { description: "Remove silences would remove the entire clip." });
+        return;
+      }
+
+      history.beginGesture();
+      try {
+        applyAutocutToClip(world, entity, specs);
+      } finally {
+        history.endGesture();
+      }
+
+      toast("Silences removed", {
+        description: `${specs.length} clip${specs.length === 1 ? "" : "s"} on the timeline.`,
+      });
+    } catch (err) {
+      toast.error("Remove silences failed", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
   return (
     <>
       <DropdownMenuGroup>
@@ -196,7 +251,9 @@ export function ObjectAiMenu() {
       <DropdownMenuSeparator />
 
       <DropdownMenuGroup>
-        <DropdownMenuItem>Remove silences</DropdownMenuItem>
+        <DropdownMenuItem disabled={!canRemoveSilences()} onSelect={() => void removeSilences()}>
+          Remove silences
+        </DropdownMenuItem>
         <DropdownMenuItem>Lip sync</DropdownMenuItem>
       </DropdownMenuGroup>
     </>

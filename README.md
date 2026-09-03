@@ -190,6 +190,7 @@ dapi media grab clip.mp4 -t 0 12 45                      # decode frames to PNGs
 dapi media filmstrip clip.mp4                            # grid of video frames
 dapi media waveform track.mp3                            # audio waveform, silence flagged
 dapi media transcribe interview.wav                      # timed, word-level transcript
+dapi media autocut interview.mp4 --jsx                 # keep-ranges + optional JSX sequence
 dapi media listen interview.mp4 -p "what is said in the intro?"   # ask a multimodal model
 dapi capture intro -t 0 2 4                              # the frames a render would produce, by scene id
 ```
@@ -200,7 +201,7 @@ dapi capture intro -t 0 2 4                              # the frames a render w
 | `dapi context` | Summary of app state |
 | `dapi capture` | Render frames of a scene, as an export would, to a labelled contact sheet or one PNG per position |
 | `dapi check` | Check a node's subtree for structural mistakes (black-frame gaps, never-visible nodes, failed sources) and report subtree stats |
-| `dapi media …` | Inspect a file by id or path: `probe`, `grab`, `filmstrip`, `waveform`, `transcribe`, `listen` |
+| `dapi media …` | Inspect a file by id or path: `probe`, `grab`, `filmstrip`, `waveform`, `transcribe`, `autocut`, `listen` |
 | `dapi models` / `dapi voices` / `dapi fonts` | Discover generation models, speech voices, local fonts |
 | `dapi screenshot` / `dapi logs` | The app itself: capture the window, read recent console output |
 | `dapi fetch` | Download a video from yt/tt/ig |
