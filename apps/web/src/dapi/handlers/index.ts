@@ -10,7 +10,6 @@ import { exportScene } from "./export";
 import { models } from "./models";
 import { voices } from "./voices";
 import { whoami } from "./whoami";
-import { logs } from "./logs";
 import { screenshot } from "./screenshot";
 import { mediaProbe } from "./media-probe";
 import { mediaGrab } from "./media-grab";
@@ -31,7 +30,6 @@ export const handlers: Handlers = {
   models,
   voices,
   whoami,
-  logs,
   screenshot,
   media_probe: mediaProbe,
   media_grab: mediaGrab,

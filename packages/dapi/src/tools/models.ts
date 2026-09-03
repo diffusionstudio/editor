@@ -24,6 +24,6 @@ export const models = defineTool({
   input: z.object({
     type: ModelType.optional().describe("filter to one kind of model (default: all three)"),
   }),
-  output: z.array(ModelInfo),
+  output: z.object({ models: z.array(ModelInfo) }),
   runsIn: "renderer",
 });

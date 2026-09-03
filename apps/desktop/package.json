@@ -22,7 +22,8 @@
     "package": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge package",
     "make": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge make",
     "publish": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge publish",
-    "make:icns": "sh scripts/make-icns.sh"
+    "make:icns": "sh scripts/make-icns.sh",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
@@ -32,19 +33,20 @@
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.10.1",
     "electron": "^43.1.1",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.0"
   },
   "dependencies": {
     "@babel/core": "^7.29.7",
     "@babel/preset-typescript": "^7.27.1",
-    "@diffusionstudio/cli": "*",
+    "@diffusionstudio/dapi": "*",
     "@diffusionstudio/jsx": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "babel-preset-solid": "^1.9.12",
     "esbuild": "^0.28.1",
     "nanoid": "^6.0.1",
     "ts-morph": "^28.0.0",
     "update-electron-app": "^3.0.0",
-    "yaml": "^2.9.0",
-    "@diffusionstudio/dapi": "*"
+    "yaml": "^2.9.0"
   }
 }

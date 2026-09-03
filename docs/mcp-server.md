@@ -17,7 +17,7 @@ The point is not MCP for its own sake. The point is that the API gets one defini
 
 - One definition of the API: tool names, input schemas, descriptions and result shapes, owned by the app and served to clients at runtime.
 - Agents reach the app with a one-line registration and no PATH install.
-- Long operations (export, generation, `listen`) report progress and can be cancelled, without client-side timeouts.
+- Long operations (export, generation, `listen`) can be cancelled, and their progress is visible through `logs`.
 - The CLI binary stays useful for humans, scripts and CI, and no longer has to be built against a specific router type.
 - Keep the renderer handlers and their behaviour. This is a transport and surface change, not a rewrite of `capture`, `check`, `export` or the media handlers.
 
@@ -141,14 +141,13 @@ for (const tool of catalog) {
 
 **Main-to-renderer calls.** The current bridge (`apps/desktop/src/main-manager.ts` and `MainBridge` in `apps/web/src/lib/ipc.ts`) carries requests from the renderer to main and events from main to the renderer. It has no request in the other direction, so this adds one, with three IPC messages:
 
-- `dapi:call` from main: `{ callId, tool, input }`
-- `dapi:progress` from renderer: `{ callId, progress, total?, message? }`
-- `dapi:reply` from renderer: `{ callId, ok, data | error }`
-- `dapi:cancel` from main: `{ callId }`
+- `dapi:call` from main: `{ id, tool, args }`
+- `dapi:reply` from renderer: `{ id, ok, data | error }`
+- `dapi:cancel` from main: `{ id }`
 
 Main keeps a map of in-flight calls. Before sending it waits for the renderer to finish loading, which `waitForRendererReady` already does. In the renderer, `CliBridge` loses its WebSocket code and keeps its dispatch and hold-until-a-handler-registers logic, now fed by `dapi:call`. The renderer registers a plain `Record<toolName, handler>` instead of a tRPC router; each handler receives the already-validated input, an `AbortSignal`, and a `report(progress)` callback. tRPC and its `cli-rpc.ts` helpers go away.
 
-**Progress and cancellation.** When the client passes a `progressToken`, main turns `dapi:progress` into `notifications/progress`. When the client sends `notifications/cancelled`, main sends `dapi:cancel` and the handler's `AbortSignal` fires. Client-side timeouts disappear; the client decides how long it is willing to wait. `export` reports encoded frames; `media_listen` and generation-backed work report whatever stage they are in; the others report nothing and that is fine.
+**Progress and cancellation.** When the client sends `notifications/cancelled`, main sends `dapi:cancel` and the handler's `AbortSignal` fires. Progress needs no channel of its own: the export path logs its percentage to the console in 2% steps, the app buffers console output, and an agent waiting on an export polls `logs`. That works the same for an in-app export and a tool export, and keeps the call path to one request and one reply.
 
 **Results.** Every tool returns `structuredContent` matching its output schema, plus a text block with the same JSON so clients that ignore structured content still get it. Tools that produce images (`capture`, `media_grab`, `media_filmstrip`, `media_waveform`, `screenshot`) keep today's behaviour of writing PNGs to an output directory (an `output` input, defaulting to a fresh directory under the temp dir) and returning the paths. In addition, they inline `image` content blocks when the result is small: at most four images and none over about a megabyte. A contact sheet of a few positions therefore arrives in the agent's context immediately, while an uncapped hundred-frame grab arrives as a directory the agent reads selectively, which is the behaviour the current CLI was designed for.
 
@@ -193,9 +192,9 @@ Removed from the CLI package: `cli-client.ts`, `cli-channels.ts`, the tRPC and `
 The CLI ships inside the app bundle, so there is no compatibility window to maintain between old CLIs and new apps. This can land as one feature branch in ordered steps, each of which builds and type-checks on its own.
 
 1. **Catalog.** Create `packages/dapi` with the tool catalog, `Time`, and `DapiError`, plus tests. Point the renderer handlers' request and result types at it. Delete `apps/cli/src/cli-channels.ts`; `apps/cli/src/protocol.ts` keeps only the handshake and envelope types of the current transport. No behaviour change. *Landed on `mcp-support`.*
-2. **Renderer.** Replace the tRPC router in `api.tsx` with one handler per tool behind a uniform `(args, ctx)` signature, validated by the catalog schemas, with an `AbortSignal` per call. Handlers return bytes; the WebSocket transport carries them as tagged base64 until step 3 replaces it. The CLI drops tRPC for a typed `call(name, input)` over the same catalog, so it keeps working at every step and its import of `apps/web` is gone. Progress reporting waits for step 3, with the transport that carries it. *Landed on `mcp-support`.*
-3. **Main.** Add `mcp-server.ts` with the socket transport, catalog registration, the in-flight map, result presentation, and the `logs`, `fonts`, `fetch` and `report` handlers. Delete `cli-server.ts`. Verify with the MCP Inspector against the socket.
-4. **CLI.** Rewrite `apps/cli` as `mcp`, `open`, `call` and the wrappers. Drop tRPC and `ws`. Update `cli-install.ts` and the settings UI to offer MCP registration.
+2. **Renderer.** Replace the tRPC router in `api.tsx` with one handler per tool behind a uniform `(args, ctx)` signature, validated by the catalog schemas, with an `AbortSignal` per call. Handlers return bytes; the WebSocket transport carries them as tagged base64 until step 3 replaces it. The CLI drops tRPC for a typed `call(name, input)` over the same catalog, so it keeps working at every step and its import of `apps/web` is gone. *Landed on `mcp-support`.*
+3. **Main.** Add `dapi/server.ts` with catalog registration, `dapi/renderer-calls.ts` with the in-flight map, `dapi/present.ts` for files and inline images, and the `logs`, `fonts`, `fetch` and `report` handlers. The socket transport lives in `@diffusionstudio/dapi/socket`, shared with the CLI, which becomes an MCP client over it in this step so it keeps working. Delete `cli-server.ts`. *Landed on `mcp-support`; verified by an in-process client/server round trip, not yet against the running app.*
+4. **CLI.** Add `dapi mcp` and `dapi call`, and generate the wrappers from the catalog. Update `cli-install.ts` and the settings UI to offer MCP registration.
 5. **Docs.** Update the skill and regenerate `reference/`. Update the installation reference the skill points to.
 6. **Cleanup.** Remove `CLI_WIRE`, the handshake types, and the `./protocol` and `./channels` exports from the CLI package.
 

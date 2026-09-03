@@ -31,5 +31,5 @@ export const models: ToolHandler<"models"> = async ({ type }) => {
   if (!type || type === "audio") {
     for (const { id, name } of PROMPT_INPUT_AUDIO_MODEL_OPTIONS) out.push({ type: "audio", id, name });
   }
-  return out;
+  return { models: out };
 };

@@ -32,6 +32,8 @@ export type RenderOverlayState = {
   remaining?: { minutes: number; seconds: number };
 };
 
+const PROGRESS_LOG_STEP = 2;
+
 const [overlay, setOverlay] = createSignal<RenderOverlayState | null>(null);
 let cancelActive: (() => void) | undefined;
 
@@ -78,6 +80,13 @@ export async function renderScene(
   cancelActive = undefined;
   setOverlay({ config, width, height, duration, progress: 0, remaining: undefined });
 
+  let logged = -1;
+  const logProgress = (percent: number) => {
+    if (percent - logged < PROGRESS_LOG_STEP && percent < 100) return;
+    logged = percent;
+    console.info(`[export] ${percent}%`);
+  };
+
   engine.stop();
 
   let capture: Capture | undefined;
@@ -94,6 +103,7 @@ export async function renderScene(
       comment: `Made with Diffusion Studio v${version}`,
       onProgress(p) {
         const percent = Math.round((p.progress / p.total) * 100);
+        logProgress(percent);
         setOverlay((prev) =>
           prev
             ? {

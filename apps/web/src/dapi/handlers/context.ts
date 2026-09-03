@@ -21,7 +21,7 @@ export const context: ToolHandler<"context"> = async (_, ctx) => {
   const rootDir = await getProjectsRoot();
 
   const open = ctx.session();
-  if (!open) return { rootDir, projectDir: null };
+  if (!open) return { rootDir, projectDir: null, currentTime: null, fontFamilies: [], generations: [] };
 
   const { world, project } = open;
   const frameRate = world.get(FrameRate)?.value || 30;

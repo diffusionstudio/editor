@@ -94,8 +94,10 @@ describe("logs and export", () => {
 });
 
 describe("context", () => {
-  it("accepts both the closed and the open report", () => {
-    expect(context.output.safeParse({ rootDir: "/p", projectDir: null }).success).toBe(true);
+  it("reports the same shape with and without an open project", () => {
+    expect(
+      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [], generations: [] }).success,
+    ).toBe(true);
     expect(
       context.output.safeParse({
         rootDir: "/p",
@@ -106,5 +108,13 @@ describe("context", () => {
       }).success,
     ).toBe(true);
     expect(context.output.safeParse({ rootDir: "/p", projectDir: "/p/a" }).success).toBe(false);
+  });
+});
+
+describe("image tools", () => {
+  it("present bytes as paths: the result carries png, the output a path", () => {
+    expect(capture.result!.safeParse([{ timecode: "0f", png: new Uint8Array(3) }]).success).toBe(true);
+    expect(capture.output.safeParse({ images: [{ timecode: "0f", path: "/tmp/0f.png" }] }).success).toBe(true);
+    expect(capture.output.safeParse({ images: [{ timecode: "0f", png: new Uint8Array(3) }] }).success).toBe(false);
   });
 });

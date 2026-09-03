@@ -9,6 +9,7 @@ import { AssetPath, Bytes, checkWindow, windowFields } from "../schemas";
 /** The window and scale that filmstrip and waveform share. */
 export const previewFields = {
   ...windowFields,
+  output: z.string().optional().describe("absolute path to write the PNG to (default: a fresh file under the system temp dir)"),
   scale: z
     .number()
     .positive()
@@ -22,6 +23,7 @@ export const mediaFilmstrip = defineTool({
   description:
     "Render a grid of thumbnails sampled across the timeline to a PNG (local render, no credits), each row stamped with an HH:MM:SS:FF ruler. A fast, token-efficient video track preview; narrow the window to zoom into a region of interest. Video only (use media_waveform for audio).",
   input: z.object({ path: AssetPath, ...previewFields }).superRefine(checkWindow),
-  output: z.looseObject({ png: Bytes }),
+  output: z.looseObject({ path: z.string().describe("absolute path of the PNG") }),
+  result: z.looseObject({ png: Bytes }),
   runsIn: "renderer",
 });

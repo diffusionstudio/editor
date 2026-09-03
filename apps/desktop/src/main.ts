@@ -8,7 +8,8 @@ import { mkdir, open, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
 import { updateElectronApp } from "update-electron-app";
-import { startCliServer, stopCliServer, isHeadless } from "./cli-server";
+import { DapiServer } from "./dapi/server";
+import { enableHeadless, isHeadless } from "./headless";
 import { installCli, isCliInstalled } from "./cli-install";
 import { healSkillsLinks, installSkills, isSkillsInstalled } from "./skills-install";
 import { trackInstall } from "./analytics";
@@ -96,6 +97,19 @@ const pendingDeepLinks = new Map<DeepLinkChannel, string>();
 // (page logs, worker logs, uncaught errors) without touching the web bundle.
 const LOG_BUFFER_MAX = 2000;
 const logBuffer: LogEntry[] = [];
+
+// The MCP server agents and the dapi CLI talk to. Started once the app is
+// ready; the first connection switches the UI into headless mode.
+const dapi = new DapiServer({
+  version: app.getVersion(),
+  logs: () => logBuffer,
+  onFirstConnection() {
+    enableHeadless();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainBridge.emit(mainWindow, MAIN_CHANNELS.HEADLESS_MODE, { active: true });
+    }
+  },
+});
 
 function pushLog(level: LogEntry["level"], message: string, source: string) {
   logBuffer.push({ ts: Date.now(), level, message, source });
@@ -361,7 +375,7 @@ if (app.requestSingleInstanceLock()) {
     const url = findProtocolUrl(process.argv);
     if (url) deliverDeepLink(url);
 
-    startCliServer();
+    dapi.start();
     healSkillsLinks();
     trackInstall();
     createWindow(!isHiddenLaunch(process.argv));
@@ -369,7 +383,7 @@ if (app.requestSingleInstanceLock()) {
 
   app.on("before-quit", () => {
     unwatchAll();
-    stopCliServer();
+    dapi.stop();
   });
 
   app.on("window-all-closed", () => {

@@ -8,10 +8,10 @@
 import type { z } from "zod";
 
 export { defineTool } from "./tool";
-export type { Tool, RunsIn } from "./tool";
+export type { Tool, GenericTool, RunsIn } from "./tool";
 
 export { catalog, tools, toolByName, isToolName } from "./catalog";
-export type { AnyTool, ToolName, ToolByName, ToolInput, ToolArgs, ToolResult } from "./catalog";
+export type { AnyTool, ToolName, ToolByName, ToolInput, ToolArgs, ToolOutput, ToolResult } from "./catalog";
 
 export { Time, NonNegativeTime, TIME_FORMS } from "./time";
 export type { TimeInput } from "./time";
@@ -20,13 +20,15 @@ export { DapiError, isDapiError } from "./errors";
 export type { DapiErrorCode } from "./errors";
 
 export { MAX_FRAMES_PER_SHEET, Bytes } from "./schemas";
-export { parseToolArgs } from "./validate";
+
+export { DAPI_WIRE } from "./ipc";
+export type { DapiCall, DapiCancel, DapiReply } from "./ipc";
 export { FRAME_CAP } from "./tools/media-grab";
 export { ISSUE_LOG_TAIL } from "./tools/report";
 
 // Named request and result types, for handlers that spell out their
 // signature. Each is the parsed (output) side of the tool's schema.
-import type { LogEntry as LogEntrySchema, LogLevel as LogLevelSchema, TimecodedImage as TimecodedImageSchema } from "./schemas";
+import type { ImageRef as ImageRefSchema, LogEntry as LogEntrySchema, LogLevel as LogLevelSchema, TimecodedImage as TimecodedImageSchema } from "./schemas";
 import type { GenerationRow as GenerationRowType } from "./tools/context";
 import type { CheckIssue as CheckIssueSchema, CheckIssueCode as CheckIssueCodeSchema } from "./tools/check";
 import type { ExportFormat as ExportFormatSchema, ExportSettings as ExportSettingsSchema } from "./tools/export";
@@ -35,11 +37,12 @@ import type { VoiceInfo as VoiceInfoSchema } from "./tools/voices";
 import type { FrameQuality as FrameQualitySchema } from "./tools/media-grab";
 import type { TranscriptSegment as TranscriptSegmentSchema, TranscriptWord as TranscriptWordSchema } from "./tools/media-transcribe";
 import type { FontFamily as FontFamilySchema } from "./tools/fonts";
-import type { ToolArgs, ToolResult } from "./catalog";
+import type { ToolArgs, ToolOutput, ToolResult } from "./catalog";
 
 export type LogLevel = z.output<typeof LogLevelSchema>;
 export type LogEntry = z.output<typeof LogEntrySchema>;
 export type TimecodedImage = z.output<typeof TimecodedImageSchema>;
+export type ImageRef = z.output<typeof ImageRefSchema>;
 export type GenerationRow = GenerationRowType;
 export type CheckIssueCode = z.output<typeof CheckIssueCodeSchema>;
 export type CheckIssue = z.output<typeof CheckIssueSchema>;
@@ -54,7 +57,7 @@ export type FontFamily = z.output<typeof FontFamilySchema>;
 
 export type OpenRequest = ToolArgs<"open">;
 export type OpenResult = ToolResult<"open">;
-export type ContextResult = ToolResult<"context">;
+export type ContextResult = ToolOutput<"context">;
 export type CaptureRequest = ToolArgs<"capture">;
 export type CaptureResult = ToolResult<"capture">;
 export type CheckRequest = ToolArgs<"check">;
@@ -64,6 +67,7 @@ export type ExportResult = ToolResult<"export">;
 export type ModelsRequest = ToolArgs<"models">;
 export type LogsRequest = ToolArgs<"logs">;
 export type ScreenshotResult = ToolResult<"screenshot">;
+export type ScreenshotOutput = ToolOutput<"screenshot">;
 export type MediaProbeRequest = ToolArgs<"media_probe">;
 export type MediaFrameRequest = ToolArgs<"media_grab">;
 export type MediaFrameResult = ToolResult<"media_grab">;

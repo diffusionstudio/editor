@@ -15,7 +15,6 @@
   "dependencies": {
     "@diffusionstudio/api-contract": "^0.1.0",
     "@diffusionstudio/assets": "*",
-    "@diffusionstudio/cli": "*",
     "@diffusionstudio/encoder": "*",
     "@diffusionstudio/jsx": "*",
     "@diffusionstudio/koota-solid": "*",

@@ -7,10 +7,10 @@
 // through these via an envelope carrying the logical MAIN_CHANNELS name and
 // (for requests) a UUID for correlation.
 //
-// CLI traffic uses a separate wire pair (CLI_WIRE in @diffusionstudio/cli/protocol);
-// main forwards it opaquely without inspecting channel names.
+// Tool calls from the MCP server use their own wire (DAPI_WIRE in
+// @diffusionstudio/dapi), in the other direction: main asks, the renderer answers.
 import type { LogEntry, ScreenshotResult } from "@diffusionstudio/dapi";
-import type { SourceEdit, WriteResult } from "./edit";
+import type { SourceEdit, WriteResult } from "./edit-types";
 
 export const MAIN_WIRE = {
   REQUEST: "main:request",

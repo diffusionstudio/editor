@@ -17,7 +17,7 @@ export type ToolContext = {
   session: Accessor<EditorSession | null>;
   /** The session, or a `no-project` error the caller can act on. */
   requireSession(): EditorSession;
-  /** Fires when the caller goes away before the reply. */
+  /** Fires when the caller cancels or goes away before the reply. */
   signal: AbortSignal;
   /** What only the app shell can do: navigate, and know who is signed in. */
   app: {
@@ -30,11 +30,7 @@ export type ToolContext = {
 
 export type ToolHandler<N extends ToolName> = (args: ToolArgs<N>, ctx: ToolContext) => Promise<ToolResult<N>>;
 
-/**
- * The tools the renderer answers. `logs` is a main-process tool in the
- * catalog and is forwarded from here until main hosts the server itself;
- * `fonts`, `fetch` and `report` have no renderer side at all.
- */
-export type ServedToolName = Exclude<ToolName, "fonts" | "fetch" | "report">;
+/** The tools the renderer answers; the rest run in the main process. */
+export type ServedToolName = Exclude<ToolName, "logs" | "fonts" | "fetch" | "report">;
 
 export type Handlers = { readonly [N in ServedToolName]: ToolHandler<N> };

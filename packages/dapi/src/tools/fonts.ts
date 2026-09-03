@@ -29,6 +29,6 @@ export const fonts = defineTool({
     style: FontStyle.optional().describe("filter to variants with the given style"),
     limit: z.int().min(1).optional().describe("return at most this many families"),
   }),
-  output: z.array(FontFamily),
+  output: z.object({ families: z.array(FontFamily) }),
   runsIn: "main",
 });

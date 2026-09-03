@@ -30,24 +30,18 @@ export const context = defineTool({
   description:
     "Report the current app context: the application root folder (always reported), the folder of the project the app has open (null when none is), where its playhead sits in seconds, the registered font families, and where its `generate.*` declarations stand. Poll it to wait for generations without blocking.",
   input: z.object({}),
-  output: z.union([
-    z.object({
-      rootDir: z.string().nullable().describe("folder projects live under; null until one has been chosen"),
-      projectDir: z.null(),
-    }),
-    z.object({
-      rootDir: z.string().nullable().describe("folder projects live under; null until one has been chosen"),
-      projectDir: z.string().describe("absolute path of the open project"),
-      currentTime: z
-        .number()
-        .nullable()
-        .describe("playhead in seconds, the unit the source places clips in; null when no scene is active"),
-      fontFamilies: z
-        .array(z.string())
-        .describe("families registered in the world drawing the project; the editor default is always among them"),
-      generations: z.array(GenerationRow),
-    }),
-  ]),
+  output: z.object({
+    rootDir: z.string().nullable().describe("folder projects live under; null until one has been chosen"),
+    projectDir: z.string().nullable().describe("absolute path of the open project; null when none is open"),
+    currentTime: z
+      .number()
+      .nullable()
+      .describe("playhead in seconds, the unit the source places clips in; null when no scene is active or no project is open"),
+    fontFamilies: z
+      .array(z.string())
+      .describe("families registered in the world drawing the project; the editor default is always among them"),
+    generations: z.array(GenerationRow),
+  }),
   runsIn: "renderer",
 });
 

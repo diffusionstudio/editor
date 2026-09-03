@@ -6,5 +6,6 @@ import { PROMPT_INPUT_VOICE_OPTIONS } from "@/components/genai/config";
 
 import type { ToolHandler } from "../handler";
 
-export const voices: ToolHandler<"voices"> = async () =>
-  PROMPT_INPUT_VOICE_OPTIONS.map((v) => ({ id: v.value, label: v.label, description: v.description }));
+export const voices: ToolHandler<"voices"> = async () => ({
+  voices: PROMPT_INPUT_VOICE_OPTIONS.map((v) => ({ id: v.value, label: v.label, description: v.description })),
+});

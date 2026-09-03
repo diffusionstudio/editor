@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { defineTool } from "../tool";
-import { checkSheetOptions, SceneId, sheetFields, TimecodedImage } from "../schemas";
+import { checkSheetOptions, ImageRef, outputDirField, SceneId, sheetFields, TimecodedImage } from "../schemas";
 
 export const capture = defineTool({
   name: "capture",
@@ -19,8 +19,10 @@ export const capture = defineTool({
         .optional()
         .describe("positions to capture as frame numbers relative to the export's first frame, the workarea's start (default: [0])"),
       ...sheetFields,
+      output: outputDirField,
     })
     .superRefine(checkSheetOptions),
-  output: z.array(TimecodedImage),
+  output: z.object({ images: z.array(ImageRef) }),
+  result: z.array(TimecodedImage),
   runsIn: "renderer",
 });

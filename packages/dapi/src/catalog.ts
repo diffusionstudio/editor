@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import type { z } from "zod";
-import type { Tool } from "./tool";
+import type { GenericTool } from "./tool";
 
 import { open } from "./tools/open";
 import { context } from "./tools/context";
@@ -60,7 +60,14 @@ export type ToolByName<N extends ToolName> = Extract<AnyTool, { name: N }>;
 export type ToolInput<N extends ToolName> = z.input<ToolByName<N>["input"]>;
 /** What a handler receives: parsed, defaults applied. */
 export type ToolArgs<N extends ToolName> = z.output<ToolByName<N>["input"]>;
-export type ToolResult<N extends ToolName> = z.output<ToolByName<N>["output"]>;
+/** What a caller receives: the tool's structured content. */
+export type ToolOutput<N extends ToolName> = z.output<ToolByName<N>["output"]>;
+/** What a handler returns; the output, unless the tool declares a `result`. */
+export type ToolResult<N extends ToolName> = ToolByName<N> extends { result?: infer R }
+  ? R extends z.ZodType
+    ? z.output<R>
+    : ToolOutput<N>
+  : ToolOutput<N>;
 
 const byName = new Map<string, AnyTool>(catalog.map((tool) => [tool.name, tool]));
 
@@ -72,5 +79,5 @@ export function isToolName(name: string): name is ToolName {
   return byName.has(name);
 }
 
-/** The catalog as the generic `Tool` shape, for code that iterates it. */
-export const tools: readonly Tool[] = catalog;
+/** The catalog with each tool's specifics erased, for code that iterates it. */
+export const tools: readonly GenericTool[] = catalog;

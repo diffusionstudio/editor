@@ -15,6 +15,6 @@ export const logs = defineTool({
     tail: z.int().min(1).optional().describe("return only the last n entries"),
     level: LogLevel.optional().describe("minimum level to include"),
   }),
-  output: z.array(LogEntry),
+  output: z.object({ entries: z.array(LogEntry) }),
   runsIn: "main",
 });

@@ -4,21 +4,14 @@
 
 import { spawnSync } from "node:child_process";
 import { platform } from "node:os";
+import { DapiError } from "@diffusionstudio/dapi";
 
-export type FontVariant = {
-  weight: string;
-  style: "normal" | "italic";
-  source: string;
-};
-
-export type FontFamily = {
-  family: string;
-  variants: FontVariant[];
-};
+import type { FontFamily } from "@diffusionstudio/dapi";
+import type { MainHandler } from "../handler";
 
 // JXA script that walks every registered font family via NSFontManager and
 // emits each variant's CSS-style weight, italic flag, and CSS `local()` source.
-// Embedded inline so the CLI binary is self-contained — runs via `osascript`.
+// Runs via `osascript`.
 const LIST_FONTS_JXA = `
 ObjC.import("AppKit");
 
@@ -63,16 +56,9 @@ function run() {
 }
 `;
 
-export type ListLocalFontsOptions = {
-  familyPattern?: string;
-  weights?: string[];
-  style?: "normal" | "italic";
-  limit?: number;
-};
-
-export function listLocalFonts(options: ListLocalFontsOptions = {}): FontFamily[] {
+function listLocalFonts(): FontFamily[] {
   if (platform() !== "darwin") {
-    throw new Error("fonts is only supported on macOS.");
+    throw new DapiError("unsupported", "fonts is only supported on macOS.");
   }
   const result = spawnSync("osascript", ["-l", "JavaScript", "-e", LIST_FONTS_JXA], {
     encoding: "utf8",
@@ -81,23 +67,24 @@ export function listLocalFonts(options: ListLocalFontsOptions = {}): FontFamily[
   if (result.status !== 0) {
     throw new Error(result.stderr.trim() || "Failed to enumerate fonts.");
   }
+  return JSON.parse(result.stdout.trim()) as FontFamily[];
+}
 
-  const all = JSON.parse(result.stdout.trim()) as FontFamily[];
-  const pattern = options.familyPattern?.toLowerCase();
-  const weights = options.weights && options.weights.length > 0 ? new Set(options.weights) : null;
-  const { style, limit } = options;
+export const fonts: MainHandler<"fonts"> = async ({ family, weights, style, limit }) => {
+  const pattern = family?.toLowerCase();
+  const wanted = weights && weights.length > 0 ? new Set(weights) : null;
 
-  const out: FontFamily[] = [];
-  for (const family of all) {
-    if (pattern && !family.family.toLowerCase().includes(pattern)) continue;
-    const variants = family.variants.filter((v) => {
-      if (weights && !weights.has(v.weight)) return false;
+  const families: FontFamily[] = [];
+  for (const entry of listLocalFonts()) {
+    if (pattern && !entry.family.toLowerCase().includes(pattern)) continue;
+    const variants = entry.variants.filter((v) => {
+      if (wanted && !wanted.has(v.weight)) return false;
       if (style && v.style !== style) return false;
       return true;
     });
     if (variants.length === 0) continue;
-    out.push({ family: family.family, variants });
-    if (limit !== undefined && out.length >= limit) break;
+    families.push({ family: entry.family, variants });
+    if (limit !== undefined && families.length >= limit) break;
   }
-  return out;
-}
+  return { families };
+};

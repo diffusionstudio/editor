@@ -26,10 +26,11 @@ describe("catalog", () => {
     }
   });
 
-  it("converts every schema to JSON Schema without throwing (bytes have no JSON form and pass as any)", () => {
+  it("converts every input and output to JSON Schema, as MCP tools/list does", () => {
     for (const tool of catalog) {
       expect(() => z.toJSONSchema(tool.input, { io: "input" }), `${tool.name} input`).not.toThrow();
-      expect(() => z.toJSONSchema(tool.output, { unrepresentable: "any" }), `${tool.name} output`).not.toThrow();
+      expect(() => z.toJSONSchema(tool.output), `${tool.name} output`).not.toThrow();
+      expect(tool.output, `${tool.name} output must be an object for structured content`).toBeInstanceOf(z.ZodObject);
     }
   });
 

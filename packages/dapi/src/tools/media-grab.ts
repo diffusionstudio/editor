@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { defineTool } from "../tool";
-import { AssetPath, checkSheetOptions, checkWindow, sheetFields, TimecodedImage, windowFields } from "../schemas";
+import { AssetPath, checkSheetOptions, checkWindow, ImageRef, outputDirField, sheetFields, TimecodedImage, windowFields } from "../schemas";
 import { Time } from "../time";
 
 export const FrameQuality = z.enum(["small", "medium", "large", "fullres"]);
@@ -46,6 +46,7 @@ export const mediaGrab = defineTool({
         .boolean()
         .optional()
         .describe(`lift the ${FRAME_CAP}-frame safety cap (grabbing many frames is slow and token-heavy)`),
+      output: outputDirField,
     })
     .superRefine((value, ctx) => {
       if (value.times !== undefined && value.count !== undefined) {
@@ -69,6 +70,7 @@ export const mediaGrab = defineTool({
       }
       checkSheetOptions(value, ctx);
     }),
-  output: z.array(TimecodedImage),
+  output: z.object({ images: z.array(ImageRef) }),
+  result: z.array(TimecodedImage),
   runsIn: "renderer",
 });

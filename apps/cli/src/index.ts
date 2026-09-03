@@ -4,19 +4,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 import { Command } from "commander";
 import { version } from "../../../package.json";
 import { parseTime, TIME_FPS } from "@diffusionstudio/jsx";
-import { call, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, ping, waitForCliSocket } from "./cli-client";
-import { listLocalFonts } from "./fonts";
-import { buildIssueBody, createIssue } from "./report";
-import { fetchVideo } from "./ytdlp";
+import { call, errnoCode, EXPORT_TIMEOUT_MS, GENERATE_TIMEOUT_MS, ping, waitForApp } from "./cli-client";
 import { ISSUE_LOG_TAIL, MAX_FRAMES_PER_SHEET } from "@diffusionstudio/dapi";
-import type { FrameQuality, LogEntry, LogLevel, TimecodedImage } from "@diffusionstudio/dapi";
+import type { FrameQuality, ImageRef, LogEntry, LogLevel } from "@diffusionstudio/dapi";
 
 // Long-running commands (renders, AI generation) override the default 60s.
 const GENERATE = { timeoutMs: GENERATE_TIMEOUT_MS };
@@ -104,10 +99,8 @@ async function mediaFrame(ref: string, opts: MediaFrameOptions): Promise<void> {
 
   const perSheet = parsePerSheet(opts.perSheet, opts.separate);
   const target = resolveAssetRef(ref);
-  const dir = opts.output ?? join(tmpdir(), `dapi-grab-${randomUUID().slice(0, 8)}`);
-  mkdirSync(dir, { recursive: true });
   try {
-    const images = await call("media_grab", {
+    const { images } = await call("media_grab", {
       ...target,
       times,
       count,
@@ -118,8 +111,9 @@ async function mediaFrame(ref: string, opts: MediaFrameOptions): Promise<void> {
       combine: !opts.separate,
       perSheet,
       uncapped: opts.uncapped,
+      output: resolveOutput(opts.output),
     });
-    writeImages(images, dir);
+    printImages(images);
   } catch (e) {
     handleSocketError(e);
   }
@@ -205,15 +199,15 @@ function parseTimeArg(value: string, flag: string, allowNegative = false): numbe
   return seconds;
 }
 
-// Frames and contact sheets arrive in the same shape: the app stamps each
-// image with its timecode (`08s10f`, or `0f-08s10f` for a sheet), which is the
-// filename too.
-function writeImages(images: TimecodedImage[], dir: string): void {
-  for (const { timecode, png } of images) {
-    const path = join(dir, `${timecode}.png`);
-    writeFileSync(path, png);
-    console.log(JSON.stringify({ timecode, path }));
-  }
+// The app wrote the PNGs (one per frame or contact sheet, named by
+// timecode); print where each landed, one line per image.
+function printImages(images: ImageRef[]): void {
+  for (const image of images) console.log(JSON.stringify(image));
+}
+
+/** An output path as the app needs it: absolute, or absent for the app's default. */
+function resolveOutput(path: string | undefined): string | undefined {
+  return path === undefined ? undefined : resolve(process.cwd(), path);
 }
 
 function parsePerSheet(value: string | undefined, separate?: boolean): number | undefined {
@@ -254,14 +248,11 @@ function parsePreviewWindow(opts: MediaPreviewOptions): { start?: number; end?: 
 async function mediaFilmstrip(ref: string, opts: MediaPreviewOptions): Promise<void> {
   const { start, end, scale } = parsePreviewWindow(opts);
   const target = resolveAssetRef(ref);
-  const path = opts.output ?? join(tmpdir(), `${randomUUID()}.png`);
-  mkdirSync(dirname(resolve(path)), { recursive: true });
   const stop = startSpinner("Rendering filmstrip");
   try {
-    const { png, ...rest } = await call("media_filmstrip", { ...target, start, end, scale });
+    const result = await call("media_filmstrip", { ...target, start, end, scale, output: resolveOutput(opts.output) });
     stop();
-    writeFileSync(path, png);
-    console.log(JSON.stringify({ path, ...rest }));
+    console.log(JSON.stringify(result));
   } catch (e) {
     stop();
     handleSocketError(e);
@@ -271,14 +262,11 @@ async function mediaFilmstrip(ref: string, opts: MediaPreviewOptions): Promise<v
 async function mediaWaveform(ref: string, opts: MediaPreviewOptions): Promise<void> {
   const { start, end, scale } = parsePreviewWindow(opts);
   const target = resolveAssetRef(ref);
-  const path = opts.output ?? join(tmpdir(), `${randomUUID()}.png`);
-  mkdirSync(dirname(resolve(path)), { recursive: true });
   const stop = startSpinner("Rendering waveform");
   try {
-    const { png, ...rest } = await call("media_waveform", { ...target, start, end, scale });
+    const result = await call("media_waveform", { ...target, start, end, scale, output: resolveOutput(opts.output) });
     stop();
-    writeFileSync(path, png);
-    console.log(JSON.stringify({ path, ...rest }));
+    console.log(JSON.stringify(result));
   } catch (e) {
     stop();
     handleSocketError(e);
@@ -292,11 +280,13 @@ async function captureNode(id: string, opts: CaptureOptions): Promise<void> {
   const frames = times.map((t) => Math.round(t * TIME_FPS));
   const perSheet = parsePerSheet(opts.perSheet, opts.separate);
 
-  const dir = opts.output ?? join(tmpdir(), `dapi-capture-${randomUUID().slice(0, 8)}`);
-  mkdirSync(dir, { recursive: true });
   try {
-    const images = await call("capture", { id, frames, combine: !opts.separate, perSheet }, GENERATE);
-    writeImages(images, dir);
+    const { images } = await call(
+      "capture",
+      { id, frames, combine: !opts.separate, perSheet, output: resolveOutput(opts.output) },
+      GENERATE,
+    );
+    printImages(images);
   } catch (e) {
     handleSocketError(e);
   }
@@ -346,7 +336,7 @@ async function openProject(path: string | undefined, opts: OpenOptions): Promise
   try {
     // A cold launch needs the renderer up before the app can answer; when
     // nothing was launched there is nothing to wait for, so fail fast.
-    if (launched) await waitForCliSocket();
+    if (launched) await waitForApp();
     else await ping();
 
     if (path !== undefined) {
@@ -369,8 +359,8 @@ async function context(): Promise<void> {
 
 async function whoami(): Promise<void> {
   try {
-    const result = await call("whoami", {});
-    console.log(JSON.stringify(result));
+    const { user } = await call("whoami", {});
+    console.log(JSON.stringify(user));
   } catch (e) {
     handleSocketError(e);
   }
@@ -396,7 +386,7 @@ async function showLogs(opts: LogsOptions): Promise<void> {
   }
 
   try {
-    const entries = await call("logs", { tail, level: opts.level as LogLevel | undefined });
+    const { entries } = await call("logs", { tail, level: opts.level as LogLevel | undefined });
     for (const entry of entries) console.log(formatLogEntry(entry));
   } catch (e) {
     handleSocketError(e);
@@ -414,27 +404,10 @@ function formatLogEntry(entry: LogEntry): string {
 type ScreenshotOptions = { output?: string };
 
 // `diffusion-studio_2026-07-31_08-55-12.png`
-function screenshotFilename(taken: Date, attempt: number): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const date = [taken.getFullYear(), pad(taken.getMonth() + 1), pad(taken.getDate())].join("-");
-  const time = [pad(taken.getHours()), pad(taken.getMinutes()), pad(taken.getSeconds())].join("-");
-  const slug = APP_NAME.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  return `${slug}_${date}_${time}${attempt > 1 ? `-${attempt}` : ""}.png`;
-}
-
 async function appScreenshot(opts: ScreenshotOptions): Promise<void> {
-  const dir = opts.output ?? tmpdir();
-  mkdirSync(dir, { recursive: true });
   try {
-    const { png, width, height } = await call("screenshot", {});
-    const taken = new Date();
-    let attempt = 1;
-    let path = join(dir, screenshotFilename(taken, attempt));
-    while (existsSync(path)) {
-      path = join(dir, screenshotFilename(taken, ++attempt));
-    }
-    writeFileSync(path, png);
-    console.log(JSON.stringify({ path, width, height }));
+    const result = await call("screenshot", { output: resolveOutput(opts.output) });
+    console.log(JSON.stringify(result));
   } catch (e) {
     handleSocketError(e);
   }
@@ -443,56 +416,21 @@ async function appScreenshot(opts: ScreenshotOptions): Promise<void> {
 type IssueOptions = { body?: string; command?: string[]; logs?: string };
 
 async function reportIssue(title: string, opts: IssueOptions): Promise<void> {
-  const summary = title.trim();
-  if (!summary) {
-    console.error("A one-line title is required.");
-    process.exit(1);
-  }
-
-  let tail = ISSUE_LOG_TAIL;
+  let logs: number | undefined;
   if (opts.logs !== undefined) {
     const n = Number(opts.logs);
     if (!Number.isInteger(n) || n < 0) {
       console.error(`--logs must be a non-negative integer (got "${opts.logs}")`);
       process.exit(1);
     }
-    tail = n;
+    logs = n;
   }
-
-  // The app being broken (or down) is exactly what gets reported, so a failed
-  // log read is recorded in the report rather than failing the command.
-  let logs: string[] | undefined;
-  let appStatus = "not checked";
-  if (tail > 0) {
-    try {
-      logs = (await call("logs", { tail })).map(formatLogEntry);
-      appStatus = "running";
-    } catch (e) {
-      const code = errnoCode(e);
-      appStatus = code === "ENOENT" || code === "ECONNREFUSED"
-        ? "not running"
-        : `unreachable (${(e as Error).message})`;
-    }
-  }
-
-  const body = buildIssueBody({
-    title: summary,
-    body: opts.body,
-    commands: opts.command,
-    logs,
-    appStatus,
-    version,
-  });
-
-  let url: string;
   try {
-    url = await createIssue(summary, body);
+    const result = await call("report", { title, body: opts.body, commands: opts.command, logs });
+    console.log(JSON.stringify(result));
   } catch (e) {
-    console.error((e as Error).message);
-    process.exit(1);
+    handleSocketError(e);
   }
-
-  console.log(JSON.stringify({ url }));
 }
 
 function startSpinner(label: string): () => void {
@@ -522,7 +460,7 @@ async function listModels(type: string | undefined): Promise<void> {
     process.exit(1);
   }
   try {
-    const models = await call("models", { type: type as "image" | "video" | "audio" | undefined });
+    const { models } = await call("models", { type: type as "image" | "video" | "audio" | undefined });
     for (const model of models) console.log(JSON.stringify(model));
   } catch (e) {
     handleSocketError(e);
@@ -531,7 +469,7 @@ async function listModels(type: string | undefined): Promise<void> {
 
 async function listVoices(): Promise<void> {
   try {
-    const voices = await call("voices", {});
+    const { voices } = await call("voices", {});
     for (const voice of voices) console.log(JSON.stringify(voice));
   } catch (e) {
     handleSocketError(e);
@@ -546,7 +484,7 @@ type ListFontsOptions = {
   namesOnly?: boolean;
 };
 
-function listFonts(opts: ListFontsOptions): void {
+async function listFonts(opts: ListFontsOptions): Promise<void> {
   let style: "normal" | "italic" | undefined;
   if (opts.style !== undefined) {
     if (opts.style !== "normal" && opts.style !== "italic") {
@@ -567,34 +505,29 @@ function listFonts(opts: ListFontsOptions): void {
   }
 
   try {
-    const families = listLocalFonts({
-      familyPattern: opts.family,
-      weights: opts.weight,
-      style,
-      limit,
-    });
+    const { families } = await call("fonts", { family: opts.family, weights: opts.weight, style, limit });
     if (opts.namesOnly) {
       for (const family of families) console.log(family.family);
     } else {
       for (const family of families) console.log(JSON.stringify(family));
     }
   } catch (e) {
-    console.error((e as Error).message);
-    process.exit(1);
+    handleSocketError(e);
   }
 }
 
 type FetchCliOptions = { output?: string; format?: string; audio?: boolean };
 
 // `raw` is every operand after `url` — the yt-dlp passthrough placed after `--`.
-// No spinner here: yt-dlp renders its own progress to the inherited stderr.
 async function fetch(url: string, opts: FetchCliOptions, raw: string[]): Promise<void> {
+  const stop = startSpinner("Downloading");
   try {
-    const paths = await fetchVideo(url, { ...opts, raw });
+    const { paths } = await call("fetch", { url, ...opts, raw, output: resolveOutput(opts.output) }, GENERATE);
+    stop();
     for (const path of paths) console.log(JSON.stringify({ path }));
   } catch (e) {
-    console.error((e as Error).message);
-    process.exit(1);
+    stop();
+    handleSocketError(e);
   }
 }
 
@@ -788,7 +721,7 @@ program
 program
   .command("fonts")
   .description(
-    `List the local fonts available on this machine (macOS only; does not require the app). These family names are valid \`fontFamily\` values on <text>; each family lists its variants.`,
+    `List the local fonts available on this machine (macOS only). These family names are valid \`fontFamily\` values on <text>; each family lists its variants.`,
   )
   .option("-f, --family <pattern>", "filter to families whose name contains <pattern> (case-insensitive)")
   .option("-w, --weight <weights...>", "filter to variants with the given CSS weight(s), e.g. -w 400 700")
@@ -800,7 +733,7 @@ program
 program
   .command("fetch")
   .description(
-    `Download a video with yt-dlp (installed separately; does not require the app). Writes files to disk only (a single URL can yield several, e.g. a playlist).`,
+    `Download a video with yt-dlp (installed separately). Writes files to disk only (a single URL can yield several, e.g. a playlist).`,
   )
   .argument("<url>", "video or page URL to download")
   .option("-o, --output <path>", "output file path or directory (yt-dlp -o template; default: yt-dlp's default)")

@@ -14,12 +14,12 @@ import { openProjectFolder } from "@/projects";
 import { projectRoute } from "@/hooks/use-project-route";
 import { useFullscreenState } from "@/hooks/use-fullscreen-state";
 import { assert } from "@/utils/common";
-import { cliBridge } from "./bridge";
+import { toolBridge } from "./bridge";
 import { handlers } from "./handlers";
 import { editorSession, requireEditorSession, setEditorSession } from "./session";
 
 import type { JSX, Accessor } from "solid-js";
-import type { ToolContext } from "./handler";
+import type { ContextFactory } from "./bridge";
 
 type EditorApiContextValue = {
   isFullscreen: Accessor<boolean>;
@@ -39,7 +39,7 @@ export function EditorApi() {
   const navigate = useNavigate();
   const auth = useAuth();
 
-  const context = (signal: AbortSignal): ToolContext => ({
+  const context: ContextFactory = (signal) => ({
     session: editorSession,
     requireSession: requireEditorSession,
     signal,
@@ -58,7 +58,7 @@ export function EditorApi() {
     },
   });
 
-  onCleanup(cliBridge.register(handlers, context));
+  onCleanup(toolBridge.register(handlers, context));
   return null;
 }
 

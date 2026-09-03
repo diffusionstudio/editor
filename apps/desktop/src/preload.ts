@@ -4,16 +4,17 @@
 
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { MAIN_WIRE } from "./main-channels";
-import { CLI_WIRE } from "@diffusionstudio/cli/protocol";
+import { DAPI_WIRE } from "@diffusionstudio/dapi";
 
 import type { IpcRendererEvent } from "electron";
 
-const ALLOWED_RENDERER_TO_MAIN: ReadonlySet<string> = new Set([MAIN_WIRE.REQUEST]);
+const ALLOWED_RENDERER_TO_MAIN: ReadonlySet<string> = new Set([MAIN_WIRE.REQUEST, DAPI_WIRE.REPLY]);
 
 const ALLOWED_MAIN_TO_RENDERER: ReadonlySet<string> = new Set([
   MAIN_WIRE.RESPONSE,
   MAIN_WIRE.EVENT,
-  CLI_WIRE.CONNECT,
+  DAPI_WIRE.CALL,
+  DAPI_WIRE.CANCEL,
 ]);
 
 contextBridge.exposeInMainWorld("desktop", {

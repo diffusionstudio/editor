@@ -35,13 +35,24 @@ export const MAX_FRAMES_PER_SHEET = 12;
 export const Bytes = z.custom<Uint8Array>((value) => value instanceof Uint8Array, "expected bytes (a Uint8Array)");
 
 /**
- * One image: a single frame stamped with its timecode, or a contact sheet
- * stamped with the span it covers (`0f-08s10f`).
+ * One rendered image as a handler returns it: a single frame stamped with its
+ * timecode, or a contact sheet stamped with the span it covers (`0f-08s10f`).
  */
 export const TimecodedImage = z.object({
   timecode: z.string(),
   png: Bytes,
 });
+
+/** The same image once the server has written it to disk. */
+export const ImageRef = z.object({
+  timecode: z.string(),
+  path: z.string().describe("absolute path of the PNG"),
+});
+
+export const outputDirField = z
+  .string()
+  .optional()
+  .describe("absolute directory to write the PNGs into (default: a fresh directory under the system temp dir)");
 
 /**
  * How frames are laid out: merged into contact sheets (the default) or one

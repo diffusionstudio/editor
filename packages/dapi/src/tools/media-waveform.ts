@@ -7,6 +7,8 @@ import { defineTool } from "../tool";
 import { AssetPath, Bytes, checkWindow } from "../schemas";
 import { previewFields } from "./media-filmstrip";
 
+const Silences = z.array(z.object({ start: z.number(), end: z.number() })).describe("seconds");
+
 export const mediaWaveform = defineTool({
   name: "media_waveform",
   title: "Waveform preview",
@@ -14,8 +16,9 @@ export const mediaWaveform = defineTool({
     "Render the audio track of a video or audio file as a waveform PNG (local render, no credits) with a timestamp ruler: loudness over time, with silent stretches highlighted in red. A fast, token-efficient audio track preview; the silent spans are also returned as second ranges.",
   input: z.object({ path: AssetPath, ...previewFields }).superRefine(checkWindow),
   output: z.looseObject({
-    png: Bytes,
-    silences: z.array(z.object({ start: z.number(), end: z.number() })).describe("seconds"),
+    path: z.string().describe("absolute path of the PNG"),
+    silences: Silences,
   }),
+  result: z.looseObject({ png: Bytes, silences: Silences }),
   runsIn: "renderer",
 });

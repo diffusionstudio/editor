@@ -4,4 +4,4 @@
 
 import type { ToolHandler } from "../handler";
 
-export const whoami: ToolHandler<"whoami"> = async (_, ctx) => ctx.app.user();
+export const whoami: ToolHandler<"whoami"> = async (_, ctx) => ({ user: ctx.app.user() });

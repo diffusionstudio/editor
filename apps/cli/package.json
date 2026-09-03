@@ -6,11 +6,8 @@
   "bin": {
     "dapi": "./dist/index.js"
   },
-  "exports": {
-    "./protocol": "./src/protocol.ts"
-  },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --external:bufferutil --external:utf-8-validate --outfile=dist/index.js && chmod +x dist/index.js",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=cjs --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --outfile=dist/index.js && chmod +x dist/index.js",
     "check": "tsc --noEmit",
     "symlink:remove": "rm -f /opt/homebrew/bin/dapi",
     "symlink:create": "npm run build && ln -sf \"$PWD/dist/index.js\" /opt/homebrew/bin/dapi"
@@ -18,16 +15,15 @@
   "dependencies": {
     "@babel/core": "^7.29.7",
     "@babel/preset-typescript": "^7.27.1",
+    "@diffusionstudio/dapi": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "babel-preset-solid": "^1.9.12",
     "commander": "^14.0.3",
-    "esbuild": "^0.28.1",
-    "ws": "^8.18.3",
-    "@diffusionstudio/dapi": "*"
+    "esbuild": "^0.28.1"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.10.1",
-    "@types/ws": "^8.18.1",
     "typescript": "~5.9.3"
   }
 }

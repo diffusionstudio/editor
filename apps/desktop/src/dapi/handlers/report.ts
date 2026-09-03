@@ -4,50 +4,41 @@
 
 import { spawn } from "node:child_process";
 import { arch, platform, release } from "node:os";
+import { DapiError, ISSUE_LOG_TAIL } from "@diffusionstudio/dapi";
+import { formatLogEntry } from "./logs";
+
+import type { MainHandler } from "../handler";
 
 const REPO = "diffusionstudio/editor";
 
-export const GH_MISSING =
+const GH_MISSING =
   "gh (GitHub CLI) is not installed, so the issue cannot be filed. Install it from https://cli.github.com, run `gh auth login`, then retry.";
-
-export type IssueInput = {
-  title: string;
-  body?: string;
-  commands?: string[];
-  logs?: string[];       // already formatted log lines, oldest first
-  appStatus: string;     // "running", "not running", "not checked", or why it was unreachable
-  version: string;
-};
 
 function fence(language: string, content: string): string {
   return `\`\`\`${language}\n${content}\n\`\`\``;
 }
 
-function environmentTable(input: IssueInput): string {
+function environmentTable(version: string): string {
   const rows: Array<[string, string]> = [
-    ["dapi", input.version],
+    ["app", version],
     ["platform", `${platform()} ${release()} (${arch()})`],
-    ["node", process.version],
-    ["app", input.appStatus],
+    ["electron", process.versions.electron ?? "unknown"],
   ];
   return ["| | |", "| --- | --- |", ...rows.map(([k, v]) => `| ${k} | ${v} |`)].join("\n");
 }
 
-export function buildIssueBody(input: IssueInput): string {
+function buildIssueBody(input: { body?: string; commands?: string[]; logs: string[]; version: string }): string {
   const sections: string[] = [];
-
   if (input.body?.trim()) sections.push(input.body.trim());
   if (input.commands?.length) sections.push(`## Repro\n\n${fence("sh", input.commands.join("\n"))}`);
-  sections.push(`## Environment\n\n${environmentTable(input)}`);
-  if (input.logs?.length) sections.push(`## App logs\n\n${fence("", input.logs.join("\n"))}`);
-
+  sections.push(`## Environment\n\n${environmentTable(input.version)}`);
+  if (input.logs.length) sections.push(`## App logs\n\n${fence("", input.logs.join("\n"))}`);
   return `${sections.join("\n\n")}\n`;
 }
 
-// --repo is explicit because dapi runs from the user's project, not a checkout
-// of the editor; the body goes over stdin so a long log tail can't blow the
-// argv size limit.
-export function createIssue(title: string, body: string): Promise<string> {
+// --repo is explicit because the app is not a checkout of the editor; the body
+// goes over stdin so a long log tail can't blow the argv size limit.
+function createIssue(title: string, body: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const gh = spawn("gh", ["issue", "create", "--repo", REPO, "--title", title, "--body-file", "-"]);
 
@@ -57,7 +48,7 @@ export function createIssue(title: string, body: string): Promise<string> {
     gh.stderr.on("data", (chunk) => (stderr += chunk));
 
     gh.on("error", (e) => {
-      reject((e as NodeJS.ErrnoException).code === "ENOENT" ? new Error(GH_MISSING) : e);
+      reject((e as NodeJS.ErrnoException).code === "ENOENT" ? new DapiError("unsupported", GH_MISSING) : e);
     });
     gh.on("close", (code) => {
       if (code !== 0) {
@@ -73,7 +64,16 @@ export function createIssue(title: string, body: string): Promise<string> {
       resolve(url);
     });
 
-    gh.stdin.on("error", () => { }); // gh exiting early (auth failure) breaks the pipe
+    gh.stdin.on("error", () => {}); // gh exiting early (auth failure) breaks the pipe
     gh.stdin.end(body);
   });
 }
+
+export const report: MainHandler<"report"> = async ({ title, body, commands, logs }, ctx) => {
+  const summary = title.trim();
+  if (!summary) throw new DapiError("invalid-input", "A one-line title is required.");
+  const tail = logs ?? ISSUE_LOG_TAIL;
+  const lines = tail > 0 ? ctx.logs().slice(-tail).map(formatLogEntry) : [];
+  const url = await createIssue(summary, buildIssueBody({ body, commands, logs: lines, version: ctx.version }));
+  return { url };
+};

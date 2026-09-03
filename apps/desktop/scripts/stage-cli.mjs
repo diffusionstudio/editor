@@ -17,10 +17,7 @@ const desktopDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cliDir = join(desktopDir, "..", "cli");
 const stageDir = join(desktopDir, "cli");
 
-// Must match the --external list in the apps/cli build script, minus ws's
-// optional native addons (bufferutil, utf-8-validate): those are external
-// only so the bundle doesn't choke on them, and ws falls back to its JS
-// implementations when they are absent.
+// Must match the --external list in the apps/cli build script.
 const EXTERNALS = ["esbuild", "@babel/core", "@babel/preset-typescript", "babel-preset-solid"];
 
 const cliPkg = JSON.parse(readFileSync(join(cliDir, "package.json"), "utf8"));
