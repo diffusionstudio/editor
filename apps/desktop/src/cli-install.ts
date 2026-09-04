@@ -4,9 +4,9 @@
 
 import { app } from "electron";
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import type { CliInstallResult } from "./main-channels";
 
 // Where each platform keeps user-installed commands: /usr/local/bin needs
@@ -46,6 +46,39 @@ function linkCliDirectly(): void {
   symlinkSync(CLI_WRAPPER_PATH, CLI_LINK_PATH);
 }
 
+// An AppImage has nothing worth linking to: it runs from a mount under /tmp
+// that exists only while the process does, and whose name changes every
+// launch, so a symlink into `resources` dangles the moment the app quits. The
+// image file itself is stable and can run the CLI through Electron's node
+// mode, mounting itself for the duration of the call - so the install writes a
+// wrapper that does that. The path inside the mount is read from this process
+// rather than assumed, since it is the maker that decides the layout.
+function writeAppImageWrapper(appImage: string, appDir: string): void {
+  const insideMount = relative(appDir, dirname(process.resourcesPath));
+  // Runs in the child: the runtime exports APPDIR for the mount it made and
+  // APPIMAGE for the file, which is what `dapi open` needs to launch the app.
+  const bootstrap =
+    `const r=process.env.APPDIR+"/${insideMount}";` +
+    `process.env.DIFFUSION_APP_PATH=process.env.APPIMAGE;` +
+    `const j=r+"/resources/cli/dapi.js";` +
+    `process.argv=[process.argv[0],j,...process.argv.slice(1)];` +
+    `require(j);`;
+  const quoted = `'${appImage.replaceAll("'", `'\\''`)}'`;
+  const wrapper = [
+    "#!/bin/sh",
+    "# Written by Diffusion Studio's \"Install dapi Command Line Tool\" from an",
+    "# AppImage. Move or delete that file and this stops working; run the",
+    "# installer again to point it at the new location.",
+    `APPIMAGE=${quoted}`,
+    `[ -x "$APPIMAGE" ] || { echo "dapi: no Diffusion Studio AppImage at $APPIMAGE" >&2; exit 1; }`,
+    `ELECTRON_RUN_AS_NODE=1 exec "$APPIMAGE" -e '${bootstrap}' -- "$@"`,
+    "",
+  ].join("\n");
+  mkdirSync(dirname(CLI_LINK_PATH), { recursive: true });
+  rmSync(CLI_LINK_PATH, { force: true });
+  writeFileSync(CLI_LINK_PATH, wrapper, { mode: 0o755 });
+}
+
 export async function installCli(): Promise<CliInstallResult> {
   if (!app.isPackaged) {
     return {
@@ -53,22 +86,10 @@ export async function installCli(): Promise<CliInstallResult> {
       error: "Installing the CLI is only available in the packaged app. Use `npm run symlink:create` in development.",
     };
   }
-
-  // An AppImage runs from a mount that only exists while it does
-  // (`/tmp/.mount_*`), so a link into its resources would dangle the moment
-  // the app quits. The bundled `dapi` works fine from inside a running one —
-  // it just has no path worth linking.
-  if (process.env.APPIMAGE) {
-    return {
-      status: "error",
-      error:
-        "An AppImage has no stable path to link from. Install the deb or rpm package to get dapi on PATH, " +
-        "or unpack this file once (`--appimage-extract`) and link the dapi wrapper under " +
-        "usr/lib/diffusion-studio/resources/cli/bin from the unpacked tree.",
-    };
-  }
+  const { APPIMAGE, APPDIR } = process.env;
   try {
-    if (process.platform === "linux") linkCliDirectly();
+    if (APPIMAGE && APPDIR) writeAppImageWrapper(APPIMAGE, APPDIR);
+    else if (process.platform === "linux") linkCliDirectly();
     else await linkCliWithPrompt();
     return { status: "installed" };
   } catch (e) {

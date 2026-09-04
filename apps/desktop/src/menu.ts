@@ -21,8 +21,8 @@ async function installCliFromMenu() {
       type: "info",
       message: "The dapi command line tool was installed.",
       detail: onPath
-        ? `Linked at ${CLI_LINK_PATH}. Run "dapi --help" in a terminal to get started.`
-        : `Linked at ${CLI_LINK_PATH}. If "dapi" is not found, add ${linkDir} to your PATH.`,
+        ? `Installed at ${CLI_LINK_PATH}. Run "dapi --help" in a terminal to get started.`
+        : `Installed at ${CLI_LINK_PATH}. If "dapi" is not found, add ${linkDir} to your PATH.`,
     });
   } else {
     await dialog.showMessageBox({

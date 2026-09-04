@@ -5,7 +5,7 @@
 
 import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
@@ -341,9 +341,19 @@ function launchDarwin(background: boolean): Promise<boolean> {
 // The app has to outlive this process, so the child is detached and its handle
 // released. A missing binary is reported asynchronously, which is why the two
 // events are raced instead of the call being wrapped in a try.
+//
+// `ELECTRON_RUN_AS_NODE` is how the packaged wrapper runs this CLI on the app's
+// own Electron, and a child would inherit it - starting the app in node mode,
+// where it runs no main script and exits without a window. The AppImage
+// variables go too, so an image launched from here mounts itself afresh
+// instead of reading the mount this process is running from.
 function spawnDetached(command: string, args: string[]): Promise<boolean> {
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+  delete env.APPDIR;
+  delete env.APPIMAGE;
   const { promise, resolve: res } = Promise.withResolvers<boolean>();
-  const child = spawn(command, args, { detached: true, stdio: "ignore" });
+  const child = spawn(command, args, { detached: true, stdio: "ignore", env });
   child.once("error", () => res(false));
   child.once("spawn", () => {
     child.unref();
@@ -361,10 +371,14 @@ const LINUX_EXECUTABLE = "diffusion-studio";
 async function launchLinux(background: boolean): Promise<boolean> {
   const args = background ? ["--hidden"] : [];
 
-  // The packaged wrapper exports the root of the app it was shipped in, so an
-  // installed CLI starts its own app rather than whichever one is on PATH.
-  const root = process.env.DIFFUSION_APP_PATH;
-  const installed = root ? join(root, LINUX_EXECUTABLE) : undefined;
+  // The packaged wrapper exports what it was shipped in, so an installed CLI
+  // starts its own app rather than whichever one is on PATH: the app root for
+  // a normal install, and for an AppImage the image file, which is itself the
+  // executable.
+  const shipped = process.env.DIFFUSION_APP_PATH;
+  const installed = statSync(shipped ?? "", { throwIfNoEntry: false })?.isDirectory()
+    ? join(shipped!, LINUX_EXECUTABLE)
+    : shipped;
   if (installed && existsSync(installed) && (await spawnDetached(installed, args))) return true;
 
   if (await spawnDetached(LINUX_EXECUTABLE, args)) return true;
