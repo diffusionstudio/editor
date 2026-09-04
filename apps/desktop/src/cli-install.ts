@@ -10,8 +10,9 @@ import { dirname, join } from "node:path";
 import type { CliInstallResult } from "./main-channels";
 
 // Where each platform keeps user-installed commands: /usr/local/bin needs
-// elevation, ~/.local/bin is on PATH on modern distributions and belongs to
-// the user, so linking there asks for nothing.
+// elevation, ~/.local/bin belongs to the user, so linking there asks for
+// nothing. Debian and Fedora put it on PATH for you, but not every
+// distribution does, so the menu checks before claiming the command is ready.
 export const CLI_LINK_PATH =
   process.platform === "linux" ? join(homedir(), ".local", "bin", "dapi") : "/usr/local/bin/dapi";
 

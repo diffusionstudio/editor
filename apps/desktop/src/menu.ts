@@ -4,6 +4,7 @@
 
 import { app, dialog, Menu } from "electron";
 import type { MenuItemConstructorOptions } from "electron";
+import { dirname } from "node:path";
 
 import { CLI_LINK_PATH, installCli } from "./cli-install";
 
@@ -11,10 +12,17 @@ async function installCliFromMenu() {
   const result = await installCli();
   if (result.status === "cancelled") return;
   if (result.status === "installed") {
+    // The session PATH is what a launcher-started app inherits; a directory
+    // only a shell rc file adds reads as missing, so this is worded as a
+    // condition rather than a claim about the user's shell.
+    const linkDir = dirname(CLI_LINK_PATH);
+    const onPath = (process.env.PATH ?? "").split(":").includes(linkDir);
     await dialog.showMessageBox({
       type: "info",
       message: "The dapi command line tool was installed.",
-      detail: `Linked at ${CLI_LINK_PATH}. Run "dapi --help" in a terminal to get started.`,
+      detail: onPath
+        ? `Linked at ${CLI_LINK_PATH}. Run "dapi --help" in a terminal to get started.`
+        : `Linked at ${CLI_LINK_PATH}. If "dapi" is not found, add ${linkDir} to your PATH.`,
     });
   } else {
     await dialog.showMessageBox({

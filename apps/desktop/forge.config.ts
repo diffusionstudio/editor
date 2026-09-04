@@ -20,31 +20,42 @@ const { version } = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package
 // execs it, so both sides agree on the lowercase form.
 const LINUX_EXECUTABLE = 'diffusion-studio';
 
-// FreeDesktop metadata shared by every Linux artifact. The mime type is what
-// registers `diffusion://` with xdg, so the auth and checkout deep links reach
-// the app the same way the macOS bundle's protocol handler does — for the
-// AppImage only once its desktop file is integrated (by the desktop
-// environment's prompt, or AppImageLauncher).
+// The desktop entry every Linux artifact installs, kept as one file so the deb,
+// the rpm, the AppImage and the Arch package cannot drift apart - and so the
+// PKGBUILD, which no maker touches, reads the same text.
+const DESKTOP_ENTRY = join(__dirname, '..', '..', 'packaging', 'linux', `${LINUX_EXECUTABLE}.desktop`);
+
+// What the makers themselves need: the entry above carries the FreeDesktop
+// fields, these name the files.
 const linuxDesktop = {
   name: LINUX_EXECUTABLE,
-  // What lands in the desktop entry's `Exec`, and the file the AppImage maker
-  // looks for inside the packaged tree. Both default to the sanitized
-  // package name (`diffusionstudio-desktop`), which is not what is packaged.
+  // What the AppImage maker looks for inside the packaged tree, and what the
+  // deb and rpm symlink into /usr/bin. Both default to the sanitized package
+  // name (`diffusionstudio-desktop`), which is not what is packaged.
   bin: LINUX_EXECUTABLE,
   productName: 'Diffusion Studio',
-  genericName: 'Video Editor',
-  keywords: ['video', 'editor', 'agent'],
   icon: './assets/icon.png',
-  categories: ['AudioVideo', 'Video'],
-  mimeType: ['x-scheme-handler/diffusion'],
+  desktopFile: DESKTOP_ENTRY,
 } satisfies NonNullable<MakerAppImageConfig['options']>;
 
-// deb and rpm carry package metadata the desktop entry has no field for.
+// deb and rpm carry package metadata the desktop entry has no field for, and
+// they take the entry under a different option name than the AppImage maker.
+// `Maintainer` is one of the five fields dpkg-deb requires and is derived from
+// `package.json`'s `author`, which this workspace does not set - without it the
+// deb build fails outright. rpm's mandatory `License` does come from
+// `package.json` (MPL-2.0), so it needs no packager.
+const { desktopFile, ...linuxCommon } = linuxDesktop;
 const linuxPackage = {
-  ...linuxDesktop,
+  ...linuxCommon,
+  desktopTemplate: desktopFile,
   description: 'Edit videos with coding agents, and refine any output in a full editing environment',
   homepage: 'https://diffusion.studio',
 } satisfies NonNullable<MakerDebConfig['options']> & NonNullable<MakerRpmConfig['options']>;
+
+const debPackage = {
+  ...linuxPackage,
+  maintainer: 'Diffusion Studio Inc. <support@diffusion.studio>',
+} satisfies NonNullable<MakerDebConfig['options']>;
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -101,7 +112,7 @@ const config: ForgeConfig = {
       },
       ['darwin'],
     ),
-    new MakerDeb({ options: linuxPackage }, ['linux']),
+    new MakerDeb({ options: debPackage }, ['linux']),
     new MakerRpm({ options: linuxPackage }, ['linux']),
     // The format that runs on a distribution the deb and rpm do not cover:
     // one file, no root, no package manager. Needs `mksquashfs` on the build

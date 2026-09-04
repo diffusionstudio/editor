@@ -22,6 +22,7 @@
     "package": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge package",
     "make": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge make",
     "publish": "npm run build && npm run build:web && npm run stage:cli && npm run stage:docs && npm run stage:skills && electron-forge publish",
+    "make:arch": "npm run package && node scripts/make-arch.mjs",
     "make:icns": "sh scripts/make-icns.sh"
   },
   "devDependencies": {

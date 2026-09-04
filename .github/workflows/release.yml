@@ -84,9 +84,48 @@ jobs:
         run: cp apps/web/.env.example apps/web/.env
 
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y dpkg-dev fakeroot rpm squashfs-tools
+        run: sudo apt-get update && sudo apt-get install -y zip dpkg-dev fakeroot rpm squashfs-tools
 
       - name: Build and publish draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run publish --workspace=@diffusionstudio/desktop
+
+  # Arch has no Electron Forge maker, so this job runs the makepkg script in an
+  # Arch container. It attaches its artifact to the same draft release the
+  # other two jobs publish to, and carries no Apple secrets either.
+  publish-arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    permissions:
+      contents: write
+    steps:
+      # The image is minimal: actions/checkout needs git, and makepkg needs
+      # base-devel. `sudo` is here because makepkg refuses to run as root,
+      # which is what a container job starts as.
+      - name: Install build tools
+        run: |
+          pacman -Sy --noconfirm archlinux-keyring
+          pacman -Syu --noconfirm base-devel git sudo nodejs npm
+
+      - uses: actions/checkout@v4
+
+      - run: npm ci
+
+      - name: Provide client env for web build
+        run: cp apps/web/.env.example apps/web/.env
+
+      - name: Build the Arch package as an unprivileged user
+        run: |
+          useradd -m builder
+          chown -R builder .
+          sudo -u builder npm run make:arch --workspace=@diffusionstudio/desktop
+
+      - name: Attach the package to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pacman -S --noconfirm github-cli
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" apps/desktop/out/arch/*.pkg.tar.zst --clobber
