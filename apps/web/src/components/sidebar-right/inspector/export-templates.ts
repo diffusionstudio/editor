@@ -23,6 +23,7 @@ export const RESOLUTION_OPTIONS: number[] = [720, 1080, 1440, 2160];
 export const VIDEO_CODEC_OPTIONS: VideoCodec[] = ["avc", "hevc", "vp9", "av1", "vp8"];
 export const VIDEO_FORMAT_OPTIONS: ContainerFormat[] = ["mp4", "webm", "ogg", "mov"];
 export const FRAME_RATE_OPTIONS: number[] = [24, 25, 29.97, 30, 48, 50, 59.94, 60];
+/** The codecs the audio picker offers, less the ones a machine cannot encode (see `ExportPanel`). */
 export const AUDIO_CODEC_OPTIONS: AudioCodec[] = ["aac", "opus"];
 export const SAMPLE_RATE_OPTIONS: number[] = [44100, 48000, 96000];
 

@@ -31,7 +31,9 @@ export interface AudioConfig {
 	bitrate?: number;
 
 	/**
-	 * Defines the codec to use for the audio
+	 * Defines the codec to use for the audio. A preference rather than a
+	 * demand: a codec the container or this browser cannot encode is replaced
+	 * with the container's next encodable choice (see `resolveAudioCodec`).
 	 * @default 'aac'
 	 */
 	codec?: AudioCodec;

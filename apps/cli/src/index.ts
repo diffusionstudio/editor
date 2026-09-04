@@ -3,9 +3,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
@@ -333,16 +333,77 @@ async function checkNode(id: string): Promise<void> {
 type OpenOptions = { background?: boolean };
 
 /** `open -a` on a running app only activates it, so this is safe to always run. */
-function launchApp(background: boolean): Promise<boolean> {
+function launchDarwin(background: boolean): Promise<boolean> {
   const args = background ? ["-g", "-a", APP_NAME, "--args", "--hidden"] : ["-a", APP_NAME];
   return new Promise((res) => execFile("open", args, (err) => res(!err)));
 }
 
+// The app has to outlive this process, so the child is detached and its handle
+// released. A missing binary is reported asynchronously, which is why the two
+// events are raced instead of the call being wrapped in a try.
+//
+// `ELECTRON_RUN_AS_NODE` is how the packaged wrapper runs this CLI on the app's
+// own Electron, and a child would inherit it - starting the app in node mode,
+// where it runs no main script and exits without a window. The AppImage
+// variables go too, so an image launched from here mounts itself afresh
+// instead of reading the mount this process is running from.
+function spawnDetached(command: string, args: string[]): Promise<boolean> {
+  const env = { ...process.env };
+  delete env.ELECTRON_RUN_AS_NODE;
+  delete env.APPDIR;
+  delete env.APPIMAGE;
+  const { promise, resolve: res } = Promise.withResolvers<boolean>();
+  const child = spawn(command, args, { detached: true, stdio: "ignore", env });
+  child.once("error", () => res(false));
+  child.once("spawn", () => {
+    child.unref();
+    res(true);
+  });
+  return promise;
+}
+
+// The executable electron-packager emits for the Linux build, which the deb
+// and rpm packages also expose on PATH.
+const LINUX_EXECUTABLE = "diffusion-studio";
+
+// A second instance hands its argv to the running one, so relaunching the
+// executable activates the app the same way `open -a` does on macOS.
+async function launchLinux(background: boolean): Promise<boolean> {
+  const args = background ? ["--hidden"] : [];
+
+  // The packaged wrapper exports what it was shipped in, so an installed CLI
+  // starts its own app rather than whichever one is on PATH: the app root for
+  // a normal install, and for an AppImage the image file, which is itself the
+  // executable.
+  const shipped = process.env.DIFFUSION_APP_PATH;
+  const installed = statSync(shipped ?? "", { throwIfNoEntry: false })?.isDirectory()
+    ? join(shipped!, LINUX_EXECUTABLE)
+    : shipped;
+  if (installed && existsSync(installed) && (await spawnDetached(installed, args))) return true;
+
+  if (await spawnDetached(LINUX_EXECUTABLE, args)) return true;
+
+  // The deb and rpm packages register the `diffusion` scheme, so the desktop
+  // handler still finds the app when the executable is not on PATH. xdg-open
+  // hands the URL over and exits, reporting whether anything took it, and it
+  // forwards no arguments, so this last resort always surfaces a window.
+  const { promise, resolve: res } = Promise.withResolvers<boolean>();
+  execFile("xdg-open", ["diffusion://"], (err) => res(!err));
+  return promise;
+}
+
+function launchApp(background: boolean): Promise<boolean> {
+  if (process.platform === "darwin") return launchDarwin(background);
+  if (process.platform === "linux") return launchLinux(background);
+  return Promise.resolve(false);
+}
+
 async function openProject(path: string | undefined, opts: OpenOptions): Promise<void> {
-  // Launching is macOS's job; elsewhere (and when the app is not installed,
-  // e.g. a dev checkout run from the terminal) fall through to the socket,
-  // which answers if the app is running and errors usefully if not.
-  const launched = process.platform === "darwin" && (await launchApp(opts.background ?? false));
+  // Launching needs a way to find the app; where there is none (and when the
+  // app is not installed, e.g. a dev checkout run from the terminal) fall
+  // through to the socket, which answers if the app is running and errors
+  // usefully if not.
+  const launched = await launchApp(opts.background ?? false);
 
   try {
     // A cold launch needs the renderer up before the app can answer; when
@@ -791,7 +852,7 @@ program
 program
   .command("fonts")
   .description(
-    `List the local fonts available on this machine (macOS only; does not require the app). These family names are valid \`fontFamily\` values on <text>; each family lists its variants.`,
+    `List the local fonts available on this machine (macOS and Linux; does not require the app). These family names are valid \`fontFamily\` values on <text>; each family lists its variants.`,
   )
   .option("-f, --family <pattern>", "filter to families whose name contains <pattern> (case-insensitive)")
   .option("-w, --weight <weights...>", "filter to variants with the given CSS weight(s), e.g. -w 400 700")

@@ -1,6 +1,6 @@
 # `dapi fonts`
 
-Lists local fonts available on this machine. macOS only. Does not require the app to be running. Font families listed here are valid `fontFamily` values on [`<text>`](./jsx/text.md).
+Lists local fonts available on this machine. macOS and Linux (through fontconfig — `fc-list`). Does not require the app to be running. Font families listed here are valid `fontFamily` values on [`<text>`](./jsx/text.md).
 
 ## Options
 

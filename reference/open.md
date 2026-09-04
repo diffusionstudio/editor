@@ -44,5 +44,6 @@ With no path, nothing: exit code `0` says the app is up.
 ## Errors
 
 - The path exists but is not a folder.
-- Off macOS, the app cannot be launched; the command then requires it to
-  already be running.
+- The app could not be launched — on Linux, when neither its executable nor a
+  handler for the `diffusion://` scheme is installed, and on every other
+  platform than macOS; the command then requires the app to already be running.

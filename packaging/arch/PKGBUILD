@@ -1,0 +1,63 @@
+# Maintainer: Diffusion Studio Inc. <support@diffusion.studio>
+#
+# Packages the prebuilt app that `electron-forge package` leaves in
+# apps/desktop/out into an Arch Linux package. Adapted from the PKGBUILD in
+# https://github.com/diffusionstudio/editor/pull/42 by @Tsurgcom; the launcher
+# shim it carried is gone because the Linux executable is now renamed to
+# `diffusion-studio`, so /usr/bin can link straight to it.
+#
+# apps/desktop/scripts/make-arch.mjs stages this file and the source tarball,
+# substituting __VERSION__.
+pkgname=diffusion-studio
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc="Edit videos with coding agents, and refine any output in a full editing environment"
+arch=('x86_64')
+url="https://diffusion.studio"
+license=('MPL-2.0')
+# Electron ships pre-stripped release binaries; stripping them again only
+# produces gdb-add-index noise and an empty -debug package.
+options=(!strip !debug)
+depends=(
+  'gtk3'
+  'nss'
+  'alsa-lib'
+  'at-spi2-core'
+  'libxss'
+  'libxtst'
+  'libxcursor'
+  'libxrandr'
+  'libxcomposite'
+  'libxdamage'
+  'libxfixes'
+  'mesa'
+  'ca-certificates'
+)
+optdepends=(
+  'xdg-utils: open exported files and diffusion:// links'
+  'fontconfig: font discovery for `dapi fonts` and the editor'
+)
+# Built from the local forge output, staged next to this file rather than
+# fetched from a URL.
+source=("diffusion-studio-$pkgver-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/diffusion-studio-$pkgver-linux-x64"
+
+  install -d "$pkgdir/usr/lib/$pkgname"
+  cp -a . "$pkgdir/usr/lib/$pkgname/"
+
+  # Chromium's setuid sandbox helper, matching what the deb and rpm ship. It is
+  # only used where unprivileged user namespaces are unavailable.
+  chmod 4755 "$pkgdir/usr/lib/$pkgname/chrome-sandbox"
+
+  install -d "$pkgdir/usr/bin"
+  ln -s "/usr/lib/$pkgname/$pkgname" "$pkgdir/usr/bin/$pkgname"
+  # The dapi CLI ships inside the app's resources; a package can put it on PATH
+  # directly, so the in-app installer is only needed for the AppImage and ZIP.
+  ln -s "/usr/lib/$pkgname/resources/cli/bin/dapi" "$pkgdir/usr/bin/dapi"
+
+  install -Dm644 "$pkgname.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 "$pkgname.png" "$pkgdir/usr/share/pixmaps/$pkgname.png"
+}

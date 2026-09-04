@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=Diffusion Studio
+GenericName=Video Editor
+Comment=Edit videos with coding agents, and refine any output in a full editing environment
+Exec=diffusion-studio %U
+Icon=diffusion-studio
+Terminal=false
+StartupNotify=true
+# Groups the window with its launcher: Chromium reports the app name, not the
+# renamed executable.
+StartupWMClass=Diffusion Studio
+Categories=AudioVideo;Video;
+# Registers `diffusion://`, which is how the auth and checkout deep links come
+# back to the app - the same job `packagerConfig.protocols` does on macOS.
+MimeType=x-scheme-handler/diffusion;
