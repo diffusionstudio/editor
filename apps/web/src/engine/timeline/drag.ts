@@ -116,7 +116,7 @@ export function applyClipDrag(
 	const snap = findSnapDelta(world, resolution, offset);
 	if (snap) surface.snapX = framesToPixels(snap.frame, resolution);
 
-	moveEntityTo(world, entity, origin.start + offset - (snap?.delta ?? 0));
+	moveEntityTo(world, entity, Math.max(0, origin.start + offset - (snap?.delta ?? 0)));
 }
 
 /** Notes where `entity`'s edges are, so a trim can be measured from them. */
