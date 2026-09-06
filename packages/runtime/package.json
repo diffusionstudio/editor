@@ -12,7 +12,8 @@
     "./media": "./src/media/index.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "keywords": [
     "koota",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.71",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
   }
 }
