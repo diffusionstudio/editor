@@ -97,7 +97,16 @@ async function deliverHandshake(handshake: CliHandshake, sock: Socket): Promise<
   } catch (err) {
     reply = { ok: false, error: (err as Error).message };
   }
-  if (!sock.destroyed) sock.end(JSON.stringify(reply));
+  // Windows named pipes don't support allowHalfOpen the way Unix sockets do —
+  // if the CLIENT closes its write side first (sock.end()) the whole duplex
+  // pipe tears down on Windows before the server gets a chance to write back
+  // (EPIPE). Fix: the client now keeps its socket fully open until it has
+  // read our reply (newline-delimited), so it's safe for us to write then end.
+  if (!sock.destroyed) {
+    sock.write(JSON.stringify(reply) + "\n", () => {
+      if (!sock.destroyed) sock.end();
+    });
+  }
 }
 
 export function startCliServer() {
@@ -107,21 +116,26 @@ export function startCliServer() {
   cliServer = createServer({ allowHalfOpen: true }, (sock: Socket) => {
     enableHeadless();
     let buf = "";
+    let handled = false;
     sock.setEncoding("utf8");
     sock.setTimeout(60000, () => sock.destroy());
-    sock.on("data", (chunk) => {
+    // Newline-delimited framing instead of relying on the client's `end()` to
+    // mark the message boundary — see the note on Windows named pipes above.
+    sock.on("data", async (chunk) => {
       buf += chunk;
-    });
-    sock.on("end", async () => {
+      const newlineAt = buf.indexOf("\n");
+      if (handled || newlineAt === -1) return;
+      handled = true;
       sock.setTimeout(0);
+      const line = buf.slice(0, newlineAt);
       let handshake: CliHandshake;
       try {
-        handshake = JSON.parse(buf) as CliHandshake;
+        handshake = JSON.parse(line) as CliHandshake;
         if (typeof handshake.port !== "number" || typeof handshake.token !== "string") {
           throw new Error("Malformed handshake");
         }
       } catch {
-        sock.end(JSON.stringify({ ok: false, error: "Invalid handshake" }));
+        sock.write(JSON.stringify({ ok: false, error: "Invalid handshake" }) + "\n", () => sock.end());
         return;
       }
       await deliverHandshake(handshake, sock);

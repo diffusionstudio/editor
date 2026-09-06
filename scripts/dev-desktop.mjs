@@ -27,7 +27,7 @@ function run(name, bin, args, cwd) {
   // SIGTERM isn't dressed up as a "Lifecycle script failed" error by an npm
   // wrapper. Own process group (detached) so we can signal the tool *and* its
   // children (esbuild, electron) in one shot on teardown.
-  const child = spawn(join(BIN, bin), args, { cwd, stdio: "inherit", detached: true });
+  const child = spawn(join(BIN, bin), args, { cwd, stdio: "inherit", detached: process.platform !== "win32", shell: process.platform === "win32" });
   child.on("exit", (code) => {
     if (shuttingDown) return;
     // A child dying on its own (e.g. Vite crashed) should bring the rest down.
@@ -43,7 +43,8 @@ function shutdown(code) {
   shuttingDown = true;
   for (const child of children) {
     try {
-      process.kill(-child.pid, "SIGTERM");
+      if (process.platform === "win32") process.kill(child.pid, "SIGTERM");
+      else process.kill(-child.pid, "SIGTERM");
     } catch {
       // Already gone.
     }
@@ -79,19 +80,42 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => shutdown(0));
 }
 
-/** PIDs listening on a TCP port (macOS/Linux via lsof); [] when none or unknown. */
+/** PIDs listening on a TCP port (macOS/Linux via lsof, Windows via PowerShell); [] when none or unknown. */
 function listeners(port) {
   try {
+    if (process.platform === "win32") {
+      const out = execFileSync(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-Command",
+          `Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess`,
+        ],
+        { stdio: ["ignore", "pipe", "ignore"] },
+      );
+      return out.toString().split(/\r?\n/).map((line) => Number(line.trim())).filter(Boolean);
+    }
     const out = execFileSync("lsof", ["-nP", "-t", `-iTCP:${port}`, "-sTCP:LISTEN"], { stdio: ["ignore", "pipe", "ignore"] });
     return out.toString().split("\n").map((line) => Number(line.trim())).filter(Boolean);
   } catch {
-    return []; // lsof exits 1 when nothing listens.
+    return []; // lsof/PowerShell exit non-zero when nothing listens.
   }
 }
 
 /** The command line of a process, or "" when it is gone. */
 function commandOf(pid) {
   try {
+    if (process.platform === "win32") {
+      return execFileSync(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-Command",
+          `(Get-CimInstance Win32_Process -Filter "ProcessId=${pid}" -ErrorAction SilentlyContinue).CommandLine`,
+        ],
+        { stdio: ["ignore", "pipe", "ignore"] },
+      ).toString().trim();
+    }
     return execFileSync("ps", ["-o", "command=", "-p", String(pid)], { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
   } catch {
     return "";
@@ -135,12 +159,12 @@ async function reclaimPort(port) {
 
 // 1. Build the CLI (blocking) so `dapi` and the app agree on the latest code.
 console.log("[dev:desktop] building CLI…");
-execFileSync("npm", ["run", "build", "--workspace=@diffusionstudio/cli"], { stdio: "inherit" });
+execFileSync("npm", ["run", "build", "--workspace=@diffusionstudio/cli"], { stdio: "inherit", shell: true });
 
 // 2. Start the web dev server, on a port that is free.
 await reclaimPort(DEV_PORT);
 console.log("[dev:desktop] starting web dev server…");
-run("web", "vite", [], join(ROOT, "apps", "web"));
+run("web", "vite", ["--port", String(DEV_PORT), "--strictPort"], join(ROOT, "apps", "web"));
 
 // 3. Once it is up, build the desktop app (blocking, mirrors its `dev`
 // script) and launch Electron, which loads :5173.
@@ -151,6 +175,6 @@ try {
   shutdown(1);
 }
 console.log("[dev:desktop] building desktop app…");
-execFileSync("npm", ["run", "build", "--workspace=@diffusionstudio/desktop"], { stdio: "inherit" });
+execFileSync("npm", ["run", "build", "--workspace=@diffusionstudio/desktop"], { stdio: "inherit", shell: true });
 console.log("[dev:desktop] starting desktop app…");
 run("desktop", "electron-forge", ["start"], join(ROOT, "apps", "desktop"));
