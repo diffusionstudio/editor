@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/// <reference types="@types/wicg-file-system-access" />
+
 // The browser side of getting files into and out of a library: pickers,
 // drops, and the save dialog. Nothing here talks to the user; a failure is
 // thrown or returned for the host to report.

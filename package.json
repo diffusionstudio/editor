@@ -22,6 +22,8 @@
     "check": "npm run check --workspaces --if-present && tsc -p examples --noEmit"
   },
   "devDependencies": {
-    "patch-package": "^8.0.1"
+    "@types/three": "^0.185.4",
+    "patch-package": "^8.0.1",
+    "three": "^0.185.1"
   }
 }

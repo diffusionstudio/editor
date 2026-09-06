@@ -40,3 +40,6 @@ out/
 skills-lock.json
 .agents
 .claude
+
+# Projects
+projects/

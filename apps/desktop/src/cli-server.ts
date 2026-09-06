@@ -107,24 +107,46 @@ export function startCliServer() {
   cliServer = createServer({ allowHalfOpen: true }, (sock: Socket) => {
     enableHeadless();
     let buf = "";
+    let handled = false;
     sock.setEncoding("utf8");
     sock.setTimeout(60000, () => sock.destroy());
-    sock.on("data", (chunk) => {
-      buf += chunk;
-    });
-    sock.on("end", async () => {
-      sock.setTimeout(0);
+
+    const tryProcess = async () => {
+      if (handled) return;
       let handshake: CliHandshake;
       try {
-        handshake = JSON.parse(buf) as CliHandshake;
+        handshake = JSON.parse(buf.trim()) as CliHandshake;
         if (typeof handshake.port !== "number" || typeof handshake.token !== "string") {
-          throw new Error("Malformed handshake");
+          return;
         }
       } catch {
-        sock.end(JSON.stringify({ ok: false, error: "Invalid handshake" }));
         return;
       }
+      handled = true;
+      sock.setTimeout(0);
       await deliverHandshake(handshake, sock);
+    };
+
+    sock.on("data", async (chunk) => {
+      buf += chunk;
+      await tryProcess();
+    });
+    sock.on("end", async () => {
+      if (!handled) {
+        sock.setTimeout(0);
+        let handshake: CliHandshake;
+        try {
+          handshake = JSON.parse(buf.trim()) as CliHandshake;
+          if (typeof handshake.port !== "number" || typeof handshake.token !== "string") {
+            throw new Error("Malformed handshake");
+          }
+        } catch {
+          if (!sock.destroyed) sock.end(JSON.stringify({ ok: false, error: "Invalid handshake" }));
+          return;
+        }
+        handled = true;
+        await deliverHandshake(handshake, sock);
+      }
     });
     sock.on("error", () => {
       // Client hung up; nothing to do.

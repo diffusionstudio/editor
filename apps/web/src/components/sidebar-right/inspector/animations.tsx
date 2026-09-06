@@ -45,9 +45,15 @@ import { ANIMATION_GROUPS, DEFAULT_ANIMATION, animationOption } from "./animatio
 import type { AnimationGroup, AnimationOption } from "./animation-types";
 import type { Entity } from "koota";
 
-/** `<animation>`'s defaults; a control left at one of these unsets its prop. */
 const DEFAULT_DURATION = 1;
 const DEFAULT_DELAY = 0;
+
+type PhaseOption = { value: "in" | "out"; label: string };
+
+const PHASE_OPTIONS: PhaseOption[] = [
+  { value: "in", label: "In" },
+  { value: "out", label: "Out" },
+];
 
 // Stable identity, so a node without animations does not resample every tick.
 const NO_ANIMATIONS: Entity[] = [];
@@ -211,6 +217,7 @@ function AnimationInspector(props: AnimationInspectorProps) {
   const duration = createMemo(() => framesToSeconds(animation()?.duration ?? 0, fps()));
   const delay = createMemo(() => framesToSeconds(animation()?.delay ?? 0, fps()));
   const isOut = createMemo(() => animation()?.phase === AnimationPhase.OUT);
+  const selectedPhase = createMemo(() => (isOut() ? PHASE_OPTIONS[1]! : PHASE_OPTIONS[0]!));
 
   /**
    * The groups this node can play, plus whichever one holds the current
@@ -287,18 +294,22 @@ function AnimationInspector(props: AnimationInspectorProps) {
       <FloatingInspectorSeparator />
       <FloatingInspectorContent class="flex flex-col gap-2 p-4">
         <ControlRow label="Phase">
-          <Select<boolean>
-            value={isOut()}
-            onChange={(value) => value !== null && handlePhaseChange(value)}
-            options={[false, true]}
+          <Select<PhaseOption>
+            value={selectedPhase()}
+            onChange={(next) => next && handlePhaseChange(next.value === "out")}
+            options={PHASE_OPTIONS}
+            optionValue="value"
+            optionTextValue="label"
             itemComponent={(itemProps) => (
               <SelectItem item={itemProps.item}>
-                {itemProps.item.rawValue ? "Out" : "In"}
+                {itemProps.item.rawValue.label}
               </SelectItem>
             )}
           >
             <SelectTrigger>
-              <SelectValue class="text-xs">{isOut() ? "Out" : "In"}</SelectValue>
+              <SelectValue<PhaseOption> class="text-xs">
+                {(state) => state.selectedOption()?.label}
+              </SelectValue>
             </SelectTrigger>
             <SelectPortal>
               <SelectContent />

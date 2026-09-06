@@ -35,7 +35,7 @@ function AuthGate(props: { children: JSX.Element }) {
           {props.children}
         </Show>
       </Show>
-      <Show when={!auth.isAuthenticated()}>
+      <Show when={!auth.isAuthenticated() && !auth.headless()}>
         <LoginPage />
       </Show>
     </Show>

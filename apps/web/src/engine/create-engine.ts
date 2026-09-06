@@ -127,7 +127,7 @@ class Engine {
 
 		keys.held.add(key);
 		if (isMod) keys.held.add('mod');
-		if (!event.repeat) {
+		if (!event.repeat || key.startsWith('arrow')) {
 			keys.pressed.add(key);
 			if (isMod) keys.pressed.add('mod');
 		}
