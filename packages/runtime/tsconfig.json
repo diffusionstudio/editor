@@ -6,5 +6,6 @@
     "lib": ["es2024", "DOM", "DOM.Iterable"],
     "types": ["@webgpu/types"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
 }

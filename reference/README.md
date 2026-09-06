@@ -17,7 +17,7 @@ A project is a folder of that JSX, and **the source is the document**: the app c
 How the surface is divided:
 
 - AI asset generation (image / video / speech / audio) is declared in the project module (`generate.*`, see [jsx/generate.md](./jsx/generate.md)). `models` and `voices` list what those declarations can reference.
-- Inspecting an existing asset (probe / transcribe / listen / filmstrip / waveform / grab) lives under `media`.
+- Inspecting an existing asset (probe / transcribe / listen / filmstrip / waveform / grab / autocut) lives under `media`.
 
 ## Commands
 
@@ -43,6 +43,7 @@ How the surface is divided:
 - [`dapi media grab`](./media/grab.md): decode video frames to a labelled contact sheet, or one PNG per frame
 - [`dapi media filmstrip`](./media/filmstrip.md): grid of video frames as a PNG
 - [`dapi media waveform`](./media/waveform.md): audio waveform PNG with silence highlighting
+- [`dapi media autocut`](./media/autocut.md): propose keep-ranges by dropping silences, stutters, and fillers
 - [`dapi media listen`](./media/listen.md): AI description of an audio track
 
 ### Generation reference
