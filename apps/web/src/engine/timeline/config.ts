@@ -11,6 +11,9 @@ export const TIMELINE_RESOLUTION_RANGE = [0.03, 120] as const;
 export const DEFAULT_TIMELINE_RESOLUTION = 1 / 0.7;
 export const DEFAULT_CLIP_HEIGHT = 40;
 
+/** Zoom step factor for the toolbar's in/out buttons, like the canvas camera's. */
+export const ZOOM_STEP = 1.25;
+
 export const TIMELINE_PADDING_LEFT = 8;
 
 export const WHEEL_LINE_HEIGHT = 16;

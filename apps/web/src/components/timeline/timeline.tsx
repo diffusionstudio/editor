@@ -12,6 +12,7 @@ import { insertAssetsInNewScene } from '@/engine/new-scene';
 import { useLibrary } from '@/engine/library';
 import { useTimeline } from '@/context/timeline';
 import { ASSET_DRAG_TYPE } from '@/components/sidebar-left/folder-item';
+import { TimelineZoomToolbar } from './timeline-zoom-toolbar';
 
 /**
  * The timeline's canvas. What is drawn on it is the timeline system's
@@ -81,6 +82,7 @@ export function Timeline() {
         on:drop={handleDrop}
         on:dragover={handleDragOver}
       />
+      <TimelineZoomToolbar />
     </div>
   );
 }
