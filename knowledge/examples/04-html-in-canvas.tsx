@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* An AI prompt box as real HTML, centered in the frame.
  *
  *   cp examples/04-html-in-canvas.tsx ~/Projects/html-in-canvas/index.tsx

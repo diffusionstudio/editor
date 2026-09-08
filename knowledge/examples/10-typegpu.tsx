@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* TypeGPU on a <surface>: an underwater caustics shader written in TypeScript.
  *
  * The shader is TypeGPU's caustics example (docs.swmansion.com/TypeGPU,

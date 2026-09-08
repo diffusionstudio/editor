@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* Multi-stage generation: text-to-image keyframes, image-to-video motion,
  * a text-to-speech voiceover, generated ambience, and captions on top.
  *

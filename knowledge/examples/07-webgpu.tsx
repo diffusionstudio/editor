@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* WebGPU owning a <surface>: a triangle whose colors cycle with the playhead.
  *
  *   cp examples/07-webgpu.tsx ~/Projects/webgpu/index.tsx

@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* Redraw on a <surface>: the "hello" write-on stroke from redraw's docs.
  *
  * Redraw (redraw.dev) is a 2D renderer on WebGPU: a Library declares custom

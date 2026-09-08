@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* Three.js owning a <surface>: a glTF helmet spun by the playhead.
  *
  *   cp examples/06-three.tsx ~/Projects/three/index.tsx

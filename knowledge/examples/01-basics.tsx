@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* The everyday composition: sequenced A-roll, an image overlay, data-driven
  * titles via <For>, and a music bed under everything.
  *

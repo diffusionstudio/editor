@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* Declarative animation: useTicker exposes the playhead as reactive
  * accessors, createMemo derives values from it, and props consume the memos.
  *

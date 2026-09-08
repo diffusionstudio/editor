@@ -1,4 +1,3 @@
-/* @jsxImportSource @diffusionstudio/jsx */
 /* Anime.js timeline scrubbed by the playhead: one clock, two render worlds.
  *
  *   cp examples/05-anime-timeline.tsx ~/Projects/anime-timeline/index.tsx
