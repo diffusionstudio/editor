@@ -99,11 +99,12 @@ const pendingDeepLinks = new Map<DeepLinkChannel, string>();
 const LOG_BUFFER_MAX = 2000;
 const logBuffer: LogEntry[] = [];
 
-// A folder staged into the app bundle by scripts/stage-*.mjs (Contents/
-// Resources/<name> when packaged, apps/desktop/<name> in dev), or null when
-// it has not been staged.
-function stagedResource(name: string): string | null {
-  const dir = app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), name);
+// The knowledge base the MCP server serves: staged into the bundle by
+// scripts/stage-knowledge.mjs (Contents/Resources/knowledge) when packaged;
+// the repo's own `knowledge/` in development, so edits show up without a
+// staging step. Null when neither exists.
+function knowledgeDir(): string | null {
+  const dir = app.isPackaged ? join(process.resourcesPath, "knowledge") : join(app.getAppPath(), "..", "..", "knowledge");
   return existsSync(dir) ? dir : null;
 }
 
@@ -112,8 +113,7 @@ function stagedResource(name: string): string | null {
 const dapi = new DapiServer({
   version: app.getVersion(),
   logs: () => logBuffer,
-  docsDir: stagedResource("docs"),
-  skillsDir: stagedResource("skills"),
+  knowledgeDir: knowledgeDir(),
   onFirstConnection() {
     enableHeadless();
     if (mainWindow && !mainWindow.isDestroyed()) {

@@ -205,9 +205,9 @@ Conventions throughout: single results are one JSON value, collections are JSON 
 
 ## Documentation
 
-- [CLI reference](reference/README.md): every command, its options, and its output
-- [JSX reference](reference/jsx/README.md): the composition markup with elements, timing, paints, generative assets, and captions
-- [Examples](examples/README.md): runnable compositions, from basic scenes and generative assets to three.js and raw WebGPU
+- [Tool reference](knowledge/reference/tools/README.md): every tool and CLI command, its options, and its output
+- [JSX reference](knowledge/reference/jsx/README.md): the composition markup with elements, timing, paints, generative assets, and captions
+- [Examples](knowledge/examples/README.md): runnable compositions, from basic scenes and generative assets to three.js and raw WebGPU
 
 ## Repository layout
 

@@ -4,9 +4,9 @@ Where each [pipeline](./README.md#pipeline) stage fails, and with what effect:
 
 | Stage | Where it surfaces | Effect |
 | ----- | ----------------- | ------ |
-| **Compile** (syntax, an unresolved import, a PascalCase composition tag, a control-flow component with no import) | A "Project failed to compile" toast, with the compiler's message; also on the app console ([`dapi logs`](../logs.md)) | Nothing is remounted. The canvas keeps the last good render, so a project in the middle of an edit is never blanked. |
+| **Compile** (syntax, an unresolved import, a PascalCase composition tag, a control-flow component with no import) | A "Project failed to compile" toast, with the compiler's message; also on the app console ([`dapi logs`](../tools/logs.md)) | Nothing is remounted. The canvas keeps the last good render, so a project in the middle of an edit is never blanked. |
 | **Evaluate / mount** (a throw at module scope or during render, a root that is not `<stage>`, a tag the host does not know, an element parented into its own subtree) | A "Project failed to render" toast with the thrown message | The half-built document is disposed — **nothing is left behind** — and the previous render stays on the canvas. |
-| **Source resolution** (a path that does not exist, an unreachable URL, a per-model constraint on `aspectRatio` / `duration` / a feature flag, a caption with no audible audio in its scene) | The element on the canvas, and `generations` in [`dapi context`](../context.md) | Per element, not per mount: everything else stays mounted and playable. The element stops showing its generating state and is left without a paint, carrying the reason — see below. |
+| **Source resolution** (a path that does not exist, an unreachable URL, a per-model constraint on `aspectRatio` / `duration` / a feature flag, a caption with no audible audio in its scene) | The element on the canvas, and `generations` in [`dapi context`](../tools/context.md) | Per element, not per mount: everything else stays mounted and playable. The element stops showing its generating state and is left without a paint, carrying the reason — see below. |
 
 Runtime errors are reported against the compiled module. Since types are stripped rather than checked, run `npx tsc --noEmit` in the project folder to catch what the compile will not.
 

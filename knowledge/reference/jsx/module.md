@@ -14,7 +14,7 @@ export default function Project() {
 }
 ```
 
-The component receives no props. [`dapi open <dir>`](../open.md) opens the folder — creating it, and an `index.tsx` holding an empty stage, if it is not a project yet.
+The component receives no props. [`dapi open <dir>`](../tools/open.md) opens the folder — creating it, and an `index.tsx` holding an empty stage, if it is not a project yet.
 
 ## The folder
 
@@ -28,9 +28,9 @@ The component receives no props. [`dapi open <dir>`](../open.md) opens the folde
 | `assets.yml` | The asset library (see [media.md](./media.md#the-library)). |
 | `assets/` | The library's files: symlinks to media brought in from elsewhere, plus what the app produced itself, generations under `assets/generated/`. Media imported through the app is linked where it lies, never copied. |
 | `cache/` | Derived data (thumbnails, waveforms). Disposable. |
-| `AGENTS.md` | The agent entry point: how to connect to the app, whose MCP server carries this reference, and how to work here. |
+| `README.md` | What the folder holds and how to work in it — including, for agents, that the app's MCP server carries this reference. |
 
-Everything is written once and is yours from then on. The reference itself is not copied into the project: the app serves the installed version's as MCP resources under `dapi://docs/`.
+Everything is written once and is yours from then on. The reference itself is not copied into the project: the app serves the installed version's as MCP resources under `dapi://reference/`.
 
 ## Ids
 
@@ -40,7 +40,7 @@ Every composition element carries an `id`, and the app stamps one onto every ele
 <rect id="k3f9x1" x={40} y={40} width={640} height={360} fill="#FF0055" />
 ```
 
-An id is what makes an element addressable: it is how an entity is traced back to the JSX that produced it, so a change made on the canvas can be written to the element it came from, and it is what [`dapi capture`](../capture.md) takes to render one node. It is also how elements point at each other within a render — [`syncTo`](./audio-sync.md) names the id of the clip it aligns against.
+An id is what makes an element addressable: it is how an entity is traced back to the JSX that produced it, so a change made on the canvas can be written to the element it came from, and it is what [`dapi capture`](../tools/capture.md) takes to render one node. It is also how elements point at each other within a render — [`syncTo`](./audio-sync.md) names the id of the clip it aligns against.
 
 **Ids are yours to write.** Any string is valid, and `id="hero"` is worth more to read than anything minted. The stamp only fills in elements that have none, so renaming one by hand is safe. Ids are stripped at compile time and never reach the runtime as a prop; what survives is the stamp that carries them.
 

@@ -62,4 +62,4 @@ The canonical internal unit is frames at **30 fps**; all formats are converted o
 | `"MM:SS"` | `"02:30"` | Minutes and seconds. |
 | `"HH:MM:SS"` | `"01:02:30"` | Hours, minutes, seconds. |
 
-CLI flags documented as taking a `Time` value (e.g. `--time` on [`capture`](../capture.md) and [`media grab`](../media/grab.md)) accept the same formats. Times in command **output** are plain seconds.
+CLI flags documented as taking a `Time` value (e.g. `--time` on [`capture`](../tools/capture.md) and [`media grab`](../tools/media/grab.md)) accept the same formats. Times in command **output** are plain seconds.

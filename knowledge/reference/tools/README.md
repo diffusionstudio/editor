@@ -2,7 +2,7 @@
 
 Reference for `dapi`, the Diffusion Studio CLI. Every canvas and project command talks to the running app over a local socket. Responses are JSON written to stdout; errors are human-readable messages on stderr with a non-zero exit.
 
-Each feature command has its own file (linked below). The JSX code syntax specified in [jsx/](./jsx/README.md) is **pseudo-SVG**, mirroring SVG's shape-and-paint model with the editor's own tags and props rather than the SVG spec.
+Each feature command has its own file (linked below). The JSX code syntax specified in [jsx/](../jsx/README.md) is **pseudo-SVG**, mirroring SVG's shape-and-paint model with the editor's own tags and props rather than the SVG spec.
 
 A project is a folder of that JSX, and **the source is the document**: the app compiles the entry file and renders every element into an editable node, and edits made on the canvas are written back to the element that authored them. So the loop is `dapi open <dir>` once, then edit the files — there is no command that pushes content into the app. What the commands do is read the running app ([`context`](./context.md), [`capture`](./capture.md), [`logs`](./logs.md)), inspect media, and list what a declaration may name.
 
@@ -16,7 +16,7 @@ A project is a folder of that JSX, and **the source is the document**: the app c
 
 How the surface is divided:
 
-- AI asset generation (image / video / speech / audio) is declared in the project module (`generate.*`, see [jsx/generate.md](./jsx/generate.md)). `models` and `voices` list what those declarations can reference.
+- AI asset generation (image / video / speech / audio) is declared in the project module (`generate.*`, see [jsx/generate.md](../jsx/generate.md)). `models` and `voices` list what those declarations can reference.
 - Inspecting an existing asset (probe / transcribe / listen / filmstrip / waveform / grab) lives under `media`.
 
 ## Commands

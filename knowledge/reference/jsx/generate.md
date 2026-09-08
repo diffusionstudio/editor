@@ -34,11 +34,11 @@ export default function Project() {
 
 Declarations are **pure**: calling `generate.*` validates its options and returns a ref; nothing is requested until an element carrying it mounts. A ref that is never used by a mounted element (directly or as an input to another asset) is never generated. Declarations may live at module scope or inside components.
 
-Generation is **asynchronous and non-blocking**: the element is on the canvas immediately, showing a generating state, and its paint attaches when the asset lands. [`dapi context`](../context.md) reports where each one stands — generating, failed with the reason, or done with the library path it landed as — and a declaration that fails leaves its element carrying an [`error`](./errors.md#failed-sources).
+Generation is **asynchronous and non-blocking**: the element is on the canvas immediately, showing a generating state, and its paint attaches when the asset lands. [`dapi context`](../tools/context.md) reports where each one stands — generating, failed with the reason, or done with the library path it landed as — and a declaration that fails leaves its element carrying an [`error`](./errors.md#failed-sources).
 
 ## Declaration options
 
-Run [`dapi models <type>`](../models.md) to discover valid `model` ids and per-model constraints; [`dapi voices`](../voices.md) lists voices.
+Run [`dapi models <type>`](../tools/models.md) to discover valid `model` ids and per-model constraints; [`dapi voices`](../tools/voices.md) lists voices.
 
 ```ts
 type AssetInput = string | AssetRef;   // path, URL, asset id, or another declaration

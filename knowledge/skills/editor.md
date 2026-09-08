@@ -4,7 +4,7 @@ How to understand source material before editing it. Inspect only the modalities
 
 - **Always probe first.** `dapi media probe <id|path>` reports the container and its tracks, telling you up front whether the file has a video track, an audio track, or both. Everything after branches on that.
 - **Get the lay of the land.** Render a `dapi media waveform` (audio) and a `dapi media filmstrip` (video) for a fast, cheap overview of where the loud and quiet stretches fall, and where the visual scene changes are. A filmstrip shows coarse structure and scene state, not crop, framing, readability, or an exact cut frame.
-- **Listen to the audio.** Run `dapi media listen` with a prompt tailored to the context (what you actually need to know), and explicitly ask the model to include timestamps in its answer. See [media-listen.md](references/examples/prompts/media-listen.md) for prompt patterns.
+- **Listen to the audio.** Run `dapi media listen` with a prompt tailored to the context (what you actually need to know), and explicitly ask the model to include timestamps in its answer. See [media-listen.md](../guides/prompts/media-listen.md) for prompt patterns.
 - **Transcribe speech.** For speech, `dapi media transcribe` prints the full transcript with word-level start/end times directly — read any segment straight from it.
 - **Sample the video against the audio.** Use `dapi media grab` to pull frames. When the audio has already pointed you at specific moments, feed those timestamps straight in from the transcript or listen output, e.g. `-t '00:32' '00:45' ...`. When you need a visual pass without such cues, reach for `--auto`: it scans the footage and keeps only the frames where the picture settles into a new visual state, dropping near-duplicates.
 
@@ -25,7 +25,7 @@ How to understand source material before editing it. Inspect only the modalities
 - Don't darken, blur, or cover the picture to make something on top of it legible
 - Let visuals, sound, and voice carry context; let text punctuate rather than explain. Do not add copy, eyebrows, labels, underlines, or brand color highlights unless the brief or explicit video guidance calls for them; examples alone are not instructions.
 - Choose easing from the intended weight, energy, and continuity of the action.
-- When the brief, project, or user specifies branding, follow it. Only when none is specified, fall back to the [Diffusion Studio brand](references/brand/README.md) — its design, voice, video, and library references, and the components and compositions bundled with them.
+- When the brief, project, or user specifies branding, follow it. Only when none is specified, fall back to the [Diffusion Studio brand](../brand/README.md) — its design, voice, video, and library references, and the components and compositions bundled with them.
 
 # Verification
 
@@ -47,7 +47,7 @@ How to confirm a change actually produced what you intended. A clean save does n
 - Hoist the properties that define the composition's look — title copy, font family and size, accent colors, key padding — into top-level consts annotated with `@inspect`, so they become live controls in the app's inspector.
 - For anything 3D, use Three.js drawn into a `<surface>` tag.
 - For motion graphics, overlays and UI-heavy graphics, the `<html>` tag driven by a paused [anime.js](https://animejs.com) timeline
-- Before animating anything, read the [easings reference](references/easings.md) and choose easings deliberately — default or linear easing is what makes motion read as a slideshow.
+- Before animating anything, read the [easings reference](../guides/motion/easings.md) and choose easings deliberately — default or linear easing is what makes motion read as a slideshow.
 - Add auto captions last, after everything else is assembled, so they transcribe the finished audio at its final placement.
 - Open the application in the background (`dapi open -b`) for tasks that don't require an editing UI.
 - Only render (export) the result when prompted.
@@ -55,11 +55,13 @@ How to confirm a change actually produced what you intended. A clean save does n
 
 # Docs
 
-Every project carries its own authoring reference, written by the app for the installed version, and its `AGENTS.md` points at it. Read it there and trust it over memory; it is app-owned, so never edit it.
+The authoring reference is served by the app for the installed version: read it there and trust it over memory.
 
-- [Installation guide, read when dapi is unavailable](references/installation.md)
-- [Easings: which cubic-bezier to use and when](references/easings.md)
-- [Diffusion Studio brand — the fallback when no other branding is specified](references/brand/README.md)
+- [JSX reference — elements, timing, paints, generation, captions](../reference/jsx/README.md)
+- [Tool reference — every tool, its arguments and its output](../reference/tools/README.md)
+- [Examples — complete compositions, basics through shaders](../examples/README.md)
+- [Easings: which cubic-bezier to use and when](../guides/motion/easings.md)
+- [Diffusion Studio brand — the fallback when no other branding is specified](../brand/README.md)
 
 # Examples
 
@@ -67,9 +69,9 @@ Read worked example(s) that match your context.
 
 ## Video editing
 
-- [Long-form talking head](references/examples/video-editing/talking-head.md)
-- [Podcast clipping](references/examples/video-editing/podcast-clip.md)
+- [Long-form talking head](../guides/walkthroughs/talking-head.md)
+- [Podcast clipping](../guides/walkthroughs/podcast-clip.md)
 
 ## Prompts
 
-- [Writing prompts for `dapi media listen`](references/examples/prompts/media-listen.md)
+- [Writing prompts for `dapi media listen`](../guides/prompts/media-listen.md)

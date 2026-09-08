@@ -5,7 +5,7 @@
 import { app, dialog, shell, type BrowserWindow } from "electron";
 import { execFile } from "node:child_process";
 import { watch, type FSWatcher } from "node:fs";
-import { cp, mkdir, readdir, readFile, realpath, rename, rm, rmdir, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { nanoid } from "nanoid";
@@ -565,6 +565,14 @@ a plain npm package whose entry file is a [Solid](https://www.solidjs.com)
 component; the app compiles it and renders every element into an editable node
 on the canvas.
 
+## Agents
+
+Everything an agent needs is in the app's MCP server (\`dapi\`): its tools
+are the API, its instructions say how to work, and its resources are the
+authoring reference for the installed version. If it is not among your tools,
+add it — the app serves it at \`${MCP_URL}\` while it is running — and start
+a new session.
+
 ## Structure
 
 | Path | What it is |
@@ -575,7 +583,6 @@ on the canvas.
 | \`assets.yml\` | The asset library: for every asset its library path, where its bytes are, and what it was found to be. Written by the app; hand edits are read on the next load. |
 | \`assets/\` | The library's files: put one here and it is taken in while the app watches, and the app writes its own here too — generations under \`assets/generated/\`. Media imported through the app is linked where it lies instead, never copied. |
 | \`cache/\` | Derived data (thumbnails, waveforms). Disposable, and not checked in. |
-| \`AGENTS.md\` | The agent entry point: how to connect to the app, whose MCP server carries the authoring reference, and how to work here. |
 
 ## Authoring
 
@@ -662,61 +669,9 @@ All of them talk to the running app, except \`fonts\` and \`fetch\`.
 
 ## Reference
 
-- [JSX reference](https://github.com/diffusionstudio/editor/blob/main/reference/jsx/README.md): elements, timing, paints, generation, captions
-- [CLI reference](https://github.com/diffusionstudio/editor/blob/main/reference/README.md): every command, its options and its output
-- [Examples](https://github.com/diffusionstudio/editor/tree/main/examples): runnable compositions to read
-`;
-
-/**
- * The agent entry point, written once like the README: the file coding agents
- * load without being asked, and therefore the one place a project is reliably
- * discovered from. It points at the app rather than carrying docs of its own:
- * the reference lives in the app's MCP server, so it is always the installed
- * version's, and being the author's file after the first write, an agent can
- * append project conventions to it while the pointer stays put.
- */
-const AGENTS = `# Authoring this project
-
-A Diffusion Studio project: a video composition authored as code. The entry
-(\`index.tsx\`) default-exports a Solid component that renders a \`<stage>\`;
-the app compiles it and renders every element into an editable node on the
-canvas. The source is the document in both directions: saving recompiles and
-remounts the project, and edits made in the app land back in the JSX as props
-on the element they were authored as.
-
-## Connect to the app
-
-The authoring reference lives in the app, not in this folder, so it is always
-the installed version's. Connect to the app's MCP server at
-\`${MCP_URL}\` — \`dapi open <this folder>\` launches the app and opens the
-project, or launch the app and open it there. The server's instructions say
-how to work; its resources are the docs; its tools are the API.
-
-| Read | For |
-| ---- | --- |
-| \`dapi://docs/reference/jsx/README.md\` | The JSX contract — elements, props, pipeline. Start here. |
-| \`dapi://docs/reference/jsx/timing.md\` | \`start\`/\`end\`/\`sourceIn\`/\`sourceOut\`, and the time formats. |
-| \`dapi://docs/reference/jsx/generate.md\` | Declaring AI-generated assets (\`generate.*\`). |
-| \`dapi://docs/reference/jsx/variables.md\` | \`@inspect\` variables: annotated consts as live inspector controls. |
-| \`dapi://docs/reference/README.md\` | Every tool, its arguments and its output. |
-| \`dapi://docs/examples/\` | Complete compositions, basics through shaders. |
-| \`dapi://context\` | What the app has open, where its playhead sits, and where generations stand. |
-
-Without MCP, the same tools are the \`dapi\` command line, with the same
-descriptions under \`--help\`. Every command is an npm script here:
-\`npm run\` lists them, \`npm run <name> -- <args>\` runs one.
-
-## Working here
-
-- Verify visually with the \`capture\` tool (\`npm run capture -- <sceneId>\`):
-  it renders the scene's frames exactly as an export encodes them. Do not
-  export a video to check work.
-- Position and size are explicit, in pixels. There is no layout pass and no CSS.
-- A composition you author from scratch marks one scene \`active\` and gives
-  \`<stage>\` a \`camera\` framing it, or the project opens on an empty timeline
-  with the frame off screen.
-- Times are seconds (\`1.5\`), frames (\`"45f"\`), or \`"MM:SS"\`.
-- Types are stripped at compile time, never checked: run \`npx tsc --noEmit\`.
+- [JSX reference](https://github.com/diffusionstudio/editor/blob/main/knowledge/reference/jsx/README.md): elements, timing, paints, generation, captions
+- [Tool reference](https://github.com/diffusionstudio/editor/blob/main/knowledge/reference/tools/README.md): every tool and command, its options and its output
+- [Examples](https://github.com/diffusionstudio/editor/tree/main/knowledge/examples): runnable compositions to read
 `;
 
 // ---------------------------------------------------------------------------
@@ -725,24 +680,9 @@ descriptions under \`--help\`. Every command is an npm script here:
 /**
  * The project-relative folder the app owns outright, ignored by git and by
  * the project watcher. Earlier versions copied the authoring docs into it;
- * the docs now live in the app's MCP server, so the folder is only cleared.
+ * the docs now live in the app's MCP server.
  */
 const APP_DIR = ".diffusion";
-
-/**
- * Removes the docs copy earlier versions kept in `.diffusion/docs`. They
- * would describe an app that is no longer installed, and an agent that finds
- * them would trust them over the server. Best-effort: nothing depends on it.
- */
-async function removeLegacyDocs(dir: string): Promise<void> {
-  const appDir = join(dir, APP_DIR);
-  await rm(join(appDir, "docs"), { recursive: true, force: true });
-  try {
-    await rmdir(appDir);
-  } catch {
-    // Not empty, or never there.
-  }
-}
 
 async function writeIfMissing(dir: string, name: string, content: string): Promise<void> {
   const path = join(dir, name);
@@ -794,9 +734,7 @@ export async function scaffold(dir: string, displayName = basename(dir)): Promis
   await writeIfMissing(dir, "tsconfig.json", TSCONFIG);
   await writeIfMissing(dir, ".gitignore", GITIGNORE);
   await writeIfMissing(dir, "README.md", readme(displayName));
-  await writeIfMissing(dir, "AGENTS.md", AGENTS);
 
-  await removeLegacyDocs(dir).catch(() => {});
 
   if (!(await exists(join(dir, MANIFEST_FILE)))) {
     await writeManifest(dir, EMPTY_MANIFEST);

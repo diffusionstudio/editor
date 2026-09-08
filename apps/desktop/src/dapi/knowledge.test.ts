@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -13,33 +13,32 @@ import { instructions, registerResources } from "./knowledge";
 
 import type { KnowledgeDeps } from "./knowledge";
 
-// A staged bundle in miniature: docs with a reference page, an example and a
-// stray file that is not a doc; a skill with frontmatter and a reference.
+// A knowledge base in miniature, laid out like the repo's `knowledge/`.
 const root = mkdtempSync(join(tmpdir(), "dapi-knowledge-"));
-const docsDir = join(root, "docs");
-const skillsDir = join(root, "skills");
+const knowledgeDir = join(root, "knowledge");
 const projectDir = join(root, "project");
 
 beforeAll(() => {
-  mkdirSync(join(docsDir, "reference", "jsx"), { recursive: true });
-  mkdirSync(join(docsDir, "examples", "node_modules"), { recursive: true });
-  writeFileSync(join(docsDir, "reference", "README.md"), "# Reference\n");
-  writeFileSync(join(docsDir, "reference", "jsx", "text.md"), "# text\n");
-  writeFileSync(join(docsDir, "examples", "01-hello.tsx"), "export default <scene />;\n");
-  writeFileSync(join(docsDir, "examples", "package.json"), "{}\n");
-  writeFileSync(join(docsDir, "examples", "node_modules", "ignored.md"), "no\n");
-  mkdirSync(join(skillsDir, "editor", "references"), { recursive: true });
-  writeFileSync(join(skillsDir, "editor", "SKILL.md"), "---\nname: editor\ndescription: trigger text\n---\n\n# Footage analysis\n\nProbe first.\n");
-  writeFileSync(join(skillsDir, "editor", "references", "easings.md"), "# Easings\n");
+  mkdirSync(join(knowledgeDir, "reference", "jsx"), { recursive: true });
+  mkdirSync(join(knowledgeDir, "examples", "node_modules"), { recursive: true });
+  mkdirSync(join(knowledgeDir, "skills"), { recursive: true });
+  mkdirSync(join(knowledgeDir, "brand", "assets", "logos"), { recursive: true });
+  writeFileSync(join(knowledgeDir, "INSTRUCTIONS.md"), "Diffusion Studio is running.\n\n---\nname: editor\npath: dapi://skills/editor.md\n---\n");
+  writeFileSync(join(knowledgeDir, "reference", "jsx", "text.md"), "# text\n\nThe `<text>` element draws a run of text. It wraps at `width`.\n\n## Props\n");
+  writeFileSync(join(knowledgeDir, "reference", "README.md"), "---\ntitle: x\n---\n# Reference\n\n| a | b |\n\nEvery page, one per tool.\n");
+  writeFileSync(join(knowledgeDir, "skills", "editor.md"), "# Editing\n\nHow to edit.\n");
+  writeFileSync(join(knowledgeDir, "examples", "01-hello.tsx"), "export default <scene />;\n");
+  writeFileSync(join(knowledgeDir, "examples", "tsconfig.json"), "{}\n");
+  writeFileSync(join(knowledgeDir, "examples", "node_modules", "ignored.md"), "no\n");
+  writeFileSync(join(knowledgeDir, "brand", "assets", "logos", "icon.svg"), "<svg/>\n");
+  writeFileSync(join(knowledgeDir, ".DS_Store"), "");
   mkdirSync(projectDir);
-  writeFileSync(join(projectDir, "AGENTS.md"), "# Project\n");
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-const deps = (projectOpen: boolean): KnowledgeDeps => ({
-  docsDir,
-  skillsDir,
+const deps = (projectOpen: boolean, dir: string | null = knowledgeDir): KnowledgeDeps => ({
+  knowledgeDir: dir,
   logs: () => [{ ts: 1, level: "info", message: "hi", source: "" }],
   context: async () => ({ rootDir: root, projectDir: projectOpen ? projectDir : null, currentTime: null, fontFamilies: [], generations: [] }),
 });
@@ -55,56 +54,61 @@ async function connect(d: KnowledgeDeps): Promise<Client> {
 }
 
 describe("instructions", () => {
-  it("is the preamble followed by the skill without its frontmatter", () => {
+  it("is INSTRUCTIONS.md followed by where the tree sits on disk", () => {
     const text = instructions(deps(true));
-    expect(text.startsWith("Diffusion Studio, a video editor")).toBe(true);
-    expect(text).toContain("dapi://docs/reference/README.md");
-    expect(text.endsWith("# Footage analysis\n\nProbe first.")).toBe(true);
-    expect(text).not.toContain("trigger text");
+    expect(text.startsWith("Diffusion Studio is running.")).toBe(true);
+    expect(text).toContain("path: dapi://skills/editor.md");
+    expect(text).toContain(knowledgeDir);
   });
 
-  it("falls back to the preamble alone when nothing is staged", () => {
-    const text = instructions({ ...deps(true), skillsDir: null });
-    expect(text.startsWith("Diffusion Studio, a video editor")).toBe(true);
-    expect(text).not.toContain("Footage analysis");
+  it("falls back to a one-liner when nothing is staged", () => {
+    const text = instructions(deps(true, null));
+    expect(text).toContain("The tools are the whole API");
+    expect(text).not.toContain("dapi://skills");
   });
 });
 
 describe("resources", () => {
-  it("lists the staged docs and skill references, docs only, no node_modules", async () => {
+  it("lists every page under dapi://<path>, docs and svg only, no node_modules or dotfiles", async () => {
     const client = await connect(deps(true));
     const uris = (await client.listResources()).resources.map((r) => r.uri).sort();
     expect(uris).toEqual([
+      "dapi://brand/assets/logos/icon.svg",
       "dapi://context",
-      "dapi://docs/examples/01-hello.tsx",
-      "dapi://docs/reference/README.md",
-      "dapi://docs/reference/jsx/text.md",
+      "dapi://examples/01-hello.tsx",
       "dapi://logs",
-      "dapi://project/AGENTS.md",
-      "dapi://skills/editor/SKILL.md",
-      "dapi://skills/editor/references/easings.md",
+      "dapi://reference/README.md",
+      "dapi://reference/jsx/text.md",
+      "dapi://skills/editor.md",
     ]);
     await client.close();
   });
 
-  it("reads a file, the live state, and the open project's AGENTS.md", async () => {
+  it("describes markdown pages by their first paragraph, skipping headings, frontmatter and tables", async () => {
     const client = await connect(deps(true));
-    expect((await client.readResource({ uri: "dapi://docs/reference/jsx/text.md" })).contents[0]).toMatchObject({
-      mimeType: "text/markdown",
-      text: "# text\n",
-    });
-    expect((await client.readResource({ uri: "dapi://docs/examples/01-hello.tsx" })).contents[0]).toMatchObject({ mimeType: "text/plain" });
+    const byUri = new Map((await client.listResources()).resources.map((r) => [r.uri, r]));
+    expect(byUri.get("dapi://reference/jsx/text.md")?.description).toBe("The `<text>` element draws a run of text. It wraps at `width`.");
+    expect(byUri.get("dapi://reference/README.md")?.description).toBe("Every page, one per tool.");
+    expect(byUri.get("dapi://examples/01-hello.tsx")?.description).toBeUndefined();
+    await client.close();
+  });
+
+  it("reads a page, an svg, and the live state", async () => {
+    const client = await connect(deps(true));
+    expect((await client.readResource({ uri: "dapi://reference/jsx/text.md" })).contents[0]).toMatchObject({ mimeType: "text/markdown" });
+    expect((await client.readResource({ uri: "dapi://brand/assets/logos/icon.svg" })).contents[0]).toMatchObject({ mimeType: "image/svg+xml", text: "<svg/>\n" });
     const context = await client.readResource({ uri: "dapi://context" });
     expect(JSON.parse((context.contents[0] as { text: string }).text).projectDir).toBe(projectDir);
     const logs = await client.readResource({ uri: "dapi://logs" });
     expect(JSON.parse((logs.contents[0] as { text: string }).text).entries).toHaveLength(1);
-    expect((await client.readResource({ uri: "dapi://project/AGENTS.md" })).contents[0]).toMatchObject({ text: "# Project\n" });
     await client.close();
   });
 
-  it("explains a missing project instead of failing silently", async () => {
-    const client = await connect(deps(false));
-    await expect(client.readResource({ uri: "dapi://project/AGENTS.md" })).rejects.toThrow(/No project open/);
-    await client.close();
+  it("serves the repo's own knowledge base without broken instructions", () => {
+    const repoKnowledge = join(__dirname, "..", "..", "..", "..", "knowledge");
+    if (!existsSync(repoKnowledge)) return;
+    const text = instructions(deps(true, repoKnowledge));
+    expect(text).toContain("dapi://skills/editor.md");
+    expect(text).not.toContain("\\`");
   });
 });

@@ -19,7 +19,7 @@
     "release": "node scripts/release.mjs",
     "postinstall": "patch-package",
     "lint": "npm run lint --workspaces --if-present",
-    "check": "npm run check --workspaces --if-present && tsc -p examples --noEmit"
+    "check": "npm run check --workspaces --if-present"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"

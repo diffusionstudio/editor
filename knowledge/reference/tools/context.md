@@ -52,4 +52,4 @@ blocking: generation is asynchronous, so poll this until nothing is
 [`dapi media probe`](./media/probe.md) and its siblings; a `failed` row's
 `error` is the same message the element carries as its `error` prop, which is
 what keeps it from being generated again (see
-[jsx/errors.md](./jsx/errors.md#failed-sources)).
+[jsx/errors.md](../jsx/errors.md#failed-sources)).

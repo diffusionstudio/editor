@@ -23,10 +23,8 @@ export type DapiServerDeps = {
   logs(): LogEntry[];
   /** Called once, on the first connection: an agent is driving, so the UI may step back. */
   onFirstConnection(): void;
-  /** The staged docs (`reference/`, `examples/`), served as resources. Null when not staged. */
-  docsDir: string | null;
-  /** The staged skills; the editor skill is the server's instructions. Null when not staged. */
-  skillsDir: string | null;
+  /** The staged knowledge base: INSTRUCTIONS.md for every session, the rest as resources. Null when not staged. */
+  knowledgeDir: string | null;
 };
 
 /**
@@ -113,8 +111,7 @@ export class DapiServer {
   /** One MCP server over the whole catalog, plus the docs and live state as resources. */
   private createSession(): McpServer {
     const knowledge = {
-      docsDir: this.deps.docsDir,
-      skillsDir: this.deps.skillsDir,
+      knowledgeDir: this.deps.knowledgeDir,
       logs: this.deps.logs,
       context: (signal: AbortSignal) => this.renderer.call("context", {}, signal) as Promise<ToolOutput<"context">>,
     };

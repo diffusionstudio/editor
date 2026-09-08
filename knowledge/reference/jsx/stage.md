@@ -42,4 +42,4 @@ The stage takes no timing, no transform and no paints — it is not a node, it i
 
 A root's place on the canvas is its own `x`/`y`, in the same document space the camera matrix moves through. Roots that do not say where they sit all sit at the origin, on top of each other; give each after the first an `x` clear of the ones before it, as the example above does.
 
-Which scene the playhead, the timeline and [`dapi capture`](../capture.md) are pointed at is a scene's `active`, not the stage's business. At most one scene carries it, and only a direct child of `<stage>` can.
+Which scene the playhead, the timeline and [`dapi capture`](../tools/capture.md) are pointed at is a scene's `active`, not the stage's business. At most one scene carries it, and only a direct child of `<stage>` can.

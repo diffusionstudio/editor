@@ -2,11 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// What an agent needs to know besides the tools: the server's instructions,
-// which every client receives on connect, and resources for the docs the app
-// ships, the skill's references, and the live state agents poll. All of it
-// comes from the files staged into the app bundle, so what an agent reads is
-// exactly what the installed version documents.
+// What an agent needs to know besides the tools, served from the knowledge
+// base staged into the app bundle (the repo's `knowledge/`): INSTRUCTIONS.md
+// is the server's instructions, which every client receives on connect, and
+// every other page is a resource under `dapi://<path>`, so what an agent
+// reads is exactly what the installed version documents. Two live
+// resources sit beside them for the state agents poll.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -16,47 +17,43 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { LogEntry, ToolOutput } from "@diffusionstudio/dapi";
 
 export type KnowledgeDeps = {
-  /** `Contents/Resources/docs`: `reference/` and `examples/`. Null when not staged. */
-  docsDir: string | null;
-  /** `Contents/Resources/skills`: one folder per skill with a SKILL.md. Null when not staged. */
-  skillsDir: string | null;
+  /** The staged `knowledge/` tree. Null when not staged. */
+  knowledgeDir: string | null;
   logs(): LogEntry[];
   context(signal: AbortSignal): Promise<ToolOutput<"context">>;
 };
 
-const DOC_EXTENSIONS = new Set([".md", ".ts", ".tsx"]);
+export const INSTRUCTIONS_FILE = "INSTRUCTIONS.md";
 
-const PREAMBLE = `Diffusion Studio, a video editor, is running on this machine and you are connected to it. The tools are the whole API: their names, descriptions and input schemas are authoritative and match the \`dapi\` command line one to one (\`media_grab\` is \`dapi media grab\`), so anything written for the CLI applies to the tools. Projects are folders of JSX; \`open\` a folder once, then write its files and save — the app recompiles and re-renders.
+const MIME_TYPES: Record<string, string> = {
+  ".md": "text/markdown",
+  ".ts": "text/plain",
+  ".tsx": "text/plain",
+  ".svg": "image/svg+xml",
+};
 
-Read the resources before relying on memory: \`dapi://docs/reference/README.md\` covers every tool, \`dapi://docs/reference/jsx/README.md\` is the JSX contract, \`dapi://docs/examples/\` holds complete compositions, and the skill's own references (brand, easings, worked examples) live under \`dapi://skills/\`. \`dapi://context\` reports the open project, the playhead and generation state; \`dapi://logs\` is the app's console; \`dapi://project/AGENTS.md\` is the open project's own entry point.`;
+const FALLBACK_INSTRUCTIONS =
+  "Diffusion Studio, a video editor, is running on this machine and you are connected to it. The tools are the whole API; their descriptions are authoritative.";
 
-/** The text every client gets on connect: a preamble about this server, then the editor skill. */
+/**
+ * The text every client gets on connect: INSTRUCTIONS.md from the knowledge
+ * base, plus where that tree sits on disk, since resources carry text and the
+ * brand kit has logos, fonts and components meant to be copied.
+ */
 export function instructions(deps: KnowledgeDeps): string {
-  const parts = [PREAMBLE];
-  // Resources carry text; brand logos, fonts, and components to copy into a
-  // project are files, so say where the same trees sit on disk.
-  const onDisk = [deps.docsDir && `the docs at \`${deps.docsDir}\``, deps.skillsDir && `the skills at \`${deps.skillsDir}\``].filter(Boolean);
-  if (onDisk.length > 0) parts.push(`The same files are on disk, for anything a resource cannot carry (logos, fonts, components to copy): ${onDisk.join(" and ")}. They belong to the app; read them, never edit them.`);
-  const skill = deps.skillsDir ? readSkill(join(deps.skillsDir, "editor", "SKILL.md")) : null;
-  if (skill) parts.push("The editor skill's guidance follows.", skill);
+  const text = deps.knowledgeDir ? readText(join(deps.knowledgeDir, INSTRUCTIONS_FILE)) : null;
+  const parts = [text?.trim() || FALLBACK_INSTRUCTIONS];
+  if (deps.knowledgeDir) {
+    parts.push(
+      `The resources under \`dapi://\` are the files at \`${deps.knowledgeDir}\`, for anything a resource cannot carry (fonts, imagery, components to copy). They belong to the app; read them, never edit them.`,
+    );
+  }
   return parts.join("\n\n");
 }
 
-function readSkill(path: string): string | null {
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch {
-    return null;
-  }
-  // Drop the YAML frontmatter: the name and trigger description are for the
-  // skills index, not for an agent already connected.
-  return text.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
-}
-
 export function registerResources(session: McpServer, deps: KnowledgeDeps): void {
-  for (const file of staticFiles(deps)) {
-    session.registerResource(file.name, file.uri, { title: file.name, mimeType: file.mimeType }, async () => ({
+  for (const file of pages(deps)) {
+    session.registerResource(file.name, file.uri, { title: file.name, description: file.description, mimeType: file.mimeType }, async () => ({
       contents: [{ uri: file.uri, mimeType: file.mimeType, text: await readFile(file.path, "utf8") }],
     }));
   }
@@ -78,35 +75,23 @@ export function registerResources(session: McpServer, deps: KnowledgeDeps): void
       contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ entries: deps.logs() }) }],
     }),
   );
-
-  session.registerResource(
-    "project-agents",
-    "dapi://project/AGENTS.md",
-    { title: "Open project's AGENTS.md", description: "The agent entry point the app writes into every project.", mimeType: "text/markdown" },
-    async (uri, extra) => {
-      const { projectDir } = await deps.context(extra.signal);
-      if (!projectDir) throw new Error("No project open — run open first");
-      return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: await readFile(join(projectDir, "AGENTS.md"), "utf8") }] };
-    },
-  );
 }
 
-type StaticFile = { name: string; uri: string; path: string; mimeType: string };
+type Page = { name: string; uri: string; path: string; mimeType: string; description?: string };
 
-// The listing is the same for every session; walk the staged trees once.
-let cache: { key: string; files: StaticFile[] } | null = null;
+// The listing is the same for every session; walk the staged tree once.
+let cache: { dir: string; pages: Page[] } | null = null;
 
-function staticFiles(deps: KnowledgeDeps): StaticFile[] {
-  const key = `${deps.docsDir}\n${deps.skillsDir}`;
-  if (cache?.key === key) return cache.files;
-  const files: StaticFile[] = [];
-  if (deps.docsDir) collect(deps.docsDir, deps.docsDir, "dapi://docs", files);
-  if (deps.skillsDir) collect(deps.skillsDir, deps.skillsDir, "dapi://skills", files);
-  cache = { key, files };
-  return files;
+function pages(deps: KnowledgeDeps): Page[] {
+  if (!deps.knowledgeDir) return [];
+  if (cache?.dir === deps.knowledgeDir) return cache.pages;
+  const found: Page[] = [];
+  collect(deps.knowledgeDir, deps.knowledgeDir, found);
+  cache = { dir: deps.knowledgeDir, pages: found };
+  return found;
 }
 
-function collect(root: string, dir: string, uriBase: string, out: StaticFile[]): void {
+function collect(root: string, dir: string, out: Page[]): void {
   let entries: string[];
   try {
     entries = readdirSync(dir);
@@ -123,17 +108,38 @@ function collect(root: string, dir: string, uriBase: string, out: StaticFile[]):
       continue;
     }
     if (isDirectory) {
-      collect(root, path, uriBase, out);
+      collect(root, path, out);
       continue;
     }
-    const extension = entry.slice(entry.lastIndexOf("."));
-    if (!DOC_EXTENSIONS.has(extension)) continue;
+    const mimeType = MIME_TYPES[entry.slice(entry.lastIndexOf("."))];
+    if (!mimeType) continue;
     const name = relative(root, path).split(sep).join("/");
-    out.push({
-      name,
-      uri: `${uriBase}/${name}`,
-      path,
-      mimeType: extension === ".md" ? "text/markdown" : "text/plain",
-    });
+    if (name === INSTRUCTIONS_FILE) continue; // already in every session's instructions
+    out.push({ name, uri: `dapi://${name}`, path, mimeType, description: mimeType === "text/markdown" ? summary(path) : undefined });
+  }
+}
+
+/**
+ * A page's first paragraph after its heading, so `resources/list` reads as a
+ * table of contents without opening anything.
+ */
+function summary(path: string): string | undefined {
+  const text = readText(path);
+  if (!text) return undefined;
+  const body = text.replace(/^---\n[\s\S]*?\n---\n/, "");
+  const paragraph = body
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .find((block) => block && !block.startsWith("#") && !block.startsWith("```") && !block.startsWith("|") && !block.startsWith("<"));
+  if (!paragraph) return undefined;
+  const line = paragraph.replace(/\s+/g, " ");
+  return line.length > 200 ? `${line.slice(0, 197).trimEnd()}…` : line;
+}
+
+function readText(path: string): string | null {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return null;
   }
 }

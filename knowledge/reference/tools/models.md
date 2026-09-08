@@ -1,6 +1,6 @@
 # `dapi models [type]`
 
-Lists the generation models available for a media type, including each model's capabilities. Use it to discover valid model ids and the per-model constraints (durations, aspect ratios, features) to set on an asset declaration (see [jsx/generate.md](./jsx/generate.md)).
+Lists the generation models available for a media type, including each model's capabilities. Use it to discover valid model ids and the per-model constraints (durations, aspect ratios, features) to set on an asset declaration (see [jsx/generate.md](../jsx/generate.md)).
 
 There are no CLI commands that generate; asset generation is declared in the project module and produced on mount.
 
