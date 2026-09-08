@@ -6,7 +6,8 @@
 // an app resource (Contents/Resources/cli). The staged layout:
 //   cli/dapi.js        bundled CLI (built by apps/cli)
 //   cli/node_modules   deps the bundle keeps external (esbuild, babel)
-//   cli/bin/dapi       shell wrapper, the file that gets linked into PATH
+//   cli/bin/dapi       shell wrapper: what agents run as `dapi mcp` (registered
+//                      by mcp-install.ts) and the file that gets linked into PATH
 
 import { execFileSync } from "node:child_process";
 import { chmodSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";

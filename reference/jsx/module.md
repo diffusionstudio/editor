@@ -28,10 +28,9 @@ The component receives no props. [`dapi open <dir>`](../open.md) opens the folde
 | `assets.yml` | The asset library (see [media.md](./media.md#the-library)). |
 | `assets/` | The library's files: symlinks to media brought in from elsewhere, plus what the app produced itself, generations under `assets/generated/`. Media imported through the app is linked where it lies, never copied. |
 | `cache/` | Derived data (thumbnails, waveforms). Disposable. |
-| `AGENTS.md` | The agent entry point: what to read in `.diffusion/docs/`. |
-| `.diffusion/docs/` | App-owned copy of this reference and the examples, stamped with the app version and regenerated when it changes. Read it, never edit it. |
+| `AGENTS.md` | The agent entry point: how to connect to the app, whose MCP server carries this reference, and how to work here. |
 
-Everything but `.diffusion/` is written once and is yours from then on.
+Everything is written once and is yours from then on. The reference itself is not copied into the project: the app serves the installed version's as MCP resources under `dapi://docs/`.
 
 ## Ids
 

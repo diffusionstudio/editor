@@ -24,10 +24,10 @@ dapi fetch https://youtu.be/xyz -f "bv*+ba/b" -- --sponsorblock-remove all --lim
 
 ## Output
 
-JSON Lines, one per file written (a single URL can yield several, e.g. a playlist):
+One JSON object (a single URL can yield several files, e.g. a playlist):
 
 ```ts
-{ path: string }   // absolute path of the file on disk, after any extraction / rename
+{ paths: string[] }   // absolute paths of the files on disk, after any extraction / rename
 ```
 
 Download progress is rendered by yt-dlp on stderr while the command runs.

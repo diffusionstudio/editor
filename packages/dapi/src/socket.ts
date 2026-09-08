@@ -14,8 +14,19 @@ import type { Socket } from "node:net";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
-// One socket / named pipe per host. On macOS tmpdir is per-user; on Linux /tmp
-// is global but the socket file's owner-only mode 0600 keeps it isolated.
+// Where the app serves MCP over HTTP, for agents: a fixed loopback port, so
+// the URL is the same on every machine and can be written into a config once.
+// 3274 spells "dapi" on a phone keypad. Loopback only; no token — the server
+// checks the Host header, which is what keeps browser pages out, and anything
+// else running as the user can already reach the socket below.
+export const MCP_HOST = "127.0.0.1";
+export const MCP_PORT = 3274;
+export const MCP_PATH = "/mcp";
+export const MCP_URL = `http://${MCP_HOST}:${MCP_PORT}${MCP_PATH}`;
+
+// One socket / named pipe per host, for the CLI. On macOS tmpdir is per-user;
+// on Linux /tmp is global but the socket file's owner-only mode 0600 keeps it
+// isolated.
 export const SOCKET_PATH =
   platform() === "win32"
     ? "\\\\.\\pipe\\diffusion-studio"

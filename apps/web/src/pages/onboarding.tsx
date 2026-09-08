@@ -15,8 +15,6 @@ import { mainBridge } from '@/lib/ipc';
 import { track } from '@/lib/analytics';
 import { store } from '@/init';
 
-const SKILLS_COMMAND = 'npx skills add diffusionstudio/skills -g -y --all';
-
 const [onboardingCompleted, setOnboardingCompleted] = createStoredSignal(
   store.define('onboarding.completed', false),
 );
@@ -73,32 +71,56 @@ function StepButton(props: StepButtonProps) {
 }
 
 /**
- * Post-signup screen for setting up the agent dependencies: the dapi CLI and
- * the agent skills. Shown by AuthGate until dismissed; the dismissal is
- * per-device (same store as the promo banners).
+ * Post-signup screen for connecting agents to the app: its MCP server, which
+ * carries the tools and the authoring reference, and the dapi CLI. Shown by
+ * AuthGate until dismissed; the dismissal is per-device (same store as the
+ * promo banners).
  *
- * On desktop the CLI button links the bundled CLI into PATH via main (the
- * same flow as the "Install dapi Command Line Tool…" menu item); on the web,
- * where the CLI can't be installed, it offers the desktop app instead.
+ * On desktop there are two agent steps, both via main and both also in the
+ * app menu: registering the bundled `dapi mcp` with the agents on this
+ * machine, and linking the `dapi` binary into PATH for shells and scripts.
+ * On the web, where neither exists, one row offers the desktop app instead.
  */
 export function OnboardingPage() {
   const isDesktop = !!window.desktop;
+  const [mcpState, setMcpState] = createSignal<StepState>('todo');
   const [cliState, setCliState] = createSignal<StepState>('todo');
-  const [skillsState, setSkillsState] = createSignal<StepState>('todo');
 
   onMount(async () => {
     if (!isDesktop) return;
     try {
-      const [cli, skills] = await Promise.all([
+      const [mcp, cli] = await Promise.all([
+        mainBridge.call(MAIN_CHANNELS.MCP_IS_REGISTERED, undefined),
         mainBridge.call(MAIN_CHANNELS.CLI_IS_INSTALLED, undefined),
-        mainBridge.call(MAIN_CHANNELS.SKILLS_IS_INSTALLED, undefined),
       ]);
+      if (mcp) setMcpState('done');
       if (cli) setCliState('done');
-      if (skills) setSkillsState('done');
     } catch {
       // Can't tell — leave the install buttons available.
     }
   });
+
+  const registerMcp = async () => {
+    setMcpState('busy');
+    try {
+      const result = await mainBridge.call(MAIN_CHANNELS.MCP_REGISTER, undefined);
+      if (result.status === 'registered') {
+        track('onboarding_mcp_registered', { agents: result.agents.join(',') });
+        setMcpState('done');
+        toast('Connected', {
+          description: `Registered with ${result.agents.join(', ')}. Restart the agent to pick it up.`,
+        });
+      } else {
+        setMcpState('todo');
+        toast('Could not connect your agents', { description: result.error });
+      }
+    } catch (error) {
+      setMcpState('todo');
+      toast('Could not connect your agents', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  };
 
   const installCli = async () => {
     setCliState('busy');
@@ -121,46 +143,14 @@ export function OnboardingPage() {
     }
   };
 
+  // The web has one row for both: the server and the CLI ship with the app.
   const downloadApp = () => {
     downloadDesktopApp('onboarding');
+    setMcpState('done');
     setCliState('done');
   };
 
-  const copySkillsCommand = async () => {
-    try {
-      await navigator.clipboard.writeText(SKILLS_COMMAND);
-      track('onboarding_skills_copied');
-      setSkillsState('done');
-      toast('Copied!', {
-        description: 'Run the command in your terminal to install the agent skills.',
-      });
-    } catch (error) {
-      toast('Failed to copy', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  };
-
-  const installSkills = async () => {
-    setSkillsState('busy');
-    try {
-      const result = await mainBridge.call(MAIN_CHANNELS.SKILLS_INSTALL, undefined);
-      if (result.status === 'installed') {
-        track('onboarding_skills_installed');
-        setSkillsState('done');
-        return;
-      }
-      setSkillsState('todo');
-      toast('Could not install the agent skills', { description: result.error });
-    } catch (error) {
-      setSkillsState('todo');
-      toast('Could not install the agent skills', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  };
-
-  const allDone = () => cliState() === 'done' && skillsState() === 'done';
+  const allDone = () => mcpState() === 'done' && cliState() === 'done';
 
   const finish = (event: 'onboarding_completed' | 'onboarding_skipped') => {
     track(event);
@@ -187,15 +177,43 @@ export function OnboardingPage() {
             </div>
 
             <div class="flex flex-col gap-3 rounded-xl bg-accent/40 p-4">
-              <SetupRow
-                title="dapi CLI"
-                description={
-                  isDesktop
-                    ? 'The command line tool for agents to control the editor.'
-                    : 'The command line tool for agents. Ships with the desktop app.'
+              <Show
+                when={isDesktop}
+                fallback={
+                  <SetupRow
+                    title="Desktop app"
+                    description="Ships the MCP server and the dapi CLI that agents control the editor with."
+                    action={
+                      <StepButton
+                        state={mcpState()}
+                        label="Get app"
+                        doneLabel="Downloaded"
+                        onClick={downloadApp}
+                      />
+                    }
+                  />
                 }
-                action={
-                  isDesktop ? (
+              >
+                <SetupRow
+                  title="MCP server"
+                  description="Lets agents like Claude Code, Codex, and Cursor control the editor."
+                  action={
+                    <StepButton
+                      state={mcpState()}
+                      label="Connect"
+                      busyLabel="Connecting…"
+                      doneLabel="Connected"
+                      onClick={registerMcp}
+                    />
+                  }
+                />
+
+                <div class="h-px w-full bg-border" />
+
+                <SetupRow
+                  title="dapi CLI"
+                  description="The dapi command in your shell, for scripts and for agents without MCP."
+                  action={
                     <StepButton
                       state={cliState()}
                       label="Install"
@@ -203,41 +221,10 @@ export function OnboardingPage() {
                       doneLabel="Installed"
                       onClick={installCli}
                     />
-                  ) : (
-                    <StepButton
-                      state={cliState()}
-                      label="Get app"
-                      doneLabel="Downloaded"
-                      onClick={downloadApp}
-                    />
-                  )
-                }
-              />
+                  }
+                />
+              </Show>
 
-              <div class="h-px w-full bg-border" />
-
-              <SetupRow
-                title="Agent skills"
-                description="Instructions that help agents edit videos through dapi."
-                action={
-                  isDesktop ? (
-                    <StepButton
-                      state={skillsState()}
-                      label="Install"
-                      busyLabel="Installing…"
-                      doneLabel="Installed"
-                      onClick={installSkills}
-                    />
-                  ) : (
-                    <StepButton
-                      state={skillsState()}
-                      label="Copy command"
-                      doneLabel="Copied"
-                      onClick={copySkillsCommand}
-                    />
-                  )
-                }
-              />
             </div>
           </div>
 

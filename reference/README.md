@@ -70,7 +70,7 @@ Time inputs take the `Time` format unless noted otherwise. Times in **outputs** 
 
 ## Conventions
 
-- **Stdout is JSON.** Commands that return a single record emit one JSON value. Commands that return a collection emit JSON Lines (one object per line, no surrounding array) so per-item results stay streamable. Exceptions: `fonts --names-only` writes plain family names; `logs` writes plain formatted log lines.
+- **Stdout is the tool's result.** Every command prints one JSON object: the structured content the app's MCP tool returns, exactly what an agent connected to the app's MCP server receives. No command reshapes it.
 - **Unix-style names are canonical.** Commands without a natural Unix equivalent (`context`, `whoami`) keep their descriptive names.
 - **Stderr:** human-readable error messages.
 - **Exit codes:** `0` on success, `1` on any error (missing file, app not running, invalid input, IPC error).

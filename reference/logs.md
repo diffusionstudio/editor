@@ -9,13 +9,18 @@ Prints recent console output from the running app: everything the devtools conso
 
 ## Output
 
-Plain text (no JSON), one line per entry:
+One JSON object, the entries oldest first:
 
+```ts
+{
+  entries: Array<{
+    ts:      number;   // unix time, milliseconds
+    level:   "debug" | "info" | "warning" | "error";
+    message: string;
+    source:  string;   // file:line the entry came from (a URL in dev builds); empty for synthetic entries such as renderer crashes and preload errors
+  }>;
+}
 ```
-HH:MM:SS.mmm [level] message  (source:line)
-```
-
-Timestamps are local time. `source:line` is the logging call site (a URL in dev builds); omitted for synthetic entries such as renderer crashes and preload errors.
 
 ## Errors
 

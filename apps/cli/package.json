@@ -19,7 +19,8 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "babel-preset-solid": "^1.9.12",
     "commander": "^14.0.3",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
