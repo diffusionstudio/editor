@@ -4,13 +4,15 @@
 
 import { app, BrowserWindow, nativeImage, session, shell } from "electron";
 import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
 import { mkdir, open, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
 import { updateElectronApp } from "update-electron-app";
-import { startCliServer, stopCliServer, isHeadless } from "./cli-server";
+import { DapiServer } from "./dapi/server";
+import { enableHeadless, isHeadless } from "./headless";
 import { installCli, isCliInstalled } from "./cli-install";
-import { healSkillsLinks, installSkills, isSkillsInstalled } from "./skills-install";
+import { healMcpRegistrations, isMcpRegistered, registerMcp } from "./mcp-install";
 import { trackInstall } from "./analytics";
 import { setupAppMenu } from "./menu";
 import { mainBridge } from "./main-manager";
@@ -42,7 +44,7 @@ import {
   writeProject,
 } from "./projects";
 import type { DeepLinkChannel } from "./main-channels";
-import type { LogEntry } from "@diffusionstudio/cli/protocol";
+import type { LogEntry } from "@diffusionstudio/dapi";
 
 const DEV_URL = "http://localhost:5173";
 const AUTH_PROTOCOL = "diffusion";
@@ -96,6 +98,29 @@ const pendingDeepLinks = new Map<DeepLinkChannel, string>();
 // (page logs, worker logs, uncaught errors) without touching the web bundle.
 const LOG_BUFFER_MAX = 2000;
 const logBuffer: LogEntry[] = [];
+
+// A folder staged into the app bundle by scripts/stage-*.mjs (Contents/
+// Resources/<name> when packaged, apps/desktop/<name> in dev), or null when
+// it has not been staged.
+function stagedResource(name: string): string | null {
+  const dir = app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), name);
+  return existsSync(dir) ? dir : null;
+}
+
+// The MCP server agents and the dapi CLI talk to. Started once the app is
+// ready; the first connection switches the UI into headless mode.
+const dapi = new DapiServer({
+  version: app.getVersion(),
+  logs: () => logBuffer,
+  docsDir: stagedResource("docs"),
+  skillsDir: stagedResource("skills"),
+  onFirstConnection() {
+    enableHeadless();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainBridge.emit(mainWindow, MAIN_CHANNELS.HEADLESS_MODE, { active: true });
+    }
+  },
+});
 
 function pushLog(level: LogEntry["level"], message: string, source: string) {
   logBuffer.push({ ts: Date.now(), level, message, source });
@@ -262,8 +287,8 @@ if (app.requestSingleInstanceLock()) {
   mainBridge.handle(MAIN_CHANNELS.APP_SHOW_IN_FOLDER, ({ path }) => shell.showItemInFolder(path));
   mainBridge.handle(MAIN_CHANNELS.CLI_IS_INSTALLED, () => isCliInstalled());
   mainBridge.handle(MAIN_CHANNELS.CLI_INSTALL, () => installCli());
-  mainBridge.handle(MAIN_CHANNELS.SKILLS_IS_INSTALLED, () => isSkillsInstalled());
-  mainBridge.handle(MAIN_CHANNELS.SKILLS_INSTALL, () => installSkills());
+  mainBridge.handle(MAIN_CHANNELS.MCP_IS_REGISTERED, () => isMcpRegistered());
+  mainBridge.handle(MAIN_CHANNELS.MCP_REGISTER, () => registerMcp());
   mainBridge.handle(MAIN_CHANNELS.AUTH_GET_PENDING_CALLBACK, () =>
     takePendingDeepLink(MAIN_CHANNELS.AUTH_CALLBACK),
   );
@@ -275,7 +300,9 @@ if (app.requestSingleInstanceLock()) {
     if (!mainWindow || mainWindow.isDestroyed()) throw new Error("No main window");
     const image = await mainWindow.webContents.capturePage(undefined, { stayHidden: true });
     const { width, height } = image.getSize();
-    return { base64: image.toPNG().toString("base64"), width, height };
+    const png = image.toPNG();
+    // A plain Uint8Array over the PNG, so the renderer sees bytes and not a Buffer.
+    return { png: new Uint8Array(png.buffer, png.byteOffset, png.byteLength), width, height };
   });
   mainBridge.handle(MAIN_CHANNELS.HEADLESS_GET_MODE, () => isHeadless());
   mainBridge.handle(MAIN_CHANNELS.LOGS_GET, () => logBuffer);
@@ -359,15 +386,15 @@ if (app.requestSingleInstanceLock()) {
     const url = findProtocolUrl(process.argv);
     if (url) deliverDeepLink(url);
 
-    startCliServer();
-    healSkillsLinks();
+    dapi.start();
+    healMcpRegistrations();
     trackInstall();
     createWindow(!isHiddenLaunch(process.argv));
   });
 
   app.on("before-quit", () => {
     unwatchAll();
-    stopCliServer();
+    dapi.stop();
   });
 
   app.on("window-all-closed", () => {

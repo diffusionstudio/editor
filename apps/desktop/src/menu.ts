@@ -6,6 +6,27 @@ import { app, dialog, Menu } from "electron";
 import type { MenuItemConstructorOptions } from "electron";
 
 import { CLI_LINK_PATH, installCli } from "./cli-install";
+import { registerMcp } from "./mcp-install";
+
+async function registerMcpFromMenu() {
+  const result = registerMcp();
+  if (result.status === "registered") {
+    await dialog.showMessageBox({
+      type: "info",
+      message: "Diffusion Studio is registered as an MCP server.",
+      detail: [
+        `Connected: ${result.agents.join(", ")}. Restart the agent to pick it up.`,
+        `Any other agent can use the URL ${result.url}${result.command ? `, or run "${result.command}" over stdio` : ""}.`,
+      ].join("\n\n"),
+    });
+  } else {
+    await dialog.showMessageBox({
+      type: "error",
+      message: "Could not register the MCP server.",
+      detail: result.error,
+    });
+  }
+}
 
 async function installCliFromMenu() {
   const result = await installCli();
@@ -34,6 +55,10 @@ export function setupAppMenu() {
       submenu: [
         { role: "about" },
         { type: "separator" },
+        {
+          label: "Connect Agents (MCP)…",
+          click: registerMcpFromMenu,
+        },
         {
           label: "Install dapi Command Line Tool…",
           enabled: app.isPackaged,

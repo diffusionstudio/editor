@@ -32,10 +32,10 @@ A sheet never exceeds 2576x1456, the largest image a vision model reads at full 
 
 ## Output
 
-JSON Lines, one object per written image: a contact sheet by default, a frame with `--separate`.
+One JSON object with one entry per written image: a contact sheet by default, a frame with `--separate`.
 
 ```ts
-{ timecode: string; path: string }   // e.g. { "timecode": "0f-08s10f", "path": "…/0f-08s10f.png" }
+{ images: Array<{ timecode: string; path: string }> }   // e.g. { "images": [{ "timecode": "0f-08s10f", "path": "…/0f-08s10f.png" }] }
 ```
 
 A sheet's timecode is the span it covers; a frame's is its own. Sheets come in time order, and their cells in the order the times were requested in.

@@ -8,8 +8,8 @@ None.
 
 ## Output
 
-JSON Lines, one per voice:
+One JSON object:
 
 ```ts
-{ id: string; label: string; description: string }
+{ voices: Array<{ id: string; label: string; description: string }> }
 ```

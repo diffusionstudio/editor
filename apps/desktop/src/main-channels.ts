@@ -7,10 +7,10 @@
 // through these via an envelope carrying the logical MAIN_CHANNELS name and
 // (for requests) a UUID for correlation.
 //
-// CLI traffic uses a separate wire pair (CLI_WIRE in @diffusionstudio/cli/protocol);
-// main forwards it opaquely without inspecting channel names.
-import type { LogEntry, ScreenshotResult } from "@diffusionstudio/cli/protocol";
-import type { SourceEdit, WriteResult } from "./edit";
+// Tool calls from the MCP server use their own wire (DAPI_WIRE in
+// @diffusionstudio/dapi), in the other direction: main asks, the renderer answers.
+import type { LogEntry, ScreenshotResult } from "@diffusionstudio/dapi";
+import type { SourceEdit, WriteResult } from "./edit-types";
 
 export const MAIN_WIRE = {
   REQUEST: "main:request",
@@ -33,8 +33,8 @@ export const MAIN_CHANNELS = {
   CHECKOUT_GET_PENDING_CALLBACK: "checkout:get-pending-callback",
   CLI_IS_INSTALLED: "cli:is-installed",
   CLI_INSTALL: "cli:install",
-  SKILLS_IS_INSTALLED: "skills:is-installed",
-  SKILLS_INSTALL: "skills:install",
+  MCP_IS_REGISTERED: "mcp:is-registered",
+  MCP_REGISTER: "mcp:register",
   WINDOW_IS_FULLSCREEN: "window:is-fullscreen",
   WINDOW_CAPTURE: "window:capture",
   FILE_TRANSFER: "file:transfer",
@@ -112,9 +112,12 @@ export type CliInstallResult =
   | { status: "cancelled" }
   | { status: "error"; error: string };
 
-// Outcome of symlinking the bundled skills into the agent skill directories.
-export type SkillsInstallResult =
-  | { status: "installed" }
+// Outcome of registering the app's MCP server with the agents on this
+// machine. `agents` names the configs written; `url` is the HTTP endpoint
+// most of them got, `command` the stdio proxy the rest run (null when this
+// build has no dapi binary).
+export type McpRegisterResult =
+  | { status: "registered"; agents: string[]; url: string; command: string | null }
   | { status: "error"; error: string };
 
 export type { SourceEdit, WriteResult };
@@ -133,8 +136,8 @@ export type MainRequestMap = {
   [MAIN_CHANNELS.CHECKOUT_GET_PENDING_CALLBACK]: { request: void; response: string | null };
   [MAIN_CHANNELS.CLI_IS_INSTALLED]: { request: void; response: boolean };
   [MAIN_CHANNELS.CLI_INSTALL]: { request: void; response: CliInstallResult };
-  [MAIN_CHANNELS.SKILLS_IS_INSTALLED]: { request: void; response: boolean };
-  [MAIN_CHANNELS.SKILLS_INSTALL]: { request: void; response: SkillsInstallResult };
+  [MAIN_CHANNELS.MCP_IS_REGISTERED]: { request: void; response: boolean };
+  [MAIN_CHANNELS.MCP_REGISTER]: { request: void; response: McpRegisterResult };
   [MAIN_CHANNELS.WINDOW_IS_FULLSCREEN]: { request: void; response: boolean };
   [MAIN_CHANNELS.WINDOW_CAPTURE]: { request: void; response: ScreenshotResult };
   [MAIN_CHANNELS.FILE_TRANSFER]: {

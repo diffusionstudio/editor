@@ -10,7 +10,7 @@ import { AppContextMenu } from "@/components/app-context-menu";
 
 import { AuthProvider, useAuth } from '@/context/auth';
 import { PersistRoute } from '@/lib/persist-route';
-import { EditorApi } from '@/context/dapi';
+import { EditorApi } from '@/dapi';
 import { UpgradeDialog } from '@/components/upgrade-dialog';
 import { PurchaseSuccess } from '@/components/purchase-success';
 import { ScreenTooSmall } from '@/components/screen-too-small';

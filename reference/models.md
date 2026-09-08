@@ -10,15 +10,17 @@ There are no CLI commands that generate; asset generation is declared in the pro
 
 ## Output
 
-JSON Lines, one per model:
+One JSON object:
 
 ```ts
 {
-  type:          "image" | "video" | "audio";
-  id:            string;     // the model id to set on a generate.* declaration
-  name:          string;
-  durations?:    string[];   // video only, e.g. ["5s","10s"]
-  aspectRatios?: string[];   // video only
-  features?:     Array<"start-frame" | "end-frame" | "audio">;  // video only
+  models: Array<{
+    type:          "image" | "video" | "audio";
+    id:            string;     // the model id to set on a generate.* declaration
+    name:          string;
+    durations?:    string[];   // video only, e.g. ["5s","10s"]
+    aspectRatios?: string[];   // video only
+    features?:     Array<"start-frame" | "end-frame" | "audio">;  // video only
+  }>;
 }
 ```

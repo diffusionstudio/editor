@@ -8,5 +8,6 @@ export * from './encoder';
 export * from './format';
 export * from './image-encoder';
 export * from './interfaces';
+export * from './png';
 export * from './types';
 export * from './utils';

@@ -8,8 +8,8 @@ None.
 
 ## Output
 
-One JSON value:
+One JSON object:
 
 ```ts
-{ id: string; email: string; provider: string } | null
+{ user: { id: string; email?: string } | null }
 ```

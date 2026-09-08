@@ -33,10 +33,10 @@ Sheets are opaque: a scene's transparent background composites onto flat grey, a
 
 ## Output
 
-JSON Lines, one object per written image: a contact sheet by default, a position with `--separate`.
+One JSON object with one entry per written image: a contact sheet by default, a position with `--separate`.
 
 ```ts
-{ timecode: string; path: string }   // e.g. { "timecode": "0f-01s15f", "path": "/tmp/dapi-capture-3f2c1a8e/0f-01s15f.png" }
+{ images: Array<{ timecode: string; path: string }> }   // e.g. { "images": [{ "timecode": "0f-01s15f", "path": "/tmp/dapi-capture-3f2c1a8e/0f-01s15f.png" }] }
 ```
 
 A sheet's timecode is the span it covers; a single position's is its own. Sheets come in timeline order, and their cells in the order the positions were requested in.
