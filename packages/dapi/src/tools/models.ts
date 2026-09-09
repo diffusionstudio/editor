@@ -22,7 +22,7 @@ export const models = defineTool({
   description:
     "List available AI generation models and their per-model constraints (durations, aspect ratios, features), for `generate.*` asset declarations in a project module.",
   input: z.object({
-    type: ModelType.optional().describe("filter to one kind of model (default: all three)"),
+    type: ModelType.optional().describe("filter to one kind of model, image, video, or audio (default: all three)"),
   }),
   output: z.object({ models: z.array(ModelInfo) }),
   runsIn: "renderer",

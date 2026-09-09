@@ -26,7 +26,7 @@ export const fonts = defineTool({
   input: z.object({
     family: z.string().optional().describe("filter to families whose name contains this (case-insensitive)"),
     weights: z.array(z.string()).optional().describe('filter to variants with the given CSS weights, e.g. ["400", "700"]'),
-    style: FontStyle.optional().describe("filter to variants with the given style"),
+    style: FontStyle.optional().describe("filter to variants with the given style, normal or italic"),
     limit: z.int().min(1).optional().describe("return at most this many families"),
   }),
   output: z.object({ families: z.array(FontFamily) }),

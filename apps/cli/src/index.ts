@@ -8,7 +8,7 @@ import { isAbsolute, resolve } from "node:path";
 import { Command } from "commander";
 import { z } from "zod";
 import { version } from "../../../package.json";
-import { ISSUE_LOG_TAIL, toolByName } from "@diffusionstudio/dapi";
+import { toolByName } from "@diffusionstudio/dapi";
 import { MCP_URL } from "@diffusionstudio/dapi/socket";
 import { APP_NAME, call, isAppDown, launchApp, ping, waitForApp } from "./cli-client";
 import { runProxy } from "./mcp-proxy";
@@ -30,16 +30,12 @@ function describe(name: ToolName): string {
   return toolByName(name).description;
 }
 
-/**
- * An input field's description, for the option that maps onto it. The
- * fallback is for the shared window fields (`start`, `end`), which the
- * catalog leaves for each wrapper to word.
- */
-function field(name: ToolName, key: string, fallback?: string): string {
+/** An input field's description, verbatim, for the option that maps onto it. */
+function field(name: ToolName, key: string): string {
   const tool: GenericTool = toolByName(name);
   const schema = tool.input.shape[key];
-  if (schema === undefined && fallback === undefined) throw new Error(`tool ${name} has no input field "${key}"`);
-  return schema?.description ?? fallback ?? "";
+  if (schema === undefined) throw new Error(`tool ${name} has no input field "${key}"`);
+  return schema.description ?? "";
 }
 
 /**
@@ -166,8 +162,8 @@ media
   .option("-t, --times <time...>", field("media_grab", "times"))
   .option("-c, --count <n>", field("media_grab", "count"), numeric)
   .option("-a, --auto", field("media_grab", "auto"))
-  .option("-s, --start <time>", field("media_grab", "start", `with --count or --auto, start of the window to sample (seconds, "45f" frames, or "MM:SS"; default: 0)`))
-  .option("-e, --end <time>", field("media_grab", "end", `with --count or --auto, end of the window to sample (seconds, "45f" frames, or "MM:SS"; default: asset duration)`))
+  .option("-s, --start <time>", field("media_grab", "start"))
+  .option("-e, --end <time>", field("media_grab", "end"))
   .option("-q, --quality <preset>", field("media_grab", "quality"))
   .option("-S, --separate", field("media_grab", "separate"))
   .option("--per-sheet <n>", field("media_grab", "perSheet"), numeric)
@@ -182,8 +178,8 @@ media
   .alias("film")
   .description(describe("media_filmstrip"))
   .argument("<path>", field("media_filmstrip", "path"))
-  .option("-s, --start <time>", field("media_filmstrip", "start", `start of the window to preview — seconds, "45f" frames, or "MM:SS" (default: 0)`))
-  .option("-e, --end <time>", field("media_filmstrip", "end", `end of the window to preview — seconds, "45f" frames, or "MM:SS" (default: asset duration)`))
+  .option("-s, --start <time>", field("media_filmstrip", "start"))
+  .option("-e, --end <time>", field("media_filmstrip", "end"))
   .option("-x, --scale <factor>", field("media_filmstrip", "scale"), numeric)
   .option("-o, --output <path>", field("media_filmstrip", "output"))
   .action((ref: string, opts: Omit<ToolInput<"media_filmstrip">, "path">) =>
@@ -195,8 +191,8 @@ media
   .alias("wave")
   .description(describe("media_waveform"))
   .argument("<path>", field("media_waveform", "path"))
-  .option("-s, --start <time>", field("media_waveform", "start", `start of the window to preview — seconds, "45f" frames, or "MM:SS" (default: 0)`))
-  .option("-e, --end <time>", field("media_waveform", "end", `end of the window to preview — seconds, "45f" frames, or "MM:SS" (default: asset duration)`))
+  .option("-s, --start <time>", field("media_waveform", "start"))
+  .option("-e, --end <time>", field("media_waveform", "end"))
   .option("-x, --scale <factor>", field("media_waveform", "scale"), numeric)
   .option("-o, --output <path>", field("media_waveform", "output"))
   .action((ref: string, opts: Omit<ToolInput<"media_waveform">, "path">) =>
@@ -232,7 +228,7 @@ program
   .command("logs")
   .description(describe("logs"))
   .option("-n, --tail <n>", field("logs", "tail"), numeric)
-  .option("-l, --level <level>", `${field("logs", "level")}: "debug", "info", "warning", or "error"`)
+  .option("-l, --level <level>", field("logs", "level"))
   .action((opts: ToolInput<"logs">) => run("logs", opts));
 
 program
@@ -247,16 +243,16 @@ program
   .description(describe("report"))
   .argument("<title>", field("report", "title"))
   .option("-b, --body <text>", field("report", "body"))
-  .option("-c, --commands <cmd...>", `${field("report", "commands")}; repeatable`)
-  .option("--logs <n>", field("report", "logs", `trailing app log entries to attach (0 to omit; default: ${ISSUE_LOG_TAIL})`), numeric)
+  .option("-c, --commands <cmd...>", field("report", "commands"))
+  .option("--logs <n>", field("report", "logs"), numeric)
   .action((title: string, opts: Omit<ToolInput<"report">, "title">) => run("report", { title, ...opts }));
 
 program
   .command("fonts")
   .description(describe("fonts"))
   .option("-f, --family <pattern>", field("fonts", "family"))
-  .option("-w, --weights <weights...>", `${field("fonts", "weights")}, e.g. -w 400 700`)
-  .option("-s, --style <style>", `${field("fonts", "style")}: "normal" or "italic"`)
+  .option("-w, --weights <weights...>", field("fonts", "weights"))
+  .option("-s, --style <style>", field("fonts", "style"))
   .option("-l, --limit <n>", field("fonts", "limit"), numeric)
   .action((opts: ToolInput<"fonts">) => run("fonts", opts));
 

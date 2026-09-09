@@ -6,7 +6,7 @@
 // here is a tool on its own.
 
 import { z } from "zod";
-import { NonNegativeTime } from "./time";
+import { NonNegativeTime, TIME_FORMS } from "./time";
 
 export const NodeId = z
   .string()
@@ -87,8 +87,8 @@ export function checkSheetOptions(
 
 /** A `[start, end)` window in seconds; both optional, and start must precede end. */
 export const windowFields = {
-  start: NonNegativeTime.optional(),
-  end: NonNegativeTime.optional(),
+  start: NonNegativeTime.optional().describe(`start of the window — ${TIME_FORMS} (default: 0)`),
+  end: NonNegativeTime.optional().describe(`end of the window — ${TIME_FORMS} (default: asset duration)`),
 };
 
 export function checkWindow(

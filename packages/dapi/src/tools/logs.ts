@@ -13,7 +13,7 @@ export const logs = defineTool({
     "Recent console output from the running app (what the devtools console shows: page logs, worker logs, uncaught errors), oldest first. The app buffers the last 2000 entries across reloads and project switches, so this replaces relaunching with ELECTRON_ENABLE_LOGGING=1 when debugging renderer-side behavior.",
   input: z.object({
     tail: z.int().min(1).optional().describe("return only the last n entries"),
-    level: LogLevel.optional().describe("minimum level to include"),
+    level: LogLevel.optional().describe("minimum level to include: debug, info, warning, or error"),
   }),
   output: z.object({ entries: z.array(LogEntry) }),
   runsIn: "main",

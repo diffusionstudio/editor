@@ -37,7 +37,8 @@ export const mediaGrab = defineTool({
         .describe(
           "scan the clip at 2fps and keep a frame each time the footage settles into a new visual state (transitions are waited out, so picks stay sharp); returns at most count frames (default cap: 30), static footage like screen recordings returns far fewer; requires WebGPU",
         ),
-      ...windowFields,
+      start: windowFields.start.describe("with count or auto, start of the window to sample (default: 0)"),
+      end: windowFields.end.describe("with count or auto, end of the window to sample (default: asset duration)"),
       quality: FrameQuality.optional().describe(
         "frame resolution: small (384x384), medium (768x768), large (1536x1536), or fullres (native); default: as large as the sheet cell allows, or small with separate: true",
       ),
