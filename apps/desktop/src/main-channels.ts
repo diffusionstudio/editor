@@ -23,8 +23,8 @@ export type MainWireChannel = (typeof MAIN_WIRE)[keyof typeof MAIN_WIRE];
 // Logical channels. Two categories:
 //   • Renderer→Main requests (request + response)
 //   • Main→Renderer events   (push, no response)
-// Renderer-state queries used to live here; they now answer CLI requests
-// directly via the CLI bridge.
+// Tool calls are not here: they arrive from main over DAPI_WIRE and are
+// answered by the renderer's handlers (apps/web/src/dapi).
 export const MAIN_CHANNELS = {
   // Renderer→Main requests
   APP_OPEN_EXTERNAL: "app:open-external",

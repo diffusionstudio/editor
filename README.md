@@ -217,7 +217,7 @@ Conventions throughout: every result is one JSON object, the same structured con
 | --- | --- | --- |
 | `apps/web` | `@diffusionstudio/web` | The editor UI (Solid + Vite) |
 | `apps/desktop` | `@diffusionstudio/desktop` | Electron shell hosting the editor |
-| `apps/cli` | `@diffusionstudio/cli` | The `dapi` CLI |
+| `apps/cli` | `@diffusionstudio/cli` | The `dapi` CLI: a client of the app's MCP server, plus the `dapi mcp` stdio proxy |
 | `packages/runtime` | `@diffusionstudio/runtime` | Headless editor runtime: the koota world, traits, actions, systems, media decoding, capture. No DOM, no Solid |
 | `packages/reconciler` | `@diffusionstudio/reconciler` | Evaluates a compiled project bundle and reconciles its element tree onto runtime entities, via Solid's universal renderer |
 | `packages/jsx` | `@diffusionstudio/jsx` | The authoring API: element vocabulary, types, and generated assets (`generate.*`) |
