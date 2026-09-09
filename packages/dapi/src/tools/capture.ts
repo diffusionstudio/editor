@@ -27,5 +27,5 @@ export const capture = defineTool({
     .superRefine(checkSheetOptions),
   output: z.object({ images: z.array(ImageRef) }),
   result: z.array(TimecodedImage),
-  runsIn: "renderer",
+  environment: "renderer",
 });

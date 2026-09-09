@@ -25,5 +25,5 @@ export const mediaFilmstrip = defineTool({
   input: z.object({ path: AssetPath, ...previewFields }).superRefine(checkWindow),
   output: z.looseObject({ path: z.string().describe("absolute path of the PNG") }),
   result: z.looseObject({ png: Bytes }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

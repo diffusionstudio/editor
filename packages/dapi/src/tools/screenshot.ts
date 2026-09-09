@@ -18,5 +18,5 @@ export const screenshot = defineTool({
     height: z.number(),
   }),
   result: z.object({ png: Bytes, width: z.number(), height: z.number() }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

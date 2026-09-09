@@ -57,5 +57,5 @@ export const exportScene = defineTool({
       "the settings the export was made with — the package.json entry (or the defaults), with the container the extension resolved to",
     ),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

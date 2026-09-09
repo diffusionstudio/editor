@@ -20,5 +20,5 @@ export const report = defineTool({
     logs: z.int().min(0).optional().describe(`trailing app log entries to attach (0 to omit; default: ${ISSUE_LOG_TAIL})`),
   }),
   output: z.object({ url: z.string() }),
-  runsIn: "main",
+  environment: "main",
 });

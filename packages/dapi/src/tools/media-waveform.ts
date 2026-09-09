@@ -20,5 +20,5 @@ export const mediaWaveform = defineTool({
     silences: Silences,
   }),
   result: z.looseObject({ png: Bytes, silences: Silences }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

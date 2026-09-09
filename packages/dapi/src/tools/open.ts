@@ -18,5 +18,5 @@ export const open = defineTool({
     name: z.string().describe("display name"),
     dir: z.string().describe("absolute path of the project folder"),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

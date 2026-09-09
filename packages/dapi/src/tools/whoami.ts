@@ -13,5 +13,5 @@ export const whoami = defineTool({
   output: z.object({
     user: z.object({ id: z.string(), email: z.string().optional() }).nullable(),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

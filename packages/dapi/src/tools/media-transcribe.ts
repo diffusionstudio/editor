@@ -24,5 +24,5 @@ export const mediaTranscribe = defineTool({
     "Transcribe the speech in a video or audio file and return the timed transcript, with word-level start/end times in seconds. Commonly useful for footage with speakers (talking head, interview), where the word times let you cut on a line. A transcript marks only speech; the gaps are not necessarily silent (music, score, applause).",
   input: z.object({ path: AssetPath }),
   output: z.object({ segments: z.array(TranscriptSegment) }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

@@ -35,8 +35,8 @@ describe("catalog", () => {
   });
 
   it("looks tools up by name", () => {
-    expect(toolByName("capture").runsIn).toBe("renderer");
-    expect(toolByName("fonts").runsIn).toBe("main");
+    expect(toolByName("capture").environment).toBe("renderer");
+    expect(toolByName("fonts").environment).toBe("main");
     expect(isToolName("media_grab")).toBe(true);
     expect(isToolName("media.frame")).toBe(false);
   });

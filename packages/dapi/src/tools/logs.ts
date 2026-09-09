@@ -16,5 +16,5 @@ export const logs = defineTool({
     level: LogLevel.optional().describe("minimum level to include: debug, info, warning, or error"),
   }),
   output: z.object({ entries: z.array(LogEntry) }),
-  runsIn: "main",
+  environment: "main",
 });

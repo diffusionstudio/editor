@@ -45,5 +45,5 @@ export const check = defineTool({
     }),
     issues: z.array(CheckIssue),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

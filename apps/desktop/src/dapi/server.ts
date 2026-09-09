@@ -47,7 +47,7 @@ export class DapiServer {
   constructor(deps: DapiServerDeps) {
     this.deps = deps;
     for (const tool of tools) {
-      if (tool.runsIn === "main" && !(tool.name in mainHandlers)) {
+      if (tool.environment === "main" && !(tool.name in mainHandlers)) {
         throw new Error(`Main-process tool "${tool.name}" has no handler`);
       }
     }
@@ -129,7 +129,7 @@ export class DapiServer {
       async (args, extra) => {
         try {
           const result =
-            tool.runsIn === "main"
+            tool.environment === "main"
               ? await this.runInMain(tool.name as MainToolName, args, extra.signal)
               : await this.renderer.call(tool.name, args, extra.signal);
           return toCallToolResult(await present(tool.name as ToolName, args, result));

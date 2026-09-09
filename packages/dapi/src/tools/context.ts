@@ -42,7 +42,7 @@ export const context = defineTool({
       .describe("families registered in the world drawing the project; the editor default is always among them"),
     generations: z.array(GenerationRow),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });
 
 export type GenerationRow = z.output<typeof GenerationRow>;

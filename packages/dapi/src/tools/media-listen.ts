@@ -26,5 +26,5 @@ export const mediaListen = defineTool({
     start: z.number().optional(),
     end: z.number().optional(),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

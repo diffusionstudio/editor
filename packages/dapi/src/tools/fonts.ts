@@ -30,5 +30,5 @@ export const fonts = defineTool({
     limit: z.int().min(1).optional().describe("return at most this many families"),
   }),
   output: z.object({ families: z.array(FontFamily) }),
-  runsIn: "main",
+  environment: "main",
 });

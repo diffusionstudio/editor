@@ -73,5 +73,5 @@ export const mediaGrab = defineTool({
     }),
   output: z.object({ images: z.array(ImageRef) }),
   result: z.array(TimecodedImage),
-  runsIn: "renderer",
+  environment: "renderer",
 });

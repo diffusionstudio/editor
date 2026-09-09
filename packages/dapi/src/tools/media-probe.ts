@@ -35,5 +35,5 @@ export const mediaProbe = defineTool({
     tags: z.record(z.string(), z.unknown()).optional(),
     tracks: z.array(Track),
   }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

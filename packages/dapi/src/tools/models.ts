@@ -25,5 +25,5 @@ export const models = defineTool({
     type: ModelType.optional().describe("filter to one kind of model, image, video, or audio (default: all three)"),
   }),
   output: z.object({ models: z.array(ModelInfo) }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

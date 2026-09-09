@@ -9,7 +9,7 @@ import type { z } from "zod";
  * world, the engine, or browser media APIs; main tools need the file system
  * or a child process and run without a window.
  */
-export type RunsIn = "renderer" | "main";
+export type Environment = "renderer" | "main";
 
 export interface Tool<
   Name extends string = string,
@@ -33,7 +33,7 @@ export interface Tool<
    * as `output` when omitted.
    */
   readonly result?: Result;
-  readonly runsIn: RunsIn;
+  readonly environment: Environment;
 }
 
 /** A tool with its specifics erased, for code that iterates the catalog. */

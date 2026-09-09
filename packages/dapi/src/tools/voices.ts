@@ -17,5 +17,5 @@ export const voices = defineTool({
   description: "List the speech voices available for `generate.voice` declarations in a project module.",
   input: z.object({}),
   output: z.object({ voices: z.array(VoiceInfo) }),
-  runsIn: "renderer",
+  environment: "renderer",
 });

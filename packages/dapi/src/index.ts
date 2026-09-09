@@ -8,7 +8,7 @@
 import type { z } from "zod";
 
 export { defineTool } from "./tool";
-export type { Tool, GenericTool, RunsIn } from "./tool";
+export type { Tool, GenericTool, Environment } from "./tool";
 
 export { catalog, tools, toolByName, isToolName } from "./catalog";
 export type { AnyTool, ToolName, ToolByName, ToolInput, ToolArgs, ToolOutput, ToolResult } from "./catalog";

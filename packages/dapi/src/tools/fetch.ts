@@ -18,5 +18,5 @@ export const fetchVideo = defineTool({
     raw: z.array(z.string()).optional().describe('raw yt-dlp flags passed through, e.g. ["--sponsorblock-remove", "all"]'),
   }),
   output: z.object({ paths: z.array(z.string()) }),
-  runsIn: "main",
+  environment: "main",
 });
