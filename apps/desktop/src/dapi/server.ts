@@ -9,7 +9,8 @@ import { tools } from "@diffusionstudio/dapi";
 import { MCP_HOST, MCP_PATH, MCP_PORT, SOCKET_PATH, SocketTransport } from "@diffusionstudio/dapi/socket";
 import { mainHandlers } from "./handlers";
 import { DapiHttpServer } from "./http";
-import { instructions, registerResources } from "./knowledge";
+import { instructions, registerPrompts, registerResources } from "./knowledge";
+import { SERVER_NAME } from "../mcp-config";
 import { present, toCallToolResult, toErrorResult } from "./present";
 import { RendererCalls } from "./renderer-calls";
 
@@ -108,7 +109,7 @@ export class DapiServer {
     }
   }
 
-  /** One MCP server over the whole catalog, plus the docs and live state as resources. */
+  /** One MCP server over the whole catalog, plus the docs and live state as resources and the skills as prompts. */
   private createSession(): McpServer {
     const knowledge = {
       knowledgeDir: this.deps.knowledgeDir,
@@ -116,9 +117,12 @@ export class DapiServer {
       context: (signal: AbortSignal) => this.renderer.call("context", {}, signal) as Promise<ToolOutput<"context">>,
     };
     this.instructionsText ??= instructions(knowledge);
-    const session = new McpServer({ name: "diffusion-studio", version: this.deps.version }, { instructions: this.instructionsText });
+    // `name` is the machine identity, and matches the key we write into agent
+    // configs; `title` is what a client shows a person.
+    const session = new McpServer({ name: SERVER_NAME, title: "Diffusion Studio", version: this.deps.version }, { instructions: this.instructionsText });
     for (const tool of tools) this.register(session, tool);
     registerResources(session, knowledge);
+    registerPrompts(session, knowledge);
     return session;
   }
 

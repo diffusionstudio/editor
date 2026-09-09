@@ -2,14 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// What an agent needs to know besides the tools, served from the knowledge
-// base staged into the app bundle (the repo's `knowledge/`): INSTRUCTIONS.md
-// is the server's instructions, which every client receives on connect, and
-// every other page is a resource under `dapi://<path>`, so what an agent
-// reads is exactly what the installed version documents. Two live
-// resources sit beside them for the state agents poll.
-
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
@@ -24,6 +17,39 @@ export type KnowledgeDeps = {
 };
 
 export const INSTRUCTIONS_FILE = "INSTRUCTIONS.md";
+
+const RESOURCE_PREFIX = "dapi://";
+
+export type Skill = {
+  name: string;
+  /** The page carrying the guidance, relative to the knowledge base. */
+  page: string;
+  description: string;
+  /** The skill to reach for when the user has not pointed at one. Exactly one. */
+  default?: boolean;
+};
+
+/**
+ * What the server offers besides the tools. Each entry is both a line in the
+ * instructions every session receives and a prompt (`/diffusion:editor`), so
+ * adding a skill is adding a row here and its page under `knowledge/skills/`.
+ * Editing is the default; watching is the one you ask for.
+ */
+export const SKILLS: readonly Skill[] = [
+  {
+    name: "editor",
+    page: "skills/editor.md",
+    default: true,
+    description:
+      "Understand, generate, and edit footage with Diffusion Studio: analyze video/audio/images, generate them with AI, and compose video compositions. Use for any media analysis, media generation, or video editing task.",
+  },
+  {
+    name: "watch",
+    page: "skills/watch.md",
+    description:
+      "Watch and understand footage with Diffusion Studio: answer questions about a video or audio file, summarize it, find scenes and moments, pull quotes, and describe what happens and when. Use whenever the user asks what's in a piece of footage, wants a summary or recap, wants to locate a moment, or needs a claim about a video or audio file checked.",
+  },
+];
 
 const MIME_TYPES: Record<string, string> = {
   ".md": "text/markdown",
@@ -44,6 +70,7 @@ export function instructions(deps: KnowledgeDeps): string {
   const text = deps.knowledgeDir ? readText(join(deps.knowledgeDir, INSTRUCTIONS_FILE)) : null;
   const parts = [text?.trim() || FALLBACK_INSTRUCTIONS];
   if (deps.knowledgeDir) {
+    parts.push(skillList());
     parts.push(
       `The resources under \`dapi://\` are the files at \`${deps.knowledgeDir}\`, for anything a resource cannot carry (fonts, imagery, components to copy). They belong to the app; read them, never edit them.`,
     );
@@ -76,6 +103,41 @@ export function registerResources(session: McpServer, deps: KnowledgeDeps): void
     }),
   );
 }
+
+/**
+ * The skills as the instructions present them: what each is for, which to
+ * reach for by default, and both ways to pull one in — the prompt, for agents
+ * that list them, and the resource, for the ones that do not.
+ */
+function skillList(): string {
+  const lines = SKILLS.map(
+    (skill) =>
+      `- \`${skill.name}\`${skill.default ? " (the default)" : ""} — ${skill.description} Pull it in with the \`${skill.name}\` prompt, or read \`${RESOURCE_PREFIX}${skill.page}\`.`,
+  );
+  return ["Before starting on the work itself, pull in the skill that covers it:", ...lines].join("\n");
+}
+
+/**
+ * One prompt per skill, named as the table names it, so an agent that lists a
+ * server's prompts offers `/diffusion:editor` and `/diffusion:watch` beside
+ * its own commands. The page is read at call time, like a resource.
+ */
+export function registerPrompts(session: McpServer, deps: KnowledgeDeps): void {
+  const dir = deps.knowledgeDir;
+  if (!dir) return;
+  for (const skill of SKILLS) {
+    const path = join(dir, ...skill.page.split("/"));
+    if (!existsSync(path)) continue; // a page the staged tree does not carry
+    session.registerPrompt(skill.name, { title: skill.name, description: skill.description }, async () => ({
+      messages: [{ role: "user", content: { type: "text", text: `${await readFile(path, "utf8")}\n${PROMPT_CODA}` } }],
+    }));
+  }
+}
+
+// A prompt arrives as a user turn, so the page needs a closing line saying
+// what to do with guidance that turned up without a request attached to it.
+const PROMPT_CODA =
+  "\nThe guidance above is in effect for the rest of this conversation. Apply it to what the user asked for; if they have not asked for anything yet, ask them what they want to make.";
 
 type Page = { name: string; uri: string; path: string; mimeType: string; description?: string };
 
@@ -115,7 +177,7 @@ function collect(root: string, dir: string, out: Page[]): void {
     if (!mimeType) continue;
     const name = relative(root, path).split(sep).join("/");
     if (name === INSTRUCTIONS_FILE) continue; // already in every session's instructions
-    out.push({ name, uri: `dapi://${name}`, path, mimeType, description: mimeType === "text/markdown" ? summary(path) : undefined });
+    out.push({ name, uri: `${RESOURCE_PREFIX}${name}`, path, mimeType, description: mimeType === "text/markdown" ? summary(path) : undefined });
   }
 }
 

@@ -87,7 +87,7 @@ export class SocketTransport implements Transport {
     if (this.draining) return;
     this.draining = true;
     try {
-      for (;;) {
+      while (true) {
         let message: JSONRPCMessage | null;
         try {
           message = this.buffer.readMessage();

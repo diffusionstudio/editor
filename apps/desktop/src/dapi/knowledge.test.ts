@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { instructions, registerResources } from "./knowledge";
+import { instructions, registerPrompts, registerResources, SKILLS } from "./knowledge";
 
 import type { KnowledgeDeps } from "./knowledge";
 
@@ -23,10 +23,11 @@ beforeAll(() => {
   mkdirSync(join(knowledgeDir, "examples", "node_modules"), { recursive: true });
   mkdirSync(join(knowledgeDir, "skills"), { recursive: true });
   mkdirSync(join(knowledgeDir, "brand", "assets", "logos"), { recursive: true });
-  writeFileSync(join(knowledgeDir, "INSTRUCTIONS.md"), "Diffusion Studio is running.\n\n---\nname: editor\npath: dapi://skills/editor.md\n---\n");
+  writeFileSync(join(knowledgeDir, "INSTRUCTIONS.md"), "Diffusion Studio is running.\n");
   writeFileSync(join(knowledgeDir, "reference", "jsx", "text.md"), "# text\n\nThe `<text>` element draws a run of text. It wraps at `width`.\n\n## Props\n");
   writeFileSync(join(knowledgeDir, "reference", "README.md"), "---\ntitle: x\n---\n# Reference\n\n| a | b |\n\nEvery page, one per tool.\n");
   writeFileSync(join(knowledgeDir, "skills", "editor.md"), "# Editing\n\nHow to edit.\n");
+  writeFileSync(join(knowledgeDir, "skills", "watch.md"), "# Watching\n\nHow to watch.\n");
   writeFileSync(join(knowledgeDir, "examples", "01-hello.tsx"), "export default <scene />;\n");
   writeFileSync(join(knowledgeDir, "examples", "tsconfig.json"), "{}\n");
   writeFileSync(join(knowledgeDir, "examples", "node_modules", "ignored.md"), "no\n");
@@ -46,6 +47,7 @@ const deps = (projectOpen: boolean, dir: string | null = knowledgeDir): Knowledg
 async function connect(d: KnowledgeDeps): Promise<Client> {
   const server = new McpServer({ name: "test", version: "0" }, { instructions: instructions(d) });
   registerResources(server, d);
+  registerPrompts(server, d);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "test-client", version: "0" });
@@ -57,8 +59,15 @@ describe("instructions", () => {
   it("is INSTRUCTIONS.md followed by where the tree sits on disk", () => {
     const text = instructions(deps(true));
     expect(text.startsWith("Diffusion Studio is running.")).toBe(true);
-    expect(text).toContain("path: dapi://skills/editor.md");
     expect(text).toContain(knowledgeDir);
+  });
+
+  it("lists the skills, marking the default, with both ways to pull one in", () => {
+    const text = instructions(deps(true));
+    expect(text).toContain("`editor` (the default) —");
+    expect(text).toContain("Pull it in with the `editor` prompt, or read `dapi://skills/editor.md`.");
+    expect(text).toContain("`watch` —");
+    expect(text).not.toContain("`watch` (the default)");
   });
 
   it("falls back to a one-liner when nothing is staged", () => {
@@ -80,6 +89,7 @@ describe("resources", () => {
       "dapi://reference/README.md",
       "dapi://reference/jsx/text.md",
       "dapi://skills/editor.md",
+      "dapi://skills/watch.md",
     ]);
     await client.close();
   });
@@ -110,5 +120,51 @@ describe("resources", () => {
     const text = instructions(deps(true, repoKnowledge));
     expect(text).toContain("dapi://skills/editor.md");
     expect(text).not.toContain("\\`");
+  });
+});
+
+describe("prompts", () => {
+  it("offers one prompt per skill, described the way the instructions describe it", async () => {
+    const client = await connect(deps(true));
+    const prompts = (await client.listPrompts()).prompts;
+    expect(prompts.map((p) => p.name).sort()).toEqual(["editor", "watch"]);
+    for (const skill of SKILLS) {
+      expect(prompts.find((p) => p.name === skill.name)?.description).toBe(skill.description);
+    }
+    await client.close();
+  });
+
+  it("returns the page as the prompt, with the coda that says what to do with it", async () => {
+    const client = await connect(deps(true));
+    const result = await client.getPrompt({ name: "editor" });
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0].role).toBe("user");
+    const text = (result.messages[0].content as { text: string }).text;
+    expect(text.startsWith("# Editing")).toBe(true);
+    expect(text).toContain("ask them what they want to make");
+    await client.close();
+  });
+
+  it("has no prompts when nothing is staged", async () => {
+    const client = await connect(deps(true, null));
+    await expect(client.listPrompts()).rejects.toThrow();
+    await client.close();
+  });
+
+  it("skips a skill whose page the staged tree does not carry", async () => {
+    const bare = join(root, "bare");
+    mkdirSync(join(bare, "skills"), { recursive: true });
+    writeFileSync(join(bare, "skills", "editor.md"), "# Editing\n");
+    const client = await connect(deps(true, bare));
+    expect((await client.listPrompts()).prompts.map((p) => p.name)).toEqual(["editor"]);
+    await client.close();
+  });
+
+  it("has a page in the repo's own knowledge base for every skill in the table", () => {
+    const repoKnowledge = join(__dirname, "..", "..", "..", "..", "knowledge");
+    if (!existsSync(repoKnowledge)) return;
+    expect(SKILLS.map((s) => s.name)).toEqual(["editor", "watch"]);
+    expect(SKILLS.filter((s) => s.default)).toHaveLength(1);
+    for (const skill of SKILLS) expect(existsSync(join(repoKnowledge, skill.page))).toBe(true);
   });
 });

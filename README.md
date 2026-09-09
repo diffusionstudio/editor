@@ -61,7 +61,7 @@ Download the desktop app, it walks you through setting everything up:
 
 <a href="https://www.diffusion.studio/download"><img src="https://img.shields.io/badge/Download-Diffusion%20Studio-161616?style=for-the-badge&logo=apple&logoColor=F8F8F8&labelColor=000000" alt="Download Diffusion Studio" /></a>
 
-Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the main skill you'll use. Ask for what you want in plain language. Behind it is the app's MCP server, which the app registers with your agent; `dapi` is the same set of tools as a CLI.
+Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. The app registers its MCP server with your agent, so just ask for what you want in plain language. Agents that list a server's prompts also offer `/diffusion:editor` and `/diffusion:watch`, which pull in the editing and watching guidance up front. `dapi` is the same set of tools as a CLI.
 
 ## Prompt examples
 
@@ -69,11 +69,11 @@ Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the ma
 <summary><b>Motion graphics</b></summary>
 
 ```text
-/editor Create a ~20-second promo for vercel-labs/native in Vercel's presentation style. Research its official website, GitHub, and brand guidelines; use authentic assets and verified product features, with crisp typography, polished motion, and a strong final CTA.
+Create a ~20-second promo for vercel-labs/native in Vercel's presentation style. Research its official website, GitHub, and brand guidelines; use authentic assets and verified product features, with crisp typography, polished motion, and a strong final CTA.
 ```
 
 ```text
-/editor Recreate the 3blue1brown animation from https://youtu.be/HEfHFsfGXjs, closely matching its visual style, pacing, framing, colors, labels, and transitions. Use the exact collision mathematics from Gregory Galperin's original paper, do not approximate the physics.
+Recreate the 3blue1brown animation from https://youtu.be/HEfHFsfGXjs, closely matching its visual style, pacing, framing, colors, labels, and transitions. Use the exact collision mathematics from Gregory Galperin's original paper, do not approximate the physics.
 ```
 
 </details>
@@ -82,11 +82,11 @@ Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the ma
 <summary><b>Video editing</b></summary>
 
 ```text
-/editor edit the footage in /path/to/folder
+Edit the footage in /path/to/folder
 ```
 
 ```text
-/editor turn this footage into a polished YouTube video. Add readable captions and an attention-grabbing graphic in the opening to give viewers a strong visual hook.
+Turn this footage into a polished YouTube video. Add readable captions and an attention-grabbing graphic in the opening to give viewers a strong visual hook.
 ```
 
 </details>
@@ -95,11 +95,11 @@ Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the ma
 <summary><b>Clipping</b></summary>
 
 ```text
-/editor Can you pull the best 30-second moment from https://youtu.be/MtQ0qxyf-Ds and make a vertical version for social?
+Can you pull the best 30-second moment from https://youtu.be/MtQ0qxyf-Ds and make a vertical version for social?
 ```
 
 ```text
-/editor Make a 15-second version of this launch video. https://x.com/claudeai/status/2045156267690213649
+Make a 15-second version of this launch video. https://x.com/claudeai/status/2045156267690213649
 ```
 
 </details>
@@ -108,11 +108,11 @@ Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the ma
 <summary><b>Video understanding and reasoning</b></summary>
 
 ```text
-/watch In three bullets, explain what starts the conflict. Include timestamps. https://youtu.be/aqz-KE-bpKQ
+In three bullets, explain what starts the conflict. Include timestamps. https://youtu.be/aqz-KE-bpKQ
 ```
 
 ```text
-/watch Name three recurring locations and give one visual cue that distinguishes each. https://youtu.be/dQw4w9WgXcQ
+Name three recurring locations and give one visual cue that distinguishes each. https://youtu.be/dQw4w9WgXcQ
 ```
 
 </details>

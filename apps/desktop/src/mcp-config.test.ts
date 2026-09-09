@@ -34,7 +34,7 @@ describe("per-agent entries", () => {
 describe("json configs", () => {
   it("creates the file from nothing", () => {
     const text = upsertServer(null, "json", { type: "http", url: spec.url });
-    expect(JSON.parse(text)).toEqual({ mcpServers: { dapi: { type: "http", url: spec.url } } });
+    expect(JSON.parse(text)).toEqual({ mcpServers: { diffusion: { type: "http", url: spec.url } } });
     expect(text.endsWith("\n")).toBe(true);
   });
 
@@ -48,7 +48,7 @@ describe("json configs", () => {
     expect(after.numStartups).toBe(12);
     expect(after.projects).toEqual({ "/a": { allowedTools: [] } });
     expect(after.mcpServers.other).toEqual({ command: "x", args: [] });
-    expect(after.mcpServers.dapi).toEqual({ url: spec.url });
+    expect(after.mcpServers.diffusion).toEqual({ url: spec.url });
   });
 
   it("replaces a stdio entry with a URL entry, and reads either", () => {
@@ -56,7 +56,7 @@ describe("json configs", () => {
     expect(readServer(before, "json")).toEqual({ command: "/old/dapi" });
     const after = upsertServer(before, "json", { type: "http", url: spec.url });
     expect(readServer(after, "json")).toEqual({ url: spec.url });
-    expect(JSON.parse(after).mcpServers.dapi.command).toBeUndefined();
+    expect(JSON.parse(after).mcpServers.diffusion.command).toBeUndefined();
   });
 
   it("reads the URL under each agent's key", () => {
@@ -73,7 +73,7 @@ describe("json configs", () => {
 
   it("treats an empty file as no config", () => {
     expect(readServer("", "json")).toBeNull();
-    expect(JSON.parse(upsertServer("  \n", "json", { url: spec.url }))).toEqual({ mcpServers: { dapi: { url: spec.url } } });
+    expect(JSON.parse(upsertServer("  \n", "json", { url: spec.url }))).toEqual({ mcpServers: { diffusion: { url: spec.url } } });
   });
 });
 
@@ -81,21 +81,21 @@ describe("toml configs (codex)", () => {
   it("appends a table to an existing config", () => {
     const before = 'model = "o3"\n\n[mcp_servers.other]\ncommand = "x"\n';
     const after = upsertServer(before, "toml", { url: spec.url });
-    expect(after).toBe('model = "o3"\n\n[mcp_servers.other]\ncommand = "x"\n\n[mcp_servers.dapi]\nurl = "http://127.0.0.1:3274/mcp"\n');
+    expect(after).toBe('model = "o3"\n\n[mcp_servers.other]\ncommand = "x"\n\n[mcp_servers.diffusion]\nurl = "http://127.0.0.1:3274/mcp"\n');
     expect(readServer(after, "toml")).toEqual({ url: spec.url });
   });
 
   it("replaces our table in place and leaves the next one alone", () => {
-    const before = '[mcp_servers.dapi]\ncommand = "/old/dapi"\nargs = ["mcp"]\n\n[mcp_servers.other]\ncommand = "x"\n';
+    const before = '[mcp_servers.diffusion]\ncommand = "/old/dapi"\nargs = ["mcp"]\n\n[mcp_servers.other]\ncommand = "x"\n';
     expect(readServer(before, "toml")).toEqual({ command: "/old/dapi" });
     const after = upsertServer(before, "toml", { url: spec.url });
-    expect(after).toBe('[mcp_servers.dapi]\nurl = "http://127.0.0.1:3274/mcp"\n[mcp_servers.other]\ncommand = "x"\n');
+    expect(after).toBe('[mcp_servers.diffusion]\nurl = "http://127.0.0.1:3274/mcp"\n[mcp_servers.other]\ncommand = "x"\n');
     expect(readServer(after, "toml")).toEqual({ url: spec.url });
   });
 
   it("starts a file from nothing", () => {
     const text = upsertServer(null, "toml", { url: spec.url });
-    expect(text).toBe('[mcp_servers.dapi]\nurl = "http://127.0.0.1:3274/mcp"\n');
+    expect(text).toBe('[mcp_servers.diffusion]\nurl = "http://127.0.0.1:3274/mcp"\n');
   });
 
   it("escapes quotes and backslashes in stdio paths", () => {
