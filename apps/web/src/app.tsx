@@ -17,7 +17,6 @@ import { ScreenTooSmall } from '@/components/screen-too-small';
 import { UnsupportedBrowser } from '@/components/unsupported-browser';
 import { ProjectPage } from '@/pages/project';
 import { LoginPage } from '@/pages/login';
-import { OnboardingPage, onboardingCompleted } from '@/pages/onboarding';
 import { AuthCallbackPage } from '@/pages/auth-callback';
 import { NotFoundPage } from '@/pages/not-found';
 import { DashboardPage } from '@/pages/dashboard';
@@ -28,12 +27,7 @@ function AuthGate(props: { children: JSX.Element }) {
   return (
     <Show when={!auth.isLoading()}>
       <Show when={auth.isAuthenticated() || auth.headless()}>
-        <Show
-          when={onboardingCompleted() || auth.headless()}
-          fallback={<OnboardingPage />}
-        >
-          {props.children}
-        </Show>
+        {props.children}
       </Show>
       <Show when={!auth.isAuthenticated()}>
         <LoginPage />
