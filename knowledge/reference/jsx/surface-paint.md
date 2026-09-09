@@ -126,7 +126,7 @@ Like all paints it stacks with siblings in document order and clips to the paren
 
 ## Persistence and export
 
-The module is re-executed in every context, so the drawing is reproducible rather than ephemeral: on reload, export, and [`dapi capture`](../tools/capture.md) the engine re-runs your drawing code against a fresh canvas driven by that context's playhead, so ticker surfaces animate in exports. The bitmap itself is not stored; your code reproduces it. This assumes the module's structure is deterministic (`Math.random()`/`Date.now()` must not decide the shape of the tree; using them inside a draw effect is fine).
+The module is re-executed in every context, so the drawing is reproducible rather than ephemeral: on reload, export, and [`capture`](../tools/capture.md) the engine re-runs your drawing code against a fresh canvas driven by that context's playhead, so ticker surfaces animate in exports. The bitmap itself is not stored; your code reproduces it. This assumes the module's structure is deterministic (`Math.random()`/`Date.now()` must not decide the shape of the tree; using them inside a draw effect is fine).
 
 **Async setup has to be held.** Because that re-execution is a fresh mount, a model, a texture, or a device your drawing waits for is fetched again there — and sampling begins as soon as the render returns, so the first frames are written from a canvas nothing has drawn into yet. Hand the promise to [`useTicker().hold`](./lifecycle.md#hold) and those frames wait for it:
 

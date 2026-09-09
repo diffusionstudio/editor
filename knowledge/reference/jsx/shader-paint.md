@@ -96,7 +96,7 @@ Swapping `wgsl` recompiles the pipeline asynchronously; the media shows unshaded
 
 ## Errors and limitations
 
-- WGSL compile errors are reported on the app console ([`dapi logs`](../tools/logs.md)) with line numbers relative to your source; the paint renders as passthrough until a fix lands.
+- WGSL compile errors are reported on the app console ([`logs`](../tools/logs.md)) with line numbers relative to your source; the paint renders as passthrough until a fix lands.
 - Pipeline compilation is asynchronous. Live playback may show the first frames unshaded; exports wait for compilation, so rendered output is always shaded.
 - One shader reads one media paint; shaders do not chain and do not read solid/gradient/html/surface paints or the composited stack (over those the shader runs procedurally and stacks on top).
 - For full custom pipelines (own vertex stage, WebGL, three.js) use [`<surface>`](./surface-paint.md), which owns its canvas outright.

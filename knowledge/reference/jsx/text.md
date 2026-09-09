@@ -18,7 +18,7 @@ All [common props](./elements.md#common-props), plus:
 | ---- | ---- | ------- | ------- |
 | children | `string` (or expressions resolving to strings) | **required** | The text content, alongside any `<textRange>`, paint, `<stroke>`, `<shadow>`, `<effect>`, `<animation>` and `<keyframeTrack>` children. |
 | `color` | `string` | none | The glyph color; any CSS color, alpha ignored (use `opacity`). Drawn beneath any paint children (see [paints.md](./paints.md)); animate it with a `color` [keyframe track](./keyframes.md). A text with neither `color` nor a paint child draws no glyphs. |
-| `fontFamily` | `string` | `Inter` | A family available on the machine ([`dapi fonts`](../tools/fonts.md)); see [fonts.md](./fonts.md). |
+| `fontFamily` | `string` | `Inter` | A family available on the machine ([`fonts`](../tools/fonts.md)); see [fonts.md](./fonts.md). |
 | `fontSize` | `number` | `16` | Px. |
 | `fontWeight` | `number \| "normal" \| "bold"` | `"normal"` | CSS weights `100`–`900`. |
 | `fontStyle` | `"normal" \| "italic" \| "oblique"` | `"normal"` | |

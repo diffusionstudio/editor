@@ -61,7 +61,7 @@ Download the desktop app, it walks you through setting everything up:
 
 <a href="https://www.diffusion.studio/download"><img src="https://img.shields.io/badge/Download-Diffusion%20Studio-161616?style=for-the-badge&logo=apple&logoColor=F8F8F8&labelColor=000000" alt="Download Diffusion Studio" /></a>
 
-Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the main skill you'll use. Ask for what you want in plain language. Behind it is `dapi`, the CLI that drives the app.
+Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. `/editor` is the main skill you'll use. Ask for what you want in plain language. Behind it is the app's MCP server, which the app registers with your agent; `dapi` is the same set of tools as a CLI.
 
 ## Prompt examples
 
@@ -127,7 +127,7 @@ Both were created by prompting. The compositions are published in [diffusionstud
 
 ## Compositions as code
 
-A project is a folder of that JSX: `dapi open <dir>` once, then edit the files. Saving recompiles the entry file and mounts it directly into the editor's ECS.
+A project is a folder of that JSX: `open` a folder once (`dapi open <dir>` from a shell), then edit the files. Saving recompiles the entry file and mounts it directly into the editor's ECS.
 
 Every element carries an `id`, which is how the write-back finds its target: a rect dragged on the canvas, a clip trimmed on the timeline, or a retyped line lands as a prop on the element that authored it.
 
@@ -176,7 +176,7 @@ Everything a mount produces stays a first-class editor node, so a person can pic
 
 ## Seeing and hearing the media
 
-Cutting footage requires understanding it. The CLI ships the inspection tools an agent needs to work with media it cannot watch:
+Cutting footage requires understanding it. The app exposes the inspection tools an agent needs to work with media it cannot watch — as MCP tools, and as the same commands in a shell:
 
 ```sh
 dapi media probe clip.mp4                                # container + codec metadata, like ffprobe
@@ -187,6 +187,8 @@ dapi media transcribe interview.wav                      # timed, word-level tra
 dapi media listen interview.mp4 -p "what is said in the intro?"   # ask a multimodal model
 dapi capture intro -t 0 2 4                              # the frames a render would produce, by scene id
 ```
+
+Each command is the MCP tool of the same name: `dapi media grab` is `media_grab`, `--per-sheet` is `perSheet`.
 
 | Command | Purpose |
 | --- | --- |
@@ -199,9 +201,9 @@ dapi capture intro -t 0 2 4                              # the frames a render w
 | `dapi screenshot` / `dapi logs` | The app itself: capture the window, read recent console output |
 | `dapi fetch` | Download a video from yt/tt/ig |
 | `dapi whoami` | The authenticated account |
-| `dapi report` | Report a bug in the CLI or the app: diagnostics bundled, filed as a GitHub issue via `gh` |
+| `dapi report` | Report a bug in the tools or the app: diagnostics bundled, filed as a GitHub issue via `gh` |
 
-Conventions throughout: single results are one JSON value, collections are JSON Lines, errors go to stderr with exit code `1`. Everything is built to be piped, grepped, and driven by a program.
+Conventions throughout: every result is one JSON object, the same structured content the MCP tool returns; errors go to stderr with exit code `1`. Everything is built to be piped, grepped, and driven by a program.
 
 ## Documentation
 

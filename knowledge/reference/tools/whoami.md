@@ -1,6 +1,11 @@
-# `dapi whoami`
+# whoami
 
-Prints the authenticated account, or `null` if signed out.
+Report the authenticated account, or null if signed out.
+
+| | |
+| --- | --- |
+| MCP tool | `whoami` |
+| CLI | `dapi whoami` |
 
 ## Input
 

@@ -1,12 +1,21 @@
-# `dapi check <id>`
+# check
 
-Checks a node's subtree for obvious structural mistakes, without rendering: spans of the node's play window where **no visual is scheduled** (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load or generate. Alongside the issues it reports subtree stats — node count by kind, nesting depth, and played duration — so it doubles as a quick structural summary of a scene.
+Check a node's subtree for obvious structural mistakes, without rendering (local analysis, no credits): spans where no visual is scheduled (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load or generate — plus subtree stats (node count by kind, nesting depth, played duration). Times in issue ranges are seconds relative to the node's start — for a scene whose workarea starts at 0, the same clock capture uses. Structural only: a scheduled clip can still render black (dark footage, content smaller than the canvas), so confirm suspicious spans visually with capture.
 
-The analysis is structural, from the resolved timeline alone, so it is instant and costs no credits — and it can only say *nothing is scheduled*, not *the frame is black*. A scheduled clip can still render black (dark footage, content smaller than the canvas, a transparent asset); confirm suspicious spans visually with [`capture`](./capture.md) at a time inside the range.
+| | |
+| --- | --- |
+| MCP tool | `check` |
+| CLI | `dapi check <id>` |
 
 ## Input
 
-- `<id>`: node id to check (required) — the element's `id` attribute in the project's JSX, or `file:id` when two files use the same id. Same resolution rules as [`capture`](./capture.md).
+| Field | Type | CLI | Description |
+| --- | --- | --- | --- |
+| `id` | `string`, required | `<id>` | node id from the project's JSX, or `file:id` when two files use the same id |
+
+## What it can and cannot see
+
+The analysis is structural, from the resolved timeline alone, so it is instant and costs no credits — and it can only say *nothing is scheduled*, not *the frame is black*. A scheduled clip can still render black (dark footage, content smaller than the canvas, a transparent asset); confirm suspicious spans visually with [`capture`](./capture.md) at a time inside the range. Alongside the issues it reports subtree stats — node count by kind, nesting depth, and played duration — so it doubles as a quick structural summary of a scene. The `id` resolves by the same rules as [`capture`](./capture.md)'s.
 
 ## What counts as visual coverage
 
@@ -29,7 +38,7 @@ One JSON object:
     severity: "error" | "warning";
     message: string;
     node?: string;                    // source stamp of the offending node; absent for subtree-wide issues
-    ranges?: Array<{ start: number; end: number }>;  // seconds relative to the node's start — for a scene whose workarea starts at 0, the clock `capture --times` uses
+    ranges?: Array<{ start: number; end: number }>;  // seconds relative to the node's start — for a scene whose workarea starts at 0, the clock `capture` positions use
   }>;
 }
 ```
@@ -45,6 +54,10 @@ One JSON object:
 | `transparent` | warning | A node with static opacity 0 (nodes with keyframes are given the benefit of the doubt) |
 | `source-error` | error | An asset that failed to load or generate, with the failure message |
 
-## Exit code
+## Severity and the shell
 
-`0` when no error-severity issue is found (warnings alone stay `0`), `1` when one is — or when the check itself can't run (no project open, unknown id).
+Finding issues is not a failure: the result is the same object either way, and the caller reads `issues`. From a shell, `dapi check` additionally exits `1` when an error-severity issue is found (warnings alone stay `0`), so it can gate a script.
+
+## Errors
+
+Fails when the check itself can't run: no project is open, or the id is unknown or ambiguous.

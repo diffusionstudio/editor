@@ -81,7 +81,7 @@ Every node accepts:
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
-| `id` | `string` | stamped | How the element is addressed — by the editor writing back to it, by `dapi capture`, by [`syncTo`](./audio-sync.md). Written into your source if you leave it out (see [module.md](./module.md#ids)). |
+| `id` | `string` | stamped | How the element is addressed — by the editor writing back to it, by `capture`, by [`syncTo`](./audio-sync.md). Written into your source if you leave it out (see [module.md](./module.md#ids)). |
 | `ref` | `SceneNode` variable or `(node: SceneNode) => void` | none | SolidJS-style ref; receives the element's node when it is created. For `<surface>`/`<surfacePaint>` the node's `element` is the backing canvas (see [surface-paint.md](./surface-paint.md)). |
 | `name` | `string` | none | Human-readable node name; what labels the node in the editor. |
 | `x`, `y` | `number` | `0` | Position relative to the parent, px. |

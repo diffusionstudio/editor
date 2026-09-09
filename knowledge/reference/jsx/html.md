@@ -75,7 +75,7 @@ Like all paints, `<htmlPaint>` stacks with siblings in document order and clips 
 
 ## Persistence and export
 
-The module is re-executed in every context: on reload, export, and [`dapi capture`](../tools/capture.md) the engine re-executes it and rebuilds the DOM content in that context. Exports wait for the browser's rendering update before sampling each frame, so the drawn HTML appears in the output; ticker-driven signals follow the playhead and animate frame-accurately. This assumes the module's structure is deterministic (`Math.random()`/`Date.now()` must not decide the shape of the tree).
+The module is re-executed in every context: on reload, export, and [`capture`](../tools/capture.md) the engine re-executes it and rebuilds the DOM content in that context. Exports wait for the browser's rendering update before sampling each frame, so the drawn HTML appears in the output; ticker-driven signals follow the playhead and animate frame-accurately. This assumes the module's structure is deterministic (`Math.random()`/`Date.now()` must not decide the shape of the tree).
 
 ## Requirements and limitations
 

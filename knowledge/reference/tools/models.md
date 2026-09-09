@@ -1,12 +1,19 @@
-# `dapi models [type]`
+# models
 
-Lists the generation models available for a media type, including each model's capabilities. Use it to discover valid model ids and the per-model constraints (durations, aspect ratios, features) to set on an asset declaration (see [jsx/generate.md](../jsx/generate.md)).
+List available AI generation models and their per-model constraints (durations, aspect ratios, features), for `generate.*` asset declarations in a project module.
 
-There are no CLI commands that generate; asset generation is declared in the project module and produced on mount.
+| | |
+| --- | --- |
+| MCP tool | `models` |
+| CLI | `dapi models [type]` |
 
 ## Input
 
-- `[type]` (optional): one of `image`, `video`, `audio`. Omit to list all three groups.
+| Field | Type | CLI | Description |
+| --- | --- | --- | --- |
+| `type` | `"image" \| "video" \| "audio"` | `[type]` | filter to one kind of model, image, video, or audio (default: all three) |
+
+Use it to discover valid model ids and the per-model constraints (durations, aspect ratios, features) to set on an asset declaration (see [jsx/generate.md](../jsx/generate.md)). No tool generates: asset generation is declared in the project module and produced on mount.
 
 ## Output
 

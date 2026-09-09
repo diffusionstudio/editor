@@ -34,18 +34,18 @@ export default function Project() {
 
 Declarations are **pure**: calling `generate.*` validates its options and returns a ref; nothing is requested until an element carrying it mounts. A ref that is never used by a mounted element (directly or as an input to another asset) is never generated. Declarations may live at module scope or inside components.
 
-Generation is **asynchronous and non-blocking**: the element is on the canvas immediately, showing a generating state, and its paint attaches when the asset lands. [`dapi context`](../tools/context.md) reports where each one stands — generating, failed with the reason, or done with the library path it landed as — and a declaration that fails leaves its element carrying an [`error`](./errors.md#failed-sources).
+Generation is **asynchronous and non-blocking**: the element is on the canvas immediately, showing a generating state, and its paint attaches when the asset lands. [`context`](../tools/context.md) reports where each one stands — generating, failed with the reason, or done with the library path it landed as — and a declaration that fails leaves its element carrying an [`error`](./errors.md#failed-sources).
 
 ## Declaration options
 
-Run [`dapi models <type>`](../tools/models.md) to discover valid `model` ids and per-model constraints; [`dapi voices`](../tools/voices.md) lists voices.
+[`models`](../tools/models.md) lists valid `model` ids and per-model constraints; [`voices`](../tools/voices.md) lists voices.
 
 ```ts
 type AssetInput = string | AssetRef;   // path, URL, asset id, or another declaration
 
 generate.image(opts: {
   prompt: string;                  // required
-  model?: string;                  // default: first model from `dapi models image`
+  model?: string;                  // default: the first image model from `models`
   aspectRatio?: "1:1" | "4:3" | "3:4" | "16:9" | "9:16";   // default "16:9"
   refs?: AssetInput[];             // image references
   seed?: number;                   // reproducible generation
@@ -53,7 +53,7 @@ generate.image(opts: {
 
 generate.video(opts: {
   prompt: string;                  // required
-  model?: string;                  // default: first model from `dapi models video`
+  model?: string;                  // default: the first video model from `models`
   aspectRatio?: "1:1" | "4:3" | "3:4" | "16:9" | "9:16";   // default "16:9"
   duration?: number;               // whole seconds; default 5
   audio?: boolean;                 // generate audio alongside; models with the `audio` feature only
@@ -64,13 +64,13 @@ generate.video(opts: {
 
 generate.voice(opts: {
   prompt: string;                  // required: the text to speak
-  voice?: string;                  // default: first voice from `dapi voices`
+  voice?: string;                  // default: the first voice from `voices`
   seed?: number;
 }): AssetRef;
 
 generate.audio(opts: {
   prompt: string;                  // required
-  model?: string;                  // default: first model from `dapi models audio`
+  model?: string;                  // default: the first audio model from `models`
   duration?: number;               // seconds; default 30 for music, the model's own default for sfx
   seed?: number;
 }): AssetRef;

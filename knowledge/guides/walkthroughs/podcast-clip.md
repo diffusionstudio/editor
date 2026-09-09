@@ -8,7 +8,7 @@ Write the brief first: the source URL or file, how many clips are wanted, the ta
 
 ## 2. Audio-only pass
 
-Download the audio track alone. It is a fraction of the bytes, and the best moments are found without visuals.
+Download the audio track alone with `fetch` (`audio: true`, `output: podcast.m4a`). It is a fraction of the bytes, and the best moments are found without visuals. From a shell:
 
 ```bash
 dapi fetch <url> -a -o podcast.m4a
@@ -16,34 +16,34 @@ dapi fetch <url> -a -o podcast.m4a
 
 ## 3. Segment the audio
 
-A three-hour track is too long for one analysis pass, so split it into segments and analyze each. Segments are **windows**, not files: `listen -s/-e` takes the range directly, and the timestamps it returns are relative to `-s`. Pick one of three ways to choose the boundaries:
+A three-hour track is too long for one analysis pass, so split it into segments and analyze each. Segments are **windows**, not files: `media_listen` takes the range as `start`/`end`, and the timestamps it returns are relative to `start`. Pick one of three ways to choose the boundaries:
 
-1. **Waveform.** `dapi media waveform` renders loudness over the whole track and returns the silent spans as second ranges. Cut segments at those spans — the boundaries land between thoughts instead of inside them.
+1. **Waveform.** `media_waveform` renders loudness over the whole track and returns the silent spans as second ranges. Cut segments at those spans — the boundaries land between thoughts instead of inside them.
 2. **Naive.** Fixed 15–30 minute segments. Nothing to parse, and good enough because the analysis reports its own timestamps; a moment straddling a boundary is the only loss.
 3. **Source transcript.** Many platforms publish one (YouTube captions, show notes with chapter markers). Parse its timestamps and use chapters or topic shifts as boundaries — the cheapest option when it exists, since it needs no decoding at all.
 
 ## 4. Find the clip-worthy moments
 
-Run `dapi media listen` on each segment with a prompt that spells out the criteria and demands timestamps.
+Run `media_listen` on each segment (`start` 15:00, `end` 45:00, and so on) with a prompt that spells out the criteria and demands timestamps:
 
-```bash
-dapi media listen podcast.m4a -s '15:00' -e '45:00' -p 'This is a podcast. Find the 3 most clip-worthy self-contained moments in this segment for a vertical social short. Criteria: a complete thought, punchline, or surprising revelation that works with NO prior context; roughly 25-35 seconds long; opens on a strong hook line and lands on a clean button. For each give: exact start and end timestamp (MM:SS, relative to this segment), who is speaking, a one-line summary of what is said, and a hook-strength rating 1-10. Be strict about self-containment.'
+```text
+This is a podcast. Find the 3 most clip-worthy self-contained moments in this segment for a vertical social short. Criteria: a complete thought, punchline, or surprising revelation that works with NO prior context; roughly 25-35 seconds long; opens on a strong hook line and lands on a clean button. For each give: exact start and end timestamp (MM:SS, relative to this segment), who is speaking, a one-line summary of what is said, and a hook-strength rating 1-10. Be strict about self-containment.
 ```
 
-Asking for a rating and a one-line summary is what makes the candidates comparable across segments. Add the segment's `-s` offset back to each returned timestamp to get absolute positions in the source, then pick the winner on hook strength and self-containment — not on how interesting the topic is.
+Asking for a rating and a one-line summary is what makes the candidates comparable across segments. Add the segment's `start` offset back to each returned timestamp to get absolute positions in the source, then pick the winner on hook strength and self-containment — not on how interesting the topic is.
 
 ## 5. Lock the exact cut points
 
 The analysis gives you seconds; a clip needs the frame. Tighten both ends against the real audio:
 
-- `dapi media transcribe` prints word-level start/end times (use ffmpeg to shorten). Put the in-point on the first word of the hook line and the out-point after the last word of the button.
-- `dapi media waveform podcast.m4a -s <in> -e <out>` shows the breaths around those words, so you can open the in-point a beat early and let the out-point land on the silence after the line instead of clipping its tail.
+- `media_transcribe` returns word-level start/end times (use ffmpeg to shorten). Put the in-point on the first word of the hook line and the out-point after the last word of the button.
+- `media_waveform` with `start`/`end` around the cut shows the breaths around those words, so you can open the in-point a beat early and let the out-point land on the silence after the line instead of clipping its tail.
 
 ## 6. Download the segment and lay it out
 
 Now fetch the video, and **download with padding** — a few seconds either side of the locked range — so the trim can still be nudged without downloading again.
 
-`dapi media probe clip-raw.mp4` gives the source dimensions (a podcast is almost always 1920×1080) and confirms where the padded range actually starts, since a keyframe-aligned download can begin slightly early.
+`media_probe` on the download gives the source dimensions (a podcast is almost always 1920×1080) and confirms where the padded range actually starts, since a keyframe-aligned download can begin slightly early.
 
 Give the node the **source's own aspect ratio**, scaled to the scene height, rather than the scene's box: the node is then wider than the scene, and the scene crops it. That geometry is what makes the framing in the next step possible.
 
@@ -72,7 +72,7 @@ export default function Project() {
 }
 ```
 
-Save the file and get the trim right before framing or captions — `dapi capture <sceneId> -t 0` on the in-point and the out-point is the check.
+Save the file and get the trim right before framing or captions — `capture` at the in-point and the out-point is the check.
 
 ## 7. Frame the active speaker (optional if necessary)
 
@@ -111,4 +111,4 @@ If the caption block lands on the speakers' faces, push it off with `offsetY` ra
 <captions preset="classic" verticalAlign="center" offsetY={420} />
 ```
 
-Capture a frame per caption line with `dapi capture` and check readability at delivery size — a caption over a mouth is worse than no caption.
+Capture a frame per caption line with `capture` and check readability at delivery size — a caption over a mouth is worse than no caption.

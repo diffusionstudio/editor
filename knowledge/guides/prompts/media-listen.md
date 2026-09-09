@@ -1,6 +1,6 @@
-# Writing prompts for `dapi media listen`
+# Writing prompts for `media_listen`
 
-`media listen` puts a multimodal model in front of an audio track and answers a prompt about it. A good prompt is specific about what you want and asks for timestamps so the answer lines up with the timeline. With no prompt it returns a general description; the examples below shape that into something more useful.
+[`media_listen`](../../reference/tools/media/listen.md) puts a multimodal model in front of an audio track and answers a prompt about it. A good prompt is specific about what you want and asks for timestamps so the answer lines up with the timeline. With no prompt it returns a general description; the examples below shape that into something more useful.
 
 ## Examples
 When you refer to a specific moment inside a prompt, use `MM:SS` (e.g. `01:15` for one minute fifteen seconds).

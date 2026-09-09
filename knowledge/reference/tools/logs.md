@@ -1,11 +1,20 @@
-# `dapi logs`
+# logs
 
-Prints recent console output from the running app: everything the devtools console shows, including page logs, worker logs, uncaught errors, and Chromium warnings. Oldest first. The app buffers the last 2000 entries in its main process, so the log survives page reloads and project switches; use this instead of relaunching with `ELECTRON_ENABLE_LOGGING=1` to see renderer-side errors.
+Recent console output from the running app (what the devtools console shows: page logs, worker logs, uncaught errors), oldest first. The app buffers the last 2000 entries across reloads and project switches, so this replaces relaunching with ELECTRON_ENABLE_LOGGING=1 when debugging renderer-side behavior.
 
-## Options
+| | |
+| --- | --- |
+| MCP tool | `logs` |
+| CLI | `dapi logs [options]` |
 
-- `-n, --tail <n>`: output only the last `<n>` entries (positive integer)
-- `-l, --level <level>`: minimum level to include: `"debug"`, `"info"`, `"warning"`, or `"error"`
+## Input
+
+| Field | Type | CLI | Description |
+| --- | --- | --- | --- |
+| `tail` | `integer` | `-n, --tail <n>` | return only the last n entries |
+| `level` | `"debug" \| "info" \| "warning" \| "error"` | `-l, --level <level>` | minimum level to include: debug, info, warning, or error |
+
+The buffer lives in the app's main process, so the log survives page reloads and project switches. Over MCP the same entries are the live resource `dapi://logs`. Progress of long operations — an export's percentage, a generation landing — shows up here, so polling `logs` is how a caller follows work it started.
 
 ## Output
 
@@ -24,4 +33,4 @@ One JSON object, the entries oldest first:
 
 ## Errors
 
-Exits non-zero on an invalid `--tail` or `--level`, or if the app is not running.
+Fails when `tail` is not a positive integer or `level` is not one of the four levels.

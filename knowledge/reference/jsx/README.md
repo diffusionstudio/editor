@@ -34,7 +34,7 @@ export default function Project() {
 | [scene.md](./scene.md) | `<scene>`: the clipped, playable frame and the timeline its children sit on |
 | [elements.md](./elements.md) | Element-to-node mapping, coordinates and sizing, the shared property table |
 | [group.md](./group.md), [rect.md](./rect.md), [text.md](./text.md), [video.md](./video.md), [image.md](./image.md), [audio.md](./audio.md) | Per-element props |
-| [fonts.md](./fonts.md) | Fonts for `<text>` and HTML: local families, `dapi fonts` |
+| [fonts.md](./fonts.md) | Fonts for `<text>` and HTML: local families, the `fonts` tool |
 | [paints.md](./paints.md) | `<solidPaint>`, gradients, `<colorStop>`, `<imagePaint>` / `<videoPaint>` |
 | [styles.md](./styles.md) | `<stroke>`, `<shadow>`, `<effect>`: outlines, drop shadows and filters |
 | [html.md](./html.md) | `<html>`: reactive HTML children drawn into the box |
@@ -62,7 +62,7 @@ Everything below runs in the app, on open and again on every save of a project f
 2. **Compile**: the entry file bundles with esbuild + `babel-preset-solid` in `universal` mode, so JSX compiles against the editor's renderer runtime instead of the DOM. `solid-js`, `solid-js/store` and `@diffusionstudio/jsx` are external — the app supplies its own instances; everything else is bundled. A compile error is reported and the canvas keeps the last good render.
 3. **Evaluate**: the app imports the module. Top-level code runs to completion. The module's **default export** is the project component.
 4. **Mount**: the component tree renders **directly into the world**. There is no staging tree: each element materializes as an entity as it is created, and the root `<stage>` is the one already there. Mounting is synchronous, and a throw part-way through leaves nothing behind — the document is disposed and the previous render stays on the canvas.
-5. **Resolve**: every `src` resolves in the background — a path or asset id is loaded, a `generate.*` declaration is generated in dependency order, a `<captions>` without a `src` transcribes its scene. Each element renders a generating state until its asset lands, and an element that fails carries the reason (see [generate.md](./generate.md), [errors.md](./errors.md)). Non-blocking: the composition is on the canvas and editable while this runs, and [`dapi context`](../tools/context.md) reports where each generation stands.
+5. **Resolve**: every `src` resolves in the background — a path or asset id is loaded, a `generate.*` declaration is generated in dependency order, a `<captions>` without a `src` transcribes its scene. Each element renders a generating state until its asset lands, and an element that fails carries the reason (see [generate.md](./generate.md), [errors.md](./errors.md)). Non-blocking: the composition is on the canvas and editable while this runs, and [`context`](../tools/context.md) reports where each generation stands.
 6. **Live**: the reactive graph keeps running for as long as the project is open — signals, effects, `useTicker` (see [lifecycle.md](./lifecycle.md)). Export, capture and the next open re-execute the same module.
 
 A save replaces the whole run: the old mount is disposed and the new one takes the stage. Scenes are rebuilt rather than accumulated, and the entities the previous render owned go with it.

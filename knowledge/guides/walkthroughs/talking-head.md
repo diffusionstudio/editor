@@ -10,9 +10,9 @@ Write the brief first. It records the source files, the target duration (or "kee
 
 The transcript is the spine, so transcribe everything with speech.
 
-- **Transcribe every video and any external audio.** `dapi media transcribe <id|path>` prints word-level start/end times — the times you cut on. Run it on each camera take and on any separate recording (a lav or interface track you will sync to).
-- **Render the waveform to read the gaps.** `dapi media waveform <id|path>` marks silence in red and returns it as second ranges. A transcript marks only speech, so a gap in it can be silence *or* something to keep — a laugh, a breath. The waveform tells them apart: red is dead air to cut; a gap that still shows signal is performance to keep.
-- **Resolve double takes visually.** The transcript shows repeated lines; usually the **last** take is the keeper. When takes read equally well, `dapi media grab -t` the first word of each and keep the sharpest — motion blur means a bad take.
+- **Transcribe every video and any external audio.** `media_transcribe` returns word-level start/end times — the times you cut on. Run it on each camera take and on any separate recording (a lav or interface track you will sync to).
+- **Render the waveform to read the gaps.** `media_waveform` marks silence in red and returns it as second ranges. A transcript marks only speech, so a gap in it can be silence *or* something to keep — a laugh, a breath. The waveform tells them apart: red is dead air to cut; a gap that still shows signal is performance to keep.
+- **Resolve double takes visually.** The transcript shows repeated lines; usually the **last** take is the keeper. When takes read equally well, `media_grab` the first word of each and keep the sharpest — motion blur means a bad take.
 
 ## 3. Lay out the A-roll
 
@@ -70,9 +70,9 @@ Save the file — the app recompiles and re-renders it — and get the spine rig
 
 ## 5. Verification
 
-Run `dapi check <sceneId>` first: on a long timeline of many clips, a `sourceOut`/`start` that don't meet leaves a gap no sampled frame would land on, and the check names those spans outright.
+Run `check` on the scene first: on a long timeline of many clips, a `sourceOut`/`start` that don't meet leaves a gap no sampled frame would land on, and the check names those spans outright.
 
-Then the cut points, which matter most. Capture the **first frame of every clip** with `dapi capture <sceneId> -t ...` at each clip's `start`, and check the cut didn't land on a bad frame — motion blur is the usual tell; nudge `sourceIn` a few frames to a settled one. Reconcile against the brief, and re-check neighbouring cuts after any structural change.
+Then the cut points, which matter most. Capture the **first frame of every clip** with `capture` at each clip's `start`, and check the cut didn't land on a bad frame — motion blur is the usual tell; nudge `sourceIn` a few frames to a settled one. Reconcile against the brief, and re-check neighbouring cuts after any structural change.
 
 ## 6. Visual hook (optional)
 

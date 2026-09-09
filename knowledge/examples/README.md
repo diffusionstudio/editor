@@ -3,7 +3,7 @@
 Self-contained compositions demonstrating the JSX API (see [reference/jsx](../reference/jsx/README.md)).
 Each one is a whole project entry file: it default-exports a component rendering a
 `<stage>` with one `<scene>` in it. To run one, copy it into a project folder as the
-entry and open that folder:
+entry and [`open`](../reference/tools/open.md) that folder — from a shell:
 
 ```sh
 cp examples/01-basics.tsx ~/Projects/basics/index.tsx

@@ -14,7 +14,7 @@ export default function Project() {
 }
 ```
 
-The component receives no props. [`dapi open <dir>`](../tools/open.md) opens the folder — creating it, and an `index.tsx` holding an empty stage, if it is not a project yet.
+The component receives no props. [`open`](../tools/open.md) opens the folder — creating it, and an `index.tsx` holding an empty stage, if it is not a project yet.
 
 ## The folder
 
@@ -40,7 +40,7 @@ Every composition element carries an `id`, and the app stamps one onto every ele
 <rect id="k3f9x1" x={40} y={40} width={640} height={360} fill="#FF0055" />
 ```
 
-An id is what makes an element addressable: it is how an entity is traced back to the JSX that produced it, so a change made on the canvas can be written to the element it came from, and it is what [`dapi capture`](../tools/capture.md) takes to render one node. It is also how elements point at each other within a render — [`syncTo`](./audio-sync.md) names the id of the clip it aligns against.
+An id is what makes an element addressable: it is how an entity is traced back to the JSX that produced it, so a change made on the canvas can be written to the element it came from, and it is what [`capture`](../tools/capture.md) takes to render one node. It is also how elements point at each other within a render — [`syncTo`](./audio-sync.md) names the id of the clip it aligns against.
 
 **Ids are yours to write.** Any string is valid, and `id="hero"` is worth more to read than anything minted. The stamp only fills in elements that have none, so renaming one by hand is safe. Ids are stripped at compile time and never reach the runtime as a prop; what survives is the stamp that carries them.
 
