@@ -111,7 +111,7 @@ Tools, mapped from today's commands:
 | `fetch` | `dapi fetch` | main | yt-dlp passthrough. Progress goes to MCP progress notifications instead of inherited stderr. |
 | `report` | `dapi report` | main | Files the GitHub issue with diagnostics that main already holds. |
 
-Argument parsing that exists today only to turn strings into numbers (`--time "45f"`, `--count`, `--per-sheet`) becomes schema: times are accepted as the same strings and parsed by `parseTime` from `@diffusionstudio/jsx` inside the schema's transform, so the CLI and the agent get identical validation and identical error messages.
+Argument parsing that exists today only to turn strings into numbers (`--times "45f"`, `--count`, `--per-sheet`) becomes schema: times are accepted as the same strings and parsed by `parseTime` from `@diffusionstudio/jsx` inside the schema's transform, so the CLI and the agent get identical validation and identical error messages.
 
 ### 2. Main process: the server
 

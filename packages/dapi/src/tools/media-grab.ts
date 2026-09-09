@@ -16,7 +16,7 @@ export const mediaGrab = defineTool({
   name: "media_grab",
   title: "Grab frames",
   description:
-    "Decode frames of a video file and write them as PNGs (local render, no credits). By default the frames are merged into contact sheets: up to 12 per image, each cell labelled with its timecode (`08s10f`, zero segments dropped) and drawn as large as fits, so a handful of frames arrives as one high-resolution picture instead of a directory to open one by one (combine: false writes a PNG per frame). Grabs the asset's own pixels, unlike capture which renders the composited node. The recommended tool for understanding a video at the frame level; past ~12 frames prefer media_filmstrip.",
+    "Decode frames of a video file and write them as PNGs (local render, no credits). By default the frames are merged into contact sheets: up to 12 per image, each cell labelled with its timecode (`08s10f`, zero segments dropped) and drawn as large as fits, so a handful of frames arrives as one high-resolution picture instead of a directory to open one by one (separate: true writes a PNG per frame). Grabs the asset's own pixels, unlike capture which renders the composited node. The recommended tool for understanding a video at the frame level; past ~12 frames prefer media_filmstrip.",
   input: z
     .object({
       path: AssetPath,
@@ -39,7 +39,7 @@ export const mediaGrab = defineTool({
         ),
       ...windowFields,
       quality: FrameQuality.optional().describe(
-        "frame resolution: small (384x384), medium (768x768), large (1536x1536), or fullres (native); default: as large as the sheet cell allows, or small with combine: false",
+        "frame resolution: small (384x384), medium (768x768), large (1536x1536), or fullres (native); default: as large as the sheet cell allows, or small with separate: true",
       ),
       ...sheetFields,
       uncapped: z

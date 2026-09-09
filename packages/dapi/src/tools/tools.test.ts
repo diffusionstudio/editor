@@ -23,7 +23,7 @@ describe("media_grab", () => {
   it("parses times in every form and applies the sheet default", () => {
     const args = input.parse({ path: "/clip.mp4", times: ["45f", "1:10", -1, "-2f"] });
     expect(args.times).toEqual([1.5, 70, -1, -2 / 30]);
-    expect(args.combine).toBe(true);
+    expect(args.separate).toBeUndefined();
     expect(args.perSheet).toBeUndefined();
   });
 
@@ -58,21 +58,21 @@ describe("media_grab", () => {
   });
 
   it("rejects perSheet for separate images", () => {
-    expect(issues(input.safeParse({ path: "/c.mp4", combine: false, perSheet: 4 }))).toHaveProperty("perSheet");
+    expect(issues(input.safeParse({ path: "/c.mp4", separate: true, perSheet: 4 }))).toHaveProperty("perSheet");
     expect(issues(input.safeParse({ path: "/c.mp4", perSheet: 13 }))).toHaveProperty("perSheet");
     expect(input.safeParse({ path: "/c.mp4", perSheet: 12 }).success).toBe(true);
   });
 });
 
 describe("capture", () => {
-  it("takes non-negative integer frames", () => {
-    expect(capture.input.parse({ id: "intro", frames: [0, 45] }).frames).toEqual([0, 45]);
-    expect(capture.input.safeParse({ id: "intro", frames: [1.5] }).success).toBe(false);
-    expect(capture.input.safeParse({ id: "intro", frames: [-1] }).success).toBe(false);
+  it("takes non-negative times in every form", () => {
+    expect(capture.input.parse({ id: "intro", times: [0, "45f", "1:10"] }).times).toEqual([0, 1.5, 70]);
+    expect(capture.input.safeParse({ id: "intro", times: [-1] }).success).toBe(false);
+    expect(capture.input.safeParse({ id: "intro", times: ["-2f"] }).success).toBe(false);
   });
 
   it("shares the sheet rule with media_grab", () => {
-    expect(issues(capture.input.safeParse({ id: "intro", combine: false, perSheet: 2 }))).toHaveProperty("perSheet");
+    expect(issues(capture.input.safeParse({ id: "intro", separate: true, perSheet: 2 }))).toHaveProperty("perSheet");
   });
 });
 

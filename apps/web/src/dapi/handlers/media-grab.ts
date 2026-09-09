@@ -27,7 +27,7 @@ const FRAME_QUALITY_BUDGETS: Record<FrameQuality, number> = {
 const AUTO_MAX_FRAMES = 30;
 
 export const mediaGrab: ToolHandler<"media_grab"> = async (args, ctx) => {
-  const { times, count, start, end, quality, auto, combine, perSheet } = args;
+  const { times, count, start, end, quality, auto, separate, perSheet } = args;
   const asset = await resolveAsset(ctx, args.path);
   requireAssetType(asset, ["VIDEO"], "a video");
 
@@ -53,7 +53,7 @@ export const mediaGrab: ToolHandler<"media_grab"> = async (args, ctx) => {
     requested = (times && times.length ? times : [0]).map((t) => resolveTime(t, asset.duration));
   }
 
-  const budget = FRAME_QUALITY_BUDGETS[quality ?? (combine ? "fullres" : "small")];
+  const budget = FRAME_QUALITY_BUDGETS[quality ?? (separate ? "small" : "fullres")];
 
   const blob = await getAssetFile(asset);
   const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
@@ -86,7 +86,7 @@ export const mediaGrab: ToolHandler<"media_grab"> = async (args, ctx) => {
 
     // Lay the sheets out up front: the largest cell across them sets the
     // decode size, so no frame is decoded bigger than it will be drawn.
-    const sheets = combine ? new SheetCollector(requested.length, { width: sourceWidth, height: sourceHeight }, perSheet) : undefined;
+    const sheets = separate ? undefined : new SheetCollector(requested.length, { width: sourceWidth, height: sourceHeight }, perSheet);
     const width = sheets ? Math.min(sourceWidth, sheets.cellWidth) : sourceWidth;
 
     // Decode in ascending order (the sink's fast path), remember each
@@ -96,7 +96,7 @@ export const mediaGrab: ToolHandler<"media_grab"> = async (args, ctx) => {
     // No pool: each yielded canvas is fresh, so encoding it can't race the
     // generator's read-ahead reusing a pooled canvas.
     const sink = new CanvasSink(track, width < displayWidth ? { width } : undefined);
-    const separate: TimecodedImage[] = new Array(requested.length);
+    const frames: TimecodedImage[] = new Array(requested.length);
 
     let i = 0;
     for await (const wrapped of sink.canvasesAtTimestamps(ordered.map(({ time }) => firstTimestamp + time))) {
@@ -104,10 +104,10 @@ export const mediaGrab: ToolHandler<"media_grab"> = async (args, ctx) => {
       if (!wrapped) throw new DapiError("not-found", `No frame found at ${time}s.`);
       const timecode = formatTimecode(time, asset.frameRate);
       if (sheets) await sheets.add(index, { at: time, timecode, image: wrapped.canvas });
-      else separate[index] = { timecode, png: await encodePng(wrapped.canvas) };
+      else frames[index] = { timecode, png: await encodePng(wrapped.canvas) };
     }
 
-    return sheets ? sheets.result() : separate;
+    return sheets ? sheets.result() : frames;
   } finally {
     input.dispose();
   }

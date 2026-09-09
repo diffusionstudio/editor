@@ -1,4 +1,4 @@
-# `dapi capture <id> [-t, --time <time...>]`
+# `dapi capture <id> [-t, --times <time...>]`
 
 Renders single frames of a scene at one or more timeline positions and merges them into **contact sheets**: up to 12 positions per PNG, each cell labelled with the timecode of the frame actually rendered and drawn as large as the sheet allows, so a few positions arrive as one high-resolution picture instead of a directory to open one by one. `--separate` writes a PNG per position instead.
 
@@ -9,7 +9,7 @@ Scenes only: a single element renders inside its scene, so capture the scene at 
 ## Input
 
 - `<id>`: scene id to capture (required) — the scene's `id` attribute in the project's JSX (e.g. `intro`), or its position in the file when it has none. When two files use the same id, the `file:id` form (`index.tsx:intro`) settles it. Entity numbers are not accepted; they change on every recompile.
-- `-t, --time <time...>`: one or more positions to capture, relative to the export's first frame — the workarea's start, so `0` is the export's frame 0 — each a `Time` value (optional; default `0`)
+- `-t, --times <time...>`: one or more positions to capture, relative to the export's first frame — the workarea's start, so `0` is the export's frame 0 — each a `Time` value (optional; default `0`)
 - `-S, --separate`: write one PNG per position instead of merging them into contact sheets (optional). Each is rendered at 720p height and named after its timecode (e.g. `01s12f.png`).
 - `--per-sheet <n>`: positions per contact sheet, 1 to 12 (optional; default as many as fit). Fewer positions per sheet means a larger cell each. Sheets are balanced, so 13 positions become 7 + 6 rather than 12 + 1.
 - `-o, --output <dir>`: directory to write the PNGs into (optional; default a fresh `dapi-capture-*` directory in the system temp directory, so runs never overwrite each other). Writing into the same directory twice overwrites images whose name matches; with `--separate`, requested times that land on the same frame share one file.

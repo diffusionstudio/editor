@@ -29,7 +29,7 @@ One JSON object:
     severity: "error" | "warning";
     message: string;
     node?: string;                    // source stamp of the offending node; absent for subtree-wide issues
-    ranges?: Array<{ start: number; end: number }>;  // seconds relative to the node's start — for a scene whose workarea starts at 0, the clock `capture --time` uses
+    ranges?: Array<{ start: number; end: number }>;  // seconds relative to the node's start — for a scene whose workarea starts at 0, the clock `capture --times` uses
   }>;
 }
 ```

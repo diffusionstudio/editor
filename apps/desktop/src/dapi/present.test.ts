@@ -16,7 +16,7 @@ const png = (byte: number, size = 8) => new Uint8Array(size).fill(byte);
 describe("present", () => {
   it("writes capture frames by timecode into the requested directory and returns their paths", async () => {
     const out = join(dir, "frames");
-    const presented = await present("capture", { id: "intro", combine: true, output: out }, [
+    const presented = await present("capture", { id: "intro", output: out }, [
       { timecode: "0f", png: png(1) },
       { timecode: "1s", png: png(2) },
     ]);
@@ -25,7 +25,7 @@ describe("present", () => {
   });
 
   it("picks a fresh temp directory when none is given", async () => {
-    const presented = await present("media_grab", { path: "/c.mp4", combine: true }, [{ timecode: "0f", png: png(3) }]);
+    const presented = await present("media_grab", { path: "/c.mp4" }, [{ timecode: "0f", png: png(3) }]);
     const { path } = (presented.output as { images: Array<{ path: string }> }).images[0]!;
     expect(path).toMatch(/dapi-grab-.*[\\/]0f\.png$/);
     rmSync(join(path, ".."), { recursive: true, force: true });

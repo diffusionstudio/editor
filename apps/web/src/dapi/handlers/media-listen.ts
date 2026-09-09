@@ -9,14 +9,15 @@ import { requireAssetType, resolveAsset } from "../lib/assets";
 
 import type { ToolHandler } from "../handler";
 
-export const mediaListen: ToolHandler<"media_listen"> = async ({ path, prompt, start, end, stripVideo }, ctx) => {
+export const mediaListen: ToolHandler<"media_listen"> = async ({ path, prompt, start, end }, ctx) => {
   ctx.app.requireUser();
   const asset = await resolveAsset(ctx, path);
   requireAssetType(asset, ["AUDIO", "VIDEO"], "a video or audio asset");
 
   const hasWindow = start !== undefined || end !== undefined;
-  const audioOnly = stripVideo !== false && asset.type === "VIDEO";
-  const contentType = asset.type === "VIDEO" && !audioOnly ? "video/mp4" : "audio/ogg";
+  // A video is stripped to its audio track: the model listens, it does not watch.
+  const audioOnly = asset.type === "VIDEO";
+  const contentType = "audio/ogg";
 
   // One upload per distinct analysis input, so a repeated question about the
   // same span reuses the transcode.

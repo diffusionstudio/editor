@@ -1,6 +1,6 @@
 # `dapi media listen <path>`
 
-Puts a multimodal model in front of an audio track and returns its answer. With no prompt it returns a general description of what is heard; with `--prompt` it answers that question about the audio (e.g. "who is speaking?", "what music is playing?", "summarize what is said"). Accepts an audio file or a video, but only the audio track is analyzed by default. Alias: `watch`.
+Puts a multimodal model in front of an audio track and returns its answer. With no prompt it returns a general description of what is heard; with `--prompt` it answers that question about the audio (e.g. "who is speaking?", "what music is playing?", "summarize what is said"). Accepts an audio file or a video; of a video only the audio track is analyzed. Alias: `watch`.
 
 ## Input
 
@@ -8,7 +8,6 @@ Puts a multimodal model in front of an audio track and returns its answer. With 
 - `-p, --prompt <str>`: question or instruction about the audio (optional; defaults to a general description).
 - `-s, --start <time>`: start of the segment to analyze, a `Time` value (optional; default `0`). Timestamps in the analysis are relative to this point.
 - `-e, --end <time>`: end of the segment to analyze, a `Time` value (optional; default the asset's duration).
-- `--keep-video`: for a video asset, keep the video track instead of stripping it to audio, so the model can analyze what is on screen (optional; default off). Expensive: requires a full video upload.
 
 ## Output
 

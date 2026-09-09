@@ -8,7 +8,7 @@
 // version. Stdout belongs to the protocol; anything for a human goes to
 // stderr.
 
-import { APP_NAME, connectWithRetry, isAppDown, launchApp, openSocket } from "./cli-client";
+import { APP_NAME, isAppDown, launchApp, openSocket, waitForApp } from "./cli-client";
 
 import type { Socket } from "node:net";
 
@@ -22,7 +22,8 @@ export async function runProxy(): Promise<void> {
     if (!(await launchApp(true))) {
       throw new Error(`${APP_NAME} is not running. Launch the app first, then retry.`);
     }
-    socket = await connectWithRetry();
+    await waitForApp();
+    socket = await openSocket();
   }
 
   socket.on("error", (error) => {

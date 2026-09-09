@@ -13,25 +13,14 @@ import type { ToolInput, ToolName, ToolOutput } from "@diffusionstudio/dapi";
 
 export const APP_NAME = "Diffusion Studio";
 
-const DEFAULT_TIMEOUT_MS = 60000;
-const GENERATE_TIMEOUT_MS = 600000;
-const EXPORT_TIMEOUT_MS = 3600000;
-
-// Long-running tools (renders, AI generation, downloads) override the
-// default 60s. Keyed by name so `call` and the wrappers agree.
+// Renders, AI generation, and downloads outlive the 60s default.
 const TIMEOUTS: Record<string, number> = {
-  export: EXPORT_TIMEOUT_MS,
-  capture: GENERATE_TIMEOUT_MS,
-  media_transcribe: GENERATE_TIMEOUT_MS,
-  media_listen: GENERATE_TIMEOUT_MS,
-  fetch: GENERATE_TIMEOUT_MS,
+  export: 3_600_000,
+  capture: 600_000,
+  media_transcribe: 600_000,
+  media_listen: 600_000,
+  fetch: 600_000,
 };
-
-export function timeoutFor(tool: string): number {
-  return TIMEOUTS[tool] ?? DEFAULT_TIMEOUT_MS;
-}
-
-export type CallOptions = { timeoutMs?: number };
 
 /**
  * Calls one tool in the running app over an MCP session on its socket.
@@ -39,13 +28,13 @@ export type CallOptions = { timeoutMs?: number };
  * output its structured content. One session per call; a command makes one
  * or two, and the process exits when it settles.
  */
-export async function call<N extends ToolName>(name: N, input: ToolInput<N>, options: CallOptions = {}): Promise<ToolOutput<N>> {
-  return withClient(async (client) => {
-    const result = await client.callTool(
-      { name, arguments: input as Record<string, unknown> },
-      undefined,
-      { timeout: options.timeoutMs ?? timeoutFor(name) },
-    );
+export async function call<N extends ToolName>(name: N, input: ToolInput<N>): Promise<ToolOutput<N>> {
+  const client = new Client({ name: "dapi", version });
+  try {
+    await client.connect(new SocketTransport(await openSocket()));
+    const result = await client.callTool({ name, arguments: input as Record<string, unknown> }, undefined, {
+      timeout: TIMEOUTS[name] ?? 60_000,
+    });
     if (result.isError) {
       const text = (result.content as Array<{ type: string; text?: string }>)
         .filter((block) => block.type === "text")
@@ -54,22 +43,17 @@ export async function call<N extends ToolName>(name: N, input: ToolInput<N>, opt
       throw new Error(text || `${name} failed`);
     }
     return result.structuredContent as ToolOutput<N>;
-  });
+  } finally {
+    await client.close().catch(() => {});
+  }
 }
 
 /** Liveness: a round-trip through the app's MCP server. */
-export function ping(): Promise<void> {
-  return withClient(async (client) => {
-    await client.ping();
-  });
-}
-
-async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-  const socket = await openSocket();
+export async function ping(): Promise<void> {
   const client = new Client({ name: "dapi", version });
   try {
-    await client.connect(new SocketTransport(socket));
-    return await fn(client);
+    await client.connect(new SocketTransport(await openSocket()));
+    await client.ping();
   } finally {
     await client.close().catch(() => {});
   }
@@ -88,13 +72,8 @@ export function openSocket(): Promise<Socket> {
   });
 }
 
-/** The errno of a connection failure (ENOENT/ECONNREFUSED when the app is down), if any. */
-export function errnoCode(e: unknown): string | undefined {
-  return (e as NodeJS.ErrnoException | undefined)?.code;
-}
-
 export function isAppDown(e: unknown): boolean {
-  const code = errnoCode(e);
+  const code = (e as NodeJS.ErrnoException | undefined)?.code;
   return code === "ENOENT" || code === "ECONNREFUSED";
 }
 
@@ -110,43 +89,22 @@ export function launchApp(background: boolean): Promise<boolean> {
 }
 
 /**
- * Bridges the cold-start gap after launching the app: the socket appears once
- * main is ready. Retries only while the app looks down; any other error is
- * the caller's.
+ * Bridges the cold-start gap after launching the app: retries while the app
+ * looks down, until it answers a ping (a cold app binds the socket before
+ * its session is ready, so connecting alone proves nothing).
  */
-export async function connectWithRetry(timeoutMs = 30000): Promise<Socket> {
-  const start = Date.now();
-  let lastError: unknown = null;
-  while (Date.now() - start < timeoutMs) {
-    try {
-      return await openSocket();
-    } catch (e) {
-      if (!isAppDown(e)) throw e;
-      lastError = e;
-      await new Promise((r) => setTimeout(r, 200));
-    }
-  }
-  throw timedOut(timeoutMs, lastError);
-}
-
-function timedOut(timeoutMs: number, lastError: unknown): Error {
-  const detail = lastError instanceof Error ? ` (${lastError.message})` : "";
-  return new Error(`${APP_NAME} did not answer within ${Math.round(timeoutMs / 1000)}s of launching${detail}`);
-}
-
-/** Like `connectWithRetry`, but also proves the server answers: a cold app binds the socket before its session is ready. */
 export async function waitForApp(timeoutMs = 30000): Promise<void> {
   const start = Date.now();
   let lastError: unknown = null;
   while (Date.now() - start < timeoutMs) {
     try {
-      await ping();
-      return;
+      return await ping();
     } catch (e) {
       if (!isAppDown(e)) throw e;
       lastError = e;
       await new Promise((r) => setTimeout(r, 200));
     }
   }
-  throw timedOut(timeoutMs, lastError);
+  const detail = lastError instanceof Error ? ` (${lastError.message})` : "";
+  throw new Error(`${APP_NAME} did not answer within ${Math.round(timeoutMs / 1000)}s of launching${detail}`);
 }

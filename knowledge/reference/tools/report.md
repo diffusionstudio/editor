@@ -15,7 +15,7 @@ Does not require the app to be running. If the app is down or unreachable, the r
 ## Options
 
 - `-b, --body <text>`: what happened, in markdown: what you expected, what you got, and anything the diagnostics won't show.
-- `-c, --command <cmd...>`: the `dapi` command(s) that reproduce it, in order. Repeatable (`-c "dapi context" -c "dapi capture intro"`); rendered as a shell block under `## Repro`.
+- `-c, --commands <cmd...>`: the `dapi` command(s) that reproduce it, in order. Repeatable (`-c "dapi context" -c "dapi capture intro"`); rendered as a shell block under `## Repro`.
 - `--logs <n>`: trailing app log entries to attach (default: 50). `--logs 0` omits the section, and then the app is not contacted at all.
 
 ## Output

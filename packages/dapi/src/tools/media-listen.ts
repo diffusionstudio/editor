@@ -10,7 +10,7 @@ export const mediaListen = defineTool({
   name: "media_listen",
   title: "Listen to audio",
   description:
-    "Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; by default only the audio track is analyzed. Needs a signed-in account.",
+    "Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; of a video only the audio track is analyzed. Needs a signed-in account.",
   input: z
     .object({
       path: AssetPath,
@@ -19,12 +19,6 @@ export const mediaListen = defineTool({
         "start of the segment to analyze (default: 0); timestamps in the analysis are relative to this point",
       ),
       end: windowFields.end.describe("end of the segment to analyze (default: media duration)"),
-      stripVideo: z
-        .boolean()
-        .optional()
-        .describe(
-          "for a video asset, analyze the audio track only (default); false keeps the video so the model also reads what is on screen (expensive: uploads the full video)",
-        ),
     })
     .superRefine(checkWindow),
   output: z.object({

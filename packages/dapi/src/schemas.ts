@@ -60,10 +60,10 @@ export const outputDirField = z
  * rejects it otherwise, so add it to any object that spreads these fields.
  */
 export const sheetFields = {
-  combine: z
+  separate: z
     .boolean()
-    .default(true)
-    .describe("merge the images into contact sheets of up to 12 cells, each labelled with its timecode (default); false writes one image per position"),
+    .optional()
+    .describe("write one image per position instead of merging them into contact sheets of up to 12 cells, each labelled with its timecode"),
   perSheet: z
     .int()
     .min(1)
@@ -73,14 +73,14 @@ export const sheetFields = {
 };
 
 export function checkSheetOptions(
-  value: { combine: boolean; perSheet?: number | undefined },
+  value: { separate?: boolean | undefined; perSheet?: number | undefined },
   ctx: z.RefinementCtx,
 ): void {
-  if (value.perSheet !== undefined && !value.combine) {
+  if (value.perSheet !== undefined && value.separate) {
     ctx.addIssue({
       code: "custom",
       path: ["perSheet"],
-      message: "perSheet lays out contact sheets; it cannot be combined with combine: false",
+      message: "perSheet lays out contact sheets; it cannot be combined with separate: true",
     });
   }
 }
