@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { existsSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { createServer } from "node:net";
 import type { Server, Socket } from "node:net";
 import { app, BrowserWindow } from "electron";
-import { CLI_WIRE, SOCKET_PATH } from "@diffusionstudio/cli/protocol";
+import { CLI_WIRE, SOCKET_DIR, SOCKET_PATH } from "@diffusionstudio/cli/protocol";
 import type { CliHandshake, CliHandshakeReply } from "@diffusionstudio/cli/protocol";
 import { mainBridge } from "./main-manager";
 import { MAIN_CHANNELS } from "./main-channels";
@@ -102,6 +102,7 @@ async function deliverHandshake(handshake: CliHandshake, sock: Socket): Promise<
 
 export function startCliServer() {
   cleanupStaleSocket();
+  if (process.platform !== "win32") mkdirSync(SOCKET_DIR, { recursive: true, mode: 0o700 });
   bindWindowLifecycle();
 
   cliServer = createServer({ allowHalfOpen: true }, (sock: Socket) => {
