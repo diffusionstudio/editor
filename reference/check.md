@@ -1,6 +1,6 @@
 # `dapi check <id>`
 
-Checks a node's subtree for obvious structural mistakes, without rendering: spans of the node's play window where **no visual is scheduled** (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load or generate. Alongside the issues it reports subtree stats — node count by kind, nesting depth, and played duration — so it doubles as a quick structural summary of a scene.
+Checks a node's subtree for obvious structural mistakes, without rendering: spans of the node's play window where **no visual is scheduled** (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load, failed to generate, or that this machine has no decoder for — plus subtree stats (node count by kind, nesting depth, and played duration) — so it doubles as a quick structural summary of a scene.
 
 The analysis is structural, from the resolved timeline alone, so it is instant and costs no credits — and it can only say *nothing is scheduled*, not *the frame is black*. A scheduled clip can still render black (dark footage, content smaller than the canvas, a transparent asset); confirm suspicious spans visually with [`capture`](./capture.md) at a time inside the range.
 
@@ -25,7 +25,7 @@ One JSON object:
     duration: number;                 // seconds the checked node plays (its workarea, when one is set)
   };
   issues: Array<{
-    code: "black-frames" | "no-visuals" | "never-visible" | "zero-duration" | "transparent" | "source-error";
+    code: "black-frames" | "no-visuals" | "never-visible" | "zero-duration" | "transparent" | "source-error" | "undecodable-video";
     severity: "error" | "warning";
     message: string;
     node?: string;                    // source stamp of the offending node; absent for subtree-wide issues
@@ -44,6 +44,7 @@ One JSON object:
 | `zero-duration` | warning | A node that spans no frames |
 | `transparent` | warning | A node with static opacity 0 (nodes with keyframes are given the benefit of the doubt) |
 | `source-error` | error | An asset that failed to load or generate, with the failure message |
+| `undecodable-video` | error | A video node — or a node a `<videoPaint>` fills with footage — whose codec this machine has no decoder for (an HEVC source without a platform decoder, or one the library could not identify at all); it resolves and imports fine and renders nothing |
 
 ## Exit code
 

@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { BlobSource, ALL_FORMATS, Input, InputVideoTrack, EncodedPacketSink, EncodedPacket, CanvasSink, type WrappedCanvas } from 'mediabunny';
+import { canDecodeVideoTrack } from '@diffusionstudio/assets';
 
 import { AssetId, VideoDecoderHandle, Mode } from '../traits';
 import { assert } from '../utils/assert';
@@ -532,10 +533,17 @@ class VideoDecoderQueue {
 	}
 
 	public async init(track: InputVideoTrack) {
-		this.config = await track.getDecoderConfig();
-		assert(this.config, 'Failed to get decoder config from track');
-		const support = await VideoDecoder.isConfigSupported(this.config);
-		assert(support.supported, 'Decoder config not supported');
+		const config = await track.getDecoderConfig();
+		assert(config, 'Failed to get decoder config from track');
+		this.config = config;
+		const [codec, support] = await Promise.all([
+			track.getCodec(),
+			VideoDecoder.isConfigSupported(config).catch(() => null),
+		]);
+		assert(
+			support?.supported,
+			`This machine cannot decode the "${codec ?? config.codec}" video codec, so no frame of it can be shown.`,
+		);
 	}
 
 	private ensureDecoder(packet: EncodedPacket) {
@@ -599,6 +607,7 @@ export class VideoExporter {
 	private iterator: AsyncGenerator<WrappedCanvas, void, unknown> | null = null;
 	private currentCanvas: WrappedCanvas | null = null;
 	private firstTimestamp: number = 0;
+	private undecodable: Error | null = null;
 
 	public constructor(asset: VideoAsset) {
 		this.asset = asset;
@@ -615,6 +624,17 @@ export class VideoExporter {
 			// timestamp) doesn't offset every exported frame relative to the audio.
 			this.firstTimestamp = Math.max(0, await track.getFirstTimestamp() ?? 0);
 			this.canvasSink = new CanvasSink(track, { poolSize: 2 });
+			// Ask the track, not the asset: decodability belongs to the machine,
+			// and the manifest does not carry it.
+			const [codec, decodable] = await Promise.all([
+				track.getCodec(),
+				canDecodeVideoTrack(track),
+			]);
+			if (!decodable) {
+				this.undecodable = new Error(
+					`This machine cannot decode the "${codec ?? 'unknown'}" video codec, so no frame of ${this.asset.path} can be rendered.`,
+				);
+			}
 		} catch (e) {
 			console.error('Error initializing video exporter', e);
 			this.errored = true;
@@ -624,6 +644,7 @@ export class VideoExporter {
 	public async seekTo(frame: number, frameRate: number): Promise<void> {
 		await this.initialized;
 
+		if (this.undecodable) throw this.undecodable;
 		if (this.errored || !this.canvasSink) return;
 
 		const targetFrame = Math.round((frame / frameRate) * this.asset.frameRate);

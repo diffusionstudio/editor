@@ -717,7 +717,7 @@ program
 program
   .command("check")
   .description(
-    `Check a node's subtree for obvious structural mistakes, without rendering (local analysis, no credits): spans where no visual is scheduled (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load or generate — plus subtree stats (node count by kind, nesting depth, played duration). Prints one JSON object; times in issue ranges are seconds relative to the node's start — for a scene whose workarea starts at 0, the same clock \`capture --time\` uses. Exits 1 when an error-severity issue is found. Structural only: a scheduled clip can still render black (dark footage, content smaller than the canvas), so confirm suspicious spans visually with \`capture\`.`,
+    `Check a node's subtree for obvious structural mistakes, without rendering (local analysis, no credits): spans where no visual is scheduled (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load, failed to generate, or are in a codec this machine has no decoder for (an HEVC source on Linux) — plus subtree stats (node count by kind, nesting depth, played duration). Prints one JSON object; times in issue ranges are seconds relative to the node's start — for a scene whose workarea starts at 0, the same clock \`capture --time\` uses. Exits 1 when an error-severity issue is found. Structural only: a scheduled clip can still render black (dark footage, content smaller than the canvas), so confirm suspicious spans visually with \`capture\`.`,
   )
   .argument("<id>", 'node id to check or `file:id` when two files use the same id')
   .action((id: string) => checkNode(id));
@@ -732,7 +732,7 @@ const media = program
 media
   .command("probe")
   .description(
-    `Read the container and per-track technical metadata of a media file (local read, no credits): container format, duration, tags, and each track's codec params, without decoding. Commonly useful for a quick technical read, e.g. checking codec compatibility or duration before cutting. Packet stats (fps, bitrate) are estimated from a leading sample; images and transcripts report file-level info only.`,
+    `Read the container and per-track technical metadata of a media file (local read, no credits): container format, duration, tags, and each track's codec params, without decoding. Commonly useful for a quick technical read, e.g. checking codec compatibility or duration before cutting. Each video track reports \`decodable\`: whether this machine's decoder can play that codec at all — an HEVC track is typically false on Linux, and the clip renders nothing wherever it is used. Packet stats (fps, bitrate) are estimated from a leading sample; images and transcripts report file-level info only.`,
   )
   .argument("<path>", "local file path")
   .action((ref: string) => mediaProbe(ref));

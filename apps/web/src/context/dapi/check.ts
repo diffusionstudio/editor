@@ -4,14 +4,15 @@
 
 import {
   AdjustmentLayer, Audio, Cache, Caption, Computed, FrameRate, Geometry,
-  Group, Hidden, IsMask, Opacity, PaintType, Scene, Sequential, Source,
-  SourceError, Workarea, framesToSeconds, getIntrinsicPaint, isText,
+  Group, Hidden, IsMask, Opacity, Paint, PaintType, Scene, Sequential, Source,
+  SourceError, Workarea, findGeometryAsset, framesToSeconds, getIntrinsicPaint, isText,
 } from "@diffusionstudio/runtime";
+import { canDecodeVideoCodec } from "@diffusionstudio/assets";
 
 import { resolveNode } from "./nodes";
 
 import type { CheckIssue, CheckRequest, CheckResult } from "@diffusionstudio/cli/channels";
-import type { Entity } from "koota";
+import type { Entity, World } from "koota";
 import type { EditorSession } from "./session";
 
 // Absolute frames, [start, end).
@@ -46,12 +47,34 @@ function drawsPixels(entity: Entity): boolean {
     && !entity.has(Audio);
 }
 
+/**
+ * The sub-entities a node paints video through: itself, when its own paint is
+ * the footage, and every video paint child (a `<videoPaint>` filling the node
+ * with a clip). A paint child carries the asset instead of the geometry, so
+ * both have to be asked.
+ */
+function videoSources(entity: Entity): Entity[] {
+  const sources: Entity[] = [];
+  if (getIntrinsicPaint(entity) === PaintType.VIDEO) sources.push(entity);
+  for (const fill of entity.get(Cache)?.fills ?? []) {
+    if (fill.get(Paint)?.value === PaintType.VIDEO) sources.push(fill);
+  }
+  return sources;
+}
+
 type WalkState = {
+  world: World;
   nodes: number;
   byKind: Record<string, number>;
   depth: number;
   issues: CheckIssue[];
   coverage: Interval[];
+  /**
+   * Video sources seen on the walk, resolved for decodability once it is over.
+   * `id` keys the finding (a node need not carry a source stamp), `node` names
+   * it in the message.
+   */
+  videos: Array<{ id: number; node: string | undefined; codec: string | null | undefined }>;
   /** Frames→seconds on the checked node's own clock (capture --time's). */
   rel: (frames: number) => number;
 };
@@ -78,6 +101,17 @@ function visit(entity: Entity, window: Interval | null, depth: number, state: Wa
       node: stamp,
       message: `Source failed to ${failure.generated ? "generate" : "load"}: ${failure.value}`,
     });
+  }
+
+  // An asset loads fine and renders nothing in the timeline when this
+  // machine has no decoder for its codec. Which codecs this machine has is
+  // not known until asked, so the walk only notes the sources; the answer
+  // arrives once, afterwards, for each codec involved.
+  for (const source of videoSources(entity)) {
+    const asset = findGeometryAsset(state.world, source);
+    if (asset?.type === "VIDEO") {
+      state.videos.push({ id: entity.id(), node: stamp, codec: asset.codec });
+    }
   }
 
   const computed = entity.get(Computed)!;
@@ -167,8 +201,29 @@ export function handleCheck(session: () => EditorSession) {
     }
 
     const rel = (frames: number) => Math.round(framesToSeconds(frames - computed.start, fps) * 1000) / 1000;
-    const state: WalkState = { nodes: 0, byKind: {}, depth: 0, issues: [], coverage: [], rel };
+    const state: WalkState = { world, nodes: 0, byKind: {}, depth: 0, issues: [], coverage: [], videos: [], rel };
     visit(target, window, 0, state);
+
+    // One question per distinct codec, so a subtree of clips sharing one
+    // source asks once.
+    const decodable = new Map<string | null | undefined, boolean>();
+    for (const { codec } of state.videos) {
+      if (!decodable.has(codec)) decodable.set(codec, await canDecodeVideoCodec(codec));
+    }
+    // A node can paint the same codec twice (its own asset and a fill); that
+    // is one finding, not two.
+    const reported = new Set<string>();
+    for (const { id, node, codec } of state.videos) {
+      if (decodable.get(codec)) continue;
+      if (reported.has(`${id}\0${codec}`)) continue;
+      reported.add(`${id}\0${codec}`);
+      state.issues.push({
+        code: "undecodable-video",
+        severity: "error",
+        node,
+        message: `No "${codec ?? "unknown"}" decoder on this machine — this node cannot render`,
+      });
+    }
 
     const issues: CheckIssue[] = [];
     if (window.end > window.start) {

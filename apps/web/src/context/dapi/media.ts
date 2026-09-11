@@ -10,7 +10,7 @@ import { composeSheet, planSheet, planSheetSizes, sheetTimecode } from '@diffusi
 import { assert } from '@/utils';
 import { startResumableSession, uploadResumableStream } from '@/lib/uploads';
 import { filmstripAsset, formatTimecode, getAssetFile, getLibrary, Project, transcodeForAnalysis, transcodeForTranscription, waveformAsset } from '@diffusionstudio/runtime';
-import { AssetLibrary, assetName, isAbsoluteSource, isUrlSource } from '@diffusionstudio/assets';
+import { AssetLibrary, assetName, canDecodeVideoTrack, isAbsoluteSource, isUrlSource } from '@diffusionstudio/assets';
 import { createProjectFS } from '@/projects/fs';
 
 import type { Accessor } from 'solid-js';
@@ -76,6 +76,7 @@ export function handleMediaProbe(resolve: ResolveAsset) {
           duration: await track.computeDuration(),
           ...stats,
           ...(track.isVideoTrack() && {
+            decodable: await canDecodeVideoTrack(track),
             codedWidth: track.codedWidth,
             codedHeight: track.codedHeight,
             displayWidth: track.displayWidth,
