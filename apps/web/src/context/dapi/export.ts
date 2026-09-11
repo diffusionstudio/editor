@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { canEncodeVideo } from "mediabunny";
-import { computeOutputSize } from "@diffusionstudio/encoder";
+import { computeOutputSize, resolveAudioCodec } from "@diffusionstudio/encoder";
 import { Computed, FrameRate, getParentNode, isScene, Source, Workarea } from "@diffusionstudio/runtime";
 
 import { renderOverlay, renderScene } from "@/context/render";
@@ -95,6 +95,26 @@ export function handleExport(session: () => EditorSession) {
       }
     }
 
+    // Same for audio, except that the codec asked for is a preference: AAC
+    // is the platform's encoder in WebCodecs and absent on Linux, so export
+    // with what this machine can encode into the container and echo that
+    // back, rather than failing a render that got as far as the audio track.
+    const audioEnabled = format === "ogg" || settings.audio?.enabled !== false;
+    let audio = settings.audio;
+    if (audioEnabled) {
+      const codec = await resolveAudioCodec(format, settings.audio?.codec, {
+        sampleRate: settings.audio?.sampleRate,
+        bitrate: settings.audio?.bitrate,
+      });
+      if (!codec) {
+        throw new Error(
+          `Cannot encode audio into ${format.toUpperCase()}. ` +
+            "Set another format, or turn audio off in the scene's export entry.",
+        );
+      }
+      audio = { ...settings.audio, codec };
+    }
+
     const workarea = scene.get(Workarea);
     const frames = workarea ? workarea.end - workarea.start : computed?.duration ?? 0;
     const duration = frames / (world.get(FrameRate)?.value || 30);
@@ -112,7 +132,7 @@ export function handleExport(session: () => EditorSession) {
       const result = await renderScene(engine, {
         scene,
         target: handle,
-        config: { ...settings, format },
+        config: { ...settings, format, audio },
         dir: project.dir(),
       });
       if (result.type === "canceled") throw new Error("Export canceled in the app");
@@ -128,7 +148,7 @@ export function handleExport(session: () => EditorSession) {
       source: target,
     });
 
-    const config: ExportSettings = { format, video: settings.video, audio: settings.audio };
+    const config: ExportSettings = { format, video: settings.video, audio };
     return {
       path: target,
       width: videoEnabled ? width : 0,

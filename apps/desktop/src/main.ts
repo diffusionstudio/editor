@@ -51,11 +51,37 @@ const MACOS_BACKDROP = { blur: 80, red: 0.07, green: 0.07, blue: 0.07, alpha: 0.
 
 app.setName("Diffusion Studio");
 app.commandLine.appendSwitch("enable-blink-features", "CanvasDrawElement");
-app.commandLine.appendSwitch("enable-features", "SharedArrayBuffer");
+// Chromium ships software decoders for H.264, VP9 and AV1 — and none for HEVC,
+// which is platform-decoder-only. On Linux that decoder is VA-API, which
+// upstream keeps off on NVIDIA (crbug.com/1492880), so an HEVC source there
+// imports fine and then renders nothing. `PlatformHEVCDecoderSupport` is on by
+// default already, so the switch below is not what decides it; the library asks
+// the platform per machine and warns when the answer is no (decodability in
+// @diffusionstudio/assets). Left at upstream's defaults on purpose — if HEVC on
+// Linux ever needs to render rather than be reported:
+//   - Enable VA-API on NVIDIA: `VaapiOnNvidiaGPUs`, plus
+//     `--ignore-gpu-blocklist`, plus `LIBVA_DRIVER_NAME=nvidia` (libva 2.20+
+//     will not pick it over mesa's on its own) — only where NVIDIA is the sole
+//     GPU, since that variable is process-wide and on a hybrid box would move
+//     libva off the iGPU Chromium renders on. It only helps where the driver
+//     advertises the decode profiles, which is not a given.
+//   - Register a WASM HEVC decoder (e.g. libde265) through mediabunny's
+//     `registerDecoder`, which its decode path consults: HEVC renders on any
+//     machine, at CPU-decode cost and a larger bundle.
+app.commandLine.appendSwitch("enable-features", "SharedArrayBuffer,PlatformHEVCDecoderSupport");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+
+// No ozone hint is set here on purpose. Native Wayland would buy fractional
+// scaling, but on a KDE 6.7 Wayland session with the proprietary NVIDIA driver
+// it presents a broken surface — Chromium logs that Wayland and Vulkan are
+// incompatible, the renderer paints correctly (a DevTools capture is right)
+// and the window still comes up blank or without glyphs. XWayland, which is
+// what Chromium picks by default, is correct there. Electron reads
+// `ELECTRON_OZONE_PLATFORM_HINT=auto` from the environment, so anyone whose
+// session handles native Wayland can opt in without a build of their own.
 
 let setNativeCornerRadius: ((handle: Buffer, radius: number) => void) | null = null;
 let setNativeBackdrop:

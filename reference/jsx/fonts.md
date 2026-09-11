@@ -1,6 +1,6 @@
 # Fonts
 
-Both text paths draw with fonts **installed on the machine**. Discover what is available with [`dapi fonts`](../fonts.md) (filter by family, weight, or style); the active project's families are also on [`dapi context`](../context.md) as `fontFamilies`. macOS resolves these families for both the native renderer and the browser, so there is nothing to bundle or load.
+Both text paths draw with fonts **installed on the machine**. Discover what is available with [`dapi fonts`](../fonts.md) (filter by family, weight, or style); the active project's families are also on [`dapi context`](../context.md) as `fontFamilies`. The system resolves these families for both the native renderer and the browser — CoreText on macOS, fontconfig on Linux — so there is nothing to bundle or load.
 
 ## Native `<text>`
 

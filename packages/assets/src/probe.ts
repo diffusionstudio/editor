@@ -5,9 +5,9 @@
 // What a file is: its MIME type and the type-specific metadata the runtime
 // needs before it can size or time an asset (dimensions, duration, tracks).
 
-import { ALL_FORMATS, BlobSource, Input, UrlSource } from 'mediabunny';
+import { ALL_FORMATS, BlobSource, canDecodeVideo, Input, UrlSource, VIDEO_CODECS } from 'mediabunny';
 
-import type { InputTrack } from 'mediabunny';
+import type { InputAudioTrack, InputTrack, InputVideoTrack, VideoCodec } from 'mediabunny';
 import type { Asset } from './types';
 
 export const DEFAULT_SEQUENCE_FPS = 30;
@@ -16,11 +16,65 @@ export const DEFAULT_SEQUENCE_FPS = 30;
 export type ProbeResult = Extract<
 	| { type: 'IMAGE'; width: number; height: number }
 	| { type: 'AUDIO'; duration: number; sampleRate: number; channels: number }
-	| { type: 'VIDEO'; duration: number; width: number; height: number; frameRate: number; bitRate: number; sampleRate?: number; channels?: number }
+	| { type: 'VIDEO'; duration: number; width: number; height: number; frameRate: number; bitRate: number; codec: string | null; sampleRate?: number; channels?: number }
 	| { type: 'TRANSCRIPT' }
 	| { type: 'SCRIPT' },
 	{ type: Asset['type'] }
 >;
+
+/**
+ * Whether this machine can decode a video track. WebCodecs gets
+ * decoders the platform actually has.
+ */
+export async function canDecodeVideoTrack(track: InputVideoTrack): Promise<boolean> {
+	if (typeof VideoDecoder === 'undefined') return true;
+	try {
+		return await track.canDecode();
+	} catch {
+		return true;
+	}
+}
+
+/**
+ * Whether this machine can decode an audio track. The counterpart of
+ * {@link canDecodeVideoTrack}, with the same fail-open rule: a host without
+ * WebCodecs is told nothing, so it calls nothing undecodable on a guess.
+ */
+export async function canDecodeAudioTrack(track: InputAudioTrack): Promise<boolean> {
+	if (typeof AudioDecoder === 'undefined') return true;
+	try {
+		return await track.canDecode();
+	} catch {
+		return true;
+	}
+}
+
+/**
+ * Whether this machine can decode a video codec, for a caller that has the
+ * codec but no track: an asset read back from the project manifest. The
+ * decodability of the machine that imported it is not written to the manifest
+ * (it is not a property of the file), so this is asked again wherever the
+ * answer matters.
+ *
+ * The three answers are told apart because they mean different things:
+ * `undefined` is an asset nobody has probed (a manifest written before the
+ * codec was recorded) and gets no claim; null is a probe that could not name
+ * the codec, and mediabunny can build no decoder config for such a track, so
+ * nothing decodes it; anything else is asked of WebCodecs. The same fail-open
+ * rule as {@link canDecodeVideoTrack} covers the rest: no WebCodecs, or a name
+ * this build does not know, and nothing is claimed.
+ */
+export async function canDecodeVideoCodec(codec: string | null | undefined): Promise<boolean> {
+	if (codec === undefined) return true;
+	if (codec === null) return false;
+	if (!(VIDEO_CODECS as readonly string[]).includes(codec)) return true;
+	if (typeof VideoDecoder === 'undefined') return true;
+	try {
+		return await canDecodeVideo(codec as VideoCodec);
+	} catch {
+		return true;
+	}
+}
 
 const TRANSCRIPT_TYPES = new Set(['application/json', 'application/x-subrip', 'text/vtt']);
 
@@ -140,10 +194,16 @@ export async function probeMedia(file: Blob, mimeType: string): Promise<ProbeRes
 
 		const videoTrack = await input.getPrimaryVideoTrack();
 		if (!videoTrack) throw new Error('Video track not found');
-		const stats = await videoTrack.computePacketStats();
+		const [stats, codec] = await Promise.all([
+			videoTrack.computePacketStats(),
+			videoTrack.getCodec(),
+		]);
 
 		return {
 			type: 'VIDEO',
+			// `null` and not `undefined`: a track whose codec the library could
+			// not name is a finding, and the manifest drops undefined fields.
+			codec: codec ?? null,
 			width: videoTrack.displayWidth,
 			height: videoTrack.displayHeight,
 			frameRate: stats.averagePacketRate,

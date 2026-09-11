@@ -91,7 +91,8 @@ export type CheckIssueCode =
   | "never-visible"
   | "zero-duration"
   | "transparent"
-  | "source-error";
+  | "source-error"
+  | "undecodable-video";
 
 /**
  * One structural finding. `ranges` (where present) are seconds relative to

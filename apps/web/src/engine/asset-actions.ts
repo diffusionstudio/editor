@@ -6,7 +6,7 @@
 // mechanics live in @diffusionstudio/assets.
 
 import { toast } from "somoto";
-import { importFiles as importFilesInto, pickFiles, saveAssetAs as saveAs } from "@diffusionstudio/assets";
+import { importFiles as importFilesInto, assetName, canDecodeVideoCodec, pickFiles, saveAssetAs as saveAs } from "@diffusionstudio/assets";
 import { insertAsset } from "./insert-asset";
 import { forgetAssetMedia } from "./timeline/media";
 import { forgetAssetPeaks } from "./timeline/peaks";
@@ -35,6 +35,16 @@ export async function importFiles(library: AssetLibrary, files: ReadonlyArray<Fi
   }
   for (const { source, error } of report.failed) {
     toast.error(`Could not import ${source.split(/[\\/]/).pop()}`, { description: error.message });
+  }
+
+  // An asset the probe couldn't identify a decoder for imports fine and then
+  // renders blank; say so before the user builds around it. Decodability is
+  // asked of this machine — it is not written to the manifest.
+  for (const asset of report.assets) {
+    if (asset.type !== "VIDEO" || await canDecodeVideoCodec(asset.codec)) continue;
+    toast.warning(`Cannot decode ${assetName(asset)}`, {
+      description: `This machine has no ${asset.codec?.toUpperCase() ?? "video"} decoder, so the clip renders blank. Transcode it to H.264 (AVC) and import that instead.`,
+    });
   }
   return report.assets;
 }

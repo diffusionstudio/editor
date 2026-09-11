@@ -1,0 +1,13 @@
+diff --git a/node_modules/electron-installer-redhat/resources/spec.ejs b/node_modules/electron-installer-redhat/resources/spec.ejs
+index e07a8a3..3f9c2a9 100644
+--- a/node_modules/electron-installer-redhat/resources/spec.ejs
++++ b/node_modules/electron-installer-redhat/resources/spec.ejs
+@@ -24,7 +24,7 @@ print('\n\n\n') }
+ 
+ %>%install
+ mkdir -p %{buildroot}/usr/
+-cp <%= process.platform === 'darwin' ? '-R' : '-r' %> usr/* %{buildroot}/usr/
++cp <%= process.platform === 'darwin' ? '-R' : '-r' %> %{_topdir}/BUILD/usr/. %{buildroot}/usr/
+ 
+ 
+ %files

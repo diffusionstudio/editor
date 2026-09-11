@@ -6,7 +6,7 @@ import { createContext, useContext, onCleanup, onMount } from "solid-js";
 import { toast } from "somoto";
 import { canEncodeVideo } from "mediabunny";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { computeOutputSize } from "@diffusionstudio/encoder";
+import { computeOutputSize, resolveAudioCodec } from "@diffusionstudio/encoder";
 import { Computed, FrameRate, getActiveEntity } from "@diffusionstudio/runtime";
 import { assert, downloadObject, isInputTarget } from "@/utils";
 import { useEngineContext } from "@/engine";
@@ -71,6 +71,28 @@ export function ExportProvider(props: { children: JSX.Element }) {
         });
         return;
       }
+    }
+
+    // AAC is a platform encoder in WebCodecs (AudioToolbox on macOS, Media
+    // Foundation on Windows), so it is simply absent on Linux — pick what
+    // this browser can encode into the container and export with that, so
+    // the progress panel and the file agree on the codec.
+    const audioEnabled = format === "ogg" || config.audio?.enabled !== false;
+    if (audioEnabled) {
+      const codec = await resolveAudioCodec(format, config.audio?.codec, {
+        numberOfChannels: config.audio?.numberOfChannels,
+        sampleRate: config.audio?.sampleRate,
+        bitrate: config.audio?.bitrate,
+      });
+      if (!codec) {
+        toast.error("Export not supported", {
+          description:
+            `This browser cannot encode audio into ${format.toUpperCase()}. ` +
+            "Choose another format, or turn audio off.",
+        });
+        return;
+      }
+      config = { ...config, audio: { ...config.audio, codec } };
     }
 
     const name = project.name().replace(/\s+/g, "-").toLowerCase();

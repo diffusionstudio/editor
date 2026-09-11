@@ -30,7 +30,7 @@ The scene's entry under `diffusion.export.<id>` in the project's `package.json`:
         },
         "audio": {
           "enabled": true,
-          "codec": "aac",                   // aac | opus
+          "codec": "aac",                   // aac | opus — a preference: see below
           "sampleRate": 48000,
           "bitrate": 128000
         }
@@ -41,6 +41,8 @@ The scene's entry under `diffusion.export.<id>` in the project's `package.json`:
 ```
 
 Every field is optional; the encoder fills what the entry leaves out. A scene without an entry exports with the defaults — 1080p H.264 MP4 with AAC audio, the app's default template. `resolution` scales the scene uniformly until its shorter side reaches the number, so a portrait 1080×1920 scene at `2160` encodes as 2160×3840.
+
+The audio `codec` is a preference rather than a demand: which codecs a machine can encode is not the same everywhere — AAC is the platform's encoder in WebCodecs (AudioToolbox on macOS, Media Foundation on Windows) and absent on Linux, while Opus is bundled everywhere — so a codec this machine cannot encode into the container is replaced with the container's next encodable choice. The echoed `config` names the codec the file was actually written with.
 
 ## Output
 

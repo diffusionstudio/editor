@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 export * from './buffer';
+export * from './codecs';
 export * from './contact-sheet';
 export * from './encoder';
 export * from './format';

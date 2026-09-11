@@ -89,6 +89,7 @@ export interface VideoAsset extends AssetBase {
 	height: number;
 	frameRate: number;
 	bitRate: number;
+	codec?: string | null;
 	sampleRate?: number;
 	channels?: number;
 	transcript?: Transcript;

@@ -7,6 +7,7 @@
 // draw into an OffscreenCanvas, so everything here is worker-capable.
 
 import { ALL_FORMATS, AudioSampleSink, BlobSource, BufferTarget, CanvasSink, Conversion, Input, InputAudioTrack, Mp4OutputFormat, OggOutputFormat, Output, StreamTarget } from 'mediabunny';
+import { canDecodeAudioTrack, canDecodeVideoTrack } from '@diffusionstudio/assets';
 
 import { assert } from '../utils/assert';
 import { formatTimestamp } from '../utils/time';
@@ -179,6 +180,11 @@ export async function filmstripAsset(asset: Asset, options?: PreviewOptions): Pr
 async function renderFilmstrip(asset: VideoAsset, input: Input, window: TimeWindow | undefined, scale: number): Promise<RenderedPreview> {
 	const videoTrack = await input.getPrimaryVideoTrack();
 	assert(videoTrack, "Video track not found");
+	const videoCodec = await videoTrack.getCodec();
+	assert(
+		await canDecodeVideoTrack(videoTrack),
+		`This machine cannot decode the "${videoCodec ?? "unknown"}" video codec, so no filmstrip can be rendered.`,
+	);
 	const { start: windowStart, duration } = resolveWindow(asset.duration, window);
 	const aspect = asset.width / asset.height;
 	const frameRate = asset.frameRate;
@@ -271,9 +277,10 @@ export async function waveformAsset(asset: Asset, options?: PreviewOptions): Pro
 async function renderWaveform(asset: VideoAsset | AudioAsset, input: Input, window: TimeWindow | undefined, scale: number): Promise<RenderedWaveform> {
 	const audioTrack = await input.getPrimaryAudioTrack();
 	assert(audioTrack, "No audio track found, so no waveform can be rendered.");
+	const audioCodec = await audioTrack.getCodec();
 	assert(
-		await audioTrack.canDecode(),
-		`This browser's audio decoder can't handle the "${audioTrack.getCodec() ?? "unknown"}" codec, so no waveform can be rendered.`,
+		await canDecodeAudioTrack(audioTrack),
+		`This machine cannot decode the "${audioCodec ?? "unknown"}" audio codec, so no waveform can be rendered.`,
 	);
 	const { start: windowStart, duration } = resolveWindow(asset.duration, window);
 	const rulerFrameRate = asset.type === "VIDEO" ? asset.frameRate : AUDIO_RULER_FRAME_RATE;
