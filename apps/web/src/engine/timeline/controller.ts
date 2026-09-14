@@ -9,7 +9,7 @@
  * controller itself never paints.
  */
 
-import { getTimelineView } from '@diffusionstudio/runtime';
+import { getTimelineView, store, Computed } from '@diffusionstudio/runtime';
 
 import { assert, clamp } from '@/utils';
 import { getDocumentEditor } from '@/engine/editor';
@@ -29,6 +29,7 @@ import {
 } from './view';
 import {
 	SCROLL_X_SENSITIVITY,
+	TIMELINE_PADDING_LEFT,
 	TIMELINE_RESOLUTION_RANGE,
 	WHEEL_LINE_HEIGHT,
 	WHEEL_PAGE_HEIGHT,
@@ -214,6 +215,69 @@ export function createTimelineController(world: World) {
 		surface.minimized = minimized;
 	};
 
+	// The resolution bounds, in pixels per frame. The wheel clamps against the
+	// same numbers, inverted.
+	const MIN_RESOLUTION = 1 / TIMELINE_RESOLUTION_RANGE[1];
+	const MAX_RESOLUTION = 1 / TIMELINE_RESOLUTION_RANGE[0];
+
+	/**
+	 * Sets the zoom (pixels per frame), keeping the frame under the center of
+	 * the viewport where it was — the way the wheel zooms around the pointer.
+	 * Reports the view so the scene remembers it (`<scene timeline>`).
+	 */
+	const zoomTo = (resolution: number): void => {
+		withScene((scene) => applyZoom(scene, resolution, true));
+	};
+
+	/**
+	 * The same, without reporting: what a slider drag asks for while the thumb
+	 * is in flight. Every pixel of a drag is a lot of file writes otherwise.
+	 * The drag's end reports once (see `zoomTo`).
+	 */
+	const zoomToLive = (resolution: number): void => {
+		withScene((scene) => applyZoom(scene, resolution, false));
+	};
+
+	const zoomBy = (factor: number): void => {
+		const scene = getTimelineScene(world);
+		if (scene !== null) applyZoom(scene, getResolution(world, scene) * factor, true);
+	};
+
+	/**
+	 * Fits the longest track to the viewport: zoom so the scene's content
+	 * span (its computed start..end) fills the canvas width, with the content
+	 * start lining up with the left padding.
+	 */
+	const zoomToFit = (): void => {
+		withScene((scene) => {
+			const computed = store(world, Computed);
+			const width = Math.max(1, (surface.layout.width || 0) - TIMELINE_PADDING_LEFT * 2);
+			const start = computed.start[scene.id()] ?? 0;
+			const frames = Math.max(1, (computed.end[scene.id()] ?? 0) - start);
+			const next = clamp(width / frames, MIN_RESOLUTION, MAX_RESOLUTION);
+
+			setResolution(world, scene, next);
+			setScrollX(world, scene, start - TIMELINE_PADDING_LEFT / next);
+			updateTimelineTransform(world, scene);
+			reportView(scene);
+		});
+	};
+
+	/** One zoom write: clamp, restore the center anchor, render, report. */
+	const applyZoom = (scene: Entity, resolution: number, report: boolean): void => {
+		const current = getResolution(world, scene);
+		const next = clamp(resolution, MIN_RESOLUTION, MAX_RESOLUTION);
+		if (next === current) return;
+
+		const anchor = (surface.layout.width || 0) / 2;
+		const scrollX = getScrollX(world, scene);
+
+		setResolution(world, scene, next);
+		setScrollX(world, scene, scrollX + anchor / current - anchor / next);
+		updateTimelineTransform(world, scene);
+		if (report) reportView(scene);
+	};
+
 	const attachCanvas = (): void => {
 		const canvas = document.getElementById('timeline-canvas') as HTMLCanvasElement | null;
 		assert(canvas, 'Timeline canvas must be defined');
@@ -285,6 +349,10 @@ export function createTimelineController(world: World) {
 		clientToFrame,
 		clientToTime,
 		setMinimized,
+		zoomTo,
+		zoomToLive,
+		zoomBy,
+		zoomToFit,
 	};
 }
 
