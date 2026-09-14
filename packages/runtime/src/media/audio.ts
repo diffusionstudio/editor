@@ -228,17 +228,26 @@ export class AudioDecoder {
 	}
 
 	public reset() {
+		this.release();
+
+		for (const node of this.audioNodes) {
+			node.stop();
+		}
+		this.audioNodes.clear();
+	}
+
+	/**
+	 * Drops the decoding state but lets buffers that are already scheduled play out.
+	 * `renderData` truncates every scheduled buffer at the clip's `trimEnd`, so the
+	 * nodes stop on their own at the clip's out point and `onended` removes them.
+	 */
+	public release() {
 		if (!this.iterator) return;
 
 		this.iterator?.return();
 		this.iterator = null;
 		this.firstBuffer = null;
 		this.lastBuffer = null;
-
-		for (const node of this.audioNodes) {
-			node.stop();
-		}
-		this.audioNodes.clear();
 	}
 }
 
