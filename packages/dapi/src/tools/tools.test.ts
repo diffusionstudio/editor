@@ -11,6 +11,7 @@ import { mediaFilmstrip } from "./media-filmstrip";
 import { mediaGrab } from "./media-grab";
 import { mediaListen } from "./media-listen";
 import { mediaTranscribe } from "./media-transcribe";
+import { report } from "./report";
 
 /** The messages of a failed parse, keyed by the path they point at. */
 function issues(result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[]; message: string }> } }) {
@@ -128,5 +129,15 @@ describe("image tools", () => {
     expect(capture.result!.safeParse([{ timecode: "0f", png: new Uint8Array(3) }]).success).toBe(true);
     expect(capture.output.safeParse({ images: [{ timecode: "0f", path: "/tmp/0f.png" }] }).success).toBe(true);
     expect(capture.output.safeParse({ images: [{ timecode: "0f", png: new Uint8Array(3) }] }).success).toBe(false);
+  });
+});
+
+describe("report", () => {
+  it("takes the log lines the caller read, not a count for the app to resolve", () => {
+    const lines = ["12:00:00.000 [error] boom  (index.tsx:3)"];
+    expect(report.input.safeParse({ title: "it broke", logs: lines }).success).toBe(true);
+    expect(report.input.parse({ title: "it broke" }).logs).toBeUndefined();
+    // A count would leave the caller publishing entries it never saw.
+    expect(report.input.safeParse({ title: "it broke", logs: 50 }).success).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import { isAbsolute, resolve } from "node:path";
 import { Command } from "commander";
 import { z } from "zod";
 import { version } from "../../../package.json";
-import { MCP_URL, toolByName } from "@diffusionstudio/dapi";
+import { ISSUE_LOG_TAIL, MCP_URL, formatLogEntry, toolByName } from "@diffusionstudio/dapi";
 import { APP_NAME, call, isAppDown, launchApp, ping, waitForApp } from "./cli-client";
 import { runProxy } from "./mcp-proxy";
 
@@ -245,8 +245,16 @@ program
   .argument("<title>", field("report", "title"))
   .option("-b, --body <text>", field("report", "body"))
   .option("-c, --commands <cmd...>", field("report", "commands"))
-  .option("--logs <n>", field("report", "logs"), numeric)
-  .action((title: string, opts: Omit<ToolInput<"report">, "title">) => run("report", { title, ...opts }));
+  .option("--logs <n>", `trailing app log entries to read and attach (0 to omit; default: ${ISSUE_LOG_TAIL})`, numeric)
+  .action(async (title: string, opts: { body?: string; commands?: string[]; logs?: number }) => {
+    // The tool attaches the lines it is handed rather than reading the buffer
+    // itself, so the command reads them: one `logs` call, then `report` with
+    // what came back. `dapi logs --tail n` shows exactly what an issue would
+    // carry, because it is the same call and the same formatting.
+    const tail = opts.logs ?? ISSUE_LOG_TAIL;
+    const entries = tail > 0 ? (await call("logs", { tail }).catch(appError)).entries : [];
+    await run("report", { title, body: opts.body, commands: opts.commands, logs: entries.map(formatLogEntry) });
+  });
 
 program
   .command("fonts")

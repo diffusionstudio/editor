@@ -5,19 +5,19 @@
 import { z } from "zod";
 import { defineTool } from "../tool";
 
-/** Trailing app log entries attached to an issue by default. */
+/** Trailing app log entries the `dapi report` command reads and attaches by default. */
 export const ISSUE_LOG_TAIL = 50;
 
 export const report = defineTool({
   name: "report",
   title: "Report a bug",
   description:
-    "Report a bug in dapi or the app itself. Files a GitHub issue on diffusionstudio/editor with diagnostics attached (dapi version, platform, recent app logs) and returns its URL. Submits immediately and publicly through the gh CLI, which must be installed and authenticated; there is no review step, so only report real defects and check the attached logs for anything private.",
+    "Report a bug in dapi or the app itself. Files a GitHub issue on diffusionstudio/editor with diagnostics attached (dapi version, platform, and whatever log lines you pass) and returns its URL. Submits immediately and publicly through the gh CLI, which must be installed and authenticated; there is no review step, so only report real defects, and read any logs with the logs tool before attaching them so you know what you are publishing.",
   input: z.object({
     title: z.string().min(1).describe("one-line summary of the problem"),
     body: z.string().optional().describe("what happened, in markdown: expected vs actual, and anything the diagnostics won't show"),
     commands: z.array(z.string()).optional().describe("the dapi commands or tool calls that reproduce it, in order"),
-    logs: z.int().min(0).optional().describe(`trailing app log entries to attach (0 to omit; default: ${ISSUE_LOG_TAIL})`),
+    logs: z.array(z.string()).optional().describe("app log lines to attach, as read with the logs tool; omit to attach none"),
   }),
   output: z.object({ url: z.string() }),
   environment: "main",

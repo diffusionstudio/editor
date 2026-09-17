@@ -27,12 +27,3 @@ function clip(entry: LogEntry): LogEntry {
   const over = entry.message.length - LOG_MESSAGE_MAX;
   return over > 0 ? { ...entry, message: `${entry.message.slice(0, LOG_MESSAGE_MAX)}… (${over} more chars)` } : entry;
 }
-
-/** One log entry as a line: local time, level, message, source. */
-export function formatLogEntry(entry: LogEntry): string {
-  const pad = (n: number, w = 2) => String(n).padStart(w, "0");
-  const d = new Date(entry.ts);
-  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
-  const source = entry.source ? `  (${entry.source})` : "";
-  return `${time} [${entry.level}] ${entry.message}${source}`;
-}
