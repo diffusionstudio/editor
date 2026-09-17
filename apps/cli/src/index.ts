@@ -14,9 +14,16 @@ import { runProxy } from "./mcp-proxy";
 
 import type { GenericTool, ToolInput, ToolName } from "@diffusionstudio/dapi";
 
+/**
+ * A failure the command already has words for: carried out rather than
+ * exited on, so the process ends by draining. Forcing the exit from here
+ * tears the run down while an MCP session's handle is still closing, which
+ * aborts on Windows instead of exiting 1.
+ */
+class Fatal extends Error {}
+
 function fail(message: string): never {
-  console.error(message);
-  process.exit(1);
+  throw new Fatal(message);
 }
 
 function appError(e: unknown): never {
@@ -260,4 +267,11 @@ program
 // Explicit argv convention: the packaged wrapper runs this bundle on
 // Electron in ELECTRON_RUN_AS_NODE mode, where commander would otherwise
 // detect Electron and drop the script path from argv.
-program.parse(process.argv, { from: "node" });
+//
+// Parsed async so a rejected action lands here rather than as an unhandled
+// rejection: what a command meant to say is said, the code is left behind,
+// and the process exits when there is nothing left to do.
+program.parseAsync(process.argv, { from: "node" }).catch((error: unknown) => {
+  console.error(error instanceof Fatal ? error.message : error);
+  process.exitCode = 1;
+});
