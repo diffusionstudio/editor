@@ -20,7 +20,10 @@ import type {
 } from "../protocol";
 import type { HostEnv } from "./env";
 
-export type ResumeCursor = { claude: { sessionId: string } } | { codex: { threadId: string } };
+export type ResumeCursor =
+  | { claude: { sessionId: string } }
+  | { codex: { threadId: string } }
+  | { opencode: { sessionId: string } };
 
 export type McpConfig = { name: "diffusion"; url: string };
 

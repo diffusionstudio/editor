@@ -32,6 +32,7 @@ export const AGENT_ICONS: Record<AgentId, string> = {
   cursor: "agent.cursor",
   vscode: "agent.vscode-copilot",
   codex: "agent.codex",
+  opencode: "opencode",
   antigravity: "agent.google-antigravity",
   "gemini-cli": "agent.google-gemini-cli",
   windsurf: "agent.devin-windsurf",

@@ -17,6 +17,7 @@ describe("per-agent entries", () => {
     expect(agentTarget("cursor").entry(spec)).toEqual({ url: spec.url });
     expect(agentTarget("vscode").entry(spec)).toEqual({ type: "http", url: spec.url });
     expect(agentTarget("codex").entry(spec)).toEqual({ url: spec.url });
+    expect(agentTarget("opencode").entry(spec)).toEqual({ type: "remote", url: spec.url });
     expect(agentTarget("antigravity").entry(spec)).toEqual({ serverUrl: spec.url });
     expect(agentTarget("gemini-cli").entry(spec)).toEqual({ httpUrl: spec.url });
     expect(agentTarget("windsurf").entry(spec)).toEqual({ serverUrl: spec.url });
@@ -66,6 +67,18 @@ describe("json configs", () => {
     const after = upsertServer(before, "mcpServers", { type: "http", url: spec.url });
     expect(readServer(after, "mcpServers")).toEqual({ url: spec.url });
     expect(JSON.parse(after).mcpServers.diffusion.command).toBeUndefined();
+  });
+
+  it("uses opencode's `mcp` root and leaves its other keys alone", () => {
+    const before = JSON.stringify({ $schema: "https://opencode.ai/config.json", theme: "dark", mcp: { other: { type: "local", command: ["x"] } } });
+    const after = JSON.parse(upsertServer(before, "mcp", { type: "remote", url: spec.url }));
+    expect(after.$schema).toBe("https://opencode.ai/config.json");
+    expect(after.theme).toBe("dark");
+    expect(after.mcp.other).toEqual({ type: "local", command: ["x"] });
+    expect(after.mcp.diffusion).toEqual({ type: "remote", url: spec.url });
+    expect(readServer(upsertServer(before, "mcp", { type: "remote", url: spec.url }), "mcp")).toEqual({ url: spec.url });
+    const removed = JSON.parse(removeServer(JSON.stringify(after), "mcp") as string);
+    expect(removed.mcp).toEqual({ other: { type: "local", command: ["x"] } });
   });
 
   it("reads the URL under each agent's key", () => {

@@ -7,7 +7,7 @@
 // a project lives. The host owns all state; the UI is a view over a snapshot
 // (`chats.open`) plus the events that follow it.
 
-export type HarnessId = "claude" | "codex";
+export type HarnessId = "claude" | "codex" | "opencode";
 
 /** The single dropdown's value: which harness, and which of its models. */
 export type ModelRef = { harness: HarnessId; model: string };
@@ -16,7 +16,7 @@ export type HarnessStatus = "ready" | "not-installed" | "signed-out" | "error" |
 
 export type HarnessInfo = {
   id: HarnessId;
-  /** "Claude Code" | "Codex" */
+  /** "Claude Code" | "Codex" | "opencode" */
   label: string;
   status: HarnessStatus;
   /** e.g. "Run `codex login` in a terminal" */
@@ -163,10 +163,11 @@ export function titleFor(text: string): string {
 export const HARNESS_LABELS: Record<HarnessId, string> = {
   claude: "Claude Code",
   codex: "Codex",
+  opencode: "opencode",
 };
 
-export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex"];
+export const HARNESS_IDS: readonly HarnessId[] = ["claude", "codex", "opencode"];
 
 export function isHarnessId(value: unknown): value is HarnessId {
-  return value === "claude" || value === "codex";
+  return value === "claude" || value === "codex" || value === "opencode";
 }

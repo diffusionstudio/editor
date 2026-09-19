@@ -26,7 +26,7 @@ import { chatState, ensureConnected, modelLabel, refreshHarnesses } from "./stor
 
 /** The icons `lib/agents.ts` used, by harness. */
 export const harnessIcon = (harness: HarnessId | null | undefined): string =>
-  harness === "claude" ? "claude-code" : harness === "codex" ? "codex" : "fx";
+  harness === "claude" ? "claude-code" : harness === "codex" ? "codex" : harness === "opencode" ? "opencode" : "fx";
 
 function unavailableLabel(harness: HarnessInfo): string {
   switch (harness.status) {

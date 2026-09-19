@@ -136,9 +136,9 @@ export function which(name: string, host: HostEnv): string | null {
 
 /**
  * Where a harness binary is: an explicit override (`DIFFUSION_CLAUDE_PATH`,
- * `DIFFUSION_CODEX_PATH`), else `which`.
+ * `DIFFUSION_CODEX_PATH`, `DIFFUSION_OPENCODE_PATH`), else `which`.
  */
-export function resolveBinary(name: "claude" | "codex", host: HostEnv): string | null {
+export function resolveBinary(name: "claude" | "codex" | "opencode", host: HostEnv): string | null {
   const override = host.env[`DIFFUSION_${name.toUpperCase()}_PATH`] ?? process.env[`DIFFUSION_${name.toUpperCase()}_PATH`];
   if (override && isExecutable(override)) return override;
   return which(name, host);

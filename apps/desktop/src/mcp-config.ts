@@ -31,12 +31,13 @@ export type AgentId =
   | "cursor"
   | "vscode"
   | "codex"
+  | "opencode"
   | "antigravity"
   | "gemini-cli"
   | "windsurf";
 
-/** How a config file spells its server map: JSON under `mcpServers` (or VS Code's `servers`), or Codex's TOML tables. */
-export type ConfigFormat = "mcpServers" | "servers" | "toml";
+/** How a config file spells its server map: JSON under `mcpServers` (or VS Code's `servers`, or opencode's `mcp`), or Codex's TOML tables. */
+export type ConfigFormat = "mcpServers" | "servers" | "mcp" | "toml";
 
 export type AgentTarget = {
   id: AgentId;
@@ -63,7 +64,7 @@ const APP_SUPPORT = "Library/Application Support";
 // keeps its user-level servers under `servers` in the profile's mcp.json.
 // Antigravity shares one config across its IDE and CLI, and only accepts
 // `serverUrl`. Claude Desktop's file takes stdio commands only, so it gets
-// the proxy.
+// the proxy. opencode keeps its servers under `mcp`, each tagged `remote`.
 export const AGENT_TARGETS: readonly AgentTarget[] = [
   { id: "claude-code", label: "Claude Code", marker: ".claude", config: ".claude.json", format: "mcpServers", entry: http("url", { type: "http" }) },
   {
@@ -84,6 +85,7 @@ export const AGENT_TARGETS: readonly AgentTarget[] = [
     entry: http("url", { type: "http" }),
   },
   { id: "codex", label: "Codex", marker: ".codex", config: ".codex/config.toml", format: "toml", entry: http("url") },
+  { id: "opencode", label: "opencode", marker: ".config/opencode", config: ".config/opencode/opencode.json", format: "mcp", entry: http("url", { type: "remote" }) },
   { id: "antigravity", label: "Antigravity", marker: ".gemini/antigravity", config: ".gemini/config/mcp_config.json", format: "mcpServers", entry: http("serverUrl") },
   { id: "gemini-cli", label: "Gemini CLI", marker: ".gemini", config: ".gemini/settings.json", format: "mcpServers", entry: http("httpUrl") },
   { id: "windsurf", label: "Devin (Windsurf)", marker: ".codeium/windsurf", config: ".codeium/windsurf/mcp_config.json", format: "mcpServers", entry: http("serverUrl") },
