@@ -85,7 +85,7 @@ function HarnessModels(props: { harness: HarnessInfo; value: ModelRef | null; on
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>{group}</DropdownMenuSubTrigger>
             <DropdownMenuPortal>
-              <DropdownMenuSubContent class="w-56">
+              <DropdownMenuSubContent class="max-h-96! w-56">
                 <For each={models}>{(model) => row(model)}</For>
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
