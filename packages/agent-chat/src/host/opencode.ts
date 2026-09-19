@@ -115,6 +115,43 @@ function waitForServer(child: ChildProcess, timeoutMs: number): Promise<string> 
   });
 }
 
+/** The rows of `GET /provider` we read: a provider's display name and its models. */
+type ProviderRow = { id?: string; name?: string; models?: Record<string, { id?: string; name?: string }> };
+type ModelRow = { id: string; label: string; group?: string };
+
+/**
+ * The connected providers' models, each with its provider's display name as
+ * the group, so the picker can label a submenu "OpenCode Zen" rather than
+ * guess from the id. A server is started for the one call and stopped again.
+ */
+async function listModels(binary: string, env: HostEnv, signal: AbortSignal): Promise<ModelRow[]> {
+  const password = randomUUID();
+  const port = await freePort();
+  const child = spawnServer(binary, process.cwd(), { ...env.env, OPENCODE_CONFIG_CONTENT: "{}" }, password, port);
+  const timer = setTimeout(() => void killTree(child), PROBE_TIMEOUT_MS);
+  const onAbort = () => void killTree(child);
+  signal.addEventListener("abort", onAbort, { once: true });
+  try {
+    const base = await waitForServer(child, READY_TIMEOUT_MS);
+    const authorization = `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`;
+    const result = (await call(base, authorization, "GET", "/provider")) as { all?: ProviderRow[]; connected?: string[] };
+    const connected = new Set(result.connected ?? []);
+    const models: ModelRow[] = [];
+    for (const provider of result.all ?? []) {
+      if (!provider.id || !connected.has(provider.id)) continue;
+      for (const model of Object.values(provider.models ?? {})) {
+        if (!model.id) continue;
+        models.push({ id: `${provider.id}/${model.id}`, label: model.name ?? model.id, ...(provider.name ? { group: provider.name } : {}) });
+      }
+    }
+    return models;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", onAbort);
+    void killTree(child);
+  }
+}
+
 async function call(base: string, authorization: string, method: string, path: string, body?: unknown): Promise<unknown> {
   const response = await fetch(`${base}${path}`, {
     method,
@@ -455,17 +492,17 @@ class OpenCodeSession implements HarnessSession {
 export class OpenCodeHarness implements Harness {
   readonly id = "opencode" as const;
 
-  async probe(env: HostEnv, _signal: AbortSignal): Promise<HarnessInfo> {
+  async probe(env: HostEnv, signal: AbortSignal): Promise<HarnessInfo> {
     const label = HARNESS_LABELS.opencode;
     const binary = resolveBinary("opencode", env);
     if (!binary) return { id: this.id, label, status: "not-installed", detail: "Install opencode, then reopen the picker", models: [] };
     const version = parseVersion(await runOnce(binary, ["--version"], env));
-    const listed = await runOnce(binary, ["models"], env, PROBE_TIMEOUT_MS);
-    const models = (listed ?? "")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => /^[\w.-]+\/[\w.-]+$/.test(line))
-      .map((id) => ({ id, label: id }));
+    let models: ModelRow[];
+    try {
+      models = await listModels(binary, env, signal);
+    } catch (error) {
+      return { id: this.id, label, status: "error", detail: (error as Error).message, version, models: [] };
+    }
     if (models.length === 0) {
       return { id: this.id, label, status: "signed-out", detail: "Run `opencode auth login` in a terminal", version, models: [] };
     }

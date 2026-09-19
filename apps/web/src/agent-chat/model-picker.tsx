@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// One dropdown for harness and model: Claude Code's models, then Codex's,
-// fed by the host's probes. A harness that is not ready is one disabled row
-// that says why, never hidden, so the picker also says what this works with.
+// One dropdown for harness and model, fed by the host's probes. A harness that
+// is not ready is one disabled row that says why, never hidden, so the picker
+// also says what this works with.
 
-import { For, Show } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 
 import {
   DropdownMenu,
@@ -16,6 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
@@ -39,6 +42,58 @@ function unavailableLabel(harness: HarnessInfo): string {
     default:
       return harness.detail ?? "Unavailable";
   }
+}
+
+type HarnessModel = HarnessInfo["models"][number];
+
+/**
+ * One harness's models, grouped by `model.group` into a submenu each, so a
+ * harness with a hundred models is a few rows instead of a hundred. Models
+ * without a group list flat.
+ */
+function HarnessModels(props: { harness: HarnessInfo; value: ModelRef | null; onSelect(ref: ModelRef): void }) {
+  const grouped = createMemo(() => {
+    const byGroup = new Map<string, HarnessModel[]>();
+    const flat: HarnessModel[] = [];
+    for (const model of props.harness.models) {
+      if (!model.group) {
+        flat.push(model);
+        continue;
+      }
+      const models = byGroup.get(model.group);
+      if (models) models.push(model);
+      else byGroup.set(model.group, [model]);
+    }
+    return { flat, groups: [...byGroup] };
+  });
+
+  const row = (model: HarnessModel) => (
+    <DropdownMenuItem onSelect={() => props.onSelect({ harness: props.harness.id, model: model.id })}>
+      <Icon name={harnessIcon(props.harness.id)} />
+      <span class="min-w-0 flex-1 truncate">{model.label}</span>
+      <Show when={props.value?.harness === props.harness.id && props.value?.model === model.id}>
+        <Icon name="confirm-check" class="size-6" />
+      </Show>
+    </DropdownMenuItem>
+  );
+
+  return (
+    <>
+      <For each={grouped().flat}>{(model) => row(model)}</For>
+      <For each={grouped().groups}>
+        {([group, models]) => (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>{group}</DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent class="w-56">
+                <For each={models}>{(model) => row(model)}</For>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        )}
+      </For>
+    </>
+  );
 }
 
 type ModelPickerProps = {
@@ -96,17 +151,7 @@ export function ModelPicker(props: ModelPickerProps) {
                       </DropdownMenuItem>
                     }
                   >
-                    <For each={harness.models}>
-                      {(model) => (
-                        <DropdownMenuItem onSelect={() => props.onSelect({ harness: harness.id, model: model.id })}>
-                          <Icon name={harnessIcon(harness.id)} />
-                          <span class="min-w-0 flex-1 truncate">{model.label}</span>
-                          <Show when={props.value?.harness === harness.id && props.value?.model === model.id}>
-                            <Icon name="confirm-check" class="size-6" />
-                          </Show>
-                        </DropdownMenuItem>
-                      )}
-                    </For>
+                    <HarnessModels harness={harness} value={props.value} onSelect={props.onSelect} />
                   </Show>
                 </DropdownMenuGroup>
               </>

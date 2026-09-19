@@ -22,7 +22,8 @@ export type HarnessInfo = {
   /** e.g. "Run `codex login` in a terminal" */
   detail?: string;
   version?: string;
-  models: { id: string; label: string }[];
+  /** `group` clusters models in the picker (a provider, say); models without one list flat. */
+  models: { id: string; label: string; group?: string }[];
   defaultModel?: string;
 };
 
