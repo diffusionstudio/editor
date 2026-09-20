@@ -11,6 +11,7 @@ import { app } from "electron";
 import { execFile } from "node:child_process";
 import { existsSync, lstatSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { appleScriptLiteral, shellWord } from "./shell-quote";
 
 import type { CliInstallResult, CliStatus, CliUninstallResult } from "./main-channels";
 
@@ -46,7 +47,7 @@ export function cliStatus(): CliStatus {
 
 // The standard macOS admin prompt, for the one shell line that needs it.
 function elevated(shell: string): Promise<void> {
-  const script = `do shell script "${shell.replaceAll('"', '\\"')}" with administrator privileges`;
+  const script = `do shell script "${appleScriptLiteral(shell)}" with administrator privileges`;
   return new Promise((resolve, reject) => {
     execFile("osascript", ["-e", script], (err) => (err ? reject(err) : resolve()));
   });
@@ -64,7 +65,7 @@ export async function installCli(): Promise<CliInstallResult> {
   }
   const wrapper = join(process.resourcesPath, "cli", "bin", "dapi");
   try {
-    await elevated(`mkdir -p /usr/local/bin && ln -sf '${wrapper}' '${CLI_LINK_PATH}'`);
+    await elevated(`mkdir -p /usr/local/bin && ln -sf ${shellWord(wrapper)} ${shellWord(CLI_LINK_PATH)}`);
     return { status: "installed" };
   } catch (e) {
     return cancelled(e) ? { status: "cancelled" } : { status: "error", error: (e as Error).message };
@@ -91,7 +92,7 @@ export async function uninstallCli(): Promise<CliUninstallResult> {
     if (code !== "EACCES" && code !== "EPERM") return { status: "error", error: (e as Error).message };
   }
   try {
-    await elevated(`rm -f '${path}'`);
+    await elevated(`rm -f ${shellWord(path)}`);
     return { status: "removed" };
   } catch (e) {
     return cancelled(e) ? { status: "cancelled" } : { status: "error", error: (e as Error).message };
