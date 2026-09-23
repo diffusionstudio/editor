@@ -4,8 +4,7 @@
 
 import { spawn } from "node:child_process";
 import { arch, platform, release } from "node:os";
-import { DapiError, ISSUE_LOG_TAIL } from "@diffusionstudio/dapi";
-import { formatLogEntry } from "./logs";
+import { DapiError } from "@diffusionstudio/dapi";
 
 import type { MainHandler } from "../handler";
 
@@ -72,8 +71,7 @@ function createIssue(title: string, body: string): Promise<string> {
 export const report: MainHandler<"report"> = async ({ title, body, commands, logs }, ctx) => {
   const summary = title.trim();
   if (!summary) throw new DapiError("invalid-input", "A one-line title is required.");
-  const tail = logs ?? ISSUE_LOG_TAIL;
-  const lines = tail > 0 ? ctx.logs().slice(-tail).map(formatLogEntry) : [];
-  const url = await createIssue(summary, buildIssueBody({ body, commands, logs: lines, version: ctx.version }));
+  // The caller's lines, never the live buffer: what was read is what is filed.
+  const url = await createIssue(summary, buildIssueBody({ body, commands, logs: logs ?? [], version: ctx.version }));
   return { url };
 };

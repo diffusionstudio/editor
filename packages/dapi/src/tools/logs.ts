@@ -25,3 +25,16 @@ export const logs = defineTool({
   output: z.object({ entries: z.array(LogEntry) }),
   environment: "main",
 });
+
+/**
+ * One log entry as a line: local time, level, message, source. The shape a
+ * line takes wherever it is attached, so what the CLI reads back and what
+ * the app would have written are the same string.
+ */
+export function formatLogEntry(entry: z.output<typeof LogEntry>): string {
+  const pad = (n: number, w = 2) => String(n).padStart(w, "0");
+  const d = new Date(entry.ts);
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+  const source = entry.source ? `  (${entry.source})` : "";
+  return `${time} [${entry.level}] ${entry.message}${source}`;
+}
