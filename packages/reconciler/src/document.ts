@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsMask, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsMask, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, snapToMs, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
 import { SVGElements } from 'solid-js/web';
@@ -25,6 +25,13 @@ const UNAUTHORED_PROPS: ReadonlySet<string> = new Set([SOURCE_ATTR, LOOP_ATTR, '
  * misses a picture.
  */
 const HOLD_TIMEOUT_MS = 30_000;
+
+/**
+ * Parts of a frame an authored time settles to before it rounds to a whole
+ * frame. Finer than any cut a person makes, coarser than the drift of a time
+ * worked out from others (see `toFrames`).
+ */
+const FRAME_PRECISION = 1_000;
 
 export interface AuthoredElement {
 	/** The camelCase tag the project used. */
@@ -1415,9 +1422,17 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 		}
 	}
 
-	/** Seconds as frames of this project. */
+	/**
+	 * Seconds as frames of this project. Times are decimals, and one worked
+	 * out from others (a clip's end from its start and source window) lands a
+	 * hair either side of the same instant spelled out as its neighbour's
+	 * start; on a half frame that hair rounds the two apart. Settling the time
+	 * to the runtime's time base, then to a fraction of a frame, rounds both
+	 * the same way.
+	 */
 	private toFrames(seconds: number): number {
-		return secondsToFrames(seconds, this.world.get(FrameRate)?.value ?? 30);
+		const fps = this.world.get(FrameRate)?.value ?? 30;
+		return Math.round(secondsToFrames(snapToMs(seconds), fps * FRAME_PRECISION) / FRAME_PRECISION);
 	}
 
 	/**
@@ -1431,9 +1446,13 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 	 * authored start, pulled back by the stretch of source the trim skips
 	 * (`start - sourceIn/rate`), so the trimmed window opens at the start. The
 	 * trim is the source window; an authored end becomes source frames through
-	 * the rate, and whichever of it and sourceOut closes first wins. With no
-	 * out bound at all the trim stays open (`end: null`) and the runtime runs
-	 * the clip to its source's natural end.
+	 * the rate, and whichever of it and sourceOut closes first wins. A
+	 * sourceOut is rounded where the end it implies falls on the timeline
+	 * (`start + (sourceOut - sourceIn)/rate`), as an end is: rounded on its
+	 * own, apart from the start and sourceIn, it can leave the clip ending a
+	 * frame before or after the next one starts, a blank frame or an overlap
+	 * at the cut. With no out bound at all the trim stays open (`end: null`)
+	 * and the runtime runs the clip to its source's natural end.
 	 */
 	private syncTiming(node: SceneNode): void {
 		const { entity, props } = node;
@@ -1460,7 +1479,8 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			out = sourceInFrames + (this.toFrames(end) - startFrames) * rate;
 		}
 		if (sourceOut !== undefined) {
-			const frames = this.toFrames(sourceOut);
+			const implied = (start ?? 0) + (sourceOut - (sourceIn ?? 0)) / rate;
+			const frames = sourceInFrames + (this.toFrames(implied) - startFrames) * rate;
 			out = out === null ? frames : Math.min(out, frames);
 		}
 
