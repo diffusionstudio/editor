@@ -67,7 +67,7 @@ Use with Claude Code, Codex, Cursor, Copilot, or Gemini CLI. The app registers i
 <summary><b>Motion graphics</b></summary>
 
 ```text
-Create a ~20-second promo for vercel-labs/native in Vercel's presentation style. Research its official website, GitHub, and brand guidelines; use authentic assets and verified product features, with crisp typography, polished motion, and a strong final CTA.
+Create a polished, 20-second SaaS product promo video for https://typesafe.ai/. Use the website’s branding and highlight the product’s main benefit with animated UI mockups, concise on-screen text, and smooth transitions. End with a clear call to action.
 ```
 
 ```text
