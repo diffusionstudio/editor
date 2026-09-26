@@ -35,7 +35,7 @@ function dispatch(device: GPUDevice, pipeline: GPUComputePipeline, bindGroup: GP
 }
 
 const PARAMS_BYTES = 48;
-const MAX_TAPS = 4;
+const MAX_TAPS = 8;
 
 /** Uploads a frame and turns it into the vision encoder's `pixel_values`. */
 export class FramePreprocessor {

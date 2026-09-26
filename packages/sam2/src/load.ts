@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { IMAGE_SIZE, MEMORY_FRAMES } from './constants';
 import { configureRuntime, createSession, runtimeDevice } from './sessions';
 import { Sam2Video } from './tracker';
 import { fetchModelFiles } from './weights';
@@ -34,6 +35,9 @@ async function load({ onProgress, signal }: Sam2LoadOptions): Promise<Sam2Video>
 
 	const files = await fetchModelFiles((progress) => onProgress?.({ phase: 'download', ...progress }), signal);
 	const constants = JSON.parse(new TextDecoder().decode(files.constants)) as ModelConstants;
+	if (constants.image_size !== IMAGE_SIZE || constants.memory_frames !== MEMORY_FRAMES) {
+		throw new Error(`The model is for ${constants.image_size}px and ${constants.memory_frames} memories, the pipeline for ${IMAGE_SIZE}px and ${MEMORY_FRAMES}`);
+	}
 
 	onProgress?.({ phase: 'compile' });
 	// The runtime builds one WebGPU session at a time.

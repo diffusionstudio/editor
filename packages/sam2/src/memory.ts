@@ -3,8 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import {
-	MAX_POINTERS, MEM_DIM, MEMORY_BLOCK_BYTES, MEMORY_ROW_BYTES, MEMORY_ROWS,
-	NUM_MASKMEM, POINTER_BYTES, POINTER_TOKENS,
+	MAX_POINTERS, MEM_DIM, MEMORY_BLOCK_BYTES, MEMORY_FRAMES, MEMORY_ROW_BYTES, MEMORY_ROWS,
+	POINTER_BYTES, POINTER_TOKENS,
 } from './constants';
 import { createStorageBuffer } from './gpu';
 
@@ -81,7 +81,8 @@ export class MemoryBank {
 	/**
 	 * Lays the bank out for frame `index` and returns each pointer's distance
 	 * to it, normalized the way `pointer_tpos` expects. Slot 0 is the prompted
-	 * frame, slots 1 to 6 the newest frames first; empty slots and pointers
+	 * frame, with the temporal table's last row; the other slots are the newest
+	 * frames first, a frame `k` back with row `k - 1`. Empty slots and pointers
 	 * repeat the newest entry, which the graph's fixed shapes require.
 	 */
 	assemble(index: number, totalFrames: number): number[] {
@@ -90,8 +91,8 @@ export class MemoryBank {
 		if (!conditioning || !positions) throw new Error('The memory bank has no prompted frame');
 
 		const newestFirst = [...this.recent].reverse();
-		const blocks = [{ tokens: conditioning.tokens, pos: positions[NUM_MASKMEM - 1]! }];
-		for (let slot = 1; slot < NUM_MASKMEM; slot++) {
+		const blocks = [{ tokens: conditioning.tokens, pos: positions[positions.length - 1]! }];
+		for (let slot = 1; slot < MEMORY_FRAMES; slot++) {
 			const entry = newestFirst[slot - 1];
 			blocks.push(entry ? { tokens: entry.tokens, pos: positions[slot - 1]! } : blocks[1] ?? blocks[0]!);
 		}
@@ -153,4 +154,4 @@ export class MemoryBank {
 	}
 }
 
-const POINTER_OFFSET = NUM_MASKMEM * MEMORY_BLOCK_BYTES;
+const POINTER_OFFSET = MEMORY_FRAMES * MEMORY_BLOCK_BYTES;
