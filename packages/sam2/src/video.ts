@@ -8,6 +8,11 @@ import type { InputVideoTrack, VideoSample } from 'mediabunny';
 import type { Sam2Mask } from './mask';
 import type { Sam2Point, Sam2Video } from './tracker';
 
+export type FrameRequest = {
+	track: InputVideoTrack;
+	timestamp: number;
+};
+
 export type TrackRequest = {
 	track: InputVideoTrack;
 	/** Where each frame to segment is in the file, in seconds, ascending. */
@@ -26,6 +31,17 @@ export type TrackRequest = {
  * keyframe each time.
  */
 const REVERSE_BATCH = 12;
+
+/**
+ * Decodes one frame and holds it in the model, encoded, so prompts on it
+ * (`model.preview`, `model.seedHeld`) cost the mask decoder alone.
+ */
+export async function holdFrame(model: Sam2Video, request: FrameRequest): Promise<void> {
+	const { track, timestamp } = request;
+	const sample = await new VideoSampleSink(track).getSample(timestamp);
+	if (!sample) throw new Error('The frame could not be decoded');
+	await withVideoFrame(sample, (frame) => model.hold(frame, track.rotation));
+}
 
 /**
  * Segments the object at the seed and follows it through every frame of the

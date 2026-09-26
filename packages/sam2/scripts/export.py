@@ -3,16 +3,17 @@
 # dependencies = ["numpy", "onnx==1.23.0", "onnxslim==0.1.96", "torch==2.14.0", "transformers==5.17.0"]
 # ///
 """
-Exports the graphs the package loads: SAM 2.1 Hiera-Tiny video tracking as
-five fixed-shape ONNX graphs, from the `transformers` port of the checkpoint.
+Exports the graphs the package loads: SAM 2.1 video tracking as five
+fixed-shape ONNX graphs, from the `transformers` port of a checkpoint.
 
-The input resolution and the number of frame memories attended to are
-parameters; the package's constants must match the ones exported. The
+The model size (tiny, small, base-plus or large), the input resolution and
+the number of frame memories attended to are parameters; the package's
+constants must match the ones exported. The
 graphs compute in fp16 but take and return fp32, with a cast at each boundary.
 Constants are folded in fp32 first, so positional encodings are computed at
 full precision before they are stored as halves.
 
-    uv run packages/sam2/scripts/export.py <image-size> <memory-frames> <out-dir>
+    uv run packages/sam2/scripts/export.py <model-size> <image-size> <memory-frames> <out-dir>
 """
 
 import hashlib
@@ -31,7 +32,6 @@ from torch import nn
 from transformers import Sam2VideoConfig, Sam2VideoModel
 from transformers.models.sam2_video.modeling_sam2_video import NO_OBJ_SCORE, get_1d_sine_pe
 
-CHECKPOINT = 'facebook/sam2.1-hiera-tiny'
 # Masks come out at this size whatever the input resolution, upsampled from the decoder's.
 MASK_SIZE = 256
 MAX_POINTERS = 16
@@ -40,8 +40,8 @@ MAX_POINTERS = 16
 FLOAT32_INPUTS = {('Resize', 1), ('Resize', 2)}
 
 
-def load(image_size: int) -> Sam2VideoModel:
-    config = Sam2VideoConfig.from_pretrained(CHECKPOINT)
+def load(checkpoint: str, image_size: int) -> Sam2VideoModel:
+    config = Sam2VideoConfig.from_pretrained(checkpoint)
     feat = image_size // 16
     config.image_size = image_size
     config.vision_config.backbone_config.image_size = [image_size, image_size]
@@ -49,7 +49,7 @@ def load(image_size: int) -> Sam2VideoModel:
     config.prompt_encoder_config.image_size = image_size
     config.mask_decoder_config.image_size = image_size
     config.memory_attention_rope_feat_sizes = [feat, feat]
-    model = Sam2VideoModel.from_pretrained(CHECKPOINT, config=config, attn_implementation='eager').eval()
+    model = Sam2VideoModel.from_pretrained(checkpoint, config=config, attn_implementation='eager').eval()
 
     # The backbone's position embedding depends only on the input size; exported as the
     # computation it is, it brings `If` nodes that the runtime evaluates on the CPU.
@@ -301,8 +301,8 @@ def dedupe_constants(model: onnx.ModelProto) -> onnx.ModelProto:
     return model
 
 
-def main(image_size: int, memory_frames: int, out: Path) -> None:
-    model = load(image_size)
+def main(model_size: str, image_size: int, memory_frames: int, out: Path) -> None:
+    model = load(f'facebook/sam2.1-hiera-{model_size}', image_size)
     (out / 'onnx').mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as fp32:
         export_fp32(model, memory_frames, Path(fp32))
@@ -313,6 +313,7 @@ def main(image_size: int, memory_frames: int, out: Path) -> None:
             print(f'{path.stem}: {(out / "onnx" / path.name).stat().st_size:,} bytes')
 
     constants = {
+        'model': f'sam2.1-hiera-{model_size}',
         'image_size': image_size,
         'memory_frames': memory_frames,
         'image_mean': [0.485, 0.456, 0.406],
@@ -323,4 +324,4 @@ def main(image_size: int, memory_frames: int, out: Path) -> None:
 
 
 if __name__ == '__main__':
-    main(int(sys.argv[1]), int(sys.argv[2]), Path(sys.argv[3]))
+    main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), Path(sys.argv[4]))
