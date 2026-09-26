@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { IMAGE_SIZE, MEMORY_FRAMES } from './constants';
+import { readFloat16Initializer } from './onnx';
 import { configureRuntime, createSession, runtimeDevice } from './sessions';
 import { Sam2Video } from './tracker';
 import { fetchModelFiles } from './weights';
@@ -41,12 +42,14 @@ async function load({ onProgress, signal }: Sam2LoadOptions): Promise<Sam2Video>
 
 	onProgress?.({ phase: 'compile' });
 	// The runtime builds one WebGPU session at a time.
-	const visionEncoder = await createSession(files.visionEncoder, ['feats0', 'feats1', 'feats2', 'feats2_no_mem', 'vision_pos_embed']);
+	const visionEncoder = await createSession(files.visionEncoder, ['feats0', 'feats1', 'feats2', 'feats2_no_mem', 'vision_pos_embed'], true);
 	const maskDecoder = await createSession(files.maskDecoder, ['high_res_mask', 'object_pointer']);
 	const memoryEncoder = await createSession(files.memoryEncoder, ['memory_tokens', 'memory_pos']);
-	const memoryAttention = await createSession(files.memoryAttention, ['conditioned_feats']);
+	const memoryAttention = await createSession(files.memoryAttention, ['conditioned_feats'], { enableGraphCapture: true });
 	const pointerTpos = await createSession(files.pointerTpos, ['pointer_pos']);
 	const device = await runtimeDevice();
 
-	return new Sam2Video(device, { visionEncoder, maskDecoder, memoryEncoder, memoryAttention, pointerTpos }, constants);
+	const positions = readFloat16Initializer(files.visionEncoder, 'pos_embed');
+
+	return new Sam2Video(device, { visionEncoder, maskDecoder, memoryEncoder, memoryAttention, pointerTpos }, constants, positions);
 }

@@ -21,11 +21,13 @@ export function runtimeDevice(): Promise<GPUDevice> {
 }
 
 /** A WebGPU session whose listed outputs stay on the GPU; the rest are downloaded after each run. */
-export function createSession(model: ArrayBuffer, gpuOutputs: readonly string[]): Promise<Session> {
+export function createSession(model: ArrayBuffer, gpuOutputs: readonly string[], options: Partial<ort.InferenceSession.SessionOptions> = {}): Promise<Session> {
 	return ort.InferenceSession.create(model, {
-		executionProviders: ['webgpu'],
+
+		executionProviders: [{ name: 'webgpu' }],
 		graphOptimizationLevel: 'all',
 		preferredOutputLocation: Object.fromEntries(gpuOutputs.map((name) => [name, 'gpu-buffer' as const])),
+		...options,
 	});
 }
 

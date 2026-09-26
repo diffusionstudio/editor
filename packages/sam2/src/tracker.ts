@@ -43,16 +43,19 @@ export class Sam2Video {
 	/** The frame kept encoded for `preview` and `seedHeld`, so a prompt costs the decoder alone. */
 	private held: Outputs | null = null;
 
+	/** `positions` is the vision encoder's `pos_embed`, [HIDDEN_DIM, FEAT_TOKENS]. */
 	constructor(
 		device: GPUDevice,
 		private readonly sessions: Sam2Sessions,
 		constants: ModelConstants,
+		positions: Float32Array,
 	) {
 		this.preprocessor = new FramePreprocessor(device, constants.image_mean, constants.image_std);
 		this.transposer = new TokenTransposer(device);
 		this.bank = new MemoryBank(device, constants.memory_temporal_positional_encoding);
 		this.featureTokens = createStorageBuffer(device, FEAT_TOKENS * HIDDEN_DIM * BYTES_PER_FLOAT, 'sam2 vision tokens');
 		this.positionTokens = createStorageBuffer(device, FEAT_TOKENS * HIDDEN_DIM * BYTES_PER_FLOAT, 'sam2 position tokens');
+		device.queue.writeBuffer(this.positionTokens, 0, toTokens(positions));
 	}
 
 	/** Segments the object at `points` and makes this the frame every later one is tracked from. */
@@ -68,12 +71,10 @@ export class Sam2Video {
 	/**
 	 * Encodes a frame and keeps it hot: `preview` and `seedHeld` then run
 	 * the mask decoder alone, which is what makes prompting feel immediate.
-	 * The frame held before is dropped.
+	 * It stays held until another frame is encoded, by this or `seed` or `track`.
 	 */
 	async hold(frame: VideoFrame, rotation: Rotation): Promise<void> {
-		const vision = await this.encode(frame, rotation);
-		this.release();
-		this.held = vision;
+		this.held = await this.encode(frame, rotation);
 	}
 
 	get holding(): boolean {
@@ -120,7 +121,6 @@ export class Sam2Video {
 		const vision = await this.encode(frame, rotation);
 		try {
 			this.transposer.run(gpuBuffer(vision, 'feats2'), this.featureTokens);
-			this.transposer.run(gpuBuffer(vision, 'vision_pos_embed'), this.positionTokens);
 
 			const distances = this.bank.assemble(index, totalFrames);
 			const temporal = await this.sessions.pointerTpos.run({ normalized_diffs: floatTensor(distances, [MAX_POINTERS]) });
@@ -161,11 +161,14 @@ export class Sam2Video {
 		for (const session of Object.values(this.sessions)) void session.release();
 	}
 
+	/** The encoder is captured, so its outputs are one set of buffers: encoding a frame overwrites the one held. */
 	private async encode(frame: VideoFrame, rotation: Rotation): Promise<Outputs> {
+		this.release();
 		this.preprocessor.run(frame, rotation);
-		return this.sessions.visionEncoder.run({
-			pixel_values: gpuTensor(this.preprocessor.pixels, [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
-		});
+		return this.sessions.visionEncoder.run(
+			{ pixel_values: gpuTensor(this.preprocessor.pixels, [1, 3, IMAGE_SIZE, IMAGE_SIZE]) },
+			VISION_OUTPUTS,
+		);
 	}
 
 	/**
@@ -218,6 +221,22 @@ export class Sam2Video {
 			disposeOutputs(memory);
 		}
 	}
+}
+
+/**
+ * What the pipeline reads of the vision encoder. Its `vision_pos_embed` is a
+ * constant the runtime folds away, and a captured graph does not write folded
+ * outputs; `positionTokens` holds it instead, read from the model's weights.
+ */
+const VISION_OUTPUTS = ['feats0', 'feats1', 'feats2', 'feats2_no_mem'];
+
+/** Rewrites [C, N] channels as the [N, 1, C] tokens memory attention reads. */
+function toTokens(channels: Float32Array): Float32Array<ArrayBuffer> {
+	const tokens = new Float32Array(channels.length);
+	for (let c = 0; c < HIDDEN_DIM; c++) {
+		for (let n = 0; n < FEAT_TOKENS; n++) tokens[n * HIDDEN_DIM + c] = channels[c * FEAT_TOKENS + n]!;
+	}
+	return tokens;
 }
 
 /**
