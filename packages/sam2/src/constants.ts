@@ -2,15 +2,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-export const MODEL_REPO = 'https://huggingface.co/square-zero-labs/sam2.1-tiny-video-onnx/resolve/main';
+/**
+ * The graphs compute in fp16 but take and return fp32, so the pipeline is the
+ * same as for the fp32 export they are built from; `scripts/convert_fp16.py`
+ * makes them. Pinned to a commit, which is part of the cache key.
+ */
+export const MODEL_REPO = 'https://huggingface.co/diffusionstudio/sam2.1-tiny-video-onnx-fp16/resolve/9a1ecaa5b194cc9c5bd7840036301037fe3f6b13';
 
 export const MODEL_FILES = {
 	constants: { path: 'constants.json', size: 9_922 },
-	visionEncoder: { path: 'onnx/vision_encoder.onnx', size: 134_335_567 },
-	maskDecoder: { path: 'onnx/mask_decoder.onnx', size: 17_794_355 },
-	memoryEncoder: { path: 'onnx/memory_encoder.onnx', size: 5_616_496 },
-	memoryAttention: { path: 'onnx/memory_attention.onnx', size: 32_259_165 },
-	pointerTpos: { path: 'onnx/pointer_tpos.onnx', size: 67_289 },
+	visionEncoder: { path: 'onnx/vision_encoder.onnx', size: 67_221_881 },
+	maskDecoder: { path: 'onnx/mask_decoder.onnx', size: 8_928_987 },
+	memoryEncoder: { path: 'onnx/memory_encoder.onnx', size: 2_822_478 },
+	memoryAttention: { path: 'onnx/memory_attention.onnx', size: 16_220_704 },
+	pointerTpos: { path: 'onnx/pointer_tpos.onnx', size: 34_236 },
 } as const;
 
 export const IMAGE_SIZE = 1024;

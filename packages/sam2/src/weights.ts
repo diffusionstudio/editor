@@ -23,6 +23,7 @@ export async function fetchModelFiles(
 	signal?: AbortSignal,
 ): Promise<ModelFiles> {
 	const store = await openFileStore();
+	await store?.retain(Object.values(MODEL_FILES).map((file) => `${MODEL_REPO}/${file.path}`));
 	const loaded = new Map<ModelFileKey, number>();
 	const report = () => onProgress?.({ loaded: [...loaded.values()].reduce((a, b) => a + b, 0), total: TOTAL_BYTES });
 
@@ -73,6 +74,8 @@ async function download(url: string, signal: AbortSignal | undefined, onBytes: (
 type FileStore = {
 	read(key: string): Promise<Blob | undefined>;
 	write(key: string, blob: Blob): Promise<void>;
+	/** Deletes every file but these, such as those of a model revision no longer loaded. */
+	retain(keys: string[]): Promise<void>;
 };
 
 async function openFileStore(): Promise<FileStore | null> {
@@ -97,6 +100,11 @@ async function openFileStore(): Promise<FileStore | null> {
 			read: (key) => run<Blob | undefined>('readonly', (store) => store.get(key)),
 			// A cache that cannot be written (quota, private mode) is not a reason to fail the load.
 			write: (key, blob) => run('readwrite', (store) => store.put(blob, key)).then(() => undefined, () => undefined),
+			// Like a failed write, a failed cleanup only costs disk space.
+			retain: (keys) =>
+				run('readonly', (store) => store.getAllKeys())
+					.then((all) => Promise.all(all.filter((key) => !keys.includes(String(key))).map((key) => run('readwrite', (store) => store.delete(key)))))
+					.then(() => undefined, () => undefined),
 		};
 	} catch {
 		return null;
