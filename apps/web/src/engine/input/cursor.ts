@@ -89,6 +89,7 @@ const TOOL_CURSORS: Record<ToolType, { idle: CursorType; pressed?: CursorType }>
 	[ToolType.RECT]: { idle: 'cross' },
 	[ToolType.TEXT]: { idle: 'cross' },
 	[ToolType.TEXT_EDIT]: { idle: 'text' },
+	[ToolType.OBJECT_MASK]: { idle: 'cross' },
 };
 
 /** The cursor the armed tool asks for, pressed or at rest. */

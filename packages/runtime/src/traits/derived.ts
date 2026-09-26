@@ -56,6 +56,7 @@ export const Cache = trait({
 	effects: () => [] as Entity[],
 	textRanges: () => [] as Entity[],
 	masks: () => [] as Entity[],
+	mattes: () => [] as Entity[],
 	keyframeTracks: () => [] as Entity[],
 	keyframes: () => [] as Entity[],
 	animations: () => [] as Entity[],

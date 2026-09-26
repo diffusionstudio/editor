@@ -22,6 +22,7 @@ import { InspectorHeader } from "./inspector-header";
 import { BackgroundSettings } from "./background";
 import { VariablesSettings } from "./variables";
 import { SceneTemplatePanel } from "./scene-template";
+import { ObjectMaskPanel } from "./object-mask";
 import { AssetInfoPanel } from "./asset-info";
 import { TimeSettings } from "./time";
 import { AppearanceSettings } from "./appearance";
@@ -46,6 +47,7 @@ import type { Entity } from "koota";
 
 export type SelectionTarget =
   | "scene-tool"
+  | "mask-tool"
   | "keyframe"
   | "asset"
   | "scene"
@@ -87,6 +89,7 @@ export function Inspector() {
 
   const selectionTarget = createMemo<SelectionTarget>(() => {
     if (tool() === ToolType.SCENE) return "scene-tool";
+    if (tool() === ToolType.OBJECT_MASK) return "mask-tool";
     if (keyframes().length > 0) return "keyframe";
     if (asset() || partial()) return "asset";
     const entity = first();
@@ -110,6 +113,10 @@ export function Inspector() {
         <ControlScrollArea class="flex-1 min-h-0" scrollKey={selectionHash()}>
           <Show when={includesTarget("scene-tool")}>
             <SceneTemplatePanel />
+          </Show>
+
+          <Show when={includesTarget("mask-tool")}>
+            <ObjectMaskPanel />
           </Show>
 
           <Show when={nodes().length > 1}>

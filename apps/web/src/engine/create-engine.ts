@@ -8,6 +8,7 @@ import { createSignal, type Accessor, type Setter } from 'solid-js';
 import { AssetSelection, Hud, Keys, MODIFIER_KEYS, Pointer, PointerEvents, ProjectConfig, SnapLines } from './traits';
 import { inputSystem } from './input/input-system';
 import { clearClipFrames, clearClipPeaks, clearMedia, clearPeaks, timelineSystem, TimelineSurface } from './timeline';
+import { clearObjectTrackOf, clearObjectTracks } from './object-mask';
 import { shortcutSystem } from './input/shortcuts';
 
 import type { RuntimeWorld } from '@diffusionstudio/runtime';
@@ -59,6 +60,7 @@ class Engine {
 			this.world.onRemove(Geometry, (entity) => {
 				clearClipPeaks(entity.id());
 				clearClipFrames(entity.id());
+				clearObjectTrackOf(entity);
 			}),
 		);
 
@@ -283,6 +285,7 @@ class Engine {
 		// files, and are held outside the world: they go with the engine.
 		clearPeaks();
 		clearMedia();
+		clearObjectTracks();
 
 		this.unsubscribeEventListeners();
 		this.unsubscribe.forEach(unsubscribe => unsubscribe());

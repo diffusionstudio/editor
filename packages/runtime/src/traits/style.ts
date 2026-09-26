@@ -37,6 +37,12 @@ export const Effect = trait({
 	value: 0,
 });
 
+// A `<mask>`: a matte limiting the effect holding it, ChildOf the effect.
+export const Matte = trait({
+	offset: 0,
+	inverted: false,
+});
+
 // Single gradient stop: its position along the gradient (0-1). Its color and
 // opacity are the entity's Color and Opacity. Each stop is its own entity, ChildOf the
 // gradient fill. Stop count is fixed for the lifetime of the fill: to animate

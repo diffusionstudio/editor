@@ -39,7 +39,7 @@ A drop shadow beneath the parent's silhouette: a blurred, offset copy of it in `
 
 ## `<effect>`
 
-A filter over the parent's **rendered pixels** — its fills, strokes and children together. On a [`<group>`](./group.md) that is the group as a whole; on a [`<video>`](./video.md) it is the frame after the media is drawn.
+A filter over the parent's **rendered pixels** — its fills, strokes and children together. On a [`<group>`](./group.md) that is the group as a whole; on a [`<video>`](./video.md) it is the frame after the media is drawn. A [`<mask>`](#mask) child limits where the effect applies.
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
@@ -52,6 +52,7 @@ A filter over the parent's **rendered pixels** — its fills, strokes and childr
 | `"blur"` | Radius in px. |
 | `"hueRotate"` | Degrees. |
 | `"brightness"`, `"contrast"`, `"grayscale"`, `"invert"`, `"saturate"`, `"sepia"` | Amount, `0`–`1`. |
+| `"opacity"` | The node's opacity as an effect, `0`–`1`. With a `<mask>` under it, what is outside the mask goes transparent: the cut-out. |
 
 ```tsx
 <image src="stills/photo.jpg" width={1920} height={1080}>
@@ -62,6 +63,33 @@ A filter over the parent's **rendered pixels** — its fills, strokes and childr
     </keyframeTrack>
   </effect>
 </image>
+```
+
+
+## `<mask>`
+
+A matte limiting the `<effect>` holding it: a **picture** whose alpha says where the effect applies, fitted into the node's box the way the node fits its footage. It is what the editor's object mask tool makes — pick an object in a video clip, track it, and the frames it found are written to the library and named by `src`. Several under one effect intersect. Without a `src` a `<mask>` does nothing.
+
+Under an `"opacity"` effect the mask is the cut-out: the clip shows inside the mask and goes transparent outside, as a mask on Premiere's Opacity does. Under any other effect the effect shows through inside the mask and the picture is untouched outside: an inverted mask on a `"blur"` blurs the background behind a person.
+
+| Prop | Type | Default | Meaning |
+| ---- | ---- | ------- | ------- |
+| `src` | `string` | none | The frames, a directory of numbered images whose alpha is the mask. |
+| `sourceIn` | `Time` | `0` | The node's source time the first frame belongs to, so the mask stays on the footage it was made from whatever the trim. |
+| `frameRate` | `number` | `30` | Frames per second the frames were written at (the composition's). |
+| `blur` | `number` | `0` | Feather: radius in px the edge falls off over. |
+| `opacity` | `number` | `1` | How strongly the mask limits the effect. `1` stops the effect at the edge; lower lets that much of it through outside; `0` is no mask. |
+| `inverted` | `boolean` | `false` | Covers what the picture does not instead. |
+| `hidden` | `boolean` | absent | Switches the mask off without removing it. |
+
+`blur` and `opacity` take a [`<keyframeTrack>`](./keyframes.md).
+
+```tsx
+<video src="footage/skater.mp4" width={1920} height={1080}>
+  <effect type="opacity" value={1}>
+    <mask src="masks/skater" sourceIn={2} frameRate={30} blur={6} />
+  </effect>
+</video>
 ```
 
 ## Animating them

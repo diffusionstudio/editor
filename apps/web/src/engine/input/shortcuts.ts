@@ -470,6 +470,7 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['f', '!mod'], action: selectTool(ToolType.SCENE) },
 	{ keys: ['t', '!mod'], action: selectTool(ToolType.TEXT) },
 	{ keys: ['r', '!mod'], action: selectTool(ToolType.RECT) },
+	{ keys: ['m', '!mod'], action: selectTool(ToolType.OBJECT_MASK) },
 	{ keys: ['a', '!mod'], action: seekFrames(-1) },
 	{ keys: ['d', '!mod'], action: seekFrames(1) },
 	{ keys: ['w', '!mod'], action: seekSeconds(1) },

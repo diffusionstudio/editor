@@ -16,16 +16,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
-import { Show } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { useTool } from "@/engine";
 import { usePromptInput } from "@/context/prompt-input";
 
+const CURSOR_TOOLS = [
+  { tool: ToolType.MOVE, label: 'Move', shortcut: 'V', icon: 'move', menuIcon: 'move-small' },
+  { tool: ToolType.HAND, label: 'Hand', shortcut: 'H', icon: 'hand', menuIcon: 'hand' },
+  { tool: ToolType.OBJECT_MASK, label: 'Object Mask', shortcut: 'M', icon: 'tool.object-mask', menuIcon: 'tool.object-mask' },
+] as const;
+
 export function Toolbar() {
   const world = useWorld();
   const { promptInputOpen, promptInputConfig, openPromptInput, setPromptInputOpen } = usePromptInput();
   const selectedTool = useTool();
+  const cursorTool = createMemo(() => CURSOR_TOOLS.find((cursor) => cursor.tool === selectedTool()));
 
   const handleToolChange = (tool: ToolType) => {
     world.set(Tool, { value: tool });
@@ -45,16 +52,14 @@ export function Toolbar() {
             <TooltipTrigger
               as={Button}
               size="icon-square"
-              class={[ToolType.MOVE, ToolType.HAND].includes(selectedTool()) ? 'text-foreground' : 'text-muted-foreground'}
-              variant={[ToolType.MOVE, ToolType.HAND].includes(selectedTool()) ? 'default' : 'ghost'}
-              onClick={() => handleToolChange(
-                selectedTool() === ToolType.HAND ? ToolType.HAND : ToolType.MOVE
-              )}
+              class={cursorTool() ? 'text-foreground' : 'text-muted-foreground'}
+              variant={cursorTool() ? 'default' : 'ghost'}
+              onClick={() => handleToolChange(cursorTool()?.tool ?? ToolType.MOVE)}
             >
-              <Icon name={selectedTool() === ToolType.HAND ? 'hand' : 'move'} />
+              <Icon name={(cursorTool() ?? CURSOR_TOOLS[0]!).icon} />
             </TooltipTrigger>
-            <TooltipContent shortcut={selectedTool() === ToolType.HAND ? 'H' : 'V'}>
-              {selectedTool() === ToolType.HAND ? 'Hand' : 'Move'}
+            <TooltipContent shortcut={(cursorTool() ?? CURSOR_TOOLS[0]!).shortcut}>
+              {(cursorTool() ?? CURSOR_TOOLS[0]!).label}
             </TooltipContent>
           </Tooltip>
           <DropdownMenu placement="top-start">
@@ -75,22 +80,18 @@ export function Toolbar() {
             </Tooltip>
             <DropdownMenuPortal>
               <DropdownMenuContent>
-                <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.MOVE)}>
-                  <div classList={{ "visible": selectedTool() === ToolType.MOVE }} class="invisible">
-                    <Icon name="confirm-check" class="text-foreground" />
-                  </div>
-                  <Icon name="move-small" class="text-foreground" />
-                  <span class="min-w-12 mx-1">Move</span>
-                  <DropdownMenuShortcut>V</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.HAND)}>
-                  <div classList={{ "visible": selectedTool() === ToolType.HAND }} class="invisible">
-                    <Icon name="confirm-check" class="text-foreground" />
-                  </div>
-                  <Icon name="hand" class="text-foreground" />
-                  <span class="min-w-12 mx-1">Hand</span>
-                  <DropdownMenuShortcut>H</DropdownMenuShortcut>
-                </DropdownMenuItem>
+                <For each={CURSOR_TOOLS}>
+                  {(cursor) => (
+                    <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(cursor.tool)}>
+                      <div classList={{ "visible": selectedTool() === cursor.tool }} class="invisible">
+                        <Icon name="confirm-check" class="text-foreground" />
+                      </div>
+                      <Icon name={cursor.menuIcon} class="text-foreground" />
+                      <span class="min-w-12 mx-1">{cursor.label}</span>
+                      <DropdownMenuShortcut>{cursor.shortcut}</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  )}
+                </For>
               </DropdownMenuContent>
             </DropdownMenuPortal>
           </DropdownMenu>

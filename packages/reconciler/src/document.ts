@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsMask, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Matte, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsMask, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
 import { SVGElements } from 'solid-js/web';
@@ -290,6 +290,7 @@ export const EFFECT_TYPES: Record<string, EffectType> = {
 	invert: EffectType.INVERT,
 	saturate: EffectType.SATURATE,
 	sepia: EffectType.SEPIA,
+	opacity: EffectType.OPACITY,
 };
 
 const STROKE_JOINS: Record<string, StrokeJoin> = {
@@ -666,6 +667,11 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity.set(Effect, { type: EffectType.LAYER_BLUR, value: 0 });
 				break;
 			}
+			case 'mask': {
+				entity = createEntity(this.world);
+				entity.add(Matte);
+				break;
+			}
 			case 'animation': {
 				entity = createEntity(this.world);
 				entity.add(Animation);
@@ -963,6 +969,11 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				}
 				return;
 			}
+			case 'inverted': {
+				if (!entity.has(Matte)) return;
+				entity.set(Matte, { inverted: value === true });
+				return;
+			}
 			case 'keepAspectRatio': {
 				this.syncAspectLock(node);
 				return;
@@ -1131,6 +1142,13 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			case 'end':
 			case 'sourceIn':
 			case 'sourceOut': {
+				if (entity.has(Matte)) {
+					// A matte's frames start at this source time of its parent.
+					if (name === 'sourceIn') {
+						entity.set(Matte, { offset: this.toFrames(toSeconds(value) ?? 0) })
+					};
+					return;
+				}
 				if (entity.has(TextRange)) {
 					// A range's start/end are character indices, not times; an
 					// unset end runs to the end of the text.
@@ -1168,7 +1186,8 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				// superseded by whatever this one starts.
 				entity.remove(GenerationRequest, LoadRequest, PendingSource, Generating);
 
-				if (value === undefined || value === null || value === '') {
+				// `false` is how an editor unsets a prop (the writer drops the attribute).
+				if (value === undefined || value === null || value === false || value === '') {
 					entity.remove(AssetId);
 					// A `<captions>` without a src transcribes its scene instead.
 					if (entity.has(Caption)) {

@@ -9,7 +9,7 @@ import {
 	Caption,
 	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
 	Constraint, KeepAspectRatio,
-	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, Blur, ScaleMode, Effect,
+	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, Blur, ScaleMode, Effect, Matte,
 	ColorStop, StrokeStyle, Shader,
 	Chars, TextStyle,
 	Delay, Trim, PlaybackRate, SourceFrameRate,
@@ -40,6 +40,10 @@ export interface EntityRecord {
 	Effect?: {
 		type?: number;
 		value?: number;
+	};
+	Matte?: {
+		offset?: number;
+		inverted?: boolean;
 	};
 	Caption?: {
 		type?: number;
@@ -198,6 +202,10 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	if (entity.has(Effect)) {
 		const effect = entity.get(Effect)!;
 		record.Effect = { type: effect.type, value: effect.value };
+	}
+	if (entity.has(Matte)) {
+		const matte = entity.get(Matte)!;
+		record.Matte = { offset: matte.offset, inverted: matte.inverted };
 	}
 	if (entity.has(Shadow)) {
 		record.Shadow = {};
@@ -440,6 +448,10 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.Effect !== undefined) {
 		entity.add(Effect);
 		entity.set(Effect, defined(e.Effect));
+	}
+	if (e.Matte !== undefined) {
+		entity.add(Matte);
+		entity.set(Matte, defined(e.Matte));
 	}
 	if (e.Shadow !== undefined) {
 		entity.add(Shadow);
