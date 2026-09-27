@@ -2,11 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import {
-	MAX_POINTERS, MEM_DIM, MEMORY_BLOCK_BYTES, MEMORY_FRAMES, MEMORY_ROW_BYTES, MEMORY_ROWS,
-	POINTER_BYTES, POINTER_TOKENS,
-} from './constants';
+import { MAX_POINTERS, MEM_DIM, MEMORY_FRAMES, MEMORY_ROW_BYTES, POINTER_BYTES, POINTER_TOKENS } from './constants';
 import { createStorageBuffer } from './gpu';
+
+import type { Sam2Geometry } from './constants';
 
 type FrameMemory = {
 	index: number;
@@ -27,13 +26,19 @@ export class MemoryBank {
 	private conditioning: FrameMemory | null = null;
 	private recent: FrameMemory[] = [];
 	private readonly pool: FrameMemory[] = [];
+	/** A frame memory's bytes; the object pointers follow the frames'. */
+	private readonly blockBytes: number;
+	private readonly pointerOffset: number;
 
 	constructor(
 		private readonly device: GPUDevice,
+		geometry: Sam2Geometry,
 		private readonly temporalEncoding: readonly (readonly number[])[],
 	) {
-		this.memory = createStorageBuffer(device, MEMORY_ROWS * MEMORY_ROW_BYTES, 'sam2 memory');
-		this.memoryPos = createStorageBuffer(device, MEMORY_ROWS * MEMORY_ROW_BYTES, 'sam2 memory_pos');
+		this.blockBytes = geometry.memoryBlockBytes;
+		this.pointerOffset = MEMORY_FRAMES * geometry.memoryBlockBytes;
+		this.memory = createStorageBuffer(device, geometry.memoryRows * MEMORY_ROW_BYTES, 'sam2 memory');
+		this.memoryPos = createStorageBuffer(device, geometry.memoryRows * MEMORY_ROW_BYTES, 'sam2 memory_pos');
 	}
 
 	get hasPositions(): boolean {
@@ -102,11 +107,11 @@ export class MemoryBank {
 
 		const encoder = this.device.createCommandEncoder();
 		blocks.forEach((block, slot) => {
-			encoder.copyBufferToBuffer(block.tokens, 0, this.memory, slot * MEMORY_BLOCK_BYTES, MEMORY_BLOCK_BYTES);
-			encoder.copyBufferToBuffer(block.pos, 0, this.memoryPos, slot * MEMORY_BLOCK_BYTES, MEMORY_BLOCK_BYTES);
+			encoder.copyBufferToBuffer(block.tokens, 0, this.memory, slot * this.blockBytes, this.blockBytes);
+			encoder.copyBufferToBuffer(block.pos, 0, this.memoryPos, slot * this.blockBytes, this.blockBytes);
 		});
 		pointers.forEach((entry, i) => {
-			encoder.copyBufferToBuffer(entry.pointer, 0, this.memory, POINTER_OFFSET + i * POINTER_BYTES, POINTER_BYTES);
+			encoder.copyBufferToBuffer(entry.pointer, 0, this.memory, this.pointerOffset + i * POINTER_BYTES, POINTER_BYTES);
 		});
 		this.device.queue.submit([encoder.finish()]);
 
@@ -120,7 +125,7 @@ export class MemoryBank {
 		for (let i = 0; i < MAX_POINTERS; i++) {
 			for (let token = 0; token < POINTER_TOKENS; token++) {
 				const row = i * POINTER_TOKENS + token;
-				encoder.copyBufferToBuffer(positions, i * MEMORY_ROW_BYTES, this.memoryPos, POINTER_OFFSET + row * MEMORY_ROW_BYTES, MEMORY_ROW_BYTES);
+				encoder.copyBufferToBuffer(positions, i * MEMORY_ROW_BYTES, this.memoryPos, this.pointerOffset + row * MEMORY_ROW_BYTES, MEMORY_ROW_BYTES);
 			}
 		}
 		this.device.queue.submit([encoder.finish()]);
@@ -141,17 +146,15 @@ export class MemoryBank {
 	private retain(index: number, tokens: GPUBuffer, pointer: GPUBuffer): FrameMemory {
 		const entry = this.pool.pop() ?? {
 			index,
-			tokens: createStorageBuffer(this.device, MEMORY_BLOCK_BYTES, 'sam2 frame memory'),
+			tokens: createStorageBuffer(this.device, this.blockBytes, 'sam2 frame memory'),
 			pointer: createStorageBuffer(this.device, POINTER_BYTES, 'sam2 frame pointer'),
 		};
 		entry.index = index;
 
 		const encoder = this.device.createCommandEncoder();
-		encoder.copyBufferToBuffer(tokens, 0, entry.tokens, 0, MEMORY_BLOCK_BYTES);
+		encoder.copyBufferToBuffer(tokens, 0, entry.tokens, 0, this.blockBytes);
 		encoder.copyBufferToBuffer(pointer, 0, entry.pointer, 0, POINTER_BYTES);
 		this.device.queue.submit([encoder.finish()]);
 		return entry;
 	}
 }
-
-const POINTER_OFFSET = MEMORY_FRAMES * MEMORY_BLOCK_BYTES;

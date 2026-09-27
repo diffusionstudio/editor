@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { FEAT_TOKENS, HIDDEN_DIM, IMAGE_SIZE } from './constants';
+import { HIDDEN_DIM } from './constants';
 
 export const WORKGROUP_SIZE = 16;
 
@@ -12,7 +12,7 @@ export const WORKGROUP_SIZE = 16;
  * the input are box-filtered with a few taps per output pixel so downscaling
  * does not alias.
  */
-export const PREPROCESS_SHADER = /* wgsl */ `
+export const preprocessShader = (imageSize: number) => /* wgsl */ `
 struct Params {
 	size: vec2f,
 	rotation: u32,
@@ -28,7 +28,7 @@ struct Params {
 @group(0) @binding(2) var frameSampler: sampler;
 @group(0) @binding(3) var<storage, read_write> pixels: array<f32>;
 
-const SIZE: u32 = ${IMAGE_SIZE}u;
+const SIZE: u32 = ${imageSize}u;
 const PLANE: u32 = SIZE * SIZE;
 
 fn toSource(uv: vec2f) -> vec2f {
@@ -63,12 +63,12 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
 `;
 
 /** Turns a [C, H, W] feature map into the [H*W, C] token layout memory attention takes. */
-export const TRANSPOSE_SHADER = /* wgsl */ `
+export const transposeShader = (featTokens: number) => /* wgsl */ `
 @group(0) @binding(0) var<storage, read> channels: array<f32>;
 @group(0) @binding(1) var<storage, read_write> tokens: array<f32>;
 
 const CHANNELS: u32 = ${HIDDEN_DIM}u;
-const TOKENS: u32 = ${FEAT_TOKENS}u;
+const TOKENS: u32 = ${featTokens}u;
 
 @compute @workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE})
 fn main(@builtin(global_invocation_id) id: vec3u) {

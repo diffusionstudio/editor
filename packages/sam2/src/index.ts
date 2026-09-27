@@ -5,9 +5,13 @@
 export { loadSam2 } from './load';
 export { Sam2Video } from './tracker';
 export { holdFrame, trackObject } from './video';
-export { MASK_SIZE, maskHas, maskIsEmpty, renderMask } from './mask';
+export { cachedSam2Models } from './weights';
+export { DEFAULT_SAM2_MODEL, SAM2_MODELS, downloadSize, sam2Model, sam2ModelOfRepo } from './constants';
+export { maskIsEmpty, paintMask, paintStroke } from './mask';
+
+export type { Sam2Model, Sam2ModelId } from './constants';
 
 export type { Sam2LoadOptions, Sam2Progress } from './load';
-export type { Sam2Point } from './tracker';
+export type { Sam2Correction, Sam2Point } from './tracker';
 export type { FrameRequest, TrackRequest } from './video';
-export type { Sam2Mask } from './mask';
+export type { Sam2Mask, Sam2Stroke } from './mask';

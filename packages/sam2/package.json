@@ -7,7 +7,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./mask": "./src/mask.ts"
+    "./mask": "./src/mask.ts",
+    "./models": "./src/constants.ts"
   },
   "scripts": {
     "check": "tsc --noEmit"

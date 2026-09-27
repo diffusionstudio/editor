@@ -2,8 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { BYTES_PER_FLOAT, FEAT_TOKENS, HIDDEN_DIM, IMAGE_SIZE } from './constants';
-import { PREPROCESS_SHADER, TRANSPOSE_SHADER, WORKGROUP_SIZE } from './shaders';
+import { BYTES_PER_FLOAT, HIDDEN_DIM } from './constants';
+import { WORKGROUP_SIZE, preprocessShader, transposeShader } from './shaders';
+
+import type { Sam2Geometry } from './constants';
 
 /** Degrees clockwise a decoded frame is turned for display. */
 export type Rotation = 0 | 90 | 180 | 270;
@@ -47,11 +49,12 @@ export class FramePreprocessor {
 
 	constructor(
 		private readonly device: GPUDevice,
+		private readonly imageSize: number,
 		private readonly mean: readonly number[],
 		private readonly std: readonly number[],
 	) {
-		this.pixels = createStorageBuffer(device, 3 * IMAGE_SIZE * IMAGE_SIZE * BYTES_PER_FLOAT, 'sam2 pixel_values');
-		this.pipeline = createPipeline(device, PREPROCESS_SHADER, 'sam2 preprocess');
+		this.pixels = createStorageBuffer(device, 3 * imageSize * imageSize * BYTES_PER_FLOAT, 'sam2 pixel_values');
+		this.pipeline = createPipeline(device, preprocessShader(imageSize), 'sam2 preprocess');
 		this.sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
 		this.params = device.createBuffer({
 			label: 'sam2 preprocess params',
@@ -72,7 +75,7 @@ export class FramePreprocessor {
 		floats[0] = width;
 		floats[1] = height;
 		uints[2] = rotation / 90;
-		uints[3] = Math.min(MAX_TAPS, Math.max(1, Math.ceil(Math.max(width, height) / IMAGE_SIZE)));
+		uints[3] = Math.min(MAX_TAPS, Math.max(1, Math.ceil(Math.max(width, height) / this.imageSize)));
 		floats.set(this.mean, 4);
 		floats.set(this.std, 8);
 		this.device.queue.writeBuffer(this.params, 0, params);
@@ -86,7 +89,7 @@ export class FramePreprocessor {
 				{ binding: 3, resource: { buffer: this.pixels } },
 			],
 		});
-		dispatch(this.device, this.pipeline, bindGroup, IMAGE_SIZE / WORKGROUP_SIZE, IMAGE_SIZE / WORKGROUP_SIZE);
+		dispatch(this.device, this.pipeline, bindGroup, this.imageSize / WORKGROUP_SIZE, this.imageSize / WORKGROUP_SIZE);
 	}
 
 	private textureFor(width: number, height: number): GPUTexture {
@@ -113,12 +116,15 @@ export class FramePreprocessor {
 export class TokenTransposer {
 	private readonly pipeline: GPUComputePipeline;
 
-	constructor(private readonly device: GPUDevice) {
-		this.pipeline = createPipeline(device, TRANSPOSE_SHADER, 'sam2 transpose');
+	constructor(
+		private readonly device: GPUDevice,
+		private readonly geometry: Sam2Geometry,
+	) {
+		this.pipeline = createPipeline(device, transposeShader(geometry.featTokens), 'sam2 transpose');
 	}
 
 	run(channels: GPUBuffer, tokens: GPUBuffer): void {
-		const size = FEAT_TOKENS * HIDDEN_DIM * BYTES_PER_FLOAT;
+		const size = this.geometry.featTokens * HIDDEN_DIM * BYTES_PER_FLOAT;
 		const bindGroup = this.device.createBindGroup({
 			layout: this.pipeline.getBindGroupLayout(0),
 			entries: [
@@ -126,6 +132,6 @@ export class TokenTransposer {
 				{ binding: 1, resource: { buffer: tokens, size } },
 			],
 		});
-		dispatch(this.device, this.pipeline, bindGroup, FEAT_TOKENS / WORKGROUP_SIZE, HIDDEN_DIM / WORKGROUP_SIZE);
+		dispatch(this.device, this.pipeline, bindGroup, this.geometry.featTokens / WORKGROUP_SIZE, HIDDEN_DIM / WORKGROUP_SIZE);
 	}
 }
