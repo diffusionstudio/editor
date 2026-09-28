@@ -11,8 +11,7 @@ import { PanelSection } from "@/components/ui/panel-section";
 import { toast } from "somoto";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
-import { useDerived } from "@/engine/hooks";
-import { getVideoRect, listObjectMasks, removeObjectMask } from "@/engine/object-mask";
+import { removeObjectMask, useObjectMasks } from "@/engine/object-mask";
 
 import type { Entity } from "koota";
 import type { ObjectMaskSource } from "@/engine/object-mask";
@@ -32,11 +31,7 @@ export function TrackingSettings(props: TrackingSettingsProps) {
   const world = useWorld();
   const entity = () => props.selection[0]!;
 
-  const isVideo = useDerived(() => getVideoRect(world, entity()) !== null);
-  const tracks = useDerived(
-    () => listObjectMasks(world, entity()),
-    (a, b) => a.length === b.length && a.every((track, i) => track.asset.id === b[i]!.asset.id && track.name === b[i]!.name),
-  );
+  const { footage, masks: tracks } = useObjectMasks(entity);
 
   const handleRemove = async (track: ObjectMaskSource) => {
     try {
@@ -47,7 +42,7 @@ export function TrackingSettings(props: TrackingSettingsProps) {
   };
 
   return (
-    <Show when={isVideo()}>
+    <Show when={footage()}>
       <PanelSection
         title="Tracking"
         actions={

@@ -37,7 +37,6 @@ import {
   getMaskRestore,
   getMaskRestoreOf,
   getObjectTrack,
-  listObjectMasks,
   objectMaskMode,
   objectMaskModel,
   objectMaskModelLoad,
@@ -49,6 +48,7 @@ import {
   targetEffect,
   trackObjectMask,
   undoMaskStroke,
+  useObjectMasks,
 } from "@/engine/object-mask";
 import { effectOption } from "./effect-types";
 
@@ -337,13 +337,7 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
   const name = useDerived(() => objectMaskName(world, props.mask));
 
   // The tracked masks of the clip's footage: the header picks which of them this mask is.
-  const sources = useDerived(
-    () => {
-      const clip = getParentNode(getParentNode(props.mask));
-      return clip ? listObjectMasks(world, clip) : [];
-    },
-    (a, b) => a.length === b.length && a.every((source, i) => source.asset.id === b[i]!.asset.id && source.name === b[i]!.name),
-  );
+  const { masks: sources } = useObjectMasks(() => getParentNode(getParentNode(props.mask)));
   const source = () => sources().find((option) => option.asset.id === props.mask.get(AssetId)?.value);
 
   /** Points the mask at another tracked mask's frames, placed where they were written for. */

@@ -34,10 +34,10 @@ import {
 import { SliderInput } from "@/components/ui/slider-input";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { Cache, Computed, Effect, Hidden, getParentNode } from "@diffusionstudio/runtime";
+import { AssetId, Cache, Computed, Effect, Hidden, getParentNode } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
-import { copyObjectMask, effectHasObjectMask, getVideoRect, listObjectMasks } from "@/engine/object-mask";
+import { copyObjectMask, useObjectMasks } from "@/engine/object-mask";
 import { EFFECT_OPTIONS, effectOption } from "./effect-types";
 import { ObjectMaskInspector, objectMaskName } from "./object-mask";
 
@@ -78,16 +78,16 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   const value = useDerived(() => props.effect.get(Computed)?.value ?? 0);
   const masks = useDerived(() => props.effect.get(Cache)?.masks ?? NO_MASKS);
 
-  const isVideo = useDerived(() => {
-    const node = getParentNode(props.effect);
-    return node !== null && getVideoRect(world, node) !== null;
-  });
+  const { footage, masks: sources } = useObjectMasks(() => getParentNode(props.effect));
 
-  const shareable = useDerived(() => {
-    const node = getParentNode(props.effect);
-    if (!node) return [];
-    return listObjectMasks(world, node).filter((source) => !effectHasObjectMask(props.effect, source));
-  }, (a, b) => a.length === b.length && a.every((source, i) => source.asset.id === b[i]!.asset.id));
+  const used = useDerived(() =>
+    (props.effect.get(Cache)?.masks ?? NO_MASKS).map((mask) => mask.get(AssetId)?.value ?? "").join("\n"),
+  );
+
+  const shareable = createMemo(() => {
+    const taken = new Set(used().split("\n"));
+    return sources().filter((source) => !taken.has(source.asset.id));
+  });
 
   const editingMask = createMemo(() => {
     const mask = pickedMask();
@@ -225,7 +225,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
           </ControlRow>
         </Show>
 
-        <Show when={isVideo()}>
+        <Show when={footage()}>
           <For each={masks()}>
             {(mask, index) => (
               <ControlRow label="Mask" labelClass={index() > 0 ? "invisible" : undefined}>

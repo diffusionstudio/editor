@@ -7,11 +7,10 @@ import { Mask } from '@diffusionstudio/reconciler';
 import { AssetId, Blur, Cache, Library, Mask as MaskTrait, getParentNode } from '@diffusionstudio/runtime';
 
 import { getDocumentEditor } from '../editor';
-import { getVideoRect } from './media';
 import { getMaskRestoreOf } from './tracking';
 
 import type { Entity, World } from 'koota';
-import type { MaskAsset } from '@diffusionstudio/assets';
+import type { AssetLibrary, MaskAsset } from '@diffusionstudio/assets';
 
 /** A tracked mask in the library: what an effect can be given. */
 export type ObjectMaskSource = {
@@ -23,19 +22,17 @@ export type ObjectMaskSource = {
 };
 
 /**
- * The tracked masks of `clip`'s footage, from the library: every mask file
- * whose recipe names the video the clip plays, whichever effect — or none —
- * holds it now. The recipe is the record: a mask outlives the effects that
- * used it, and the library is where it is found again.
+ * The tracked masks of the video `footage` (its asset id) in `library`: every
+ * mask file whose recipe names it, whichever effect — or none — holds it now.
+ * The recipe is the record: a mask outlives the effects that used it, and
+ * the library is where it is found again. It reads the library's asset list,
+ * a signal, so a memo over it runs again only when the library changes (see
+ * `useObjectMasks`).
  */
-export function listObjectMasks(world: World, clip: Entity): ObjectMaskSource[] {
-	const library = world.get(Library);
-	const rect = getVideoRect(world, clip);
-	if (!library || !rect) return [];
-
+export function objectMasksOf(library: AssetLibrary, footage: string): ObjectMaskSource[] {
 	const sources: ObjectMaskSource[] = [];
 	for (const asset of library.list()) {
-		if (asset.type !== 'MASK' || asset.recipe?.source !== rect.asset.id) continue;
+		if (asset.type !== 'MASK' || asset.recipe?.source !== footage) continue;
 		sources.push({
 			asset,
 			name: assetName(asset).replace(/\.[^.]+$/, ''),
@@ -43,11 +40,6 @@ export function listObjectMasks(world: World, clip: Entity): ObjectMaskSource[] 
 		});
 	}
 	return sources;
-}
-
-/** Whether `effect` already has a mask of the same frames as `source`. */
-export function effectHasObjectMask(effect: Entity, source: ObjectMaskSource): boolean {
-	return (effect.get(Cache)?.masks ?? []).some((mask) => mask.get(AssetId)?.value === source.asset.id);
 }
 
 /**
