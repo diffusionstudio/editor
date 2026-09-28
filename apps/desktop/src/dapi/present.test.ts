@@ -92,6 +92,28 @@ describe("present", () => {
     expect(preview.output).not.toHaveProperty("path");
   });
 
+  it("has no picture for a track still running in the background", async () => {
+    const span = { model: "tiny" as const, frameRate: 30, start: 0, end: 2, frames: 60 };
+    const running = await present("media_segment", { path: "/c.mp4", time: 1 }, { path: "/p/assets/masks/a.mask", src: "masks/a.mask", state: "tracking" as const, ...span });
+    expect(running).toEqual({ output: { path: "/p/assets/masks/a.mask", src: "masks/a.mask", state: "tracking", ...span }, images: [] });
+  });
+
+  it("writes a done track's contact sheet once, inline only the first time context reports it", async () => {
+    const row = {
+      id: "track-1", src: "masks/a.mask", video: "a.mp4", state: "done" as const, progress: 1,
+      model: "tiny" as const, frameRate: 30, start: 0, end: 2, frames: 60, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
+    };
+    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [], generations: [] };
+    const first = await present("context", {}, { ...base, masks: [{ ...row, png: png(8) }] });
+    const image = (first.output as { masks: { image: string }[] }).masks[0]!.image;
+    expect(image).toMatch(/dapi-segment-.*\.png$/);
+    expect(first.images).toEqual([{ path: image, png: png(8) }]);
+    expect(first.output).toEqual({ ...base, masks: [{ ...row, image }] });
+
+    const again = await present("context", {}, { ...base, masks: [{ ...row, png: png(8) }] });
+    expect(again).toEqual({ output: { ...base, masks: [{ ...row, image }] }, images: [] });
+  });
+
   it("passes other results through untouched", async () => {
     expect(await present("check", { id: "x" }, { stats: {}, issues: [] })).toEqual({ output: { stats: {}, issues: [] }, images: [] });
   });

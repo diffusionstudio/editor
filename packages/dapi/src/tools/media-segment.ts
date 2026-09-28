@@ -22,13 +22,17 @@ const Range = z.tuple([z.number(), z.number()]);
 
 const Bounds = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 
-/** What the call found, the same whether the server or the renderer writes the files. */
-const found = {
+/** The track asked for, known before it runs. */
+export const segmentSpan = {
   model: z.enum(SEGMENT_MODELS),
   frameRate: z.number().describe("frames per second the mask holds: the project's, or the file's own with no project open"),
   start: z.number().describe("source time of the first masked frame, in seconds: the `sourceIn` of a `<mask>` naming the file"),
   end: z.number().describe("source time just past the last masked frame, in seconds"),
   frames: z.int().describe("frames masked"),
+};
+
+/** What segmenting found, the same whether the server or the renderer writes the files; absent while a track runs. */
+export const segmentFound = {
   bbox: Bounds.nullable().describe(
     "on the prompted frame, the object's bounds as [x0, y0, x1, y1] in 0..1 of the frame; null when nothing was segmented",
   ),
@@ -41,6 +45,8 @@ const found = {
   weak: z.array(Range).describe(`source-time spans, [start, end) in seconds, where the model rated its mask below ${WEAK_IOU}`),
 };
 
+const optionalFound = z.object(segmentFound).partial().shape;
+
 export const mediaSegment = defineTool({
   name: "media_segment",
   title: "Segment object",
@@ -49,7 +55,7 @@ export const mediaSegment = defineTool({
     "Prompt the object on the frame at `time` with `points` on it, `exclude` points off it, and/or a `box` around it, all in 0..1 of the frame (x right, y down). " +
     "`preview: true` segments that frame alone and writes only an image: the frame with the mask tinted and outlined, the prompts drawn, and a 0.1 grid to read coordinates off. Refine the prompts with previews (fast once the frame is encoded), then make the same call without `preview` to track. " +
     "Tracking covers `start` to `end`, the whole file by default, at roughly 0.25 s a frame with the tiny model and several times that with the larger ones, so pass the span the clip actually plays. " +
-    "Returns the mask's path (and its library path when it went into the project), a contact sheet of tracked frames, and the spans where the object was lost or the mask is weak. The first use of a model downloads it (83 MB for tiny, up to 475 MB for large).",
+    "With a project open and the mask going into its library, a track runs in the background: the call returns the mask's paths at once with `state: \"tracking\"`, and `context` reports its progress, then a contact sheet of tracked frames and the spans where the object was lost or the mask is weak. A mask written elsewhere is tracked before the call returns, with the same findings. The first use of a model downloads it (83 MB for tiny, up to 475 MB for large).",
   input: z
     .object({
       path: AssetPath,
@@ -106,18 +112,26 @@ export const mediaSegment = defineTool({
   output: z.object({
     image: z
       .string()
-      .describe("absolute path of the PNG: the prompted frame with its mask on a preview, a contact sheet of tracked frames otherwise"),
+      .optional()
+      .describe("absolute path of the PNG: the prompted frame with its mask on a preview, a contact sheet of tracked frames otherwise; absent while a track runs"),
     path: z.string().optional().describe("absolute path of the mask file; absent on a preview"),
-    src: z.string().optional().describe("the mask's library path, for `<mask src>`; present when it was written into the project's library"),
-    ...found,
+    src: z.string().optional().describe("the mask's library path, for `<mask src>`; present when it goes into the project's library"),
+    state: z
+      .enum(["tracking", "done"])
+      .optional()
+      .describe("on a track: `tracking` while it runs in the background (poll `context` until its row in `masks` is done), `done` when the mask is written"),
+    ...segmentSpan,
+    ...optionalFound,
   }),
   result: z.object({
-    png: Bytes,
+    png: Bytes.optional(),
     /** The mask file, for the server to write where the renderer cannot: an absolute path, or the temp dir. */
     mask: Bytes.optional(),
     path: z.string().optional(),
     src: z.string().optional(),
-    ...found,
+    state: z.enum(["tracking", "done"]).optional(),
+    ...segmentSpan,
+    ...optionalFound,
   }),
   environment: "renderer",
 });

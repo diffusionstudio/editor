@@ -50,6 +50,8 @@ export async function present(name: ToolName, args: unknown, result: unknown): P
       return presentTranscript(result as ToolResult<"media_transcribe">, (args as ToolArgs<"media_transcribe">).output);
     case "media_segment":
       return presentSegment(result as ToolResult<"media_segment">, (args as ToolArgs<"media_segment">).output);
+    case "context":
+      return presentContext(result as ToolResult<"context">);
     default:
       return { output: result, images: [] };
   }
@@ -119,19 +121,45 @@ async function presentTranscript(transcript: ToolResult<"media_transcribe">, out
 /**
  * The picture always goes to the temp dir; `output` is where the mask goes.
  * A mask the renderer put into the project's library comes with its path; one
- * that comes as bytes is written here, to `output` or the temp dir.
+ * that comes as bytes is written here, to `output` or the temp dir. A track
+ * still running in the background has no picture yet (see `presentContext`).
  */
 async function presentSegment(result: ToolResult<"media_segment">, output: string | undefined): Promise<Presented> {
   const { png, mask, ...found } = result;
-  const image = join(tempDir(), `dapi-segment-${randomUUID()}.png`);
-  await writeFile(image, png);
   let path = found.path;
   if (mask) {
     path = await singleFilePath(output, `dapi-mask-${randomUUID()}.mask`);
     await writeFile(path, mask);
   }
-  const presented: ToolOutput<"media_segment"> = { image, ...found, ...(path === undefined ? {} : { path }) };
-  return { output: presented, images: [{ path: image, png }] };
+  const images: WrittenImage[] = [];
+  let image: string | undefined;
+  if (png) {
+    image = join(tempDir(), `dapi-segment-${randomUUID()}.png`);
+    await writeFile(image, png);
+    images.push({ path: image, png });
+  }
+  const presented: ToolOutput<"media_segment"> = { ...found, ...(image === undefined ? {} : { image }), ...(path === undefined ? {} : { path }) };
+  return { output: presented, images };
+}
+
+/** Contact sheets of background tracks already written, by track id: each is written, and shown inline, once. */
+const trackSheets = new Map<string, string>();
+
+/** A done track's contact sheet goes to the temp dir the first poll it shows up in, and arrives inline with that poll. */
+async function presentContext(result: ToolResult<"context">): Promise<Presented> {
+  const images: WrittenImage[] = [];
+  const masks: ToolOutput<"context">["masks"] = [];
+  for (const { png, ...row } of result.masks) {
+    let image = trackSheets.get(row.id);
+    if (png && image === undefined) {
+      image = join(tempDir(), `dapi-segment-${randomUUID()}.png`);
+      await writeFile(image, png);
+      trackSheets.set(row.id, image);
+      images.push({ path: image, png });
+    }
+    masks.push(image === undefined ? row : { ...row, image });
+  }
+  return { output: { ...result, masks }, images };
 }
 
 function screenshotFilename(taken: Date, attempt: number): string {

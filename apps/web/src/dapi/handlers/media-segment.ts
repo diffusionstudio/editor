@@ -3,23 +3,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { CanvasSink } from "mediabunny";
-import { toast } from "somoto";
-import { MASK_EXTENSION, assetName, isAbsoluteSource, isProjectSource, isUrlSource, traceMask } from "@diffusionstudio/assets";
+import { ASSETS_DIR, MASK_EXTENSION, isAbsoluteSource, isProjectSource, isUrlSource, traceMask } from "@diffusionstudio/assets";
 import { DapiError, WEAK_IOU } from "@diffusionstudio/dapi";
 import { encodePng } from "@diffusionstudio/encoder";
 import { FrameRate, formatTimecode, getLibrary, getVideoTrack } from "@diffusionstudio/runtime";
-import { sam2Model } from "@diffusionstudio/sam2/models";
 
-import { encodeObjectMask, nextTrackingName, objectMaskFolder } from "@/engine/object-mask/commit";
+import { encodeObjectMask, nextTrackingName, objectMaskFolder, pendingMaskPaths } from "@/engine/object-mask/commit";
 import { segmentFootage } from "@/engine/object-mask/tracking";
 import { requireAssetType, resolveAsset } from "../lib/assets";
 import { SheetCollector } from "../lib/sheets";
 
+import type { World } from "koota";
+import type { Accessor } from "solid-js";
 import type { InputVideoTrack } from "mediabunny";
 import type { Asset, AssetLibrary, MaskFrame, VideoAsset } from "@diffusionstudio/assets";
-import type { MediaSegmentRequest } from "@diffusionstudio/dapi";
+import type { MediaSegmentRequest, MediaSegmentResult, ToolResult } from "@diffusionstudio/dapi";
 import type { Sam2Point } from "@diffusionstudio/sam2";
-import type { FootageSegments } from "@/engine/object-mask/tracking";
+import type { FootageSegmentRequest, FootageSegments } from "@/engine/object-mask/tracking";
 import type { EditorSession } from "../session";
 import type { ToolHandler } from "../handler";
 
@@ -38,9 +38,12 @@ const BOX = "#FFC400";
 
 /**
  * Segments an object in a video and tracks it through the span asked for, on
- * the object mask tool's model and queue; the mask goes into the project's
- * library (or back to the server to write when it goes elsewhere), with a
- * picture of what was found. A preview segments the prompted frame alone.
+ * the object mask tool's model and queue, without a word in the app. A mask
+ * bound for the project's library is tracked in the background: the call
+ * answers with where it will be at once, and `context` reports the track (see
+ * `maskTrackRows`). One the server writes, and a preview of the prompted
+ * frame alone, are segmented before the call returns, with a picture of what
+ * was found.
  */
 export const mediaSegment: ToolHandler<"media_segment"> = async (args, ctx) => {
   const asset = await resolveAsset(ctx, args.path);
@@ -68,70 +71,170 @@ export const mediaSegment: ToolHandler<"media_segment"> = async (args, ctx) => {
   const seedFrame = Math.min(Math.max(Math.round(args.time * fps), first), first + count - 1);
   const target = args.preview ? null : destination(args.output, session);
 
-  const progress = new Progress(asset, args.preview ?? false);
-  progress.tracked(0, count);
+  const model = args.model ?? "tiny";
+  const span: Span = { model, frameRate: fps, start: round(first / fps), end: round((first + count) / fps), frames: count };
+  const request: SegmentRequest = {
+    asset,
+    fps,
+    model,
+    points: prompts(args),
+    seedFrame,
+    first,
+    count,
+    preview: args.preview ?? false,
+  };
+
+  if (target?.kind === "library") return startTrack(session!, ctx.session, args, request, span, target.path);
+
   let segments: FootageSegments;
   try {
-    segments = await segmentFootage({
-      asset,
-      fps,
-      model: args.model ?? "tiny",
-      points: prompts(args),
-      seedFrame,
-      first: args.preview ? seedFrame : first,
-      count,
-      preview: args.preview ?? false,
-      signal: AbortSignal.any([ctx.signal, progress.signal]),
-      onDownload: (fraction) => progress.download(sam2Model(args.model ?? "tiny").label, fraction),
-      onProgress: (completed, of) => progress.tracked(completed, of),
-    });
+    segments = await segmentFootage({ ...request, signal: ctx.signal });
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new DapiError("canceled", progress.signal.aborted ? "Segmenting was canceled in the app." : "The call was canceled.");
-    }
+    if (isAbort(error)) throw new DapiError("canceled", "The call was canceled.");
     throw error;
-  } finally {
-    progress.done();
   }
 
+  const found = describeFound(segments, seedFrame - first, first, fps);
+  const video = await decodableTrack(asset);
+  if (args.preview) {
+    const png = await previewImage(video, segments, seedFrame, segments.masks[0] ?? null, args);
+    return { png, ...span, ...found };
+  }
+
+  const png = await contactSheet(video, segments, asset, first, fps);
+  const file = encodeTrack(segments, request);
+  return { png, mask: new Uint8Array(await file.arrayBuffer()), state: "done", ...span, ...found };
+};
+
+type Span = Pick<MediaSegmentResult, "model" | "frameRate" | "start" | "end" | "frames">;
+type Found = Required<Pick<MediaSegmentResult, "bbox" | "area" | "score" | "iou" | "lost" | "weak">>;
+type SegmentRequest = Omit<FootageSegmentRequest, "signal" | "onDownload" | "onProgress">;
+
+/** What the masks say about the object: on the seed frame, and the spans where it was lost or weak. */
+function describeFound(segments: FootageSegments, seedIndex: number, first: number, fps: number): Found {
   const { masks, grid } = segments;
-  const seed = masks[seedFrame - first] ?? null;
-  const found = {
-    model: args.model ?? "tiny",
-    frameRate: fps,
-    start: round(first / fps),
-    end: round((first + count) / fps),
-    frames: count,
+  const seed = masks[seedIndex] ?? null;
+  return {
     ...measure(seed, grid),
     score: seed?.score ?? 0,
     iou: seed?.iou ?? 0,
     lost: spans(masks, first, fps, (mask) => isLost(mask)),
     weak: spans(masks, first, fps, (mask) => !isLost(mask) && mask!.iou < WEAK_IOU),
   };
+}
 
+/** The tracked frames as a mask file, with the recipe that made them. */
+function encodeTrack(segments: FootageSegments, request: SegmentRequest): Blob {
+  return encodeObjectMask(request.asset, request.fps, segments.grid, segments.masks, {
+    model: segments.model.repo,
+    source: request.asset.id,
+    first: request.first,
+    seedFrame: request.seedFrame,
+    points: request.points,
+  });
+}
+
+async function decodableTrack(asset: VideoAsset): Promise<InputVideoTrack> {
   const video = await getVideoTrack(asset);
   if (!video) throw new DapiError("wrong-kind", `Asset ${asset.id} has no decodable video track.`);
+  return video;
+}
 
-  if (args.preview) {
-    const png = await previewImage(video, segments, seedFrame, seed, args);
-    return { png, ...found };
+function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+// ── Tracks in the background ─────────────────────────────────
+
+/** A background track as `context` reports it. */
+type TrackRow = ToolResult<"context">["masks"][number];
+
+/** The tracks started in each project's world, oldest first; they go with the world. */
+const tracks = new WeakMap<World, TrackRow[]>();
+
+/** The background tracks started in `world`, for `context`. */
+export function maskTrackRows(world: World): TrackRow[] {
+  return (tracks.get(world) ?? []).map((row) => ({ ...row }));
+}
+
+/**
+ * Starts tracking into the library and answers at once with where the mask
+ * will be. The path is promised to the track while it runs, so the tool and
+ * other tracks name their masks around it.
+ */
+function startTrack(
+  session: EditorSession,
+  current: Accessor<EditorSession | null>,
+  args: MediaSegmentRequest,
+  request: SegmentRequest,
+  span: Span,
+  path: string | null,
+): MediaSegmentResult {
+  const library = getLibrary(session.world);
+  const folder = objectMaskFolder(request.asset);
+  const src = path ?? `${folder}/${nextTrackingName(library, folder)}`;
+  const existing = library.get(src);
+  const source = existing && isReplaceableMask(existing) ? existing.source : `${ASSETS_DIR}/${src}`;
+
+  const row: TrackRow = { id: crypto.randomUUID(), src, video: args.path, state: "loading", progress: null, ...span };
+  const rows = tracks.get(session.world) ?? [];
+  rows.push(row);
+  tracks.set(session.world, rows);
+
+  pendingMaskPaths.add(src);
+  void runTrack(row, session, current, request, path !== null).finally(() => pendingMaskPaths.delete(src));
+  return { path: `${session.project.dir()}/${source}`, src, state: "tracking", ...span };
+}
+
+/**
+ * Tracks, then writes the mask into the library, filing each step on `row`;
+ * `replace` when the caller named the path, so a mask already there is
+ * written over. A project closed in the meantime stops the track at its next
+ * frame, and nothing is written into a library no longer open.
+ */
+async function runTrack(
+  row: TrackRow,
+  session: EditorSession,
+  current: Accessor<EditorSession | null>,
+  request: SegmentRequest,
+  replace: boolean,
+): Promise<void> {
+  const controller = new AbortController();
+  const stillOpen = () => {
+    if (current()?.world !== session.world) controller.abort();
+    return !controller.signal.aborted;
+  };
+
+  try {
+    const segments = await segmentFootage({
+      ...request,
+      signal: controller.signal,
+      onDownload: (fraction) => {
+        if (stillOpen()) Object.assign(row, { state: "loading", progress: fraction });
+      },
+      onProgress: (completed, total) => {
+        if (stillOpen()) Object.assign(row, { state: "tracking", progress: completed / total });
+      },
+    });
+
+    const video = await decodableTrack(request.asset);
+    const png = await contactSheet(video, segments, request.asset, request.first, request.fps);
+    const file = encodeTrack(segments, request);
+    if (!stillOpen()) return;
+
+    const stored = await storeMask(getLibrary(session.world), row.src, file, replace);
+    Object.assign(row, {
+      state: "done",
+      progress: 1,
+      src: stored.path,
+      png,
+      ...describeFound(segments, request.seedFrame - request.first, request.first, request.fps),
+    });
+  } catch (error) {
+    if (isAbort(error)) return;
+    Object.assign(row, { state: "failed", progress: null, error: error instanceof Error ? error.message : String(error) });
   }
-
-  const png = await contactSheet(video, segments, asset, first, fps);
-  const file = encodeObjectMask(asset, fps, grid, masks, {
-    model: segments.model.repo,
-    source: asset.id,
-    first,
-    seedFrame,
-    points: prompts(args),
-  });
-
-  if (target?.kind !== "library") return { png, mask: new Uint8Array(await file.arrayBuffer()), ...found };
-
-  const library = getLibrary(session!.world);
-  const stored = await storeMask(library, target.path, asset, file);
-  return { png, path: `${session!.project.dir()}/${stored.source}`, src: stored.path, ...found };
-};
+}
 
 /** The prompt as SAM 2 takes it: points on the object, points off it, then a box's corners. */
 function prompts(args: MediaSegmentRequest): Sam2Point[] {
@@ -185,18 +288,13 @@ function isReplaceableMask(asset: Asset): boolean {
 }
 
 /**
- * Puts the mask file into the library. A mask already at `path` has its file
- * written over and is taken in again at the same path, as a restore does, so
- * every `<mask>` naming it shows the new frames.
+ * Puts the mask file into the library at `path`. When `replace`, a mask
+ * already there has its file written over and is taken in again at the same
+ * path, as a restore does, so every `<mask>` naming it shows the new frames.
  */
-async function storeMask(library: AssetLibrary, path: string | null, video: VideoAsset, file: Blob): Promise<Asset> {
-  if (path === null) {
-    const folder = objectMaskFolder(video);
-    return library.store(file, { folder, name: nextTrackingName(library, folder) });
-  }
-
+async function storeMask(library: AssetLibrary, path: string, file: Blob, replace: boolean): Promise<Asset> {
   const existing = library.get(path);
-  if (existing && isReplaceableMask(existing)) {
+  if (replace && existing && isReplaceableMask(existing)) {
     await library.fs.write(existing.source, file);
     return library.relink(existing, existing.source);
   }
@@ -416,51 +514,4 @@ function drawLabel(ctx: Ctx2D, text: string, x: number, y: number, align: "left"
   ctx.textBaseline = "middle";
   ctx.fillText(text, left + padX, y + 0.5);
   ctx.restore();
-}
-
-// ── Progress in the app ──────────────────────────────────────
-
-/**
- * What the app shows while a call runs long: the model's download, and a
- * track's frames, in a toast with a Cancel button. A preview shows only a
- * download; it is over too quickly otherwise.
- */
-class Progress {
-  private readonly controller = new AbortController();
-  private readonly id = `media-segment-${crypto.randomUUID()}`;
-  private shown: string | null = null;
-
-  constructor(
-    private readonly asset: VideoAsset,
-    private readonly preview: boolean,
-  ) {}
-
-  /** Fires when the Cancel button is pressed. */
-  get signal(): AbortSignal {
-    return this.controller.signal;
-  }
-
-  download(label: string, fraction: number | null): void {
-    this.show(fraction === null ? `Loading ${label}…` : `Downloading ${label}… ${Math.floor(fraction * 100)}%`);
-  }
-
-  tracked(completed: number, total: number): void {
-    if (this.preview) return;
-    this.show(`Tracking an object in ${assetName(this.asset)}… ${Math.floor((completed / total) * 100)}%`);
-  }
-
-  done(): void {
-    if (this.shown !== null) toast.dismiss(this.id);
-  }
-
-  // A percent at a time: downloads and tracks report far more often.
-  private show(message: string): void {
-    if (message === this.shown) return;
-    this.shown = message;
-    toast.loading(message, {
-      id: this.id,
-      duration: Infinity,
-      cancel: { label: "Cancel", onClick: () => this.controller.abort() },
-    });
-  }
 }

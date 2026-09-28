@@ -88,11 +88,18 @@ export function objectMaskFolder(video: VideoAsset): string {
 	return `${MASKS_FOLDER}/${assetName(video).replace(/\.[^.]+$/, '')}`;
 }
 
-/** `Tracking <n>.mask`, `n` the first count not yet taken in `folder`. */
+/**
+ * Library paths promised to masks still being tracked in the background (see
+ * the agent's `media_segment`): taken, though nothing is there yet.
+ */
+export const pendingMaskPaths = new Set<string>();
+
+/** `Tracking <n>.mask`, `n` the first count not yet taken in `folder`, nor promised to a track still running. */
 export function nextTrackingName(library: AssetLibrary, folder: string): string {
 	for (let n = 1; ; n++) {
 		const name = `Tracking ${n}.${MASK_EXTENSION}`;
-		if (!library.get(`${folder}/${name}`)) return name;
+		const path = `${folder}/${name}`;
+		if (!library.get(path) && !pendingMaskPaths.has(path)) return name;
 	}
 }
 
