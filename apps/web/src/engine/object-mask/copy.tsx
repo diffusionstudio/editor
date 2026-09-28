@@ -12,10 +12,6 @@ import { getVideoRect } from './media';
 import type { Entity, World } from 'koota';
 import type { MaskAsset } from '@diffusionstudio/assets';
 
-export function slug(name: string): string {
-	return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'mask';
-}
-
 /** A tracked mask in the library: what an effect can be given. */
 export type ObjectMaskSource = {
 	asset: MaskAsset;

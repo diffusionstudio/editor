@@ -4,16 +4,15 @@
 
 import { MASK_EXTENSION, assetName, encodeMaskFile } from '@diffusionstudio/assets';
 import { Effect as EffectElement, Mask } from '@diffusionstudio/reconciler';
-import { Cache, Effect, EffectType, FrameRate, Hidden, Library, Name, getNextName, getParentNode } from '@diffusionstudio/runtime';
+import { Cache, Effect, EffectType, FrameRate, Hidden, Library, getParentNode } from '@diffusionstudio/runtime';
 import { geometryOf } from '@diffusionstudio/sam2/models';
 
 import { getDocumentEditor } from '../editor';
-import { slug } from './copy';
 import { getVideoRect } from './media';
 import { getTargetEffect } from './store';
 
 import type { Entity, World } from 'koota';
-import type { MaskFrame, MaskRecipe } from '@diffusionstudio/assets';
+import type { AssetLibrary, MaskFrame, MaskRecipe } from '@diffusionstudio/assets';
 import type { ObjectTrack } from './store';
 
 /** Where masks go in the library: a folder per video under this one. */
@@ -21,7 +20,8 @@ const MASKS_FOLDER = 'masks';
 
 /**
  * Turns a tracked session into the document: its frames go into the
- * library as one mask file under `masks/`, with the recipe that made them,
+ * library as one mask file, `masks/<video>/Tracking <n>.mask`, with the
+ * recipe that made them,
  * and the clip gets a `<mask>` naming it — `src` the file, `sourceIn` the
  * clip's source time its first frame belongs to — under the effect the tool
  * was started for, or else under an `opacity` effect: the cut-out. A clip
@@ -37,8 +37,7 @@ export async function commitObjectMask(world: World, track: ObjectTrack): Promis
 
 	const { signal } = track.controller;
 	const fps = world.get(FrameRate)?.value ?? 30;
-	const name = getNextName(world, `${track.clip.get(Name)?.value || 'Video'} Mask`);
-	const videoName = assetName(rect.asset).replace(/\.[^.]+$/, '');
+	const folder = `${MASKS_FOLDER}/${assetName(rect.asset).replace(/\.[^.]+$/, '')}`;
 
 	const blob = encodeObjectMask(rect.asset, fps, geometryOf(model.imageSize).maskSize, track.masks, {
 		model: model.repo,
@@ -50,7 +49,7 @@ export async function commitObjectMask(world: World, track: ObjectTrack): Promis
 	});
 	if (signal.aborted) return null;
 
-	const asset = await library.store(blob, { folder: `${MASKS_FOLDER}/${slug(videoName)}`, name: `${name}.${MASK_EXTENSION}` });
+	const asset = await library.store(blob, { folder, name: nextTrackingName(library, folder) });
 	if (signal.aborted || !track.clip.isAlive()) return null;
 
 	const editor = getDocumentEditor(world);
@@ -82,6 +81,14 @@ export function encodeObjectMask(
 		{ gridWidth: grid, gridHeight: grid, width: size.width, height: size.height, frameRate, recipe },
 		masks,
 	);
+}
+
+/** `Tracking <n>.mask`, `n` the first count not yet taken in `folder`. */
+function nextTrackingName(library: AssetLibrary, folder: string): string {
+	for (let n = 1; ; n++) {
+		const name = `Tracking ${n}.${MASK_EXTENSION}`;
+		if (!library.get(`${folder}/${name}`)) return name;
+	}
 }
 
 /** The clip's opacity effect, if it has one that is switched on: where another mask joins. */
