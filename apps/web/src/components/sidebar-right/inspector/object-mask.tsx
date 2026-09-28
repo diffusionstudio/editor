@@ -141,7 +141,7 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
             </SelectValue>
           </SelectTrigger>
           <SelectPortal>
-            <SelectContent />
+            <SelectContent class="max-h-[min(var(--kb-popper-content-available-height),219px)]" />
           </SelectPortal>
         </Select>
         <div class="flex items-center gap-1">

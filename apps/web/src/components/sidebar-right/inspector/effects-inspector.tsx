@@ -252,7 +252,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
                 <span class="min-w-0 flex-1 truncate text-left">Add matte mask</span>
               </DropdownMenuTrigger>
               <DropdownMenuPortal>
-                <DropdownMenuContent>
+                <DropdownMenuContent class="max-h-[min(var(--kb-popper-content-available-height),275px)]">
                   <For each={shareable()}>
                     {(source) => (
                       <DropdownMenuItem onSelect={() => copyObjectMask(world, props.effect, source)}>
