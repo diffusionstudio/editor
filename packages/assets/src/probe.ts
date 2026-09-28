@@ -7,7 +7,10 @@
 
 import { ALL_FORMATS, BlobSource, Input, UrlSource } from 'mediabunny';
 
+import { isMaskFileHead, MASK_MIME_TYPE, readMaskHeader } from './mask';
+
 import type { InputTrack } from 'mediabunny';
+import type { MaskRecipe } from './mask';
 import type { Asset } from './types';
 
 export const DEFAULT_SEQUENCE_FPS = 30;
@@ -18,7 +21,8 @@ export type ProbeResult = Extract<
 	| { type: 'AUDIO'; duration: number; sampleRate: number; channels: number }
 	| { type: 'VIDEO'; duration: number; width: number; height: number; frameRate: number; bitRate: number; sampleRate?: number; channels?: number }
 	| { type: 'TRANSCRIPT' }
-	| { type: 'SCRIPT' },
+	| { type: 'SCRIPT' }
+	| { type: 'MASK'; width: number; height: number; frameRate: number; duration: number; recipe?: MaskRecipe },
 	{ type: Asset['type'] }
 >;
 
@@ -28,9 +32,9 @@ const TRANSCRIPT_TYPES = new Set(['application/json', 'application/x-subrip', 't
  * The MIME type of a file, or of the resource behind a URL. Subtitle files go
  * by extension (OS registries rarely map .srt); images fall back to their
  * magic bytes when nothing declared a type (a download filed without an
- * extension has none to go by); audio and video are sniffed by mediabunny,
- * since a container's declared type is often wrong or empty. Null when the
- * file is not something the library takes.
+ * extension has none to go by), and so do mask files; audio and video are
+ * sniffed by mediabunny, since a container's declared type is often wrong or
+ * empty. Null when the file is not something the library takes.
  */
 export async function detectMimeType(input: Blob | string): Promise<string | null> {
 	const name = typeof input === 'string' ? input.split(/[?#]/)[0]! : (input as File).name ?? '';
@@ -39,6 +43,7 @@ export async function detectMimeType(input: Blob | string): Promise<string | nul
 	if (/\.srt$/i.test(name) || mimeType === 'application/x-subrip') return 'application/x-subrip';
 	if (/\.vtt$/i.test(name) || mimeType === 'text/vtt') return 'text/vtt';
 	if (/\.json$/i.test(name) || mimeType === 'application/json') return 'application/json';
+	if (mimeType === MASK_MIME_TYPE) return MASK_MIME_TYPE;
 
 	if (mimeType?.startsWith('image/')) return mimeType;
 	if (mimeType?.startsWith('text/html')) return mimeType;
@@ -46,6 +51,7 @@ export async function detectMimeType(input: Blob | string): Promise<string | nul
 	if (typeof input !== 'string') {
 		const sniffed = await sniffImageType(input);
 		if (sniffed) return sniffed;
+		if (await sniffMaskFile(input)) return MASK_MIME_TYPE;
 	}
 
 	try {
@@ -57,6 +63,15 @@ export async function detectMimeType(input: Blob | string): Promise<string | nul
 
 	if (mimeType?.startsWith('audio/') || mimeType?.startsWith('video/')) return mimeType;
 	return null;
+}
+
+/** Whether a blob is a mask file (see `mask.ts`), by its magic. */
+async function sniffMaskFile(input: Blob): Promise<boolean> {
+	try {
+		return isMaskFileHead(new Uint8Array(await input.slice(0, 4).arrayBuffer()));
+	} catch {
+		return false;
+	}
 }
 
 /** Image container brands that ride in an ISO base media `ftyp` box. */
@@ -126,6 +141,11 @@ export async function probeMedia(file: Blob, mimeType: string): Promise<ProbeRes
 	}
 
 	if (TRANSCRIPT_TYPES.has(mimeType)) return { type: 'TRANSCRIPT' };
+
+	if (mimeType === MASK_MIME_TYPE) {
+		const { width, height, frameRate, frameCount, recipe } = await readMaskHeader(file);
+		return { type: 'MASK', width, height, frameRate, duration: frameCount / frameRate, ...(recipe ? { recipe } : {}) };
+	}
 
 	if (mimeType.startsWith('audio/') || mimeType.startsWith('video/')) {
 		const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });

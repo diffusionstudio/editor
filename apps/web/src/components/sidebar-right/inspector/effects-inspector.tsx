@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Show, createMemo } from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
@@ -12,7 +12,15 @@ import {
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
 } from "@/components/ui/floating-inspector";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { ItemRow } from "@/components/ui/item-row";
 import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
 import { Keyframe } from "@/components/ui/keyframe";
 import {
@@ -26,15 +34,20 @@ import {
 import { SliderInput } from "@/components/ui/slider-input";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { Computed, Effect, Hidden } from "@diffusionstudio/runtime";
+import { Cache, Computed, Effect, Hidden, getParentNode } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
+import { beginObjectMaskFor, copyObjectMask, effectHasObjectMask, getVideoRect, listObjectMasks } from "@/engine/object-mask";
 import { EFFECT_OPTIONS, effectOption } from "./effect-types";
+import { ObjectMaskInspector } from "./object-mask";
 
 import type { EffectOption } from "./effect-types";
 import type { Entity } from "koota";
 
 const clampUnit = (value: number) => Math.min(1, Math.max(0, value));
+
+// Stable identity, so an effect without masks does not resample every tick.
+const NO_MASKS: Entity[] = [];
 
 type EffectsInspectorProps = {
   effect: Entity;
@@ -54,12 +67,34 @@ type EffectsInspectorProps = {
 export function EffectsInspector(props: EffectsInspectorProps) {
   const world = useWorld();
   const editor = useEditor();
+  let contentRef!: HTMLDivElement;
+
+  const [pickedMask, setPickedMask] = createSignal<Entity>();
 
   const effect = useTrait(() => props.effect, Effect);
   const hidden = useHas(() => props.effect, Hidden);
 
   const option = createMemo(() => effectOption(effect()?.type));
   const value = useDerived(() => props.effect.get(Computed)?.value ?? 0);
+  const masks = useDerived(() => props.effect.get(Cache)?.mattes ?? NO_MASKS);
+
+  const isVideo = useDerived(() => {
+    const node = getParentNode(props.effect);
+    return node !== null && getVideoRect(world, node) !== null;
+  });
+
+  const shareable = useDerived(() => {
+    const node = getParentNode(props.effect);
+    if (!node) return [];
+    return listObjectMasks(world, node).filter((source) => !effectHasObjectMask(props.effect, source));
+  }, (a, b) => a.length === b.length && a.every((source, i) => source.asset.id === b[i]!.asset.id));
+
+  const editingMask = createMemo(() => {
+    const mask = pickedMask();
+    return mask !== undefined && masks().includes(mask) ? mask : undefined;
+  });
+
+
 
   const editValue = (next: number) => {
     editor.editProperty(props.effect, "value", next);
@@ -142,7 +177,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
         </div>
       </FloatingInspectorHeader>
       <FloatingInspectorSeparator />
-      <FloatingInspectorContent class="flex flex-col gap-2 p-4">
+      <FloatingInspectorContent class="flex flex-col gap-2 p-4" ref={contentRef}>
         <Show when={option().unit === "amount"}>
           <ControlRow label="Amount">
             <SliderInput
@@ -191,7 +226,103 @@ export function EffectsInspector(props: EffectsInspectorProps) {
             />
           </ControlRow>
         </Show>
+
+        <Show when={isVideo()}>
+          <div class="flex items-center justify-between pt-2">
+            <span class="text-xs text-muted-foreground">Masks</span>
+            <DropdownMenu placement="bottom-end">
+              <Tooltip>
+                <TooltipTrigger<typeof DropdownMenuTrigger>
+                  as={(triggerProps: object) => (
+                    <DropdownMenuTrigger<typeof Button>
+                      {...triggerProps}
+                      as={(buttonProps) => (
+                        <Button size="icon" variant="ghost" class="text-muted-foreground" {...buttonProps}>
+                          <Icon name="plus-add" />
+                        </Button>
+                      )}
+                    />
+                  )}
+                />
+                <TooltipContent>Add mask</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent>
+                <For each={shareable()}>
+                  {(source) => (
+                    <DropdownMenuItem onSelect={() => copyObjectMask(world, props.effect, source)}>
+                      {source.name}
+                    </DropdownMenuItem>
+                  )}
+                </For>
+                <Show when={shareable().length > 0}>
+                  <DropdownMenuSeparator />
+                </Show>
+                <DropdownMenuItem onSelect={() => beginObjectMaskFor(world, props.effect)}>
+                  Track new object…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <For each={masks()}>
+            {(mask) => (
+              <ObjectMaskRow
+                mask={mask}
+                active={editingMask() === mask}
+                onSelect={() => setPickedMask(editingMask() === mask ? undefined : mask)}
+                onRemove={() => editor.remove(mask)}
+              />
+            )}
+          </For>
+        </Show>
       </FloatingInspectorContent>
+
+      <Show when={editingMask() !== undefined}>
+        <ObjectMaskInspector
+          mask={editingMask()!}
+          anchorRef={contentRef}
+          onClose={() => setPickedMask(undefined)}
+        />
+      </Show>
     </FloatingInspector>
+  );
+}
+
+type ObjectMaskRowProps = {
+  mask: Entity;
+  active: boolean;
+  onSelect(): void;
+  onRemove(): void;
+};
+
+/** One `<mask>` of the effect; a click opens its settings. */
+function ObjectMaskRow(props: ObjectMaskRowProps) {
+  const hidden = useHas(() => props.mask, Hidden);
+
+  return (
+    <ItemRow
+      label="Mask"
+      value={"Object"}
+      disabled={hidden()}
+      icon={<Icon name="mask-small" />}
+      class="text-foreground"
+      classList={{ "bg-accent/40": props.active }}
+      onClick={props.onSelect}
+    >
+      <Tooltip>
+        <TooltipTrigger
+          as={Button}
+          size="icon"
+          variant="ghost"
+          class="text-muted-foreground"
+          onClick={(event: MouseEvent) => {
+            event.stopPropagation();
+            props.onRemove();
+          }}
+        >
+          <Icon name="close-remove-small" />
+        </TooltipTrigger>
+        <TooltipContent>Remove mask</TooltipContent>
+      </Tooltip>
+    </ItemRow>
   );
 }

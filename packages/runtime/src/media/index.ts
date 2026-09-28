@@ -13,6 +13,7 @@ export * from './handoff';
 export * from './html';
 export * from './image';
 export * from './keyframe-index';
+export * from './mask';
 export * from './sequence';
 export * from './shader';
 export * from './time-stretcher';

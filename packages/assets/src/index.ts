@@ -7,6 +7,8 @@ export * from './manifest';
 export * from './fs';
 export * from './hash';
 export * from './probe';
+export * from './mask';
+export * from './mask-outline';
 export * from './library';
 export * from './browser';
 export * from './cache';

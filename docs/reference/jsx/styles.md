@@ -80,6 +80,7 @@ Under an `"opacity"` effect the mask is the cut-out: the clip shows inside the m
 | `blur` | `number` | `0` | Feather: radius in px the edge falls off over. |
 | `opacity` | `number` | `1` | How strongly the mask limits the effect. `1` stops the effect at the edge; lower lets that much of it through outside; `0` is no mask. |
 | `inverted` | `boolean` | `false` | Covers what the picture does not instead. |
+| `smoothing` | `number` | `0.25` | How much a mask file's edge is smoothed, `0`–`1`. At `0` it is exactly where the model put it; the more, the rounder, and the more of what is thin or small melts away. Sharp at any size either way. |
 | `hidden` | `boolean` | absent | Switches the mask off without removing it. |
 
 `blur` and `opacity` take a [`<keyframeTrack>`](./keyframes.md).

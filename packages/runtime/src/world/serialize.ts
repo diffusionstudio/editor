@@ -44,6 +44,7 @@ export interface EntityRecord {
 	Matte?: {
 		offset?: number;
 		inverted?: boolean;
+		smoothing?: number;
 	};
 	Caption?: {
 		type?: number;
@@ -205,7 +206,7 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	}
 	if (entity.has(Matte)) {
 		const matte = entity.get(Matte)!;
-		record.Matte = { offset: matte.offset, inverted: matte.inverted };
+		record.Matte = { offset: matte.offset, inverted: matte.inverted, smoothing: matte.smoothing };
 	}
 	if (entity.has(Shadow)) {
 		record.Shadow = {};

@@ -10,7 +10,7 @@ import { Ai, AssetId, Library, Paint, SourceFrameRate } from '../traits';
 import { PaintType } from '../constants';
 
 import type { Entity, World } from 'koota';
-import type { Asset, AssetLibrary, SequenceAsset } from '@diffusionstudio/assets';
+import type { Asset, AssetLibrary, MaskAsset, SequenceAsset } from '@diffusionstudio/assets';
 import type { GenAi } from '../ai';
 
 /** The world's asset library; throws when the host attached none. */
@@ -30,8 +30,8 @@ export function getAi(world: World): GenAi {
 /**
  * Binds an entity to an asset: stamps its AssetId, and follows the asset with
  * the paint. A media paint is whichever of the two the asset can be drawn
- * through — a frames directory decodes and draws exactly as a video does, so
- * it paints as one — and it is re-decided on every bind, so an element handed
+ * through — a frames directory or a mask file decodes and draws exactly as a
+ * video does, so it paints as one — and it is re-decided on every bind, so an element handed
  * a different kind of source shows it rather than nothing at all. Paints that
  * are not media (a gradient, a shader) are left alone: their fill is not the
  * asset.
@@ -44,7 +44,7 @@ export function bindAsset(entity: Entity, asset: Asset): void {
 	if (paint !== PaintType.IMAGE && paint !== PaintType.VIDEO) return;
 
 	const wanted = asset.type === 'IMAGE' ? PaintType.IMAGE
-		: asset.type === 'VIDEO' || asset.type === 'SEQUENCE' ? PaintType.VIDEO
+		: asset.type === 'VIDEO' || asset.type === 'SEQUENCE' || asset.type === 'MASK' ? PaintType.VIDEO
 		// Audio and transcripts have nothing to draw; leave the paint as authored.
 		: paint;
 
@@ -52,11 +52,11 @@ export function bindAsset(entity: Entity, asset: Asset): void {
 }
 
 /**
- * The rate a frames directory is played at: the element's own `frameRate`
- * when it sets one, else the rate the library gave the asset. `ignoreAuthored`
- * reads the element's as absent, for a handler of its removal.
+ * The rate a frames directory or mask file is played at: the element's own
+ * `frameRate` when it sets one, else the rate the library gave the asset.
+ * `ignoreAuthored` reads the element's as absent, for a handler of its removal.
  */
-export function getSequenceFrameRate(entity: Entity, asset: SequenceAsset, ignoreAuthored = false): number {
+export function getSequenceFrameRate(entity: Entity, asset: SequenceAsset | MaskAsset, ignoreAuthored = false): number {
 	const authored = ignoreAuthored ? 0 : entity.get(SourceFrameRate)?.value ?? 0;
 	return authored > 0 ? authored : asset.frameRate;
 }
@@ -68,7 +68,7 @@ export function getSequenceFrameRate(entity: Entity, asset: SequenceAsset, ignor
  * is the element's to set.
  */
 export function getSourceDuration(entity: Entity, asset: Asset, ignoreAuthoredRate = false): number | null {
-	if (asset.type === 'SEQUENCE') {
+	if (asset.type === 'SEQUENCE' || asset.type === 'MASK') {
 		const frames = asset.duration * asset.frameRate;
 		return frames / getSequenceFrameRate(entity, asset, ignoreAuthoredRate);
 	}

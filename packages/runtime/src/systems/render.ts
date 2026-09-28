@@ -8,6 +8,7 @@
 // regions are pushed callback-less (see HitRegions); the app's input layer
 // attaches its handlers.
 
+import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { Not, Or } from 'koota';
 
 import { store } from '../world/store';
@@ -16,9 +17,9 @@ import {
 	TransitionType,
 } from '../constants';
 import {
-	ChildOf, Hidden, Culled, Interactive, IsMask,
+	ChildOf, Hidden, Culled, Interactive, IsMask, AssetId,
 	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
-	BlendMode, Effect, Transition, MixedCornerRadius,
+	BlendMode, Effect, Matte, Transition, MixedCornerRadius,
 	LocalTransform, WorldTransform, Computed, Cache,
 	Host,
 	Mode, FrameRate, Camera, Background, RenderSurface,
@@ -32,10 +33,11 @@ import { FAILED_COLOR, getGeneratingColor, getSourceFailure, isGenerating } from
 import { applyStrokeStyle } from '../utils/stroke';
 import { renderText } from '../utils/text';
 import { getTransitionWindow } from '../utils/transition';
-import { getIntrinsicPaint } from '../utils/time';
+import { drawOnto, getSurfaceContext } from '../utils/surface';
+import { findGeometryAssetSource, getIntrinsicPaint } from '../utils/time';
 import { createLinearGradient, createRadialGradient } from './gradients';
 import {
-	resolveImageDecoder, resolveVideoDecoder,
+	MaskDecoder, resolveImageDecoder, resolveVideoDecoder,
 	resolveCaptionDecoder, resolveShaderHost, resolveWaveformPeaks,
 } from '../media';
 
@@ -47,7 +49,7 @@ type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 const MISSING_ASSET_COLOR = '#5C2828';
 
 function getCtx(world: World): Ctx2D {
-	return world.get(RenderSurface)!.ctx!;
+	return getSurfaceContext(world)!;
 }
 
 export function drawRectPath(world: World, entity: Entity): void {
@@ -103,7 +105,7 @@ export function drawRectPath(world: World, entity: Entity): void {
 	ctx.closePath();
 }
 
-function getScaledImageProps(
+export function getScaledImageProps(
 	mode: number,
 	imgW: number,
 	imgH: number,
@@ -168,6 +170,10 @@ function effectFilter(world: World, sub: Entity): string | null {
 	if (type === EffectType.SEPIA) {
 		const clamped = Math.min(1, Math.max(0, value));
 		return clamped > EPSILON ? `sepia(${clamped})` : null;
+	}
+	if (type === EffectType.OPACITY) {
+		const clamped = Math.min(1, Math.max(0, value));
+		return 1 - clamped > EPSILON ? `opacity(${clamped})` : null;
 	}
 	return null;
 }
@@ -290,6 +296,16 @@ function renderHtmlFill(world: World, entity: Entity, source: Entity): void {
 	ctx.restore();
 }
 
+/** The frame `source`'s decoder has for a box of `w` by `h`, and whether the decoder gave up. */
+function resolveMediaFrame(world: World, source: Entity, kind: MediaKind, w: number, h: number): { frame: MediaFrame | null; failed: boolean } {
+	if (kind === 'IMAGE') {
+		const decoder = resolveImageDecoder(world, source)?.decoder;
+		return { frame: decoder?.getBitmap(w, h) ?? null, failed: decoder?.failed ?? false };
+	}
+	const decoder = resolveVideoDecoder(world, source);
+	return { frame: decoder?.toBitmap() ?? null, failed: decoder?.errored ?? false };
+}
+
 /**
  * Draws the current frame of `source` (an image or video paint, or the
  * geometry itself for intrinsic media) into `entity`'s box, fitted by the
@@ -302,17 +318,7 @@ function renderMedia(world: World, entity: Entity, source: Entity, kind: MediaKi
 	const w = computed.width[eid]!;
 	const h = computed.height[eid]!;
 
-	let frame: MediaFrame | null | undefined;
-	let failed = false;
-	if (kind === 'IMAGE') {
-		const decoder = resolveImageDecoder(world, source)?.decoder;
-		frame = decoder?.getBitmap(w, h);
-		failed = decoder?.failed ?? false;
-	} else {
-		const decoder = resolveVideoDecoder(world, source);
-		frame = decoder?.toBitmap();
-		failed = decoder?.errored ?? false;
-	}
+	const { frame, failed } = resolveMediaFrame(world, source, kind, w, h);
 
 	if (frame) {
 		ctx.save();
@@ -793,22 +799,13 @@ export function renderNode(world: World, entity: Entity): void {
 		local.f[eid]!,
 	);
 
-	const worldTransform = store(world, WorldTransform);
 	for (const mask of store(world, Cache).masks[eid] ?? []) {
 		if (computed.visibility[mask.id()] === 0) continue;
-		ctx.save();
-		ctx.setTransform(
-			worldTransform.a[mask.id()]!,
-			worldTransform.b[mask.id()]!,
-			worldTransform.c[mask.id()]!,
-			worldTransform.d[mask.id()]!,
-			worldTransform.e[mask.id()]!,
-			worldTransform.f[mask.id()]!,
-		);
-		drawRectPath(world, mask);
-		ctx.restore();
-		ctx.clip();
+		clipToMask(world, mask);
 	}
+
+	// An effect limited by a `<mask>` takes the node through layers.
+	const passes = effectPasses(world, entity);
 
 	// Opacity and blend mode. The store slot may hold a destroyed entity's
 	// value (ids are recycled), so it is only readable behind has().
@@ -816,14 +813,49 @@ export function renderNode(world: World, entity: Entity): void {
 	const bi = entity.has(BlendMode) ? store(world, BlendMode).value[eid] ?? 0 : 0;
 	if (bi !== 0) ctx.globalCompositeOperation = COMPOSITE_OPERATIONS[bi]!;
 
-	const effects = buildEffects(world, entity);
+	if (passes) {
+		renderLayered(world, entity, passes);
+	} else {
+		renderContent(world, entity, buildEffects(world, entity));
+	}
+
+	ctx.restore();
+}
+
+/** Clips the current context to the box of `mask`, in world space. */
+function clipToMask(world: World, mask: Entity): void {
+	const ctx = getCtx(world);
+	ctx.save();
+	setWorldTransform(world, ctx, mask);
+	drawRectPath(world, mask);
+	ctx.restore();
+	ctx.clip();
+}
+
+function setWorldTransform(world: World, ctx: Ctx2D, entity: Entity): void {
+	const worldTransform = store(world, WorldTransform);
+	const eid = entity.id();
+	ctx.setTransform(
+		worldTransform.a[eid]!,
+		worldTransform.b[eid]!,
+		worldTransform.c[eid]!,
+		worldTransform.d[eid]!,
+		worldTransform.e[eid]!,
+		worldTransform.f[eid]!,
+	);
+}
+
+/** The node's own pixels and its children on the current context, under `filter` when one is given. */
+function renderContent(world: World, entity: Entity, effects: string | null): void {
+	const ctx = getCtx(world);
+	const eid = entity.id();
+
 	let initialFilter = 'none';
 
 	if (effects !== null) {
 		initialFilter = ctx.filter;
 		ctx.filter = effects;
 	}
-
 
 	if (entity.has(Caption)) {
 		renderCaptionNode(world, entity);
@@ -860,8 +892,243 @@ export function renderNode(world: World, entity: Entity): void {
 	if (initialFilter !== 'none') {
 		ctx.filter = initialFilter;
 	}
+}
 
+// ── Effect passes ────────────────────────────────────────────
+
+/** One step of a node's filter pipeline: a run of plain filters, or one effect limited by its mattes. */
+type EffectPass =
+	| { kind: 'filter'; filter: string }
+	| { kind: 'masked'; filter: string | null; mattes: Entity[]; opacity: boolean };
+
+/**
+ * The node's effects as passes, or null when none is masked and one CSS
+ * filter string (see `buildEffects`) does the whole job in a single draw.
+ * The node's own blur leads, and consecutive unmasked effects fold into one
+ * filter run, so a node pays a layer per masked effect and nothing more.
+ */
+function effectPasses(world: World, entity: Entity): EffectPass[] | null {
+	const effects = store(world, Cache).effects[entity.id()];
+	if (!effects?.length) return null;
+	if (!effects.some((effect) => !effect.has(Hidden) && activeMattes(world, effect).length > 0)) return null;
+
+	const passes: EffectPass[] = [];
+	let run: string[] = [];
+	const flush = () => {
+		if (run.length) passes.push({ kind: 'filter', filter: run.join(' ') });
+		run = [];
+	};
+
+	const blur = store(world, Computed).blur[entity.id()]!;
+	if (blur > EPSILON) run.push(`blur(${blur}px)`);
+
+	const types = store(world, Effect).type;
+	for (const effect of effects) {
+		if (effect.has(Hidden)) continue;
+		const filter = effectFilter(world, effect);
+		const mattes = activeMattes(world, effect);
+		if (mattes.length === 0) {
+			if (filter) run.push(filter);
+			continue;
+		}
+		flush();
+		passes.push({ kind: 'masked', filter, mattes, opacity: types[effect.id()] === EffectType.OPACITY });
+	}
+	flush();
+	return passes;
+}
+
+const NO_MATTES: Entity[] = [];
+
+/** The effect's mattes that have a picture and are switched on. */
+function activeMattes(world: World, effect: Entity): Entity[] {
+	const all = store(world, Cache).mattes[effect.id()];
+	if (!all?.length) return NO_MATTES;
+
+	let active: Entity[] | null = null;
+	for (const matte of all) {
+		if (matte.has(Hidden) || !matte.has(AssetId)) continue;
+		(active ??= []).push(matte);
+	}
+	return active ?? NO_MATTES;
+}
+
+// ── Layers ───────────────────────────────────────────────────
+
+type Layer = { canvas: OffscreenCanvas; ctx: OffscreenCanvasRenderingContext2D };
+
+// Layers for nodes drawn through masked effects, the size of the surface: a
+// pool by depth, since a masked node's children may be too.
+const layers: Layer[] = [];
+let layerDepth = 0;
+
+function acquireLayer(width: number, height: number): Layer {
+	let layer = layers[layerDepth];
+	if (!layer) {
+		const canvas = new OffscreenCanvas(width, height);
+		layer = { canvas, ctx: canvas.getContext('2d')! };
+		layers[layerDepth] = layer;
+	} else if (layer.canvas.width !== width || layer.canvas.height !== height) {
+		layer.canvas.width = width;
+		layer.canvas.height = height;
+	}
+	layerDepth++;
+	return layer;
+}
+
+/** Clears a layer and puts its state back to the defaults, under `transform`. */
+function resetLayer(layer: Layer, transform: DOMMatrix): void {
+	const { ctx, canvas } = layer;
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.globalAlpha = 1;
+	ctx.globalCompositeOperation = 'source-over';
+	ctx.filter = 'none';
+	ctx.setTransform(transform);
+}
+
+/** Draws `source` onto `target` pixel for pixel, composited with `operation`, through `filter`, at `alpha`. */
+function blit(target: Layer, source: OffscreenCanvas, operation: GlobalCompositeOperation = 'source-over', filter = 'none', alpha = 1): void {
+	const { ctx } = target;
+	ctx.save();
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.globalCompositeOperation = operation;
+	ctx.filter = filter;
+	ctx.globalAlpha = alpha;
+	ctx.drawImage(source, 0, 0);
 	ctx.restore();
+}
+
+const IDENTITY = new DOMMatrix();
+
+/**
+ * Draws the node through layers: its content unfiltered onto one, then
+ * each effect pass from one layer to the next (a filter run is a filtered
+ * copy; a masked effect combines the copy with the unfiltered picture by
+ * its mattes' coverage), and the layer lands on the surface under the
+ * node's opacity and blend mode, which the caller has already set.
+ */
+function renderLayered(world: World, entity: Entity, passes: EffectPass[]): void {
+	const ctx = getCtx(world);
+	const surface = world.get(RenderSurface)!.canvas!;
+	const base = layerDepth;
+	const local = ctx.getTransform();
+
+	try {
+		let front = acquireLayer(surface.width, surface.height);
+		resetLayer(front, local);
+		drawOnto(front.ctx, () => renderContent(world, entity, null));
+
+		let back = acquireLayer(surface.width, surface.height);
+		for (const pass of passes) {
+			if (pass.kind === 'filter') {
+				resetLayer(back, IDENTITY);
+				blit(back, front.canvas, 'source-over', pass.filter);
+			} else {
+				applyMaskedEffect(world, entity, pass, front, back, local);
+			}
+			[front, back] = [back, front];
+		}
+
+		ctx.save();
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		ctx.drawImage(front.canvas, 0, 0);
+		ctx.restore();
+	} finally {
+		layerDepth = base;
+	}
+}
+
+/**
+ * One effect limited by its mattes: `front` holds the node so far, and the
+ * outcome lands in `back`. The mattes' coverage K is the node's box less
+ * what each matte takes away, weighted by the matte's opacity. A filter
+ * shows through where K covers — front·(1−K) + filtered·K. The opacity
+ * effect keeps only what K covers — filtered·K — so what is outside its
+ * mask goes transparent, which is what a mask on Opacity means in Premiere.
+ */
+function applyMaskedEffect(world: World, entity: Entity, pass: Extract<EffectPass, { kind: 'masked' }>, front: Layer, back: Layer, local: DOMMatrix): void {
+	const { width, height } = front.canvas;
+	const coverage = acquireLayer(width, height);
+	const scratch = acquireLayer(width, height);
+	const opacities = store(world, Computed).opacity;
+
+	try {
+		resetLayer(coverage, local);
+		drawOnto(coverage.ctx, () => drawRectPath(world, entity));
+		coverage.ctx.fillStyle = '#000000';
+		coverage.ctx.fill();
+		for (const matte of pass.mattes) {
+			const strength = Math.min(1, Math.max(0, opacities[matte.id()] ?? 1));
+			if (strength <= EPSILON || !drawMatteRemoval(world, entity, matte, scratch, local)) continue;
+			blit(coverage, scratch.canvas, 'destination-out', 'none', strength);
+		}
+
+		resetLayer(back, IDENTITY);
+		blit(back, front.canvas, 'source-over', pass.filter ?? 'none');
+		blit(back, coverage.canvas, 'destination-in');
+
+		if (!pass.opacity) {
+			blit(front, coverage.canvas, 'destination-out');
+			blit(back, front.canvas, 'lighter');
+		}
+	} finally {
+		layerDepth -= 2;
+	}
+}
+
+/**
+ * Draws onto `layer` what `matte` takes away from the node: the node's box
+ * less the matte's picture, or the picture itself when the matte is
+ * inverted, fitted into the box the way the node fits its footage so it lands
+ * on the frame it was made from, and softened by the matte's blur. A mask
+ * file's picture is its outline, filled at the size it lands at so its edge
+ * stays sharp at any scale, smoothed as much as the matte asks. False, and nothing drawn, while the picture's frame is not decoded yet.
+ */
+function drawMatteRemoval(world: World, entity: Entity, matte: Entity, layer: Layer, local: DOMMatrix): boolean {
+	const computed = store(world, Computed);
+	const eid = entity.id();
+	const mid = matte.id();
+	const w = computed.width[eid]!;
+	const h = computed.height[eid]!;
+
+	const decoder = resolveVideoDecoder(world, matte);
+	const smoothing = store(world, Matte).smoothing[mid] ?? DEFAULT_MASK_SMOOTHING;
+	const outline = decoder instanceof MaskDecoder ? decoder.getOutline(smoothing) : null;
+	const frame = outline ? null : decoder?.toBitmap();
+	const picture = outline ?? frame;
+	if (!picture) return false;
+
+	const feather = computed.blur[mid] ?? 0;
+	const inverted = store(world, Matte).inverted[mid] ?? false;
+	const source = findGeometryAssetSource(world, entity);
+	const mode = (source && store(world, ScaleMode).value[source.id()]) ?? ScaleModeType.COVER;
+	const [dx, dy, sw, sh] = getScaledImageProps(mode, picture.width, picture.height, w, h);
+
+	const { ctx } = layer;
+	resetLayer(layer, local);
+	ctx.save();
+	drawOnto(ctx, () => drawRectPath(world, entity));
+	if (!inverted) {
+		ctx.fillStyle = '#000000';
+		ctx.fill();
+	}
+	ctx.clip();
+	ctx.globalCompositeOperation = inverted ? 'source-over' : 'destination-out';
+	if (feather > EPSILON) ctx.filter = `blur(${feather}px)`;
+	if (outline) {
+		// The path is placed in the box rather than the context scaled, so the
+		// feather's blur is measured as it is for any other picture.
+		const placed = new Path2D();
+		placed.addPath(outline.path, new DOMMatrix([sw / outline.width, 0, 0, sh / outline.height, dx, dy]));
+		ctx.fillStyle = '#000000';
+		ctx.fill(placed);
+	} else if (frame) {
+		ctx.imageSmoothingEnabled = true;
+		ctx.drawImage(frame, dx, dy, sw, sh);
+	}
+	ctx.restore();
+	return true;
 }
 
 /**

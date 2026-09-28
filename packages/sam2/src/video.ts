@@ -6,7 +6,7 @@ import { VideoSampleSink } from 'mediabunny';
 
 import type { InputVideoTrack, VideoSample } from 'mediabunny';
 import type { Sam2Mask } from './mask';
-import type { Sam2Point, Sam2Video } from './tracker';
+import type { Sam2Correction, Sam2Point, Sam2Video } from './tracker';
 
 export type FrameRequest = {
 	track: InputVideoTrack;
@@ -20,6 +20,8 @@ export type TrackRequest = {
 	/** Which of `timestamps` the points were placed on. */
 	seedIndex: number;
 	points: Sam2Point[];
+	/** The seed's mask as the user corrected it: what the object is tracked from. */
+	correct?: Sam2Correction;
 	signal?: AbortSignal;
 	/** Called as each frame's mask is ready, in tracking order: the seed, then forward, then backward. */
 	onMask: (index: number, mask: Sam2Mask) => void;
@@ -50,7 +52,7 @@ export async function holdFrame(model: Sam2Video, request: FrameRequest): Promis
  * its mask instead of being run again.
  */
 export async function trackObject(model: Sam2Video, request: TrackRequest): Promise<void> {
-	const { track, timestamps, seedIndex, points, signal, onMask } = request;
+	const { track, timestamps, seedIndex, points, correct, signal, onMask } = request;
 	const sink = new VideoSampleSink(track);
 	const rotation = track.rotation;
 	const total = timestamps.length;
@@ -59,7 +61,7 @@ export async function trackObject(model: Sam2Video, request: TrackRequest): Prom
 	if (!seed) throw new Error('The prompted frame could not be decoded');
 
 	const seedTimestamp = seed.timestamp;
-	const seedMask = await withVideoFrame(seed, (frame) => model.seed(frame, rotation, points, seedIndex));
+	const seedMask = await withVideoFrame(seed, (frame) => model.seed(frame, rotation, points, seedIndex, correct));
 	onMask(seedIndex, seedMask);
 
 	let previous = { timestamp: seedTimestamp, mask: seedMask };

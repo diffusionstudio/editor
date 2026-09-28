@@ -630,6 +630,13 @@ export type MaskProps = Pick<CompositeProps, "hidden"> & TrackChildren & {
   opacity?: number;
   /** Covers what the picture does not instead. Default false. */
   inverted?: boolean;
+  /**
+   * How much a mask file's edge is smoothed, 0–1. At 0 it is exactly where
+   * the model put it; the more, the rounder,
+   * and the more of what is thin or small melts away. Sharp at any size
+   * either way. Default 0.25.
+   */
+  smoothing?: number;
 };
 
 /**
