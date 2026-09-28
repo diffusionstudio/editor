@@ -12,7 +12,7 @@ import { getVideoRect } from './media';
 import { getTargetEffect } from './store';
 
 import type { Entity, World } from 'koota';
-import type { AssetLibrary, MaskFrame, MaskRecipe } from '@diffusionstudio/assets';
+import type { AssetLibrary, MaskFrame, MaskRecipe, VideoAsset } from '@diffusionstudio/assets';
 import type { ObjectTrack } from './store';
 
 /** Where masks go in the library: a folder per video under this one. */
@@ -37,7 +37,7 @@ export async function commitObjectMask(world: World, track: ObjectTrack): Promis
 
 	const { signal } = track.controller;
 	const fps = world.get(FrameRate)?.value ?? 30;
-	const folder = `${MASKS_FOLDER}/${assetName(rect.asset).replace(/\.[^.]+$/, '')}`;
+	const folder = objectMaskFolder(rect.asset);
 
 	const blob = encodeObjectMask(rect.asset, fps, geometryOf(model.imageSize).maskSize, track.masks, {
 		model: model.repo,
@@ -83,8 +83,13 @@ export function encodeObjectMask(
 	);
 }
 
+/** Where masks tracked on `video` go in the library: `masks/<video>`. */
+export function objectMaskFolder(video: VideoAsset): string {
+	return `${MASKS_FOLDER}/${assetName(video).replace(/\.[^.]+$/, '')}`;
+}
+
 /** `Tracking <n>.mask`, `n` the first count not yet taken in `folder`. */
-function nextTrackingName(library: AssetLibrary, folder: string): string {
+export function nextTrackingName(library: AssetLibrary, folder: string): string {
 	for (let n = 1; ; n++) {
 		const name = `Tracking ${n}.${MASK_EXTENSION}`;
 		if (!library.get(`${folder}/${name}`)) return name;

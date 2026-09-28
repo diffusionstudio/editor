@@ -69,6 +69,29 @@ describe("present", () => {
     expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ segments });
   });
 
+  it("writes a segment's mask where output says and its picture to the temp dir", async () => {
+    const found = {
+      model: "tiny" as const, frameRate: 30, start: 0, end: 1, frames: 30, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
+    };
+    const file = join(dir, "masks", "skater.mask");
+    const presented = await present("media_segment", { path: "/c.mp4", time: 0, output: file }, { png: png(8), mask: png(9, 4), ...found });
+    const output = presented.output as { image: string; path: string };
+    expect(output).toEqual({ image: output.image, path: file, ...found });
+    expect(output.image).toMatch(/dapi-segment-.*\.png$/);
+    expect(readFileSync(file)).toEqual(Buffer.from(png(9, 4)));
+    expect(presented.images).toEqual([{ path: output.image, png: png(8) }]);
+  });
+
+  it("keeps the path of a mask the app put into the library, and writes none for a preview", async () => {
+    const found = {
+      model: "tiny" as const, frameRate: 30, start: 1, end: 1.033, frames: 1, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
+    };
+    const stored = await present("media_segment", { path: "/c.mp4", time: 1 }, { png: png(8), path: "/p/assets/masks/a.mask", src: "masks/a.mask", ...found });
+    expect(stored.output).toMatchObject({ path: "/p/assets/masks/a.mask", src: "masks/a.mask" });
+    const preview = await present("media_segment", { path: "/c.mp4", time: 1, preview: true }, { png: png(8), ...found });
+    expect(preview.output).not.toHaveProperty("path");
+  });
+
   it("passes other results through untouched", async () => {
     expect(await present("check", { id: "x" }, { stats: {}, issues: [] })).toEqual({ output: { stats: {}, issues: [] }, images: [] });
   });

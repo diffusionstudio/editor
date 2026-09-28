@@ -13,8 +13,12 @@ import type { Rotation } from './gpu';
 import type { Sam2Mask } from './mask';
 import type { Outputs, Session, Tensor } from './sessions';
 
-/** A prompt on the displayed frame, in 0..1 of its width and height; label 1 is the object, 0 is background. */
-export type Sam2Point = { x: number; y: number; label: 0 | 1 };
+/**
+ * A prompt on the displayed frame, in 0..1 of its width and height; label 1
+ * is the object, 0 is background, and 2 and 3 are the top-left and
+ * bottom-right corners of a box around it, as SAM 2 prompts a box.
+ */
+export type Sam2Point = { x: number; y: number; label: 0 | 1 | 2 | 3 };
 
 /**
  * The prompted frame's mask as the user corrected it, from the model's own:

@@ -17,6 +17,7 @@ import { mediaTranscribe } from "./media-transcribe";
 import { mediaFilmstrip } from "./media-filmstrip";
 import { mediaWaveform } from "./media-waveform";
 import { mediaListen } from "./media-listen";
+import { mediaSegment } from "./media-segment";
 
 import type { Handlers } from "../handler";
 
@@ -37,4 +38,5 @@ export const handlers: Handlers = {
   media_filmstrip: mediaFilmstrip,
   media_waveform: mediaWaveform,
   media_listen: mediaListen,
+  media_segment: mediaSegment,
 };

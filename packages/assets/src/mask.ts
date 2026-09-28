@@ -76,8 +76,11 @@ export function emptyField(cells: number): Int8Array {
 	return new Int8Array(cells).fill(-MASK_FIELD_MAX);
 }
 
-/** A prompt on the footage, in 0..1 of its frame; label 1 marks the object, 0 marks background. */
-export type MaskPoint = { x: number; y: number; label: 0 | 1 };
+/**
+ * A prompt on the footage, in 0..1 of its frame; label 1 marks the object, 0
+ * marks background, and 2 and 3 are the corners of a box around it (see `Sam2Point`).
+ */
+export type MaskPoint = { x: number; y: number; label: 0 | 1 | 2 | 3 };
 
 /**
  * A brush stroke over the prompted frame's mask: its points in 0..1 of the

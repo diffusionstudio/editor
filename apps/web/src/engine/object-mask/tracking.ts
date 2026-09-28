@@ -20,8 +20,8 @@ import {
 import type { Entity, World } from 'koota';
 import type { InputVideoTrack } from 'mediabunny';
 import type { Sam2Mask } from '@diffusionstudio/sam2/mask';
-import type { Sam2Video } from '@diffusionstudio/sam2';
-import type { Sam2ModelId } from '@diffusionstudio/sam2/models';
+import type { Sam2Point, Sam2Video } from '@diffusionstudio/sam2';
+import type { Sam2Model, Sam2ModelId } from '@diffusionstudio/sam2/models';
 import type { AssetLibrary, MaskAsset, MaskFrame, VideoAsset } from '@diffusionstudio/assets';
 import type { MaskPoint, MaskRestore, MaskStroke, ObjectMaskModelLoad, ObjectTrack } from './store';
 
@@ -41,8 +41,12 @@ type Session = {
 	aspect: number;
 };
 
-/** The frame the model holds encoded, by clip and source frame, so prompts on it cost the decoder alone. */
-let held: { clip: Entity; frame: number } | null = null;
+/**
+ * The frame the model holds encoded, by what it was decoded for — a clip, or
+ * footage on its own (see `segmentFootage`) — and its source frame, so
+ * prompts on it cost the decoder alone.
+ */
+let held: { owner: Entity | string; frame: number } | null = null;
 
 /**
  * Prompts the object on `clip` with one more point and segments the current
@@ -303,6 +307,94 @@ export function getMaskRestoreOf(asset: MaskAsset | null | undefined): MaskResto
 	return asset && restore?.asset.id === asset.id ? restore : null;
 }
 
+// ── Footage ──────────────────────────────────────────────────
+
+/**
+ * An object to segment in footage on its own, rather than on a clip: what
+ * the agent's `media_segment` asks. Frames are counted on a grid of `fps`,
+ * the one the mask file will hold.
+ */
+export type FootageSegmentRequest = {
+	asset: VideoAsset;
+	fps: number;
+	model: Sam2ModelId;
+	points: Sam2Point[];
+	/** The frame the points are placed on. */
+	seedFrame: number;
+	/** The frames to mask, `count` from `first`, the seed among them; ignored by a preview. */
+	first: number;
+	count: number;
+	/** Segments the seed frame alone, without tracking: the frame stays encoded, so the next prompt on it is quick. */
+	preview: boolean;
+	signal: AbortSignal;
+	/** The model's download, 0 to 1, while it is on its way. */
+	onDownload?: (progress: number | null) => void;
+	/** Frames masked so far, of `count`. */
+	onProgress?: (completed: number, total: number) => void;
+};
+
+export type FootageSegments = {
+	model: Sam2Model;
+	/** A frame per frame asked for, from `first` (the seed alone for a preview); null where none came. */
+	masks: (MaskFrame | null)[];
+	/** The side of the masks' grid. */
+	grid: number;
+	/** Where a frame of the grid is in the file, in seconds: where its mask was decoded. */
+	seconds: (frame: number) => number;
+};
+
+/**
+ * Segments an object in `request.asset` and follows it through the frames
+ * asked for, or segments the prompted frame alone for a preview. It waits its
+ * turn behind the tool's own sessions and holds the model while it runs, so
+ * hovers wait too. Rejects with an `AbortError` when `signal` fires.
+ */
+export function segmentFootage(request: FootageSegmentRequest): Promise<FootageSegments> {
+	const { asset, fps, points, seedFrame, first, count, signal } = request;
+	return new Promise((resolve, reject) => {
+		queue = queue.then(async () => {
+			busy = true;
+			try {
+				signal.throwIfAborted();
+				const session = await openSession(asset, fps, request.model, request.onDownload);
+				signal.throwIfAborted();
+				const model = session.model.model;
+				const grid = session.model.maskSize;
+
+				if (request.preview) {
+					await holdFrame(session, `${asset.id}@${fps}`, seedFrame);
+					const mask = await session.model.preview(points);
+					resolve({ model, masks: [maskFrame(mask)], grid, seconds: session.seconds });
+					return;
+				}
+
+				const { trackObject } = await import('@diffusionstudio/sam2');
+				const masks = new Array<MaskFrame | null>(count).fill(null);
+				let completed = 0;
+				releaseFrame(session);
+				session.model.reset();
+				await trackObject(session.model, {
+					track: session.video,
+					timestamps: masks.map((_, i) => session.seconds(first + i)),
+					seedIndex: seedFrame - first,
+					points,
+					signal,
+					onMask: (index, mask) => {
+						masks[index] = maskFrame(mask);
+						request.onProgress?.(++completed, count);
+					},
+				});
+				signal.throwIfAborted();
+				resolve({ model, masks, grid, seconds: session.seconds });
+			} catch (error) {
+				reject(error);
+			} finally {
+				busy = false;
+			}
+		});
+	});
+}
+
 // ── The model ────────────────────────────────────────────────────
 
 /** Whether the tool has been opened, and so wants its model loaded. */
@@ -419,12 +511,12 @@ function corrector(strokes: readonly MaskStroke[], aspect: number): ((mask: Sam2
 	return strokes.length > 0 ? (mask) => paintMask(mask, strokes, aspect) : undefined;
 }
 
-/** Has the model hold `frame` of `clip`, unless it already does. */
-async function holdFrame(session: Session, clip: Entity, frame: number): Promise<void> {
-	if (held && held.clip === clip && held.frame === frame && session.model.holding) return;
+/** Has the model hold `frame` of what `owner` plays, unless it already does. */
+async function holdFrame(session: Session, owner: Entity | string, frame: number): Promise<void> {
+	if (held && held.owner === owner && held.frame === frame && session.model.holding) return;
 	const { holdFrame: hold } = await import('@diffusionstudio/sam2');
 	await hold(session.model, { track: session.video, timestamp: session.seconds(frame) });
-	held = { clip, frame };
+	held = { owner, frame };
 }
 
 function releaseFrame(session: Session): void {

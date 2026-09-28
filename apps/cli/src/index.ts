@@ -66,6 +66,27 @@ function assetPath(ref: string): string {
   return ref;
 }
 
+/** `x,y` as a point, added to the ones given before; a malformed one becomes NaN for the schema to reject. */
+const point = (value: string, previous: Array<{ x: number; y: number }> = []): Array<{ x: number; y: number }> => {
+  const [x = NaN, y = NaN, ...rest] = value.split(",").map(numeric);
+  return [...previous, rest.length > 0 ? { x: NaN, y: NaN } : { x, y }];
+};
+
+/** `x0,y0,x1,y1` as a box; the wrong count of numbers becomes NaN for the schema to reject. */
+const box = (value: string): [number, number, number, number] => {
+  const bounds = value.split(",").map(numeric);
+  return bounds.length === 4 ? (bounds as [number, number, number, number]) : [NaN, NaN, NaN, NaN];
+};
+
+/**
+ * A mask's destination: a path spelled as one on disk (absolute, or starting
+ * with `.`) resolves against the working directory; anything else is a
+ * library path, passed through for the app to resolve in the open project.
+ */
+function maskOutput(ref: string): string {
+  return isAbsolute(ref) || ref.startsWith(".") ? resolve(ref) : ref;
+}
+
 const program = new Command();
 
 program
@@ -206,6 +227,28 @@ media
   .option("-s, --start <time>", field("media_listen", "start"))
   .option("-e, --end <time>", field("media_listen", "end"))
   .action((ref: string, opts: Omit<ToolInput<"media_listen">, "path">) => run("media_listen", { path: assetPath(ref), ...opts }));
+
+media
+  .command("segment")
+  .alias("mask")
+  .description(describe("media_segment"))
+  .argument("<path>", field("media_segment", "path"))
+  .requiredOption("-t, --time <time>", field("media_segment", "time"))
+  .option("-p, --point <x,y>", `${field("media_segment", "points")}; repeat for more`, point)
+  .option("-x, --exclude <x,y>", `${field("media_segment", "exclude")}; repeat for more`, point)
+  .option("-b, --box <x0,y0,x1,y1>", field("media_segment", "box"), box)
+  .option("--preview", field("media_segment", "preview"))
+  .option("-s, --start <time>", field("media_segment", "start"))
+  .option("-e, --end <time>", field("media_segment", "end"))
+  .option("-m, --model <size>", field("media_segment", "model"))
+  .option(
+    "-o, --output <path>",
+    `${field("media_segment", "output")}; a path starting with . resolves against the working directory`,
+  )
+  .action((ref: string, opts: Omit<ToolInput<"media_segment">, "path"> & { point?: ToolInput<"media_segment">["points"] }) => {
+    const { point: points, ...rest } = opts;
+    return run("media_segment", { path: assetPath(ref), ...rest, points, output: opts.output && maskOutput(opts.output) });
+  });
 
 program
   .command("models")
