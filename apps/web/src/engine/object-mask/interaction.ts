@@ -19,9 +19,10 @@ const CLICK_DISTANCE = 4;
 
 /**
  * The handler for the region the HUD lays over the tool's clip. With points,
- * a click prompts the object under the pointer; with the brush, a drag paints
- * it into the mask. Either adds to the object or subtracts from it, as the
- * tool's op says; alt or shift held swaps the op.
+ * a click prompts the object under the pointer, adding to it or subtracting
+ * from it as the tool's op says (alt or shift held swaps the op); with the
+ * brush, a drag paints what the model missed into the mask. The brush only
+ * adds: taking away is left to points.
  */
 export function handleObjectMaskInteraction(world: World, event: DispatchedPointerEvent): void {
 	if (objectMaskMode() === 'brush') {
@@ -44,12 +45,12 @@ export function handleObjectMaskInteraction(world: World, event: DispatchedPoint
 	promptObjectMask(world, clip, { ...point, label: heldObjectMaskLabel(world) });
 }
 
-/** A press starts a stroke on the video, every move until the release carries it on. */
+/** A press starts an adding stroke on the video, every move until the release carries it on. */
 function handleBrush(world: World, event: DispatchedPointerEvent): void {
 	switch (event.type) {
 		case 'dragstart':
 			if (event.target.kind !== 'hud' || !event.target.entity) return;
-			beginMaskStroke(world, event.target.entity, event.clientX, event.clientY, heldObjectMaskLabel(world));
+			beginMaskStroke(world, event.target.entity, event.clientX, event.clientY, 1);
 			return;
 		case 'drag':
 			extendMaskStroke(world, event.clientX, event.clientY);

@@ -122,7 +122,7 @@ export function ObjectMaskBar() {
       <ModelMenu disabled={busy()} />
       <Separator orientation="vertical" class="min-h-5" />
       <ModePopover />
-      <OpMenu />
+      <OpMenu disabled={objectMaskMode() === "brush"} />
       <Separator orientation="vertical" class="min-h-5" />
       <Tooltip>
         <TooltipTrigger as={Button} variant="ghost" class="text-muted-foreground" onClick={() => cancelObjectMask(world)}>
@@ -293,10 +293,10 @@ function ModePopover() {
 }
 
 /** Whether clicks add to the object or subtract from it; the button shows the op alt swaps in while held. */
-function OpMenu() {
+function OpMenu(props: { disabled: boolean }) {
   const world = useWorld();
   const held = useDerived(() => heldObjectMaskOp(world));
-  const op = () => OPS.find((entry) => entry.value === held()) ?? OPS[0];
+  const op = () => (props.disabled ? OPS[0] : OPS.find((entry) => entry.value === held()) ?? OPS[0]);
 
   return (
     <DropdownMenu placement="top-start" gutter={8}>
@@ -305,6 +305,7 @@ function OpMenu() {
           as={(triggerProps: object) => (
             <DropdownMenuTrigger<typeof Button>
               {...triggerProps}
+              disabled={props.disabled}
               as={(buttonProps) => (
                 <Button {...buttonProps} variant="ghost" class="gap-0 pl-0.5 text-muted-foreground">
                   <Icon name={op().icon} />

@@ -196,7 +196,7 @@ function drawMask(ctx: Ctx2D, rect: VideoRect, mask: Sam2Mask | MaskFrame, size:
 
 /**
  * The brush's outline under the pointer, round on the footage, while there is
- * a mask on the clip to correct: red when it erases, as a background point is.
+ * a mask on the clip to correct.
  */
 function drawBrush(world: World, ctx: Ctx2D, target: { clip: Entity; rect: VideoRect }, resolution: number): void {
 	const pointer = world.get(Pointer);
@@ -219,7 +219,7 @@ function drawBrush(world: World, ctx: Ctx2D, target: { clip: Entity; rect: Video
 	ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
 	ctx.stroke();
 	ctx.lineWidth = 1.5 * resolution;
-	ctx.strokeStyle = heldObjectMaskLabel(world) === 0 ? BACKGROUND_POINT : '#FFFFFF';
+	ctx.strokeStyle = '#FFFFFF';
 	ctx.stroke();
 	ctx.restore();
 }
