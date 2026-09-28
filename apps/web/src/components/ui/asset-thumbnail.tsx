@@ -5,7 +5,7 @@
 import { Show, For, createResource, onCleanup } from 'solid-js';
 import { cx } from '@/lib/cva';
 import { getAssetFile } from '@diffusionstudio/runtime';
-import { deriveThumbnail, DEFAULT_THUMBNAIL_WIDTH, derivePeaks } from '@diffusionstudio/assets';
+import { deriveThumbnail, DEFAULT_THUMBNAIL_WIDTH, derivePeaks, MASK_MIME_TYPE } from '@diffusionstudio/assets';
 
 import type { Asset as LibraryAsset, AssetCache, AudioAsset, VideoAsset, ImageAsset } from '@diffusionstudio/assets';
 
@@ -65,8 +65,12 @@ function sourceWidth(asset: Asset, size?: ThumbnailSize): number {
   return asset.width ? Math.min(width, Math.ceil(asset.width)) : width;
 }
 
+/** Whether the asset has a picture to thumbnail: an image, a video, or a mask's matte. */
+const hasPicture = (asset: Asset): boolean =>
+  asset.mimeType.startsWith('image') || asset.mimeType.startsWith('video') || asset.mimeType === MASK_MIME_TYPE;
+
 /**
- * The thumbnail of an image or video: from the library's cache when there is
+ * The thumbnail of an image, video or mask: from the library's cache when there is
  * one (kept in the project's `cache/` across sessions), derived on the spot
  * otherwise. Scaled to `width` at the asset's own aspect ratio; the
  * container crops it.
@@ -175,7 +179,7 @@ export function AssetThumbnail(props: AssetThumbnailProps) {
 
   return (
     <div class={cx('relative', props.class)} draggable={props.draggable}>
-      <Show when={props.asset.mimeType.startsWith('image') || props.asset.mimeType.startsWith('video')}>
+      <Show when={hasPicture(props.asset)}>
         <MediaThumbnail asset={props.asset} width={width()} cache={props.cache} />
       </Show>
       <Show when={props.asset.mimeType.startsWith('audio')}>
