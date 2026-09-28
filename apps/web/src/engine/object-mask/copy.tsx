@@ -4,10 +4,11 @@
 
 import { assetName } from '@diffusionstudio/assets';
 import { Mask } from '@diffusionstudio/reconciler';
-import { AssetId, Blur, Cache, Library, getParentNode } from '@diffusionstudio/runtime';
+import { AssetId, Blur, Cache, Library, Mask as MaskTrait, getParentNode } from '@diffusionstudio/runtime';
 
 import { getDocumentEditor } from '../editor';
 import { getVideoRect } from './media';
+import { getMaskRestoreOf } from './tracking';
 
 import type { Entity, World } from 'koota';
 import type { MaskAsset } from '@diffusionstudio/assets';
@@ -66,6 +67,25 @@ export function copyObjectMask(world: World, effect: Entity, source: ObjectMaskS
 		/>
 	));
 	return mask ?? null;
+}
+
+/**
+ * Deletes the tracked frames of `source`: every `<mask>` naming them leaves
+ * the document, wherever it is, and the file leaves the library — a mask
+ * without its frames would only fail to load. A restore of the file is
+ * stopped, since there is nothing left for it to write back to.
+ */
+export async function removeObjectMask(world: World, source: ObjectMaskSource): Promise<void> {
+	const id = source.asset.id;
+	const users = world.query(MaskTrait, AssetId).filter((mask) => mask.get(AssetId)?.value === id);
+
+	if (users.length > 0) {
+		getDocumentEditor(world).remove(users);
+	}
+
+	getMaskRestoreOf(source.asset)?.controller.abort();
+
+	await world.get(Library)?.remove([source.asset]);
 }
 
 /** The feather another mask of the same frames has, anywhere on the effect's clip. */
