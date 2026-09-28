@@ -9,7 +9,7 @@ import { geometryOf } from '@diffusionstudio/sam2/models';
 import { Pointer } from '../traits';
 import { endMaskStroke, paintableObjectTrack } from './brush';
 import { maskFrame } from './frame';
-import { backgroundHeld, handleObjectMaskInteraction } from './interaction';
+import { handleObjectMaskInteraction, heldObjectMaskLabel } from './interaction';
 import { currentSourceFrame, getVideoRect, pointOnVideo, videoPointAt, videoPointToDevice } from './media';
 import {
 	brushRadius, clearTargetEffect, getObjectHover, getObjectMask, getObjectTrack, getTargetClip, objectMaskMode,
@@ -43,7 +43,7 @@ const outlines = new Map<Sam2Mask | MaskFrame, Path2D>();
 
 /** Whether the tool was up last frame, so putting it down cleans up once. */
 let active = false;
-let lastHover: { frame: number; x: number; y: number } | null = null;
+let lastHover: { frame: number; x: number; y: number; label: 0 | 1 } | null = null;
 
 /**
  * Everything the tool puts on the canvas while it is up: the session over its
@@ -114,9 +114,13 @@ function updateHover(world: World, target: { clip: Entity; rect: VideoRect } | n
 	}
 
 	const frame = currentSourceFrame(world, target.clip);
-	if (lastHover && lastHover.frame === frame && Math.hypot(point.x - lastHover.x, point.y - lastHover.y) < HOVER_STEP) return;
-	lastHover = { frame, x: point.x, y: point.y };
-	hoverObjectMask(world, target.clip, { ...point, label: 1 });
+	const label = heldObjectMaskLabel(world);
+	if (
+		lastHover && lastHover.frame === frame && lastHover.label === label
+		&& Math.hypot(point.x - lastHover.x, point.y - lastHover.y) < HOVER_STEP
+	) return;
+	lastHover = { frame, x: point.x, y: point.y, label };
+	hoverObjectMask(world, target.clip, { ...point, label });
 }
 
 /**
@@ -207,7 +211,7 @@ function drawBrush(world: World, ctx: Ctx2D, target: { clip: Entity; rect: Video
 	ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
 	ctx.stroke();
 	ctx.lineWidth = 1.5 * resolution;
-	ctx.strokeStyle = backgroundHeld(world) ? BACKGROUND_POINT : '#FFFFFF';
+	ctx.strokeStyle = heldObjectMaskLabel(world) === 0 ? BACKGROUND_POINT : '#FFFFFF';
 	ctx.stroke();
 	ctx.restore();
 }

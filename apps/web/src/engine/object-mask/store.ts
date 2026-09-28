@@ -129,14 +129,22 @@ export function setObjectHover(next: ObjectHover | null): void {
 /** Clicks prompt the model with points; the brush paints corrections over the mask it made. */
 export type ObjectMaskMode = 'points' | 'brush';
 
+/**
+ * Whether a click or a stroke adds to the object (label 1) or subtracts from
+ * it (label 0). Holding alt swaps it for as long as the key is down (see
+ * `heldObjectMaskOp`).
+ */
+export type ObjectMaskOp = 'add' | 'subtract';
+
 /** The brush's radius when the tool is first picked, in 0..1 of the frame's height. */
 export const DEFAULT_BRUSH_RADIUS = 0.03;
 
 const [objectMaskMode, setObjectMaskMode] = createSignal<ObjectMaskMode>('points');
+const [objectMaskOp, setObjectMaskOp] = createSignal<ObjectMaskOp>('add');
 const [brushRadius, setBrushRadius] = createSignal(DEFAULT_BRUSH_RADIUS);
 
-/** The tool's mode and brush size, reactive; kept while the tool is put down. */
-export { objectMaskMode, setObjectMaskMode, brushRadius, setBrushRadius };
+/** The tool's mode, op and brush size, reactive; kept while the tool is put down. */
+export { objectMaskMode, setObjectMaskMode, objectMaskOp, setObjectMaskOp, brushRadius, setBrushRadius };
 
 // ── The model ────────────────────────────────────────────────
 

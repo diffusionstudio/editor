@@ -37,6 +37,7 @@ import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
 import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
+import { cancelObjectMask, getObjectTrack, setObjectMaskMode, trackObjectMask, undoMaskStroke } from '../object-mask';
 import { splitAtPlayhead } from '../split';
 import { Keys, MODIFIER_KEYS, Pointer } from '../traits';
 import { editTransform } from './interactions';
@@ -48,6 +49,7 @@ import type { Entity, World } from 'koota';
 type Shortcut = {
 	keys: string[];
 	action: (world: World) => void;
+	active?: (world: World) => boolean;
 }
 
 /** The node kinds a shortcut selects, hides or seeks around. */
@@ -442,6 +444,14 @@ function deselect(world: World): void {
 	if (tool !== ToolType.MOVE && tool !== ToolType.HAND) selectTool(ToolType.MOVE)(world);
 }
 
+const objectMaskTool = (world: World): boolean => world.get(Tool)?.value === ToolType.OBJECT_MASK;
+
+/** A brush stroke to take back: ⌘Z undoes strokes before it undoes edits. */
+const maskStrokeToUndo = (world: World): boolean => {
+	const track = getObjectTrack();
+	return objectMaskTool(world) && track?.status === 'seeded' && track.strokes.length > 0;
+};
+
 const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['z', 'mod', '!shift'], action: undoEdit },
 	{ keys: ['z', 'mod', 'shift'], action: redoEdit },
@@ -497,6 +507,12 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['arrowup', 'shift'], action: nudge(0, -NUDGE_FAST) },
 	{ keys: ['arrowdown', 'shift'], action: nudge(0, NUDGE_FAST) },
 	{ keys: [' '], action: onSpacePressed },
+	// Object mask tool shortcuts
+	{ keys: ['p', '!mod'], action: () => setObjectMaskMode('points'), active: objectMaskTool },
+	{ keys: ['b', '!mod'], action: () => setObjectMaskMode('brush'), active: objectMaskTool },
+	{ keys: ['escape'], action: cancelObjectMask, active: objectMaskTool },
+	{ keys: ['enter', 'mod', '!shift', '!alt'], action: trackObjectMask, active: objectMaskTool },
+	{ keys: ['z', 'mod', '!shift'], action: undoMaskStroke, active: maskStrokeToUndo },
 ];
 
 const LIFTED_SHORTCUTS: readonly Shortcut[] = [
@@ -515,7 +531,7 @@ const LIFTED_SHORTCUTS: readonly Shortcut[] = [
  * the key-up of a key released while ⌘ is down, so a fresh ⌘ press must not
  * complete a shortcut on its own.
  */
-function matches(shortcut: Shortcut, moved: Set<string>, held: Set<string>): boolean {
+function matches(world: World, shortcut: Shortcut, moved: Set<string>, held: Set<string>): boolean {
 	let triggered = false;
 
 	for (const key of shortcut.keys) {
@@ -528,7 +544,7 @@ function matches(shortcut: Shortcut, moved: Set<string>, held: Set<string>): boo
 		}
 	}
 
-	return triggered;
+	return triggered && (shortcut.active?.(world) ?? true);
 }
 
 /** On a frame with a fresh press or release, runs the shortcut it spells. */
@@ -537,11 +553,11 @@ export function shortcutSystem(world: World): void {
 	if (!keys) return;
 
 	if (keys.pressed.size) {
-		PRESSED_SHORTCUTS.find(shortcut => matches(shortcut, keys.pressed, keys.held))?.action(world);
+		PRESSED_SHORTCUTS.find(shortcut => matches(world, shortcut, keys.pressed, keys.held))?.action(world);
 	}
 
 	if (keys.lifted.size) {
-		LIFTED_SHORTCUTS.find(shortcut => matches(shortcut, keys.lifted, keys.held))?.action(world);
+		LIFTED_SHORTCUTS.find(shortcut => matches(world, shortcut, keys.lifted, keys.held))?.action(world);
 	}
 
 	updateSpaceHold(world, keys.held);

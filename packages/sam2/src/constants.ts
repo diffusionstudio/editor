@@ -28,7 +28,7 @@ export type Sam2Model = {
 export const SAM2_MODELS: readonly Sam2Model[] = [
 	{
 		id: 'tiny',
-		label: 'Tiny',
+		label: 'SAM 2.1 Tiny',
 		repo: 'https://huggingface.co/diffusionstudio/sam2.1-tiny-video-onnx-fp16/resolve/66673b5db39371b7dd7847f4d3bc0d4f4179b79e',
 		imageSize: 512,
 		files: {
@@ -42,7 +42,7 @@ export const SAM2_MODELS: readonly Sam2Model[] = [
 	},
 	{
 		id: 'small',
-		label: 'Small',
+		label: 'SAM 2.1 Small',
 		repo: 'https://huggingface.co/diffusionstudio/sam2.1-small-video-onnx-fp16/resolve/927ecec6e6ae2727d0af7720eefdb07f2efe4689',
 		imageSize: 1024,
 		files: {
@@ -56,7 +56,7 @@ export const SAM2_MODELS: readonly Sam2Model[] = [
 	},
 	{
 		id: 'base-plus',
-		label: 'Base+',
+		label: 'SAM 2.1 Base',
 		repo: 'https://huggingface.co/diffusionstudio/sam2.1-base-plus-video-onnx-fp16/resolve/386b83e09a774fe2782d86fd1b8cb5aaf718aa9d',
 		imageSize: 1024,
 		files: {
@@ -70,7 +70,7 @@ export const SAM2_MODELS: readonly Sam2Model[] = [
 	},
 	{
 		id: 'large',
-		label: 'Large',
+		label: 'SAM 2.1 Large',
 		repo: 'https://huggingface.co/diffusionstudio/sam2.1-large-video-onnx-fp16/resolve/98dbd222d9b3f75d15fe63a5c2a22b0b0029eea1',
 		imageSize: 1024,
 		files: {

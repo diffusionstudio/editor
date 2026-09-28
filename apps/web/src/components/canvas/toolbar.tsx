@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
+import { ObjectMaskBar } from "./object-mask-bar";
 import { For, Show, createMemo } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
@@ -44,7 +45,12 @@ export function Toolbar() {
         <PromptInput initialConfig={promptInputConfig()} />
       </Show>
       <Show when={!promptInputOpen()}>
-        <ActionBar openPromptInput={openPromptInput} />
+        <Show
+          when={selectedTool() === ToolType.OBJECT_MASK}
+          fallback={<ActionBar openPromptInput={openPromptInput} />}
+        >
+          <ObjectMaskBar />
+        </Show>
       </Show>
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl p-1.5 bg-background border border-border-strong flex gap-2 items-center z-10">
         <div class="flex gap-1">
@@ -87,8 +93,8 @@ export function Toolbar() {
                         <Icon name="confirm-check" class="text-foreground" />
                       </div>
                       <Icon name={cursor.menuIcon} class="text-foreground" />
-                      <span class="min-w-12 mx-1">{cursor.label}</span>
-                      <DropdownMenuShortcut>{cursor.shortcut}</DropdownMenuShortcut>
+                      <span class="mx-1 flex-1 whitespace-nowrap">{cursor.label}</span>
+                      <DropdownMenuShortcut class="pl-6">{cursor.shortcut}</DropdownMenuShortcut>
                     </DropdownMenuItem>
                   )}
                 </For>

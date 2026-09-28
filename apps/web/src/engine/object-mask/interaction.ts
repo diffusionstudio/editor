@@ -7,11 +7,12 @@ import { RenderSurface } from '@diffusionstudio/runtime';
 import { Keys, Pointer } from '../traits';
 import { beginMaskStroke, endMaskStroke, extendMaskStroke } from './brush';
 import { getVideoRect, pointOnVideo } from './media';
-import { objectMaskMode } from './store';
+import { objectMaskMode, objectMaskOp } from './store';
 import { promptObjectMask } from './tracking';
 
 import type { World } from 'koota';
 import type { DispatchedPointerEvent } from '@diffusionstudio/runtime';
+import type { ObjectMaskOp } from './store';
 
 /** A pointer that traveled less than this, in CSS pixels, between press and release is a click. */
 const CLICK_DISTANCE = 4;
@@ -19,7 +20,8 @@ const CLICK_DISTANCE = 4;
 /**
  * The handler for the region the HUD lays over the tool's clip. With points,
  * a click prompts the object under the pointer; with the brush, a drag paints
- * it into the mask. With alt or shift held either marks background instead.
+ * it into the mask. Either adds to the object or subtracts from it, as the
+ * tool's op says; alt or shift held swaps the op.
  */
 export function handleObjectMaskInteraction(world: World, event: DispatchedPointerEvent): void {
 	if (objectMaskMode() === 'brush') {
@@ -39,7 +41,7 @@ export function handleObjectMaskInteraction(world: World, event: DispatchedPoint
 	const point = pointOnVideo(rect, event.clientX, event.clientY);
 	if (!point) return;
 
-	promptObjectMask(world, clip, { ...point, label: backgroundHeld(world) ? 0 : 1 });
+	promptObjectMask(world, clip, { ...point, label: heldObjectMaskLabel(world) });
 }
 
 /** A press starts a stroke on the video, every move until the release carries it on. */
@@ -47,7 +49,7 @@ function handleBrush(world: World, event: DispatchedPointerEvent): void {
 	switch (event.type) {
 		case 'dragstart':
 			if (event.target.kind !== 'hud' || !event.target.entity) return;
-			beginMaskStroke(world, event.target.entity, event.clientX, event.clientY, backgroundHeld(world) ? 0 : 1);
+			beginMaskStroke(world, event.target.entity, event.clientX, event.clientY, heldObjectMaskLabel(world));
 			return;
 		case 'drag':
 			extendMaskStroke(world, event.clientX, event.clientY);
@@ -58,8 +60,16 @@ function handleBrush(world: World, event: DispatchedPointerEvent): void {
 	}
 }
 
-/** Whether alt or shift is held: the gesture marks background rather than the object. */
-export function backgroundHeld(world: World): boolean {
+/** The op a gesture makes now: the tool's own, swapped while alt or shift is held. */
+export function heldObjectMaskOp(world: World): ObjectMaskOp {
 	const held = world.get(Keys)?.held;
-	return !!held && (held.has('alt') || held.has('shift'));
+	const swapped = !!held && (held.has('alt') || held.has('shift'));
+	const op = objectMaskOp();
+	if (!swapped) return op;
+	return op === 'add' ? 'subtract' : 'add';
+}
+
+/** The prompt label a gesture carries now: 1 adds to the object, 0 subtracts from it. */
+export function heldObjectMaskLabel(world: World): 0 | 1 {
+	return heldObjectMaskOp(world) === 'add' ? 1 : 0;
 }

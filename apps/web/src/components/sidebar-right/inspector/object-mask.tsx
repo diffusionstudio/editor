@@ -2,8 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Show, createResource, onMount } from "solid-js";
-import { SAM2_MODELS, downloadSize, sam2Model } from "@diffusionstudio/sam2/models";
+import { Show } from "solid-js";
 import { DEFAULT_MASK_SMOOTHING, assetName } from "@diffusionstudio/assets";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -17,250 +16,24 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
 import { Keyframe } from "@/components/ui/keyframe";
-import { PanelSection } from "@/components/ui/panel-section";
-import { Progress } from "@/components/ui/progress";
-import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Select, SelectContent, SelectItem, SelectPortal, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
 import { Switch, SwitchControl, SwitchInput, SwitchThumb } from "@/components/ui/switch";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import {
-  AssetId, Computed, Effect, Hidden, Library, Mask, Name, VideoDecoderHandle, getParentNode,
-} from "@diffusionstudio/runtime";
+import { AssetId, Computed, Hidden, Library, Mask, VideoDecoderHandle, getParentNode } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 import {
-  brushRadius,
   canRestoreObjectMask,
-  clearObjectTrack,
-  getMaskRestore,
   getMaskRestoreOf,
-  getObjectTrack,
-  objectMaskMode,
-  objectMaskModel,
-  objectMaskModelLoad,
-  pickObjectMaskModel,
-  preloadObjectMaskModel,
   restoreObjectMask,
-  setBrushRadius,
-  setObjectMaskMode,
-  targetEffect,
-  trackObjectMask,
-  undoMaskStroke,
   useObjectMasks,
 } from "@/engine/object-mask";
-import { effectOption } from "./effect-types";
 
 import type { Entity, World } from "koota";
 import type { MaskAsset } from "@diffusionstudio/assets";
-import type { Sam2Model, Sam2ModelId } from "@diffusionstudio/sam2/models";
-import type {
-  MaskRestore,
-  ObjectMaskMode,
-  ObjectMaskModelLoad,
-  ObjectMaskSource,
-  ObjectTrackStatus,
-} from "@/engine/object-mask";
-
-const MODE_TABS = [
-  { value: "points", label: "Points" },
-  { value: "brush", label: "Brush" },
-] as const satisfies readonly { value: ObjectMaskMode; label: string }[];
-
-/** What each model is picked for: tiny at half resolution, the others at the full 1024. */
-const MODEL_NOTES: Record<Sam2ModelId, string> = {
-  tiny: "Fastest",
-  small: "Finer edges",
-  "base-plus": "Small objects",
-  large: "Best, slowest",
-};
-
-/** The brush's size on its slider: its diameter, in percent of the frame's height. */
-const BRUSH_SIZE = { min: 1, max: 30 };
-
-type SessionState = {
-  status: ObjectTrackStatus | null;
-  completed: number;
-  total: number;
-  error: string | null;
-  points: number;
-  strokes: number;
-};
-
-/**
- * The object mask tool's panel, the sidebar while the tool is up: how to
- * prompt (hover a video for the segment under the pointer, click to pick),
- * where the session stands, and the button that tracks the picked object
- * through its clip and writes the mask into the document — an opacity
- * effect with a `<mask>` on the clip, whose settings then open from the
- * effect's inspector.
- */
-export function ObjectMaskPanel() {
-  const world = useWorld();
-
-  const state = useDerived<SessionState | null>(() => {
-    const track = getObjectTrack();
-    if (!track) return null;
-    return {
-      status: track.status,
-      completed: track.completed,
-      total: track.masks.length,
-      error: track.error,
-      points: track.points.length,
-      strokes: track.strokes.length,
-    };
-  }, sameState);
-
-  const busy = () => {
-    const status = state()?.status;
-    return status === "loading" || status === "segmenting" || status === "tracking" || status === "saving";
-  };
-
-  // Where the mask goes: under the effect the tool was started for, else
-  // under an opacity effect on the clip — the cut-out.
-  const destination = () => {
-    const effect = targetEffect();
-    if (!effect?.isAlive()) return "The tracked mask goes under an Opacity effect on the clip: the cut-out.";
-    const clip = getParentNode(effect);
-    const label = effectOption(effect.get(Effect)?.type).label;
-    const name = clip?.get(Name)?.value;
-    return `The tracked mask goes under ${label}${name ? ` on ${name}` : ""}.`;
-  };
-
-  // The model is fetched as the tool opens, so it is ready by the first click.
-  onMount(preloadObjectMaskModel);
-
-  // The chosen model's load, while it is under way or failed; a restore's other model is not shown.
-  const modelLoad = () => {
-    const load = objectMaskModelLoad();
-    return load && load.id === objectMaskModel() && load.phase !== "ready" ? load : null;
-  };
-  // A restore holds the model too: switching would take it away mid-way.
-  const restoring = useDerived(() => getMaskRestore() !== null);
-
-  // Which models are on this machine already, looked at again as loads finish.
-  const [cached] = createResource(
-    () => objectMaskModelLoad()?.phase ?? "idle",
-    async () => (await import("@diffusionstudio/sam2")).cachedSam2Models(),
-  );
-  const modelTag = (model: Sam2Model) =>
-    cached()?.has(model.id) ? MODEL_NOTES[model.id] : `${MODEL_NOTES[model.id]} · ${formatSize(downloadSize(model))}`;
-
-  return (
-    <PanelSection title="Object Mask">
-      <ControlRow label="Model">
-        <Select<Sam2Model>
-          value={sam2Model(objectMaskModel())}
-          options={[...SAM2_MODELS]}
-          optionValue="id"
-          optionTextValue="label"
-          disabled={busy() || restoring()}
-          onChange={(model) => model && pickObjectMaskModel(model.id)}
-          itemComponent={(itemProps) => (
-            <SelectItem item={itemProps.item}>
-              <div class="flex min-w-0 flex-1 items-center">
-                <span>{itemProps.item.rawValue.label}</span>
-                <span class="ml-auto pl-3 text-xxs text-muted-foreground group-[[data-highlighted]]:text-[inherit]">
-                  {modelTag(itemProps.item.rawValue)}
-                </span>
-              </div>
-            </SelectItem>
-          )}
-        >
-          <SelectTrigger>
-            <SelectValue<Sam2Model>>
-              {(select) => (
-                <>
-                  <span>{select.selectedOption()?.label}</span>
-                  <span class="ml-auto text-xxs text-muted-foreground">
-                    {select.selectedOption() && modelTag(select.selectedOption())}
-                  </span>
-                </>
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPortal>
-            <SelectContent />
-          </SelectPortal>
-        </Select>
-      </ControlRow>
-      <Show when={modelLoad()}>
-        {(load) => (
-          <div class="flex flex-col gap-2">
-            <span class="text-xs" classList={{ "text-destructive": load().phase === "error" }}>
-              {describeModelLoad(load())}
-            </span>
-            <Show when={load().phase === "download"}>
-              <Progress value={load().progress ?? 0} minValue={0} maxValue={1} />
-            </Show>
-            <Show when={load().phase === "error"}>
-              <div>
-                <Button size="small" variant="ghost" onClick={preloadObjectMaskModel}>
-                  Retry
-                </Button>
-              </div>
-            </Show>
-          </div>
-        )}
-      </Show>
-      <SegmentedIconTabs value={objectMaskMode} onChange={setObjectMaskMode} items={MODE_TABS} />
-      <Show
-        when={objectMaskMode() === "brush"}
-        fallback={
-          <p class="text-xs text-muted-foreground">
-            Hover a video clip to see what a click picks. Click to mask the object on this frame; more clicks refine
-            it, alt-click marks background. Then track it through the clip.
-          </p>
-        }
-      >
-        <p class="text-xs text-muted-foreground">
-          Paint over the mask to add what it missed; alt-drag erases what it should not have. Click the object with
-          Points first: the brush corrects the mask, and tracking follows the corrected shape.
-        </p>
-        <ControlRow label="Size">
-          <SliderInput
-            value={Math.round(brushRadius() * 200)}
-            min={BRUSH_SIZE.min}
-            max={BRUSH_SIZE.max}
-            onChange={(value) => setBrushRadius(Math.min(BRUSH_SIZE.max, Math.max(BRUSH_SIZE.min, value)) / 200)}
-            format={(value) => `${value}%`}
-          />
-        </ControlRow>
-      </Show>
-      <p class="text-xs text-muted-foreground">{destination()}</p>
-
-      <Show when={state()}>
-        {(session) => (
-          <div class="flex flex-col gap-2">
-            <span class="text-xs" classList={{ "text-destructive": session().status === "error" }}>
-              {describe(session())}
-            </span>
-            <Show when={session().status === "tracking"}>
-              <Progress value={progress(session())} minValue={0} maxValue={1} />
-            </Show>
-          </div>
-        )}
-      </Show>
-
-      <div class="flex items-center gap-2">
-        <Button size="small" disabled={state()?.status !== "seeded"} onClick={() => trackObjectMask(world)}>
-          Track mask
-        </Button>
-        <Show when={state()?.status === "seeded" && state()!.strokes > 0}>
-          <Button size="small" variant="ghost" onClick={() => undoMaskStroke(world)}>
-            Undo stroke
-          </Button>
-        </Show>
-        <Show when={state()}>
-          <Button size="small" variant="ghost" onClick={clearObjectTrack}>
-            {busy() ? "Cancel" : "Clear"}
-          </Button>
-        </Show>
-      </div>
-    </PanelSection>
-  );
-}
+import type { MaskRestore, ObjectMaskSource } from "@/engine/object-mask";
 
 type ObjectMaskInspectorProps = {
   /** The `<mask>`; its `src` is the tracked picture. */
@@ -481,49 +254,6 @@ export function objectMaskName(world: World, mask: Entity): string {
   return asset ? assetName(asset).replace(/\.[^.]+$/, "") : "Mask";
 }
 
-function describe(state: SessionState): string {
-  const strokes = state.strokes === 0 ? "" : ` and ${state.strokes} ${state.strokes === 1 ? "stroke" : "strokes"}`;
-  const points = `${state.points} ${state.points === 1 ? "point" : "points"}${strokes}`;
-  switch (state.status) {
-    case "loading":
-      return "Waiting for the model...";
-    case "segmenting":
-      return `Masking from ${points}...`;
-    case "seeded":
-      return `Masked this frame from ${points}. Track it to mask the whole clip.`;
-    case "tracking":
-      return `Tracking, ${state.completed} of ${state.total} frames`;
-    case "saving":
-      return "Saving the mask...";
-    case "error":
-      return state.error ?? "Tracking failed";
-    default:
-      return "";
-  }
-}
-
-function progress(state: SessionState): number {
-  return state.total === 0 ? 0 : state.completed / state.total;
-}
-
-function describeModelLoad(load: ObjectMaskModelLoad): string {
-  const label = sam2Model(load.id).label;
-  switch (load.phase) {
-    case "download":
-      return load.progress === null ? `Downloading ${label}...` : `Downloading ${label}, ${Math.floor(load.progress * 100)}%`;
-    case "compile":
-      return `Preparing ${label}...`;
-    case "error":
-      return load.error ?? `${label} could not be loaded`;
-    default:
-      return "";
-  }
-}
-
-function formatSize(bytes: number): string {
-  return `${Math.round(bytes / 1e6)} MB`;
-}
-
 function describeRestore(restore: MaskRestore): string {
   switch (restore.status) {
     case "loading":
@@ -537,7 +267,3 @@ function describeRestore(restore: MaskRestore): string {
   }
 }
 
-function sameState(a: SessionState | null, b: SessionState | null): boolean {
-  if (a === null || b === null) return a === b;
-  return (Object.keys(a) as (keyof SessionState)[]).every((key) => a[key] === b[key]);
-}

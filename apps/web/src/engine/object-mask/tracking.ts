@@ -144,6 +144,19 @@ export function trackObjectMask(world: World): void {
 	});
 }
 
+/**
+ * Puts the tool down without a mask: whatever the session was computing
+ * stops, its prompt is dropped, and the Move tool takes over.
+ */
+export function cancelObjectMask(world: World): void {
+	clearObjectTrack();
+	clearTargetEffect();
+
+	if (world.get(Tool)?.value === ToolType.OBJECT_MASK) {
+		world.set(Tool, { value: ToolType.MOVE });
+	}
+}
+
 // ── Hover ────────────────────────────────────────────────────
 
 /** The latest point the pointer asked about while a preview was running; served next. */
