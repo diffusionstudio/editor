@@ -2,7 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { For, Show, createResource, onMount, splitProps } from "solid-js";
+import { For, Show, createResource, createSignal, onMount, splitProps } from "solid-js";
+import { Portal } from "solid-js/web";
 import { SAM2_MODELS, downloadSize, sam2Model } from "@diffusionstudio/sam2/models";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { Effect, Name, getParentNode } from "@diffusionstudio/runtime";
@@ -59,12 +60,12 @@ const OPS = [
   { value: "subtract", label: "Subtract", icon: "object-mask.subtract", hint: "Subtract from object" },
 ] as const satisfies readonly { value: ObjectMaskOp; label: string; icon: string; hint: string }[];
 
-/** What each model is picked for: tiny at half resolution, the others at the full 1024. */
+/** When to reach for each model: tiny runs at half resolution, the others at the full 1024. */
 const MODEL_NOTES: Record<Sam2ModelId, string> = {
-  tiny: "Fastest. Masks at half resolution, for large and clear objects.",
-  small: "Finer edges, at full resolution.",
-  "base-plus": "Holds on to small and thin objects.",
-  large: "Most accurate, and the slowest.",
+  tiny: "Use for quick masks of large, clear subjects. Fastest, at half resolution.",
+  small: "Use when Tiny's edges are too rough.",
+  "base-plus": "Use for small or thin objects that Small loses.",
+  large: "Use for hard shots, when accuracy matters more than speed.",
 };
 
 /** The brush's size on its slider: its diameter, in percent of the frame's height. */
@@ -149,7 +150,10 @@ export function ObjectMaskBar() {
   );
 }
 
-/** The model the tool segments with; each one's tooltip says what it is for and what it costs to fetch. */
+/**
+ * The model the tool segments with. Hovering a model shows, to the left of
+ * its row, when to use it and what it costs to fetch.
+ */
 function ModelMenu(props: { disabled: boolean }) {
   // The chosen model's load, while it is under way or failed.
   const load = () => {
@@ -164,11 +168,13 @@ function ModelMenu(props: { disabled: boolean }) {
     () => objectMaskModelLoad()?.phase ?? "idle",
     async () => (await import("@diffusionstudio/sam2")).cachedSam2Models(),
   );
+  // The row under the pointer (or keyboard), whose hint shows beside it.
+  const [hovered, setHovered] = createSignal<{ model: Sam2Model; row: HTMLElement } | null>(null);
   const sizeNote = (model: Sam2Model) =>
-    cached()?.has(model.id) ? "Downloaded" : `${formatSize(downloadSize(model))} download`;
+    `${formatSize(downloadSize(model))}${cached()?.has(model.id) ? ", downloaded" : " download"}`;
 
   return (
-    <DropdownMenu placement="top-start" gutter={8}>
+    <DropdownMenu placement="top-start" gutter={8} onOpenChange={(open) => !open && setHovered(null)}>
       <Tooltip>
         <TooltipTrigger<typeof DropdownMenuTrigger>
           as={(triggerProps: object) => (
@@ -201,29 +207,44 @@ function ModelMenu(props: { disabled: boolean }) {
           <div class="flex flex-col gap-1 py-0.5">
             <For each={SAM2_MODELS}>
               {(model) => (
-                <Tooltip placement="right" gutter={12}>
-                  <TooltipTrigger<typeof DropdownMenuItem>
-                    as={(itemProps: object) => (
-                      <CheckedItem
-                        {...itemProps}
-                        checked={model.id === objectMaskModel()}
-                        onSelect={() => pickObjectMaskModel(model.id)}
-                      >
-                        {model.label}
-                      </CheckedItem>
-                    )}
-                  />
-                  <TooltipContent class="max-w-56 flex-col items-start gap-0.5">
-                    <span>{MODEL_NOTES[model.id]}</span>
-                    <span class="text-muted-foreground">{sizeNote(model)}</span>
-                  </TooltipContent>
-                </Tooltip>
+                <CheckedItem
+                  checked={model.id === objectMaskModel()}
+                  onSelect={() => pickObjectMaskModel(model.id)}
+                  onHover={(row) => setHovered(row ? { model, row } : null)}
+                >
+                  {model.label}
+                </CheckedItem>
               )}
             </For>
           </div>
         </DropdownMenuContent>
       </DropdownMenuPortal>
+      <Show when={hovered()}>
+        {(hover) => (
+          <Portal>
+            <ModelHint row={hover().row}>
+              <span>{MODEL_NOTES[hover().model.id]}</span>
+              <span class="text-muted-foreground">{sizeNote(hover().model)}</span>
+            </ModelHint>
+          </Portal>
+        )}
+      </Show>
     </DropdownMenu>
+  );
+}
+
+/** A tooltip-like note 12px to the left of `row`, centered on it. */
+function ModelHint(props: { row: HTMLElement; children: JSX.Element }) {
+  const rect = () => props.row.getBoundingClientRect();
+
+  return (
+    <div
+      role="tooltip"
+      class="pointer-events-none fixed z-[10001] flex max-w-56 -translate-x-full -translate-y-1/2 flex-col gap-0.5 rounded-md border border-border bg-background px-2 py-1 text-xs font-450 text-foreground shadow-md"
+      style={{ left: `${rect().left - 12}px`, top: `${rect().top + rect().height / 2}px` }}
+    >
+      {props.children}
+    </div>
   );
 }
 
@@ -323,16 +344,21 @@ function MenuHeader(props: { children: JSX.Element }) {
 type CheckedItemProps = {
   checked: boolean;
   onSelect(): void;
+  onHover?(row: HTMLElement | null): void;
   children: JSX.Element;
 };
 
 /** A menu row that is the current pick: raised, with a check at its end. */
 function CheckedItem(props: CheckedItemProps) {
-  const [local, rest] = splitProps(props, ["checked", "children"]);
+  const [local, rest] = splitProps(props, ["checked", "onHover", "children"]);
 
   return (
     <DropdownMenuItem
       {...rest}
+      onPointerEnter={(event: PointerEvent) => local.onHover?.(event.currentTarget as HTMLElement)}
+      onPointerLeave={() => local.onHover?.(null)}
+      onFocus={(event: FocusEvent) => local.onHover?.(event.currentTarget as HTMLElement)}
+      onBlur={() => local.onHover?.(null)}
       tone="neutral"
       class={cx("pr-0", local.checked ? "bg-accent text-foreground" : "text-muted-foreground")}
     >
