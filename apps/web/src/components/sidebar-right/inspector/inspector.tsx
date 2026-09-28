@@ -32,7 +32,6 @@ import { TransformSettings } from "./transform";
 import { CaptionSettings } from "./caption-settings";
 import { TextPanel } from "./text";
 import { FillsSettings } from "./fills";
-import { SourceSettings } from "./source";
 import { StrokesSettings } from "./strokes";
 import { ShadowsSettings } from "./shadows";
 import { EffectsSettings } from "./effects";
@@ -155,10 +154,6 @@ export function Inspector() {
 
           <Show when={includesTarget("shape", "text", "scene")}>
             <FillsSettings selection={nodes()} />
-          </Show>
-
-          <Show when={includesTarget("shape", "text", "caption")}>
-            <SourceSettings selection={nodes()} />
           </Show>
 
           <Show when={includesTarget("shape")}>
