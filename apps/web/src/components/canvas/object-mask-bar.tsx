@@ -21,22 +21,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cx } from "@/lib/cva";
-import { useDerived } from "@/engine/hooks";
+import { useDerived, useObjectMaskTool } from "@/engine/hooks";
 import {
-  brushRadius,
   cancelObjectMask,
   getMaskRestore,
   getObjectTrack,
   heldObjectMaskOp,
-  objectMaskMode,
   objectMaskModel,
   objectMaskModelLoad,
-  objectMaskOp,
   pickObjectMaskModel,
   preloadObjectMaskModel,
-  setBrushRadius,
-  setObjectMaskMode,
-  setObjectMaskOp,
   trackObjectMask,
 } from "@/engine/object-mask";
 
@@ -86,6 +80,7 @@ type SessionState = {
  */
 export function ObjectMaskBar() {
   const world = useWorld();
+  const tool = useObjectMaskTool();
 
   // The model is fetched as the tool opens, so it is ready by the first click.
   onMount(preloadObjectMaskModel);
@@ -122,7 +117,7 @@ export function ObjectMaskBar() {
       <ModelMenu disabled={busy()} />
       <Separator orientation="vertical" class="min-h-5" />
       <ModePopover />
-      <OpMenu disabled={objectMaskMode() === "brush"} />
+      <OpMenu disabled={tool.mode() === "brush"} />
       <Separator orientation="vertical" class="min-h-5" />
       <Tooltip>
         <TooltipTrigger as={Button} variant="ghost" class="text-muted-foreground" onClick={() => cancelObjectMask(world)}>
@@ -247,7 +242,8 @@ function ModelHint(props: { row: HTMLElement; children: JSX.Element }) {
 
 /** Points or the brush, and the brush's size. */
 function ModePopover() {
-  const mode = () => MODES.find((entry) => entry.value === objectMaskMode()) ?? MODES[0];
+  const tool = useObjectMaskTool();
+  const mode = () => MODES.find((entry) => entry.value === tool.mode()) ?? MODES[0];
 
   return (
     <Popover placement="top-start" gutter={8}>
@@ -274,14 +270,14 @@ function ModePopover() {
           onOpenAutoFocus={(event) => event.preventDefault()}
         >
           <MenuHeader>Tool</MenuHeader>
-          <SegmentedIconTabs value={objectMaskMode} onChange={setObjectMaskMode} items={MODE_TABS} class="my-0.5" />
-          <Show when={objectMaskMode() === "brush"}>
+          <SegmentedIconTabs value={tool.mode} onChange={(mode) => tool.set({ mode })} items={MODE_TABS} class="my-0.5" />
+          <Show when={mode().value === "brush"}>
             <div class="pt-2 pb-0.5">
               <SliderInput
-                value={Math.round(brushRadius() * 200)}
+                value={Math.round(tool.brushRadius() * 200)}
                 min={BRUSH_SIZE.min}
                 max={BRUSH_SIZE.max}
-                onChange={(value) => setBrushRadius(Math.min(BRUSH_SIZE.max, Math.max(BRUSH_SIZE.min, value)) / 200)}
+                onChange={(value) => tool.set({ brushRadius: Math.min(BRUSH_SIZE.max, Math.max(BRUSH_SIZE.min, value)) / 200 })}
                 format={(value) => `${value}%`}
               />
             </div>
@@ -295,6 +291,7 @@ function ModePopover() {
 /** Whether clicks add to the object or subtract from it; the button shows the op alt swaps in while held. */
 function OpMenu(props: { disabled: boolean }) {
   const world = useWorld();
+  const tool = useObjectMaskTool();
   const held = useDerived(() => heldObjectMaskOp(world));
   const op = () => (props.disabled ? OPS[0] : OPS.find((entry) => entry.value === held()) ?? OPS[0]);
 
@@ -323,7 +320,7 @@ function OpMenu(props: { disabled: boolean }) {
           <div class="flex flex-col gap-1 py-0.5">
             <For each={OPS}>
               {(entry) => (
-                <CheckedItem checked={entry.value === objectMaskOp()} onSelect={() => setObjectMaskOp(entry.value)}>
+                <CheckedItem checked={entry.value === tool.op()} onSelect={() => tool.set({ op: entry.value })}>
                   {entry.label}
                 </CheckedItem>
               )}

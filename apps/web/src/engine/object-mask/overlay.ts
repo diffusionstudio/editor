@@ -6,21 +6,12 @@ import { Culled, Hidden, HitRegions, Tool, ToolType, entityQuad, isPointerInEnti
 import { traceMask } from '@diffusionstudio/assets';
 import { geometryOf } from '@diffusionstudio/sam2/models';
 
-import { Pointer } from '../traits';
+import { ObjectMaskTool, Pointer } from '../traits';
 import { endMaskStroke, paintableObjectTrack } from './brush';
 import { maskFrame } from './frame';
 import { handleObjectMaskInteraction, heldObjectMaskLabel } from './interaction';
 import { currentSourceFrame, getVideoRect, pointOnVideo, videoPointAt, videoPointToDevice } from './media';
-import {
-	brushRadius, 
-	clearTargetEffect, 
-	getObjectHover, 
-	getObjectMask, 
-	getObjectTrack, 
-	getTargetClip, 
-	objectMaskMode,
-	resetObjectMaskTools,
-} from './store';
+import { clearTargetEffect, getObjectHover, getObjectMask, getObjectTrack, getTargetClip } from './store';
 import { clearObjectHover, hoverObjectMask } from './tracking';
 
 import type { Entity, World } from 'koota';
@@ -66,14 +57,14 @@ export function drawObjectMasks(world: World, ctx: Ctx2D, resolution: number): v
 			clearObjectHover();
 			clearTargetEffect();
 			endMaskStroke();
-			resetObjectMaskTools();
+			world.set(ObjectMaskTool, { mode: 'points', op: 'add', brushShown: false });
 		}
 		return;
 	}
 	active = true;
 
 	const target = toolTarget(world);
-	const brush = objectMaskMode() === 'brush';
+	const brush = world.get(ObjectMaskTool)!.mode === 'brush';
 	updateHover(world, brush ? null : target);
 
 	const track = getObjectTrack();
@@ -95,7 +86,10 @@ export function drawObjectMasks(world: World, ctx: Ctx2D, resolution: number): v
 		if (rect && hover.frame === currentSourceFrame(world, hover.clip)) drawMask(ctx, rect, hover.mask, hover.size, HOVER_ALPHA, HOVER_OUTLINE_ALPHA, resolution);
 	}
 
-	if (brush && target) drawBrush(world, ctx, target, resolution);
+	const shown = !!(brush && target && drawBrush(world, ctx, target, resolution));
+	if (world.get(ObjectMaskTool)!.brushShown !== shown) {
+		world.set(ObjectMaskTool, { brushShown: shown });
+	}
 
 	if (target) {
 		world.get(HitRegions)!.list.push({
@@ -196,19 +190,19 @@ function drawMask(ctx: Ctx2D, rect: VideoRect, mask: Sam2Mask | MaskFrame, size:
 
 /**
  * The brush's outline under the pointer, round on the footage, while there is
- * a mask on the clip to correct.
+ * a mask on the clip to correct. Says whether it drew.
  */
-function drawBrush(world: World, ctx: Ctx2D, target: { clip: Entity; rect: VideoRect }, resolution: number): void {
+function drawBrush(world: World, ctx: Ctx2D, target: { clip: Entity; rect: VideoRect }, resolution: number): boolean {
 	const pointer = world.get(Pointer);
-	if (!pointer?.over || !paintableObjectTrack(world, target.clip)) return;
+	if (!pointer?.over || !paintableObjectTrack(world, target.clip)) return false;
 
 	const { rect } = target;
 	const pressed = pointer.phase === 'pressed';
 	const point = pressed ? videoPointAt(rect, pointer.clientX, pointer.clientY) : pointOnVideo(rect, pointer.clientX, pointer.clientY);
-	if (!point) return;
+	if (!point) return false;
 
 	const { mat } = rect;
-	const radius = brushRadius() * rect.h;
+	const radius = world.get(ObjectMaskTool)!.brushRadius * rect.h;
 	ctx.save();
 	// The path is laid down in box space and stroked in device pixels, so the line keeps its width at any zoom.
 	ctx.setTransform(mat.a, mat.b, mat.c, mat.d, mat.e, mat.f);
@@ -222,6 +216,8 @@ function drawBrush(world: World, ctx: Ctx2D, target: { clip: Entity; rect: Video
 	ctx.strokeStyle = '#FFFFFF';
 	ctx.stroke();
 	ctx.restore();
+
+	return true;
 }
 
 function drawPoints(ctx: Ctx2D, rect: VideoRect, points: MaskPoint[], resolution: number): void {

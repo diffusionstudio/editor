@@ -5,7 +5,8 @@
 import { paintMask, paintStroke } from '@diffusionstudio/sam2/mask';
 
 import { currentSourceFrame, getVideoRect, pointOnVideo, videoPointAt } from './media';
-import { brushRadius, getObjectTrack } from './store';
+import { ObjectMaskTool } from '../traits';
+import { getObjectTrack } from './store';
 
 import type { Entity, World } from 'koota';
 import type { MaskStroke, ObjectTrack } from './store';
@@ -42,7 +43,7 @@ export function beginMaskStroke(world: World, clip: Entity, deviceX: number, dev
 	const point = rect && pointOnVideo(rect, deviceX, deviceY);
 	if (!track || !rect || !point) return;
 
-	const stroke: MaskStroke = { label, radius: round(brushRadius()), points: [roundPoint(point)] };
+	const stroke: MaskStroke = { label, radius: round(world.get(ObjectMaskTool)!.brushRadius), points: [roundPoint(point)] };
 	track.strokes = [...track.strokes, stroke];
 	painting = { track, stroke };
 	paint(aspectOf(world, clip), 0);

@@ -37,9 +37,9 @@ import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
 import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
-import { cancelObjectMask, getObjectTrack, setObjectMaskMode, trackObjectMask, undoMaskStroke } from '../object-mask';
+import { cancelObjectMask, getObjectTrack, trackObjectMask, undoMaskStroke } from '../object-mask';
 import { splitAtPlayhead } from '../split';
-import { Keys, MODIFIER_KEYS, Pointer } from '../traits';
+import { Keys, MODIFIER_KEYS, ObjectMaskTool, Pointer } from '../traits';
 import { editTransform } from './interactions';
 
 import type { TransformWrite } from './interactions';
@@ -508,8 +508,8 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['arrowdown', 'shift'], action: nudge(0, NUDGE_FAST) },
 	{ keys: [' '], action: onSpacePressed },
 	// Object mask tool shortcuts
-	{ keys: ['p', '!mod'], action: () => setObjectMaskMode('points'), active: objectMaskTool },
-	{ keys: ['b', '!mod'], action: () => setObjectMaskMode('brush'), active: objectMaskTool },
+	{ keys: ['p', '!mod'], action: (world) => world.set(ObjectMaskTool, { mode: 'points' }), active: objectMaskTool },
+	{ keys: ['b', '!mod'], action: (world) => world.set(ObjectMaskTool, { mode: 'brush' }), active: objectMaskTool },
 	{ keys: ['escape'], action: cancelObjectMask, active: objectMaskTool },
 	{ keys: ['enter', 'mod', '!shift', '!alt'], action: trackObjectMask, active: objectMaskTool },
 	{ keys: ['z', 'mod', '!shift'], action: undoMaskStroke, active: maskStrokeToUndo },

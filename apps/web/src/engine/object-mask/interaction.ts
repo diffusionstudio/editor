@@ -4,10 +4,9 @@
 
 import { RenderSurface } from '@diffusionstudio/runtime';
 
-import { Keys, Pointer } from '../traits';
+import { Keys, ObjectMaskTool, Pointer } from '../traits';
 import { beginMaskStroke, endMaskStroke, extendMaskStroke } from './brush';
 import { getVideoRect, pointOnVideo } from './media';
-import { objectMaskMode, objectMaskOp } from './store';
 import { promptObjectMask } from './tracking';
 
 import type { World } from 'koota';
@@ -25,7 +24,7 @@ const CLICK_DISTANCE = 4;
  * adds: taking away is left to points.
  */
 export function handleObjectMaskInteraction(world: World, event: DispatchedPointerEvent): void {
-	if (objectMaskMode() === 'brush') {
+	if (world.get(ObjectMaskTool)!.mode === 'brush') {
 		handleBrush(world, event);
 		return;
 	}
@@ -65,7 +64,7 @@ function handleBrush(world: World, event: DispatchedPointerEvent): void {
 export function heldObjectMaskOp(world: World): ObjectMaskOp {
 	const held = world.get(Keys)?.held;
 	const swapped = !!held && (held.has('alt') || held.has('shift'));
-	const op = objectMaskOp();
+	const op = world.get(ObjectMaskTool)!.op;
 	if (!swapped) return op;
 	return op === 'add' ? 'subtract' : 'add';
 }

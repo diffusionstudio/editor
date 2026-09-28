@@ -162,6 +162,7 @@ export function cancelObjectMask(world: World): void {
 /** The latest point the pointer asked about while a preview was running; served next. */
 let pendingHover: { clip: Entity; point: MaskPoint } | null = null;
 let hovering = false;
+let hoverEpoch = 0;
 
 /**
  * Previews the segment a click at `point` on `clip` would pick, on the
@@ -180,6 +181,7 @@ export function hoverObjectMask(world: World, clip: Entity, point: MaskPoint): v
 			while (pendingHover && !busy) {
 				const { clip, point: at } = pendingHover;
 				pendingHover = null;
+				const epoch = hoverEpoch;
 				if (!clip.isAlive()) continue;
 
 				const track = getObjectTrack();
@@ -193,6 +195,7 @@ export function hoverObjectMask(world: World, clip: Entity, point: MaskPoint): v
 				const preview = refining
 					? paintMask(await session.model.preview([...track.points, at]), track.strokes, session.aspect)
 					: await session.model.preview([at]);
+				if (epoch !== hoverEpoch) continue;
 				setObjectHover({ clip, frame, point: at, mask: maskFrame(preview), size: preview.size });
 			}
 		} catch {
@@ -205,6 +208,7 @@ export function hoverObjectMask(world: World, clip: Entity, point: MaskPoint): v
 
 /** Forgets the hovered segment, when the pointer leaves the video. */
 export function clearObjectHover(): void {
+	hoverEpoch++;
 	pendingHover = null;
 	setObjectHover(null);
 }

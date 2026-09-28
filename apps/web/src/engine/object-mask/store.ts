@@ -136,21 +136,7 @@ export type ObjectMaskMode = 'points' | 'brush';
  */
 export type ObjectMaskOp = 'add' | 'subtract';
 
-/** The brush's radius when the tool is first picked, in 0..1 of the frame's height. */
-export const DEFAULT_BRUSH_RADIUS = 0.03;
-
-const [objectMaskMode, setObjectMaskMode] = createSignal<ObjectMaskMode>('points');
-const [objectMaskOp, setObjectMaskOp] = createSignal<ObjectMaskOp>('add');
-const [brushRadius, setBrushRadius] = createSignal(DEFAULT_BRUSH_RADIUS);
-
-/** The tool's mode, op and brush size, reactive; the brush size is kept while the tool is put down. */
-export { objectMaskMode, setObjectMaskMode, objectMaskOp, setObjectMaskOp, brushRadius, setBrushRadius };
-
-/** Back to points that add, as the tool is put down: it comes up again as it first did. */
-export function resetObjectMaskTools(): void {
-	setObjectMaskMode('points');
-	setObjectMaskOp('add');
-}
+// Which of them the tool is on, and the brush's size, are the world's `ObjectMaskTool`.
 
 // ── The model ────────────────────────────────────────────────
 
