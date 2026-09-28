@@ -157,7 +157,7 @@ export function Inspector() {
             <FillsSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "caption")}>
+          <Show when={includesTarget("shape", "text", "caption")}>
             <SourceSettings selection={nodes()} />
           </Show>
 

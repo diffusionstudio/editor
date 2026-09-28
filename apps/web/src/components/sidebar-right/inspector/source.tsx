@@ -19,7 +19,7 @@ import { OpacitySwatch } from "@/components/ui/opacity-swatch";
 import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
 import { assetName } from "@diffusionstudio/assets";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { AssetId, Color, Computed, PaintType, colorToHex, getIntrinsicPaint, parseColor } from "@diffusionstudio/runtime";
+import { AssetId, Color, Computed, PaintType, colorToHex, getIntrinsicPaint, isText, parseColor } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 import { useLibrary } from "@/engine/library";
@@ -206,7 +206,8 @@ type SolidFillRowProps = {
 };
 
 /**
- * The node's intrinsic solid: the `fill` prop, edited in place as a hex the
+ * The node's intrinsic solid: the `fill` prop (`color` on a `<text>`, where
+ * it is the glyph color), edited in place as a hex the
  * way a solid fill row edits its color, or through the picker the swatch
  * opens — both are `fill` prop writes, the node keeps its identity. Read
  * from `Computed.color` so it animates (the `color` keyframe track drives
@@ -219,16 +220,17 @@ function SolidFillRow(props: SolidFillRowProps) {
 
   const color = useDerived(() => props.node.get(Computed)?.color ?? 0xE0E0E0);
   const colorText = createMemo(() => colorToHex(color()).replace("#", ""));
+  const prop = () => (isText(props.node) ? "color" : "fill");
 
   const updateColor = (next: number) => {
     const hex = colorToHex(next);
-    editor.editProperty(props.node, "fill", hex);
+    editor.editProperty(props.node, prop(), hex);
     syncKeyframe(world, editor, props.node, "color", hex);
   };
 
   const handleRemoveFill = () => {
     props.onPickingChange(false);
-    editor.editProperty(props.node, "fill", false);
+    editor.editProperty(props.node, prop(), false);
   };
 
   const [draft, setDraft] = createSignal(colorText());
@@ -244,7 +246,7 @@ function SolidFillRow(props: SolidFillRowProps) {
       setDraft(colorText());
       return;
     }
-    editor.editProperty(props.node, "fill", colorToHex(next));
+    editor.editProperty(props.node, prop(), colorToHex(next));
   };
 
   const handleKeyDown = (event: KeyboardEvent & { currentTarget: HTMLInputElement }) => {
