@@ -16,7 +16,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
@@ -37,9 +37,9 @@ import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { Cache, Computed, Effect, Hidden, getParentNode } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
-import { beginObjectMaskFor, copyObjectMask, effectHasObjectMask, getVideoRect, listObjectMasks } from "@/engine/object-mask";
+import { copyObjectMask, effectHasObjectMask, getVideoRect, listObjectMasks } from "@/engine/object-mask";
 import { EFFECT_OPTIONS, effectOption } from "./effect-types";
-import { ObjectMaskInspector } from "./object-mask";
+import { ObjectMaskInspector, objectMaskName } from "./object-mask";
 
 import type { EffectOption } from "./effect-types";
 import type { Entity } from "koota";
@@ -93,8 +93,6 @@ export function EffectsInspector(props: EffectsInspectorProps) {
     const mask = pickedMask();
     return mask !== undefined && masks().includes(mask) ? mask : undefined;
   });
-
-
 
   const editValue = (next: number) => {
     editor.editProperty(props.effect, "value", next);
@@ -177,7 +175,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
         </div>
       </FloatingInspectorHeader>
       <FloatingInspectorSeparator />
-      <FloatingInspectorContent class="flex flex-col gap-2 p-4" ref={contentRef}>
+      <FloatingInspectorContent class="flex flex-col gap-2 px-4 py-3" ref={contentRef}>
         <Show when={option().unit === "amount"}>
           <ControlRow label="Amount">
             <SliderInput
@@ -228,51 +226,44 @@ export function EffectsInspector(props: EffectsInspectorProps) {
         </Show>
 
         <Show when={isVideo()}>
-          <div class="flex items-center justify-between pt-2">
-            <span class="text-xs text-muted-foreground">Masks</span>
-            <DropdownMenu placement="bottom-end">
-              <Tooltip>
-                <TooltipTrigger<typeof DropdownMenuTrigger>
-                  as={(triggerProps: object) => (
-                    <DropdownMenuTrigger<typeof Button>
-                      {...triggerProps}
-                      as={(buttonProps) => (
-                        <Button size="icon" variant="ghost" class="text-muted-foreground" {...buttonProps}>
-                          <Icon name="plus-add" />
-                        </Button>
-                      )}
-                    />
-                  )}
-                />
-                <TooltipContent>Add mask</TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent>
-                <For each={shareable()}>
-                  {(source) => (
-                    <DropdownMenuItem onSelect={() => copyObjectMask(world, props.effect, source)}>
-                      {source.name}
-                    </DropdownMenuItem>
-                  )}
-                </For>
-                <Show when={shareable().length > 0}>
-                  <DropdownMenuSeparator />
-                </Show>
-                <DropdownMenuItem onSelect={() => beginObjectMaskFor(world, props.effect)}>
-                  Track new object…
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
           <For each={masks()}>
-            {(mask) => (
-              <ObjectMaskRow
-                mask={mask}
-                active={editingMask() === mask}
-                onSelect={() => setPickedMask(editingMask() === mask ? undefined : mask)}
-                onRemove={() => editor.remove(mask)}
-              />
+            {(mask, index) => (
+              <ControlRow label="Mask" labelClass={index() > 0 ? "invisible" : undefined}>
+                <ObjectMaskRow
+                  mask={mask}
+                  active={editingMask() === mask}
+                  onSelect={() => setPickedMask(editingMask() === mask ? undefined : mask)}
+                  onRemove={() => editor.remove(mask)}
+                />
+              </ControlRow>
             )}
           </For>
+          <ControlRow label="Mask" labelClass={masks().length > 0 ? "invisible" : undefined}>
+            <DropdownMenu placement="bottom-start">
+              <DropdownMenuTrigger
+                as="button"
+                type="button"
+                disabled={shareable().length === 0}
+                class="flex h-7 w-full min-w-0 cursor-default items-center gap-2 overflow-clip rounded-md bg-input p-1 pr-2 text-xs text-muted-foreground transition-colors hover:bg-input/80 disabled:opacity-50 disabled:hover:bg-input"
+              >
+                <div class="flex size-5 shrink-0 items-center justify-center overflow-clip rounded-sm bg-secondary text-foreground">
+                  <Icon name="plus-add" />
+                </div>
+                <span class="min-w-0 flex-1 truncate text-left">Add matte mask</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuContent>
+                  <For each={shareable()}>
+                    {(source) => (
+                      <DropdownMenuItem onSelect={() => copyObjectMask(world, props.effect, source)}>
+                        {source.name}
+                      </DropdownMenuItem>
+                    )}
+                  </For>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+          </ControlRow>
         </Show>
       </FloatingInspectorContent>
 
@@ -294,18 +285,18 @@ type ObjectMaskRowProps = {
   onRemove(): void;
 };
 
-/** One `<mask>` of the effect; a click opens its settings. */
+/** One `<mask>` of the effect, by its file's name; a click opens its settings. */
 function ObjectMaskRow(props: ObjectMaskRowProps) {
+  const world = useWorld();
   const hidden = useHas(() => props.mask, Hidden);
+  const name = useDerived(() => objectMaskName(world, props.mask));
 
   return (
     <ItemRow
-      label="Mask"
-      value={"Object"}
+      value={name()}
       disabled={hidden()}
-      icon={<Icon name="mask-small" />}
-      class="text-foreground"
-      classList={{ "bg-accent/40": props.active }}
+      icon={<Icon name="object-mask" />}
+      classList={{ "rounded-md bg-accent/40": props.active }}
       onClick={props.onSelect}
     >
       <Tooltip>

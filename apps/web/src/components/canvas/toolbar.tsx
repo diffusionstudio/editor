@@ -25,7 +25,7 @@ import { usePromptInput } from "@/context/prompt-input";
 const CURSOR_TOOLS = [
   { tool: ToolType.MOVE, label: 'Move', shortcut: 'V', icon: 'move', menuIcon: 'move-small' },
   { tool: ToolType.HAND, label: 'Hand', shortcut: 'H', icon: 'hand', menuIcon: 'hand' },
-  { tool: ToolType.OBJECT_MASK, label: 'Object Mask', shortcut: 'M', icon: 'tool.object-mask', menuIcon: 'tool.object-mask' },
+  { tool: ToolType.OBJECT_MASK, label: 'Object Mask', shortcut: 'M', icon: 'object-mask', menuIcon: 'object-mask' },
 ] as const;
 
 export function Toolbar() {

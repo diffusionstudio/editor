@@ -4,7 +4,7 @@
 
 import { Show, createResource, onMount } from "solid-js";
 import { SAM2_MODELS, downloadSize, sam2Model } from "@diffusionstudio/sam2/models";
-import { DEFAULT_MASK_SMOOTHING } from "@diffusionstudio/assets";
+import { DEFAULT_MASK_SMOOTHING, assetName } from "@diffusionstudio/assets";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ControlRow } from "@/components/ui/control-group";
@@ -13,9 +13,9 @@ import {
   FloatingInspectorContent,
   FloatingInspectorHeader,
   FloatingInspectorSeparator,
-  FloatingInspectorTitle,
 } from "@/components/ui/floating-inspector";
 import { Icon } from "@/components/ui/icon";
+import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
 import { Keyframe } from "@/components/ui/keyframe";
 import { PanelSection } from "@/components/ui/panel-section";
 import { Progress } from "@/components/ui/progress";
@@ -23,6 +23,7 @@ import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Select, SelectContent, SelectItem, SelectPortal, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
 import { Switch, SwitchControl, SwitchInput, SwitchThumb } from "@/components/ui/switch";
+import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import {
   AssetId, Computed, Effect, Hidden, Library, Mask, Name, VideoDecoderHandle, getParentNode,
@@ -36,6 +37,7 @@ import {
   getMaskRestore,
   getMaskRestoreOf,
   getObjectTrack,
+  listObjectMasks,
   objectMaskMode,
   objectMaskModel,
   objectMaskModelLoad,
@@ -50,13 +52,16 @@ import {
 } from "@/engine/object-mask";
 import { effectOption } from "./effect-types";
 
-import type { Entity } from "koota";
+import type { Entity, World } from "koota";
 import type { MaskAsset } from "@diffusionstudio/assets";
 import type { Sam2Model, Sam2ModelId } from "@diffusionstudio/sam2/models";
-import type { MaskRestore, ObjectMaskMode, ObjectMaskModelLoad, ObjectTrackStatus } from "@/engine/object-mask";
-
-/** The most a feather goes to from the slider, px. */
-const MAX_FEATHER = 50;
+import type {
+  MaskRestore,
+  ObjectMaskMode,
+  ObjectMaskModelLoad,
+  ObjectMaskSource,
+  ObjectTrackStatus,
+} from "@/engine/object-mask";
 
 const MODE_TABS = [
   { value: "points", label: "Points" },
@@ -266,10 +271,11 @@ type ObjectMaskInspectorProps = {
 
 /**
  * One `<mask>`'s settings, opened from its row in the effect's inspector the
- * way a paint opens its picker: feather, how strongly it limits the effect,
- * and inversion, plus a way to hide or remove it. A mask whose file cannot be
- * read — its decoder failed, as a video's does — can be restored from its
- * recipe.
+ * way a paint opens its picker: which tracked mask of the clip it is (the
+ * header), how strongly it limits the effect, smoothing, feather and
+ * inversion, plus a way to hide it; its row in the effect removes it. A mask
+ * whose file cannot be read — its decoder failed, as a video's does — can be
+ * restored from its recipe.
  */
 export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
   const world = useWorld();
@@ -328,15 +334,49 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
     editor.editProperty(props.mask, "hidden", !hidden());
   };
 
-  const remove = () => {
-    props.onClose();
-    editor.remove(props.mask);
+  const name = useDerived(() => objectMaskName(world, props.mask));
+
+  // The tracked masks of the clip's footage: the header picks which of them this mask is.
+  const sources = useDerived(
+    () => {
+      const clip = getParentNode(getParentNode(props.mask));
+      return clip ? listObjectMasks(world, clip) : [];
+    },
+    (a, b) => a.length === b.length && a.every((source, i) => source.asset.id === b[i]!.asset.id && source.name === b[i]!.name),
+  );
+  const source = () => sources().find((option) => option.asset.id === props.mask.get(AssetId)?.value);
+
+  /** Points the mask at another tracked mask's frames, placed where they were written for. */
+  const switchSource = (next: ObjectMaskSource | null) => {
+    if (!next || next.asset.id === source()?.asset.id) return;
+    editor.editProperty(props.mask, "src", next.asset.path);
+    editor.editProperty(props.mask, "sourceIn", next.sourceIn > 0 ? next.sourceIn : false);
   };
 
   return (
     <FloatingInspector open anchorRef={props.anchorRef} width={248}>
-      <FloatingInspectorHeader class="items-center justify-between px-4">
-        <FloatingInspectorTitle>Object Mask</FloatingInspectorTitle>
+      <FloatingInspectorHeader class="items-center justify-between px-2">
+        <Select<ObjectMaskSource>
+          value={source()}
+          onChange={switchSource}
+          options={sources()}
+          optionValue={(option) => option.asset.id}
+          optionTextValue="name"
+          itemComponent={(itemProps) => (
+            <SelectItem item={itemProps.item}>
+              {itemProps.item.rawValue.name}
+            </SelectItem>
+          )}
+        >
+          <SelectTrigger>
+            <SelectValue<ObjectMaskSource>>
+              {(state) => state.selectedOption()?.name ?? name()}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectPortal>
+            <SelectContent />
+          </SelectPortal>
+        </Select>
         <div class="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger
@@ -367,7 +407,7 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
         </div>
       </FloatingInspectorHeader>
       <FloatingInspectorSeparator />
-      <FloatingInspectorContent class="flex flex-col gap-2 p-4">
+      <FloatingInspectorContent class="flex flex-col gap-2 px-4 pt-3 pb-4">
         <Show when={failed()}>
           <div class="flex flex-col gap-2 pb-2">
             <span class="flex items-center gap-1.5 text-xs">
@@ -391,16 +431,6 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
           </div>
           <FloatingInspectorSeparator class="-mx-4 mb-2" />
         </Show>
-        <ControlRow label="Feather">
-          <SliderInput
-            value={Math.round(feather())}
-            min={0}
-            max={MAX_FEATHER}
-            onChange={editFeather}
-            format={(value) => `${value}px`}
-            keyframe={<Keyframe target={props.mask} property="blur" />}
-          />
-        </ControlRow>
         <ControlRow label="Strength">
           <SliderInput
             value={Math.round(opacity() * 100)}
@@ -420,7 +450,25 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
             format={(value) => `${value}%`}
           />
         </ControlRow>
-        <ControlRow label="Invert">
+        <ControlRow label="Feather" contentClass="grid grid-cols-2 gap-2">
+          <ControlledTextField
+            value={Math.round(feather())}
+            onNumber={editFeather}
+            unit="px"
+            min={0}
+            autoSelect
+            sliderEnabled
+            limitEvents
+            keyframe={<Keyframe target={props.mask} property="blur" />}
+          />
+          <IncrementDecrementControl
+            onDecrement={() => editFeather(feather() - 1)}
+            onIncrement={() => editFeather(feather() + 1)}
+            decrementLabel="Decrease feather"
+            incrementLabel="Increase feather"
+          />
+        </ControlRow>
+        <ControlRow label="Invert" class="h-7">
           <Switch checked={mask()?.inverted ?? false} onChange={editInverted}>
             <SwitchInput />
             <SwitchControl variant="compact">
@@ -428,14 +476,15 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
             </SwitchControl>
           </Switch>
         </ControlRow>
-        <div class="flex justify-end pt-1">
-          <Button size="small" variant="ghost" onClick={remove}>
-            Remove mask
-          </Button>
-        </div>
       </FloatingInspectorContent>
     </FloatingInspector>
   );
+}
+
+/** What a `<mask>` is called: its file's name in the library, without the extension. */
+export function objectMaskName(world: World, mask: Entity): string {
+  const asset = world.get(Library)?.get(mask.get(AssetId)?.value ?? "");
+  return asset ? assetName(asset).replace(/\.[^.]+$/, "") : "Mask";
 }
 
 function describe(state: SessionState): string {
