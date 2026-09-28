@@ -4,7 +4,7 @@
 
 import {
   AdjustmentLayer, Audio, Cache, Caption, Computed, FrameRate, Geometry,
-  Group, Hidden, IsMask, Opacity, PaintType, Scene, Sequential, Source,
+  Group, Hidden, IsClipPath, Opacity, PaintType, Scene, Sequential, Source,
   SourceError, Workarea, framesToSeconds, getIntrinsicPaint, isText,
 } from "@diffusionstudio/runtime";
 
@@ -18,7 +18,7 @@ import type { ToolHandler } from "../handler";
 type Interval = { start: number; end: number };
 
 function kindOf(entity: Entity): string {
-  if (entity.has(IsMask)) return "mask";
+  if (entity.has(IsClipPath)) return "clip-path";
   if (entity.has(Scene)) return "scene";
   if (entity.has(Group)) return entity.has(Sequential) ? "sequence" : "group";
   if (entity.has(AdjustmentLayer)) return "adjustment-layer";
@@ -34,7 +34,7 @@ function kindOf(entity: Entity): string {
 }
 
 // Whether the node itself puts pixels on screen. Containers don't (their
-// leaves do), adjustment layers and masks only shape what others draw, and a
+// leaves do), adjustment layers and clip paths only shape what others draw, and a
 // scene's implicit background is exactly what a "black frame" looks like —
 // so none of those count as coverage.
 function drawsPixels(entity: Entity): boolean {
@@ -42,7 +42,7 @@ function drawsPixels(entity: Entity): boolean {
     && !entity.has(Scene)
     && !entity.has(Group)
     && !entity.has(AdjustmentLayer)
-    && !entity.has(IsMask)
+    && !entity.has(IsClipPath)
     && !entity.has(Audio);
 }
 
@@ -128,8 +128,8 @@ function visit(entity: Entity, window: Interval | null, depth: number, state: Wa
 
   const cache = entity.get(Cache);
   for (const child of cache?.children ?? []) visit(child, visible, depth + 1, state);
-  // Masks are nodes worth counting and checking, but they add no pixels.
-  for (const mask of cache?.masks ?? []) visit(mask, null, depth + 1, state);
+  // Clip paths are nodes worth counting and checking, but they add no pixels.
+  for (const clipPath of cache?.clipPaths ?? []) visit(clipPath, null, depth + 1, state);
 }
 
 /** The spans of `window` no coverage interval touches. */

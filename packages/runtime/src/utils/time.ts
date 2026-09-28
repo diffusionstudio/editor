@@ -5,7 +5,7 @@
 import { CONONICAL_TIME_BASE, PaintType } from '../constants';
 import {
 	Audio, AssetId, Cache, Computed, Geometry, Paint, Trim, Library, FrameRate,
-	Delay, IsMask, PlaybackRate, SourceFrameRate,
+	Delay, IsClipPath, PlaybackRate, SourceFrameRate,
 } from '../traits';
 import { getParentNode } from '../queries/hierarchy';
 import { getSourceDuration } from '../actions/assets';
@@ -171,7 +171,7 @@ export type TimeTrait = typeof Delay | typeof PlaybackRate | typeof SourceFrameR
  * koota fires onRemove before it clears the trait, so a removal handler has to
  * ask for the length the node will have once it is gone.
  */
-export type Ignorable = TimeTrait | typeof Trim | typeof AssetId | typeof IsMask;
+export type Ignorable = TimeTrait | typeof Trim | typeof AssetId | typeof IsClipPath;
 
 /**
  * Intrinsic duration (in project frames) of the media asset attached to an

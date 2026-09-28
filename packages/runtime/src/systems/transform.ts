@@ -6,7 +6,7 @@ import { Not, Or } from 'koota';
 
 import { store } from '../world/store';
 import {
-	ChildOf, Geometry, Group, Hidden, IsMask, Sequential, AdjustmentLayer,
+	ChildOf, Geometry, Group, Hidden, IsClipPath, Sequential, AdjustmentLayer,
 	Culled, Flip, Anchor, Computed, Cache, LocalTransform, WorldTransform,
 	WorldBounds, RenderSurface,
 	Root,
@@ -209,7 +209,7 @@ export function computeGroupBounds(world: World, entity: Entity): void {
 		let maxY = -Infinity;
 		let any = false;
 
-		for (const child of world.query(Or(Geometry, Group), ChildOf(entity), Not(Hidden), Not(IsMask))) {
+		for (const child of world.query(Or(Geometry, Group), ChildOf(entity), Not(Hidden), Not(IsClipPath))) {
 			const cid = child.id();
 			const mat: Mat2D = {
 				a: localStore.a[cid] ?? 1, b: localStore.b[cid] ?? 0,

@@ -17,7 +17,7 @@ import {
 	TransitionType,
 } from '../constants';
 import {
-	ChildOf, Hidden, Culled, Interactive, IsMask, AssetId,
+	ChildOf, Hidden, Culled, Interactive, IsClipPath, AssetId,
 	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
 	BlendMode, Effect, Matte, Transition, MixedCornerRadius,
 	LocalTransform, WorldTransform, Computed, Cache,
@@ -785,7 +785,7 @@ export function renderNode(world: World, entity: Entity): void {
 		});
 	}
 
-	if (entity.has(IsMask) || entity.has(Hidden)) return;
+	if (entity.has(IsClipPath) || entity.has(Hidden)) return;
 
 	ctx.save();
 
@@ -799,9 +799,9 @@ export function renderNode(world: World, entity: Entity): void {
 		local.f[eid]!,
 	);
 
-	for (const mask of store(world, Cache).masks[eid] ?? []) {
-		if (computed.visibility[mask.id()] === 0) continue;
-		clipToMask(world, mask);
+	for (const clipPath of store(world, Cache).clipPaths[eid] ?? []) {
+		if (computed.visibility[clipPath.id()] === 0) continue;
+		clipTo(world, clipPath);
 	}
 
 	// An effect limited by a `<mask>` takes the node through layers.
@@ -822,12 +822,12 @@ export function renderNode(world: World, entity: Entity): void {
 	ctx.restore();
 }
 
-/** Clips the current context to the box of `mask`, in world space. */
-function clipToMask(world: World, mask: Entity): void {
+/** Clips the current context to the box of `clipPath`, in world space. */
+function clipTo(world: World, clipPath: Entity): void {
 	const ctx = getCtx(world);
 	ctx.save();
-	setWorldTransform(world, ctx, mask);
-	drawRectPath(world, mask);
+	setWorldTransform(world, ctx, clipPath);
+	drawRectPath(world, clipPath);
 	ctx.restore();
 	ctx.clip();
 }

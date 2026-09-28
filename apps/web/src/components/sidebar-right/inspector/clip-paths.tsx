@@ -16,55 +16,55 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import type { Entity } from "koota";
 
 /**
- * Where a new mask sits in its parent, px. Offset rather than flush so the
- * mask shows itself the moment it is added: at the parent's own size it
- * clips a band off two edges instead of landing invisibly on top of it.
+ * Where a new clip path sits in its parent, px. Offset rather than flush so
+ * the clip path shows itself the moment it is added: at the parent's own size
+ * it clips a band off two edges instead of landing invisibly on top of it.
  */
-const MASK_INSET = 20;
+const CLIP_PATH_INSET = 20;
 
-// Stable identity, so a node without masks does not resample every tick.
-const NO_MASKS: Entity[] = [];
+// Stable identity, so a node without clip paths does not resample every tick.
+const NO_CLIP_PATHS: Entity[] = [];
 
-type MasksSettingsProps = {
+type ClipPathsSettingsProps = {
   selection: Entity[];
 };
 
 /**
- * The `<rect mask>` children of the selected node: the boxes it is clipped
- * to (several intersect). A mask is a rect like any other, so it has no
- * inspector of its own — a row selects it and the transform, time and
+ * The `<rect clipPath>` children of the selected node: the boxes it is
+ * clipped to (several intersect). A clip path is a rect like any other, so it
+ * has no inspector of its own — a row selects it and the transform, time and
  * appearance panels are then its own. Its `fill`, `opacity` and paint
- * children have no effect (a mask is never drawn), which is why the plus
+ * children have no effect (a clip path is never drawn), which is why the plus
  * authors neither.
  */
-export function MasksSettings(props: MasksSettingsProps) {
+export function ClipPathsSettings(props: ClipPathsSettingsProps) {
   const world = useWorld();
   const editor = useEditor();
   const entity = () => props.selection[0]!;
 
   // Cache is derived state, written without change events.
-  const masks = useDerived(() => entity().get(Cache)?.masks ?? NO_MASKS);
+  const clipPaths = useDerived(() => entity().get(Cache)?.clipPaths ?? NO_CLIP_PATHS);
 
-  const handleAppendMask = () => {
+  const handleAppendClipPath = () => {
     const node = entity();
     const computed = node.get(Computed);
     const width = Math.round(computed?.width ?? 0);
     const height = Math.round(computed?.height ?? 0);
-    // A mask without a size of its own is 500x500, which is the honest
+    // A clip path without a size of its own is 500x500, which is the honest
     // answer for a parent that has no box yet (an empty group).
     const size = width > 0 && height > 0 ? { width, height } : {};
 
-    const [mask] = editor.insertElement(node, () => (
-      <Rect mask name={getNextName(world, "Mask")} x={MASK_INSET} y={MASK_INSET} {...size} />
+    const [clipPath] = editor.insertElement(node, () => (
+      <Rect clipPath name={getNextName(world, "Clip Path")} x={CLIP_PATH_INSET} y={CLIP_PATH_INSET} {...size} />
     ));
 
-    // The mask is what the user came to place, so the selection moves to it.
-    if (mask) editor.select(mask);
+    // The clip path is what the user came to place, so the selection moves to it.
+    if (clipPath) editor.select(clipPath);
   };
 
   return (
     <PanelSection
-      title="Masks"
+      title="Clip Paths"
       actions={
         <Tooltip>
           <TooltipTrigger
@@ -72,20 +72,20 @@ export function MasksSettings(props: MasksSettingsProps) {
             size="icon"
             variant="ghost"
             class="text-muted-foreground"
-            onClick={handleAppendMask}
+            onClick={handleAppendClipPath}
           >
             <Icon name="plus-add" />
           </TooltipTrigger>
-          <TooltipContent>Add mask</TooltipContent>
+          <TooltipContent>Add clip path</TooltipContent>
         </Tooltip>
       }
     >
-      <For each={masks()}>
-        {(mask) => (
-          <MaskRow
-            mask={mask}
-            onSelect={() => editor.select(mask)}
-            onRemove={() => editor.remove(mask)}
+      <For each={clipPaths()}>
+        {(clipPath) => (
+          <ClipPathRow
+            clipPath={clipPath}
+            onSelect={() => editor.select(clipPath)}
+            onRemove={() => editor.remove(clipPath)}
           />
         )}
       </For>
@@ -93,19 +93,19 @@ export function MasksSettings(props: MasksSettingsProps) {
   );
 }
 
-type MaskRowProps = {
-  mask: Entity;
+type ClipPathRowProps = {
+  clipPath: Entity;
   onSelect(): void;
   onRemove(): void;
 };
 
-function MaskRow(props: MaskRowProps) {
-  const name = useTrait(() => props.mask, Name);
+function ClipPathRow(props: ClipPathRowProps) {
+  const name = useTrait(() => props.clipPath, Name);
 
   return (
     <ItemRow
-      label="Mask"
-      value={name()?.value || "Mask"}
+      label="Clip Path"
+      value={name()?.value || "Clip Path"}
       icon={<Icon name="mask-small" />}
       class="text-foreground"
       onClick={props.onSelect}
@@ -120,7 +120,7 @@ function MaskRow(props: MaskRowProps) {
         >
           <Icon name="close-remove-small" />
         </TooltipTrigger>
-        <TooltipContent>Remove mask</TooltipContent>
+        <TooltipContent>Remove clip path</TooltipContent>
       </Tooltip>
     </ItemRow>
   );

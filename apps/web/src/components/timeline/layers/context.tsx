@@ -4,7 +4,7 @@
 
 import { createContext, createSignal, onCleanup, useContext, type JSX, type Signal } from "solid-js";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { Expanded, getEntityTree, isMask, isSequence } from "@diffusionstudio/runtime";
+import { Expanded, getEntityTree, isClipPath, isSequence } from "@diffusionstudio/runtime";
 
 import { useEditor, useTimelineIndex } from "@/engine/hooks";
 import { useTimeline } from "@/context/timeline";
@@ -51,7 +51,7 @@ export function LayerContextProvider(props: { children: JSX.Element }) {
   const [target, setTarget] = createSignal<DropTarget | null>(null);
 
   let pending: { entity: Entity; startX: number; startY: number } | null = null;
-  let active: { entity: Entity; forbidden: Set<Entity>; isMask: boolean } | null = null;
+  let active: { entity: Entity; forbidden: Set<Entity>; isClipPath: boolean } | null = null;
   let dwell: { entity: Entity; since: number } | null = null;
   let pointerX = 0;
   let pointerY = 0;
@@ -74,7 +74,7 @@ export function LayerContextProvider(props: { children: JSX.Element }) {
     active = {
       entity,
       forbidden: new Set(getEntityTree(world, entity)),
-      isMask: isMask(entity),
+      isClipPath: isClipPath(entity),
     };
     dirty = true;
     setDragging(entity);
@@ -190,7 +190,7 @@ export function LayerContextProvider(props: { children: JSX.Element }) {
       root,
       dragged: active.entity,
       forbidden: active.forbidden,
-      draggedIsMask: active.isMask,
+      draggedIsClipPath: active.isClipPath,
       containerRect,
       listBottom: getListBottom(layersEl, containerRect),
     };

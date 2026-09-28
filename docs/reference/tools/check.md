@@ -19,7 +19,7 @@ The analysis is structural, from the resolved timeline alone, so it is instant a
 
 ## What counts as visual coverage
 
-Video, image, HTML, shape, text, and caption nodes draw pixels; their scheduled spans cover the timeline. Groups and scenes are covered only where their descendants draw — a scene's background alone is exactly what a black frame looks like, so it never counts. Audio nodes, masks, and adjustment layers add no pixels; neither does anything hidden, fully transparent, or scheduled outside the window its ancestors play. When a scene has a workarea, coverage is judged against the workarea instead of the full span.
+Video, image, HTML, shape, text, and caption nodes draw pixels; their scheduled spans cover the timeline. Groups and scenes are covered only where their descendants draw — a scene's background alone is exactly what a black frame looks like, so it never counts. Audio nodes, clip paths, and adjustment layers add no pixels; neither does anything hidden, fully transparent, or scheduled outside the window its ancestors play. When a scene has a workarea, coverage is judged against the workarea instead of the full span.
 
 ## Output
 
@@ -29,7 +29,7 @@ One JSON object:
 {
   stats: {
     nodes: number;                    // nodes in the subtree, the checked node included
-    byKind: Record<string, number>;   // "scene" | "sequence" | "group" | "video" | "image" | "html" | "shape" | "text" | "caption" | "audio" | "mask" | "adjustment-layer"
+    byKind: Record<string, number>;   // "scene" | "sequence" | "group" | "video" | "image" | "html" | "shape" | "text" | "caption" | "audio" | "clip-path" | "adjustment-layer"
     depth: number;                    // deepest nesting level below the checked node (0 = no children)
     duration: number;                 // seconds the checked node plays (its workarea, when one is set)
   };

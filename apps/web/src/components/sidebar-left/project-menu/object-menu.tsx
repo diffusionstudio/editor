@@ -152,7 +152,7 @@ export function ObjectMenu() {
 
       <DropdownMenuGroup>
         <DropdownMenuItem>
-          Set mask target
+          Set clip path target
           <DropdownMenuShortcut>⌃⌥M</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuGroup>

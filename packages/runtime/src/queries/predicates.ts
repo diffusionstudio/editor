@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import {
-	Scene, Group, Sequential, Audio, AdjustmentLayer, Caption, Geometry, IsMask,
+	Scene, Group, Sequential, Audio, AdjustmentLayer, Caption, Geometry, IsClipPath,
 	Paint, Cache, Stage,
 } from '../traits';
 import { GeometryType, PaintType } from '../constants';
@@ -59,8 +59,8 @@ export function isShape(entity: Entity): boolean {
 		&& !entity.has(Audio);
 }
 
-export function isMask(entity: Entity): boolean {
-	return entity.has(IsMask);
+export function isClipPath(entity: Entity): boolean {
+	return entity.has(IsClipPath);
 }
 
 export function hasHtmlPaint(entity: Entity): boolean {

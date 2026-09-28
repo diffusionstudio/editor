@@ -15,7 +15,7 @@ camelCase composition elements map 1:1 onto entities. Lowercase DOM vocabulary i
 
 | Element | What it is |
 | ------- | ---------- |
-| [`<rect>`](./rect.md) | A rectangle. Takes paints, strokes, shadows and effects. With `mask` it clips its parent instead of drawing. |
+| [`<rect>`](./rect.md) | A rectangle. Takes paints, strokes, shadows and effects. With `clipPath` it clips its parent instead of drawing. |
 | [`<text>`](./text.md) | Text; its children are the glyphs. Sizes itself to them unless given a box. |
 | [`<textRange>`](./text.md#textrange) | A style override over a run of the parent `<text>`'s glyphs, by character index. |
 | [`<video>`](./video.md) | A video clip: a rect whose intrinsic paint is the media `src` names. |
@@ -67,7 +67,7 @@ User-defined components are ordinary Solid components; they compose the elements
 | `<scene>` | required — the frame's own size |
 | `<rect>`, `<html>`, `<surface>` | 100 × 100 |
 | `<audio>` | 500 × 150 (the waveform box on the canvas) |
-| `<rect mask>` | 500 × 500 |
+| `<rect clipPath>` | 500 × 500 |
 | `<text>` | fits its glyphs |
 | `<captions>` | the preset's — it lays out the caption block against the scene's frame |
 | `<group>`, `<sequence>` | fits its children |

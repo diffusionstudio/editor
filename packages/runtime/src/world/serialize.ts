@@ -4,7 +4,7 @@
 
 import {
 	ChildOf,
-	Geometry, Paint, Group, Scene, Audio, AdjustmentLayer, IsMask, Shadow, Stroke,
+	Geometry, Paint, Group, Scene, Audio, AdjustmentLayer, IsClipPath, Shadow, Stroke,
 	Hidden, ClipsContent, Name, Key, AssetId, ItemIndex, MountScript, MountPath,
 	Caption,
 	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
@@ -51,7 +51,7 @@ export interface EntityRecord {
 		colors?: number[];
 		verticalAlign?: number;
 	};
-	IsMask?: {};
+	IsClipPath?: {};
 	Shadow?: {};
 	Stroke?: {};
 	Name?: string;
@@ -241,8 +241,8 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	if (parent !== undefined && !parent.has(Stage)) {
 		record.ChildOf = parent;
 	}
-	if (entity.has(IsMask)) {
-		record.IsMask = {};
+	if (entity.has(IsClipPath)) {
+		record.IsClipPath = {};
 	}
 	if (entity.has(Position)) {
 		const position = entity.get(Position)!;
@@ -487,8 +487,8 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.Expanded !== undefined) {
 		entity.add(Expanded);
 	}
-	if (e.IsMask !== undefined) {
-		entity.add(IsMask);
+	if (e.IsClipPath !== undefined) {
+		entity.add(IsClipPath);
 	}
 	if (e.Position !== undefined) {
 		entity.add(Position);
@@ -646,7 +646,7 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 		entity.set(TextStyle, defined(e.TextStyle));
 	}
 	// Attach to parent last so add/change observers see every trait this entity
-	// has (KeyframeTrack, Keyframe, Animation, IsMask, ...). Otherwise derived
+	// has (KeyframeTrack, Keyframe, Animation, IsClipPath, ...). Otherwise derived
 	// caches stay empty and the UI/motion system can't find them after reload.
 	if (e.ChildOf !== undefined) {
 		entity.add(ChildOf(e.ChildOf as Entity));

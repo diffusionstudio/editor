@@ -544,15 +544,17 @@ export type AdjustmentLayerProps =
 
 export type RectProps = CommonProps & FillProps & {
   /**
-   * Makes the rect a mask of its parent: it clips the parent (its fills,
+   * Makes the rect a clip path of its parent: it clips the parent (its fills,
    * strokes and children show only inside the rect's box) instead of drawing.
    * The rect keeps its transform, `cornerRadius` and timing — a keyframed
-   * mask sliding across a text is a wipe, one that ends early lets go — and
-   * several masks under one parent intersect. A mask is never rendered or
-   * hit, so its `fill`, `opacity`, `blendMode` and paint children have no
-   * effect. Without `width`/`height` a mask is 500×500, and without `end` it
-   * clips for the parent's whole window.
+   * clip path sliding across a text is a wipe, one that ends early lets go —
+   * and several clip paths under one parent intersect. A clip path is never
+   * rendered or hit, so its `fill`, `opacity`, `blendMode` and paint children
+   * have no effect. Without `width`/`height` a clip path is 500×500, and
+   * without `end` it clips for the parent's whole window.
    */
+  clipPath?: boolean;
+  /** @deprecated The old spelling of `clipPath`, read when `clipPath` is not set. */
   mask?: boolean;
   /**
    * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,

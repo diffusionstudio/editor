@@ -194,8 +194,8 @@ export function propagateTimeRangeDown(world: World, entity: Entity, ignore?: Ig
 	for (const child of entity.get(Cache)?.children ?? []) {
 		propagateTimeRangeDown(world, child);
 	}
-	for (const mask of entity.get(Cache)?.masks ?? []) {
-		propagateTimeRangeDown(world, mask);
+	for (const clipPath of entity.get(Cache)?.clipPaths ?? []) {
+		propagateTimeRangeDown(world, clipPath);
 	}
 	recomputeEntityTimeRange(world, entity, ignore);
 }

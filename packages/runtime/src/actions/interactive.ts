@@ -11,7 +11,7 @@ import { Not, Or } from 'koota';
 
 import {
 	AdjustmentLayer, ChildOf, Culled, Geometry, Group, Hovering, Interactive,
-	IsMask, Root, Sequential,
+	IsClipPath, Root, Sequential,
 } from '../traits';
 import { isScene } from '../queries/predicates';
 import { isPointerInEntity } from '../queries/interaction';
@@ -52,7 +52,7 @@ export function syncInteractiveState(world: World): void {
 
 /** The topmost child of `parent` under a device-pixel point, or null. */
 export function findChildAt(world: World, parent: Entity, point: Point): Entity | null {
-	const children = world.query(Or(Geometry, Group), ChildOf(parent), Not(IsMask), Not(Culled));
+	const children = world.query(Or(Geometry, Group), ChildOf(parent), Not(IsClipPath), Not(Culled));
 
 	for (let i = children.length - 1; i >= 0; i--) {
 		const child = children[i]!;

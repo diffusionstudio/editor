@@ -10,7 +10,7 @@ import {
 	FrameRate,
 	Geometry,
 	Group,
-	IsMask,
+	IsClipPath,
 	Position,
 	Scene,
 	Selected,
@@ -44,7 +44,7 @@ import type { TransformWrite } from './input/interactions';
 import type { Mat2D } from '@diffusionstudio/runtime';
 import type { Entity, World } from 'koota';
 
-/** The node kinds a group holds; a mask belongs to its target, not the group. */
+/** The node kinds a group holds; a clip path belongs to its target, not the group. */
 const NODES = Or(Geometry, Group, AdjustmentLayer);
 
 const EPSILON = 1e-6;
@@ -69,7 +69,7 @@ function isIdentity(mat: Mat2D): boolean {
  */
 export function groupSelection(world: World): void {
 	const editor = getDocumentEditor(world);
-	const selected = [...world.query(Selected, NODES, Not(IsMask))];
+	const selected = [...world.query(Selected, NODES, Not(IsClipPath))];
 	if (!selected.length) return;
 
 	const group = editor.wrap(selected, () => <GroupElement name={getNextName(world, 'Group')} />);
@@ -87,7 +87,7 @@ export function groupSelection(world: World): void {
  */
 export function wrapSelectionInSequence(world: World): void {
 	const editor = getDocumentEditor(world);
-	const selected = [...world.query(Selected, NODES, Not(IsMask))];
+	const selected = [...world.query(Selected, NODES, Not(IsClipPath))];
 	if (!selected.length) return;
 
 	const sequence = editor.wrap(selected, () => <SequenceElement name={getNextName(world, 'Sequence')} />);
@@ -100,7 +100,7 @@ export function wrapSelectionInSequence(world: World): void {
 /** The children of `entity` that are nodes of the container, in file order. */
 function nodeChildren(world: World, entity: Entity): Entity[] {
 	return getEntityChildren(world, entity).filter(
-		(child) => (child.has(Geometry) || child.has(Group) || child.has(AdjustmentLayer)) && !child.has(IsMask),
+		(child) => (child.has(Geometry) || child.has(Group) || child.has(AdjustmentLayer)) && !child.has(IsClipPath),
 	);
 }
 
@@ -129,7 +129,7 @@ function spatialLeaves(world: World, entity: Entity): Entity[] {
  */
 export function wrapSelectionInScene(world: World): void {
 	const editor = getDocumentEditor(world);
-	const selected = new Set(world.query(Selected, NODES, Not(IsMask)));
+	const selected = new Set(world.query(Selected, NODES, Not(IsClipPath)));
 	const first = [...selected][0];
 	if (!first) return;
 

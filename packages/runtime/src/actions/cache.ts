@@ -11,7 +11,7 @@ import { Not, Or } from 'koota';
 import { store } from '../world/store';
 import {
 	ChildOf, Cache,
-	Geometry, Group, AdjustmentLayer, IsMask, Matte, Paint, Stroke, Shadow, Effect,
+	Geometry, Group, AdjustmentLayer, IsClipPath, Matte, Paint, Stroke, Shadow, Effect,
 	TextRange, KeyframeTrack, Keyframe, Animation,
 } from '../traits';
 import { isStage } from '../queries/predicates';
@@ -39,12 +39,12 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 
 	if (entity.has(Geometry) || entity.has(Group) || entity.has(AdjustmentLayer)) {
 		cache.children[pid] = collect(
-			Or(Geometry, Group, AdjustmentLayer), ChildOf(parent), Not(IsMask),
+			Or(Geometry, Group, AdjustmentLayer), ChildOf(parent), Not(IsClipPath),
 		).sort(sortByItemIndex);
 	}
 
-	if (entity.has(IsMask)) {
-		cache.masks[pid] = collect(Geometry, IsMask, ChildOf(parent))
+	if (entity.has(IsClipPath)) {
+		cache.clipPaths[pid] = collect(Geometry, IsClipPath, ChildOf(parent))
 			.sort(sortByItemIndex);
 	}
 
@@ -105,7 +105,7 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 /** Every list a `Cache` keeps, for the paths that cannot ask which one applies. */
 const CACHE_LISTS = [
 	'children', 'fills', 'shadows', 'strokes', 'effects',
-	'textRanges', 'masks', 'mattes', 'keyframeTracks', 'keyframes', 'animations',
+	'textRanges', 'clipPaths', 'mattes', 'keyframeTracks', 'keyframes', 'animations',
 ] as const;
 
 /**
@@ -138,12 +138,12 @@ export function evictFromCaches(world: World, entity: Entity, parent: Entity | n
 }
 
 /**
- * Move an attached geometry between its parent's `children` and `masks` when
- * its `IsMask` tag is toggled in place. `rebuildCaches` files by trait on
+ * Move an attached geometry between its parent's `children` and `clipPaths` when
+ * its `IsClipPath` tag is toggled in place. `rebuildCaches` files by trait on
  * attach; here the queries cannot be trusted (koota fires onRemove before the
  * tag is cleared), so the two lists are edited by hand.
  */
-export function refileMask(world: World, entity: Entity, parent: Entity | null, mask: boolean): void {
+export function refileClipPath(world: World, entity: Entity, parent: Entity | null, clipPath: boolean): void {
 	if (parent === null || isStage(parent)) return;
 	if (!parent.has(Cache)) parent.add(Cache);
 
@@ -151,11 +151,11 @@ export function refileMask(world: World, entity: Entity, parent: Entity | null, 
 	const pid = parent.id();
 	const without = (list: Entity[] | undefined) => (list ?? []).filter((e) => e !== entity);
 
-	const masks = without(cache.masks[pid]);
+	const clipPaths = without(cache.clipPaths[pid]);
 	const children = without(cache.children[pid]);
-	(mask ? masks : children).push(entity);
+	(clipPath ? clipPaths : children).push(entity);
 
-	cache.masks[pid] = masks.sort(sortByItemIndex);
+	cache.clipPaths[pid] = clipPaths.sort(sortByItemIndex);
 	cache.children[pid] = children.sort(sortByItemIndex);
 }
 
