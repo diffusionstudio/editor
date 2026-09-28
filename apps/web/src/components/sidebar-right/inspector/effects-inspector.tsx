@@ -76,7 +76,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
 
   const option = createMemo(() => effectOption(effect()?.type));
   const value = useDerived(() => props.effect.get(Computed)?.value ?? 0);
-  const masks = useDerived(() => props.effect.get(Cache)?.mattes ?? NO_MASKS);
+  const masks = useDerived(() => props.effect.get(Cache)?.masks ?? NO_MASKS);
 
   const isVideo = useDerived(() => {
     const node = getParentNode(props.effect);

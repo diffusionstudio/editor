@@ -25,7 +25,7 @@ import { SliderInput } from "@/components/ui/slider-input";
 import { Switch, SwitchControl, SwitchInput, SwitchThumb } from "@/components/ui/switch";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import {
-  AssetId, Computed, Effect, Hidden, Library, Matte, Name, VideoDecoderHandle, getParentNode,
+  AssetId, Computed, Effect, Hidden, Library, Mask, Name, VideoDecoderHandle, getParentNode,
 } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
@@ -276,7 +276,7 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
   const editor = useEditor();
 
   const hidden = useHas(() => props.mask, Hidden);
-  const matte = useTrait(() => props.mask, Matte);
+  const mask = useTrait(() => props.mask, Mask);
 
   const maskAsset = (): MaskAsset | null => {
     const asset = world.get(Library)?.get(props.mask.get(AssetId)?.value ?? "");
@@ -413,7 +413,7 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
         </ControlRow>
         <ControlRow label="Smoothing">
           <SliderInput
-            value={Math.round((matte()?.smoothing ?? DEFAULT_MASK_SMOOTHING) * 100)}
+            value={Math.round((mask()?.smoothing ?? DEFAULT_MASK_SMOOTHING) * 100)}
             min={0}
             max={100}
             onChange={editSmoothing}
@@ -421,7 +421,7 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
           />
         </ControlRow>
         <ControlRow label="Invert">
-          <Switch checked={matte()?.inverted ?? false} onChange={editInverted}>
+          <Switch checked={mask()?.inverted ?? false} onChange={editInverted}>
             <SwitchInput />
             <SwitchControl variant="compact">
               <SwitchThumb variant="compact" />

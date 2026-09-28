@@ -38,8 +38,8 @@ export const Effect = trait({
 	value: 0,
 });
 
-// A `<mask>`: a matte limiting the effect holding it, ChildOf the effect.
-export const Matte = trait({
+// A `<mask>`: limits the effect holding it to where its picture is, ChildOf the effect.
+export const Mask = trait({
 	offset: 0,
 	inverted: false,
 	// How much a mask file's edge is smoothed, 0 to 1 (see `traceMask`).

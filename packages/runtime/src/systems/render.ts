@@ -19,7 +19,7 @@ import {
 import {
 	ChildOf, Hidden, Culled, Interactive, IsClipPath, AssetId,
 	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
-	BlendMode, Effect, Matte, Transition, MixedCornerRadius,
+	BlendMode, Effect, Mask, Transition, MixedCornerRadius,
 	LocalTransform, WorldTransform, Computed, Cache,
 	Host,
 	Mode, FrameRate, Camera, Background, RenderSurface,
@@ -896,10 +896,10 @@ function renderContent(world: World, entity: Entity, effects: string | null): vo
 
 // ── Effect passes ────────────────────────────────────────────
 
-/** One step of a node's filter pipeline: a run of plain filters, or one effect limited by its mattes. */
+/** One step of a node's filter pipeline: a run of plain filters, or one effect limited by its masks. */
 type EffectPass =
 	| { kind: 'filter'; filter: string }
-	| { kind: 'masked'; filter: string | null; mattes: Entity[]; opacity: boolean };
+	| { kind: 'masked'; filter: string | null; masks: Entity[]; opacity: boolean };
 
 /**
  * The node's effects as passes, or null when none is masked and one CSS
@@ -910,7 +910,7 @@ type EffectPass =
 function effectPasses(world: World, entity: Entity): EffectPass[] | null {
 	const effects = store(world, Cache).effects[entity.id()];
 	if (!effects?.length) return null;
-	if (!effects.some((effect) => !effect.has(Hidden) && activeMattes(world, effect).length > 0)) return null;
+	if (!effects.some((effect) => !effect.has(Hidden) && activeMasks(world, effect).length > 0)) return null;
 
 	const passes: EffectPass[] = [];
 	let run: string[] = [];
@@ -926,13 +926,13 @@ function effectPasses(world: World, entity: Entity): EffectPass[] | null {
 	for (const effect of effects) {
 		if (effect.has(Hidden)) continue;
 		const filter = effectFilter(world, effect);
-		const mattes = activeMattes(world, effect);
-		if (mattes.length === 0) {
+		const masks = activeMasks(world, effect);
+		if (masks.length === 0) {
 			if (filter) run.push(filter);
 			continue;
 		}
 		flush();
-		passes.push({ kind: 'masked', filter, mattes, opacity: types[effect.id()] === EffectType.OPACITY });
+		passes.push({ kind: 'masked', filter, masks, opacity: types[effect.id()] === EffectType.OPACITY });
 	}
 	flush();
 	return passes;
@@ -940,15 +940,15 @@ function effectPasses(world: World, entity: Entity): EffectPass[] | null {
 
 const NO_MATTES: Entity[] = [];
 
-/** The effect's mattes that have a picture and are switched on. */
-function activeMattes(world: World, effect: Entity): Entity[] {
-	const all = store(world, Cache).mattes[effect.id()];
+/** The effect's masks that have a picture and are switched on. */
+function activeMasks(world: World, effect: Entity): Entity[] {
+	const all = store(world, Cache).masks[effect.id()];
 	if (!all?.length) return NO_MATTES;
 
 	let active: Entity[] | null = null;
-	for (const matte of all) {
-		if (matte.has(Hidden) || !matte.has(AssetId)) continue;
-		(active ??= []).push(matte);
+	for (const mask of all) {
+		if (mask.has(Hidden) || !mask.has(AssetId)) continue;
+		(active ??= []).push(mask);
 	}
 	return active ?? NO_MATTES;
 }
@@ -1005,7 +1005,7 @@ const IDENTITY = new DOMMatrix();
  * Draws the node through layers: its content unfiltered onto one, then
  * each effect pass from one layer to the next (a filter run is a filtered
  * copy; a masked effect combines the copy with the unfiltered picture by
- * its mattes' coverage), and the layer lands on the surface under the
+ * its masks' coverage), and the layer lands on the surface under the
  * node's opacity and blend mode, which the caller has already set.
  */
 function renderLayered(world: World, entity: Entity, passes: EffectPass[]): void {
@@ -1040,9 +1040,9 @@ function renderLayered(world: World, entity: Entity, passes: EffectPass[]): void
 }
 
 /**
- * One effect limited by its mattes: `front` holds the node so far, and the
- * outcome lands in `back`. The mattes' coverage K is the node's box less
- * what each matte takes away, weighted by the matte's opacity. A filter
+ * One effect limited by its masks: `front` holds the node so far, and the
+ * outcome lands in `back`. The masks' coverage K is the node's box less
+ * what each mask takes away, weighted by the mask's opacity. A filter
  * shows through where K covers — front·(1−K) + filtered·K. The opacity
  * effect keeps only what K covers — filtered·K — so what is outside its
  * mask goes transparent, which is what a mask on Opacity means in Premiere.
@@ -1058,9 +1058,9 @@ function applyMaskedEffect(world: World, entity: Entity, pass: Extract<EffectPas
 		drawOnto(coverage.ctx, () => drawRectPath(world, entity));
 		coverage.ctx.fillStyle = '#000000';
 		coverage.ctx.fill();
-		for (const matte of pass.mattes) {
-			const strength = Math.min(1, Math.max(0, opacities[matte.id()] ?? 1));
-			if (strength <= EPSILON || !drawMatteRemoval(world, entity, matte, scratch, local)) continue;
+		for (const mask of pass.masks) {
+			const strength = Math.min(1, Math.max(0, opacities[mask.id()] ?? 1));
+			if (strength <= EPSILON || !drawMaskRemoval(world, entity, mask, scratch, local)) continue;
 			blit(coverage, scratch.canvas, 'destination-out', 'none', strength);
 		}
 
@@ -1078,29 +1078,29 @@ function applyMaskedEffect(world: World, entity: Entity, pass: Extract<EffectPas
 }
 
 /**
- * Draws onto `layer` what `matte` takes away from the node: the node's box
- * less the matte's picture, or the picture itself when the matte is
+ * Draws onto `layer` what `mask` takes away from the node: the node's box
+ * less the mask's picture, or the picture itself when the mask is
  * inverted, fitted into the box the way the node fits its footage so it lands
- * on the frame it was made from, and softened by the matte's blur. A mask
+ * on the frame it was made from, and softened by the mask's blur. A mask
  * file's picture is its outline, filled at the size it lands at so its edge
- * stays sharp at any scale, smoothed as much as the matte asks. False, and nothing drawn, while the picture's frame is not decoded yet.
+ * stays sharp at any scale, smoothed as much as the mask asks. False, and nothing drawn, while the picture's frame is not decoded yet.
  */
-function drawMatteRemoval(world: World, entity: Entity, matte: Entity, layer: Layer, local: DOMMatrix): boolean {
+function drawMaskRemoval(world: World, entity: Entity, mask: Entity, layer: Layer, local: DOMMatrix): boolean {
 	const computed = store(world, Computed);
 	const eid = entity.id();
-	const mid = matte.id();
+	const mid = mask.id();
 	const w = computed.width[eid]!;
 	const h = computed.height[eid]!;
 
-	const decoder = resolveVideoDecoder(world, matte);
-	const smoothing = store(world, Matte).smoothing[mid] ?? DEFAULT_MASK_SMOOTHING;
+	const decoder = resolveVideoDecoder(world, mask);
+	const smoothing = store(world, Mask).smoothing[mid] ?? DEFAULT_MASK_SMOOTHING;
 	const outline = decoder instanceof MaskDecoder ? decoder.getOutline(smoothing) : null;
 	const frame = outline ? null : decoder?.toBitmap();
 	const picture = outline ?? frame;
 	if (!picture) return false;
 
 	const feather = computed.blur[mid] ?? 0;
-	const inverted = store(world, Matte).inverted[mid] ?? false;
+	const inverted = store(world, Mask).inverted[mid] ?? false;
 	const source = findGeometryAssetSource(world, entity);
 	const mode = (source && store(world, ScaleMode).value[source.id()]) ?? ScaleModeType.COVER;
 	const [dx, dy, sw, sh] = getScaledImageProps(mode, picture.width, picture.height, w, h);

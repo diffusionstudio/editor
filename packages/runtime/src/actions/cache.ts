@@ -11,7 +11,7 @@ import { Not, Or } from 'koota';
 import { store } from '../world/store';
 import {
 	ChildOf, Cache,
-	Geometry, Group, AdjustmentLayer, IsClipPath, Matte, Paint, Stroke, Shadow, Effect,
+	Geometry, Group, AdjustmentLayer, IsClipPath, Mask, Paint, Stroke, Shadow, Effect,
 	TextRange, KeyframeTrack, Keyframe, Animation,
 } from '../traits';
 import { isStage } from '../queries/predicates';
@@ -48,8 +48,8 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 			.sort(sortByItemIndex);
 	}
 
-	if (entity.has(Matte)) {
-		cache.mattes[pid] = collect(Matte, ChildOf(parent))
+	if (entity.has(Mask)) {
+		cache.masks[pid] = collect(Mask, ChildOf(parent))
 			.sort(sortByItemIndex);
 	}
 
@@ -105,7 +105,7 @@ export function rebuildCaches(world: World, entity: Entity, parent: Entity | nul
 /** Every list a `Cache` keeps, for the paths that cannot ask which one applies. */
 const CACHE_LISTS = [
 	'children', 'fills', 'shadows', 'strokes', 'effects',
-	'textRanges', 'clipPaths', 'mattes', 'keyframeTracks', 'keyframes', 'animations',
+	'textRanges', 'clipPaths', 'masks', 'keyframeTracks', 'keyframes', 'animations',
 ] as const;
 
 /**

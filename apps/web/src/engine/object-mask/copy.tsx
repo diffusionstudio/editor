@@ -50,7 +50,7 @@ export function listObjectMasks(world: World, clip: Entity): ObjectMaskSource[] 
 
 /** Whether `effect` already has a mask of the same frames as `source`. */
 export function effectHasObjectMask(effect: Entity, source: ObjectMaskSource): boolean {
-	return (effect.get(Cache)?.mattes ?? []).some((mask) => mask.get(AssetId)?.value === source.asset.id);
+	return (effect.get(Cache)?.masks ?? []).some((mask) => mask.get(AssetId)?.value === source.asset.id);
 }
 
 /**
@@ -76,7 +76,7 @@ export function copyObjectMask(world: World, effect: Entity, source: ObjectMaskS
 function featherOf(effect: Entity, source: ObjectMaskSource): number | undefined {
 	const node = getParentNode(effect);
 	for (const sibling of node?.get(Cache)?.effects ?? [effect]) {
-		for (const mask of sibling.get(Cache)?.mattes ?? []) {
+		for (const mask of sibling.get(Cache)?.masks ?? []) {
 			if (mask.get(AssetId)?.value === source.asset.id) return mask.get(Blur)?.value;
 		}
 	}

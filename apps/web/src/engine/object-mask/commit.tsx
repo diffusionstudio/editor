@@ -67,7 +67,7 @@ export async function commitObjectMask(world: World, track: ObjectTrack): Promis
 			{mask()}
 		</EffectElement>
 	));
-	return effect?.get(Cache)?.mattes[0] ?? null;
+	return effect?.get(Cache)?.masks[0] ?? null;
 }
 
 /** A mask file of tracked frames, on a `grid` square, over footage of `size`, one a frame at `frameRate`. */

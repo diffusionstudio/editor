@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Matte, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -670,7 +670,7 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			}
 			case 'mask': {
 				entity = createEntity(this.world);
-				entity.add(Matte);
+				entity.add(Mask);
 				break;
 			}
 			case 'animation': {
@@ -972,14 +972,14 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				return;
 			}
 			case 'inverted': {
-				if (!entity.has(Matte)) return;
-				entity.set(Matte, { inverted: value === true });
+				if (!entity.has(Mask)) return;
+				entity.set(Mask, { inverted: value === true });
 				return;
 			}
 			case 'smoothing': {
-				if (!entity.has(Matte)) return;
+				if (!entity.has(Mask)) return;
 				const amount = toNumber(value) ?? DEFAULT_MASK_SMOOTHING;
-				entity.set(Matte, { smoothing: Math.min(1, Math.max(0, amount)) });
+				entity.set(Mask, { smoothing: Math.min(1, Math.max(0, amount)) });
 				return;
 			}
 			case 'keepAspectRatio': {
@@ -1150,10 +1150,10 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			case 'end':
 			case 'sourceIn':
 			case 'sourceOut': {
-				if (entity.has(Matte)) {
-					// A matte's frames start at this source time of its parent.
+				if (entity.has(Mask)) {
+					// A mask's frames start at this source time of its parent.
 					if (name === 'sourceIn') {
-						entity.set(Matte, { offset: this.toFrames(toSeconds(value) ?? 0) })
+						entity.set(Mask, { offset: this.toFrames(toSeconds(value) ?? 0) })
 					};
 					return;
 				}

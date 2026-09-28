@@ -153,7 +153,7 @@ function drawMask(ctx: Ctx2D, rect: VideoRect, mask: Sam2Mask | MaskFrame, size:
 
 	// The outline is traced in grid pixels and placed on the device, then
 	// filled and stroked there, so the edge is smooth and the line keeps its
-	// width at any zoom. It is the edge the matte is cut along.
+	// width at any zoom. It is the edge the mask is cut along.
 	const outline = new Path2D();
 	const grid = new DOMMatrix([mat.a, mat.b, mat.c, mat.d, mat.e, mat.f])
 		.translate(rect.x, rect.y)

@@ -8,7 +8,7 @@ import { getAssetFile } from '../actions/assets';
 
 import type { AssetStat, MaskAsset } from '@diffusionstudio/assets';
 
-/** White where the object is: a matte is read by its alpha. */
+/** White where the object is: a mask is read by its alpha. */
 const FOREGROUND = '#ffffff';
 
 /** A picture's shortest side, for whatever asks for one: enough that its edge is not the blur of a small bitmap. */
@@ -25,7 +25,7 @@ export type MaskOutline = { path: Path2D; width: number; height: number; smoothi
  * megabytes a minute at most — and a frame's field is decoded from its runs
  * when it is asked for, which costs microseconds: nothing is decoded ahead,
  * and there is no cache to keep warm. Its edge is traced into an outline at
- * the matte's smoothing (see `traceMask`) when a renderer asks for it, which
+ * the mask's smoothing (see `traceMask`) when a renderer asks for it, which
  * it fills at the size the mask lands at; for whatever asks for a picture
  * instead, the outline is filled on a canvas the shape of the footage.
  */
