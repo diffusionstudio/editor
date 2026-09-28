@@ -42,4 +42,36 @@ describe("applyEdits", () => {
     // The constant is someone else's too, and stays.
     expect(text).toContain(`const X = 100;`);
   });
+
+  it("keeps a text's paint when what it says changes", async () => {
+    await writeFile(join(dir, FILE), `export default () => <scene id="s"></scene>;\n`);
+
+    // The draw tool's insert: the text, then its paint under it.
+    await applyEdits({ dir }, [
+      { kind: "insert", source: "pending#1", parent: `${FILE}:s`, tag: "text", props: {}, text: "Text" },
+      { kind: "insert", source: "pending#2", parent: "pending#1", tag: "solidPaint", props: { color: "#FFFFFF" } },
+    ]);
+    const inserted = await readFile(join(dir, FILE), "utf8");
+    const id = /<text id="([^"]+)"/.exec(inserted)![1];
+
+    // Then typing into it, once the insert has its name.
+    const result = await applyEdits({ dir }, [{ kind: "set", source: `${FILE}:${id}`, props: {}, text: "Hello" }]);
+
+    expect(result.skipped).toEqual([]);
+    const text = await readFile(join(dir, FILE), "utf8");
+    expect(text).toMatch(/<text id="[^"]+">Hello\s*<solidPaint id="[^"]+" color="#FFFFFF" \/>\s*<\/text>/);
+  });
+
+  it("replaces every part of what a text says, and only that", async () => {
+    await writeFile(
+      join(dir, FILE),
+      `export default () => (\n  <text id="t">\n    Hello {name}!\n    <solidPaint color="#FFFFFF" />\n    {/* note */}\n  </text>\n);\n`,
+    );
+
+    const result = await applyEdits({ dir }, [{ kind: "set", source: `${FILE}:t`, props: {}, text: "Bye" }]);
+
+    expect(result.skipped).toEqual([]);
+    const text = await readFile(join(dir, FILE), "utf8");
+    expect(text).toContain(`  <text id="t">\n    Bye\n    <solidPaint color="#FFFFFF" />\n    {/* note */}\n  </text>`);
+  });
 });
