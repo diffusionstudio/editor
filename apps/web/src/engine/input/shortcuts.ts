@@ -34,6 +34,7 @@ import {
 import { Not, Or } from 'koota';
 
 import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
+import { applyClipPaths, cancelClipPath } from '../clip-path';
 import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
@@ -452,7 +453,12 @@ const maskStrokeToUndo = (world: World): boolean => {
 	return objectMaskTool(world) && track?.status === 'seeded' && track.strokes.length > 0;
 };
 
+const clipPathTool = (world: World): boolean => world.get(Tool)?.value === ToolType.CLIP_PATH;
+
 const PRESSED_SHORTCUTS: readonly Shortcut[] = [
+	// Clip path tool shortcuts, ahead of the Esc and ⌘↵ the rest of the editor answers to.
+	{ keys: ['escape'], action: cancelClipPath, active: clipPathTool },
+	{ keys: ['enter', 'mod', '!shift', '!alt'], action: applyClipPaths, active: clipPathTool },
 	{ keys: ['z', 'mod', '!shift'], action: undoEdit },
 	{ keys: ['z', 'mod', 'shift'], action: redoEdit },
 	{ keys: ['backspace'], action: deleteSelection },

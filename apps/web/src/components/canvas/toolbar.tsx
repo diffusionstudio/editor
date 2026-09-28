@@ -17,10 +17,11 @@ import {
 import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
 import { ObjectMaskBar } from "./object-mask-bar";
-import { For, Show, createMemo } from "solid-js";
+import { ClipPathBar } from "./clip-path-bar";
+import { For, Match, Show, Switch, createEffect, createMemo } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { useTool } from "@/engine";
+import { clearClipPathTarget, useTool } from "@/engine";
 import { usePromptInput } from "@/context/prompt-input";
 
 const CURSOR_TOOLS = [
@@ -35,6 +36,12 @@ export function Toolbar() {
   const selectedTool = useTool();
   const cursorTool = createMemo(() => CURSOR_TOOLS.find((cursor) => cursor.tool === selectedTool()));
 
+  createEffect(() => {
+    if (selectedTool() !== ToolType.CLIP_PATH) {
+      clearClipPathTarget();
+    }
+  });
+
   const handleToolChange = (tool: ToolType) => {
     world.set(Tool, { value: tool });
   }
@@ -45,12 +52,14 @@ export function Toolbar() {
         <PromptInput initialConfig={promptInputConfig()} />
       </Show>
       <Show when={!promptInputOpen()}>
-        <Show
-          when={selectedTool() === ToolType.OBJECT_MASK}
-          fallback={<ActionBar openPromptInput={openPromptInput} />}
-        >
-          <ObjectMaskBar />
-        </Show>
+        <Switch fallback={<ActionBar openPromptInput={openPromptInput} />}>
+          <Match when={selectedTool() === ToolType.OBJECT_MASK}>
+            <ObjectMaskBar />
+          </Match>
+          <Match when={selectedTool() === ToolType.CLIP_PATH}>
+            <ClipPathBar />
+          </Match>
+        </Switch>
       </Show>
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl p-1.5 bg-background border border-border-strong flex gap-2 items-center z-10">
         <div class="flex gap-1">
