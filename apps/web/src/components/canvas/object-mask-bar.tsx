@@ -6,7 +6,6 @@ import { For, Show, createResource, createSignal, onMount, splitProps } from "so
 import { Portal } from "solid-js/web";
 import { SAM2_MODELS, downloadSize, sam2Model } from "@diffusionstudio/sam2/models";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { Effect, Name, getParentNode } from "@diffusionstudio/runtime";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
@@ -38,10 +37,8 @@ import {
   setBrushRadius,
   setObjectMaskMode,
   setObjectMaskOp,
-  targetEffect,
   trackObjectMask,
 } from "@/engine/object-mask";
-import { effectOption } from "../sidebar-right/inspector/effect-types";
 
 import type { JSX } from "solid-js";
 import type { Sam2Model, Sam2ModelId } from "@diffusionstudio/sam2/models";
@@ -108,23 +105,16 @@ export function ObjectMaskBar() {
     const session = state();
     switch (session?.status) {
       case "tracking":
-        return `Tracking ${Math.floor((session.total === 0 ? 0 : session.completed / session.total) * 100)}%`;
+        return (
+          <FixedWidth widest="Tracking 100%">
+            {`Tracking ${percent(session.total === 0 ? 0 : session.completed / session.total)}`}
+          </FixedWidth>
+        );
       case "saving":
         return "Saving...";
       default:
         return "Confirm";
     }
-  };
-
-  // Where the mask goes: under the effect the tool was started for, else
-  // under an opacity effect on the clip — the cut-out.
-  const destination = () => {
-    const effect = targetEffect();
-    if (!effect?.isAlive()) return "Track the object through its clip and cut it out";
-    const clip = getParentNode(effect);
-    const label = effectOption(effect.get(Effect)?.type).label;
-    const name = clip?.get(Name)?.value;
-    return `Track the object and mask ${label}${name ? ` on ${name}` : ""}`;
   };
 
   return (
@@ -144,7 +134,7 @@ export function ObjectMaskBar() {
         <TooltipTrigger as={Button} disabled={state()?.status !== "seeded"} onClick={() => trackObjectMask(world)}>
           {confirmLabel()}
         </TooltipTrigger>
-        <TooltipContent shortcut="⌘↵">{destination()}</TooltipContent>
+        <TooltipContent shortcut="⌘↵"></TooltipContent>
       </Tooltip>
     </div>
   );
@@ -190,9 +180,16 @@ function ModelMenu(props: { disabled: boolean }) {
                   <Show when={load()?.phase === "error"}>
                     <Icon name="alert-warning" />
                   </Show>
-                  {sam2Model(objectMaskModel()).label}
-                  <Show when={load()?.phase === "download" || load()?.phase === "compile"}>
-                    <span class="text-xxs font-normal tabular-nums">{loadProgress(load()!)}</span>
+                  <Show
+                    when={load()?.phase === "download" || load()?.phase === "compile"}
+                    fallback={sam2Model(objectMaskModel()).label}
+                  >
+                    <FixedWidth widest={<ModelProgress label={sam2Model(objectMaskModel()).label} percent="100%" />}>
+                      <ModelProgress
+                        label={sam2Model(objectMaskModel()).label}
+                        percent={percent(load()!.phase === "download" ? load()!.progress : null)}
+                      />
+                    </FixedWidth>
                   </Show>
                 </Button>
               )}
@@ -377,9 +374,34 @@ function keepEscape(event: KeyboardEvent) {
   event.stopPropagation();
 }
 
-function loadProgress(load: ObjectMaskModelLoad): string {
-  if (load.phase === "compile" || load.progress === null) return "...";
-  return `${Math.floor(load.progress * 100)}%`;
+/**
+ * Content as wide as `widest` whatever it says, centered in that width: the
+ * button around it holds still as a number in it counts up.
+ */
+function FixedWidth(props: { widest: JSX.Element; children: JSX.Element }) {
+  return (
+    <span class="inline-grid tabular-nums">
+      <span class="invisible col-start-1 row-start-1 flex items-center justify-center gap-1" aria-hidden="true">
+        {props.widest}
+      </span>
+      <span class="col-start-1 row-start-1 flex items-center justify-center gap-1">{props.children}</span>
+    </span>
+  );
+}
+
+/** The model's name with its download's progress after it. */
+function ModelProgress(props: { label: string; percent: string }) {
+  return (
+    <>
+      {props.label}
+      <span class="text-xxs font-normal">{props.percent}</span>
+    </>
+  );
+}
+
+/** 0 to 1 as a whole percentage; null, while there is no number yet, as an ellipsis. */
+function percent(value: number | null): string {
+  return value === null ? "" : `${Math.floor(value * 100)}%`;
 }
 
 function describeModelLoad(load: ObjectMaskModelLoad): string {

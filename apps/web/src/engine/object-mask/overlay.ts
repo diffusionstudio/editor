@@ -12,7 +12,14 @@ import { maskFrame } from './frame';
 import { handleObjectMaskInteraction, heldObjectMaskLabel } from './interaction';
 import { currentSourceFrame, getVideoRect, pointOnVideo, videoPointAt, videoPointToDevice } from './media';
 import {
-	brushRadius, clearTargetEffect, getObjectHover, getObjectMask, getObjectTrack, getTargetClip, objectMaskMode,
+	brushRadius, 
+	clearTargetEffect, 
+	getObjectHover, 
+	getObjectMask, 
+	getObjectTrack, 
+	getTargetClip, 
+	objectMaskMode,
+	resetObjectMaskTools,
 } from './store';
 import { clearObjectHover, hoverObjectMask } from './tracking';
 
@@ -59,6 +66,7 @@ export function drawObjectMasks(world: World, ctx: Ctx2D, resolution: number): v
 			clearObjectHover();
 			clearTargetEffect();
 			endMaskStroke();
+			resetObjectMaskTools();
 		}
 		return;
 	}

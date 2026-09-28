@@ -143,8 +143,14 @@ const [objectMaskMode, setObjectMaskMode] = createSignal<ObjectMaskMode>('points
 const [objectMaskOp, setObjectMaskOp] = createSignal<ObjectMaskOp>('add');
 const [brushRadius, setBrushRadius] = createSignal(DEFAULT_BRUSH_RADIUS);
 
-/** The tool's mode, op and brush size, reactive; kept while the tool is put down. */
+/** The tool's mode, op and brush size, reactive; the brush size is kept while the tool is put down. */
 export { objectMaskMode, setObjectMaskMode, objectMaskOp, setObjectMaskOp, brushRadius, setBrushRadius };
+
+/** Back to points that add, as the tool is put down: it comes up again as it first did. */
+export function resetObjectMaskTools(): void {
+	setObjectMaskMode('points');
+	setObjectMaskOp('add');
+}
 
 // ── The model ────────────────────────────────────────────────
 
