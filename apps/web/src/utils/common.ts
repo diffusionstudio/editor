@@ -76,7 +76,7 @@ export class AsyncMutex {
  * @returns The formatted duration string, or null if the asset is not a video.
  */
 export function formatAssetDuration(asset: Pick<Asset, 'type'> & { duration?: number } | null | undefined): string | null {
-  if (asset?.type != "VIDEO" && asset?.type != "AUDIO" && asset?.type != "SEQUENCE") {
+  if (asset?.type != "VIDEO" && asset?.type != "AUDIO" && asset?.type != "SEQUENCE" && asset?.type != "MASK") {
     return null;
   }
 

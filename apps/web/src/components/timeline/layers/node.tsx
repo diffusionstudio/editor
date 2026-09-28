@@ -364,6 +364,7 @@ function getLayerIcon(world: World, layer: TimelineNode) {
       return "image-small";
     case 'VIDEO':
     case 'SEQUENCE':
+    case 'MASK':
       return "video-small";
     case 'AUDIO':
       return "audio-small";

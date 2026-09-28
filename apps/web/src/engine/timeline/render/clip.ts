@@ -197,6 +197,7 @@ function renderContent(
 	switch (asset?.type) {
 		case 'IMAGE':
 		case 'SEQUENCE':
+		case 'MASK':
 			renderStillThumbnails(world, scene, surface, entity, asset, row);
 			return;
 

@@ -41,6 +41,7 @@ export function getClipStyle(entity: Entity, asset: Asset | null, errored = fals
 	switch (asset?.type) {
 		case 'VIDEO':
 		case 'SEQUENCE':
+		case 'MASK':
 			return COLORS.clip.video;
 		case 'IMAGE':
 			return COLORS.clip.image;
@@ -76,6 +77,7 @@ export function getClipFallbackName(world: World, entity: Entity): string {
 	switch (getClipAsset(world, entity)?.type) {
 		case 'VIDEO':
 		case 'SEQUENCE':
+		case 'MASK':
 			return 'Video';
 		case 'IMAGE':
 			return 'Image';
