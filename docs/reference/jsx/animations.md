@@ -24,13 +24,13 @@ The editor's animations inspector options:
 
 | `type` | Effect |
 | ------ | ------ |
-| `"fade"` | Opacity ramp. |
+| `"fade"` | Opacity ramp between 0 and the node's opacity. |
 | `"slideLeft"`, `"slideRight"`, `"slideUp"`, `"slideDown"` | Slide in from (or out toward) the named direction, fading. |
-| `"grow"` | Scales up from 50%. |
-| `"shrink"` | Scales down from 150%. |
+| `"grow"` | Scales up from 50% of the node's scale. |
+| `"shrink"` | Scales down from 150% of the node's scale. |
 | `"spin"` | Scale plus rotation. |
 | `"twist"` | Overscale plus rotation and offset. |
-| `"blur"` | 24px blur ramp. |
+| `"blur"` | 24px blur ramp on top of the node's blur. |
 | `"appearWord"` | Text only: reveals the text word by word. |
 | `"appearChar"` | Text only: reveals the text character by character. |
 | `"scramble"` | Text only: resolves scrambled characters into the text. |
@@ -41,4 +41,5 @@ Text types apply only to [`<text>`](./text.md) and [`<captions>`](./captions.md)
 ## Semantics
 
 - `duration` and `delay` take any [time format](./timing.md#time-formats). An `"in"` animation plays over `[delay, delay + duration]` from the clip's in point; an `"out"` animation ends `delay` before the clip's out point. Both track the clip when it is retimed.
-- A node takes **any number of animations**; overlapping ones apply in document order, later ones writing over earlier ones on the properties they share. A [keyframe track](./keyframes.md) on the same property (say, a keyframed `opacity` next to `"fade"`) overrides the preset while it has keyframes; presets and keyframes on distinct properties compose freely.
+- Presets are **relative to the node's authored props**: they scale or shift them rather than replace them. A `"fade"` on a clip with `opacity={0.8}` ramps between 0 and 0.8, `"grow"` on a clip with `scale={2}` grows from 1 to 2, and slides move from the authored `offsetX`/`offsetY`.
+- A node takes **any number of animations**; overlapping ones compound on the properties they share (a `"fade"` and a `"slideUp"` running together multiply their opacity ramps). The text types are the exception: they replace the displayed text, so the later one in document order wins. A [keyframe track](./keyframes.md) on the same property (say, a keyframed `opacity` next to `"fade"`) overrides the preset while it has keyframes; presets and keyframes on distinct properties compose freely.
