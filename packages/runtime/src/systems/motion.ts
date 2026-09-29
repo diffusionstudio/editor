@@ -55,7 +55,6 @@ export function resetAnimatedValues(world: World, entity: Entity | null, ignore?
 	computed.cornerRadiusBottomRight[eid] = read(MixedCornerRadius, 'bottomRight', 0);
 	computed.cornerRadiusBottomLeft[eid] = read(MixedCornerRadius, 'bottomLeft', 0);
 	computed.stopOffset[eid] = read(ColorStop, 'offset', 0);
-	computed.chars[eid] = read(Chars, 'value', '');
 
 	if (entity.has(UniformScale) && ignore !== UniformScale) {
 		computed.scaleX[eid] = read(UniformScale, 'value', 1);
@@ -64,6 +63,11 @@ export function resetAnimatedValues(world: World, entity: Entity | null, ignore?
 		computed.scaleX[eid] = read(Scale, 'x', 1);
 		computed.scaleY[eid] = read(Scale, 'y', 1);
 	}
+
+	// Not a copy of Chars: text has no Computed mirror, and captions write
+	// Chars straight to the store, so a copy would pin the text a static
+	// node shows. Unset, the renderer reads Chars; text motion overrides it.
+	computed.chars[eid] = undefined;
 }
 
 /**
