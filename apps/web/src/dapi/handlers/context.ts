@@ -4,6 +4,7 @@
 
 import { AssetId, Computed, Fonts, FrameRate, Generating, getActiveEntity, Library, Name, PendingSource, Source, SourceError } from "@diffusionstudio/runtime";
 import { getProjectsRoot } from "@/projects";
+import { maskTrackRows } from "./media-segment";
 
 import type { Entity, World } from "koota";
 import type { GenerationRow } from "@diffusionstudio/dapi";
@@ -15,13 +16,14 @@ import type { ToolHandler } from "../handler";
  * the file, and a caller that wants them reads it. What is left over is which
  * folder new projects go in, which project folder the app has open, where its
  * playhead sits, which font families are actually registered in the world
- * drawing it. With no project open only the root is left to report.
+ * drawing it, and how generations and background mask tracks are getting on.
+ * With no project open only the root is left to report.
  */
 export const context: ToolHandler<"context"> = async (_, ctx) => {
   const rootDir = await getProjectsRoot();
 
   const open = ctx.session();
-  if (!open) return { rootDir, projectDir: null, currentTime: null, fontFamilies: [], generations: [] };
+  if (!open) return { rootDir, projectDir: null, currentTime: null, fontFamilies: [], generations: [], masks: [] };
 
   const { world, project } = open;
   const frameRate = world.get(FrameRate)?.value || 30;
@@ -37,6 +39,7 @@ export const context: ToolHandler<"context"> = async (_, ctx) => {
     // merely named in the source. The editor default is always among them.
     fontFamilies: [...new Set(["Inter", ...(world.get(Fonts)?.list ?? []).map((f) => f.family)])],
     generations: collectGenerations(world),
+    masks: maskTrackRows(world),
   };
 };
 

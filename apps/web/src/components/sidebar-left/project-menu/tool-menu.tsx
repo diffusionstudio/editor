@@ -40,6 +40,10 @@ export function ToolMenu() {
           Rectangle
           <DropdownMenuShortcut>R</DropdownMenuShortcut>
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setTool(ToolType.OBJECT_MASK)}>
+          Object Mask
+          <DropdownMenuShortcut>M</DropdownMenuShortcut>
+        </DropdownMenuItem>
       </DropdownMenuGroup>
     </>
   );

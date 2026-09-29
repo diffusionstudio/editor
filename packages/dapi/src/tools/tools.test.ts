@@ -10,6 +10,7 @@ import { logs } from "./logs";
 import { mediaFilmstrip } from "./media-filmstrip";
 import { mediaGrab } from "./media-grab";
 import { mediaListen } from "./media-listen";
+import { mediaSegment } from "./media-segment";
 import { mediaTranscribe } from "./media-transcribe";
 
 /** The messages of a failed parse, keyed by the path they point at. */
@@ -99,7 +100,7 @@ describe("logs and export", () => {
 describe("context", () => {
   it("reports the same shape with and without an open project", () => {
     expect(
-      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [], generations: [] }).success,
+      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [], generations: [], masks: [] }).success,
     ).toBe(true);
     expect(
       context.output.safeParse({
@@ -108,9 +109,21 @@ describe("context", () => {
         currentTime: null,
         fontFamilies: ["Inter"],
         generations: [{ element: "index.tsx:3", name: null, state: "done", asset: "gen/a.mp4" }],
+        masks: [],
       }).success,
     ).toBe(true);
     expect(context.output.safeParse({ rootDir: "/p", projectDir: "/p/a" }).success).toBe(false);
+  });
+
+  it("reports background mask tracks, with a contact sheet as bytes in the result and a path in the output", () => {
+    const span = { model: "tiny", frameRate: 30, start: 0, end: 2, frames: 60 };
+    const running = { id: "t1", src: "masks/a/Tracking 1.mask", video: "a.mp4", state: "tracking", progress: 0.4, ...span };
+    const found = { bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [] };
+    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [], generations: [] };
+    expect(context.output.safeParse({ ...base, masks: [running] }).success).toBe(true);
+    expect(context.result!.safeParse({ ...base, masks: [{ ...running, state: "done", progress: 1, png: new Uint8Array(3), ...found }] }).success).toBe(true);
+    expect(context.output.safeParse({ ...base, masks: [{ ...running, state: "done", progress: 1, image: "/tmp/s.png", ...found }] }).success).toBe(true);
+    expect(context.output.safeParse({ ...base, masks: [{ ...running, state: "paused" }] }).success).toBe(false);
   });
 });
 
@@ -128,5 +141,54 @@ describe("image tools", () => {
     expect(capture.result!.safeParse([{ timecode: "0f", png: new Uint8Array(3) }]).success).toBe(true);
     expect(capture.output.safeParse({ images: [{ timecode: "0f", path: "/tmp/0f.png" }] }).success).toBe(true);
     expect(capture.output.safeParse({ images: [{ timecode: "0f", png: new Uint8Array(3) }] }).success).toBe(false);
+  });
+});
+
+describe("media_segment", () => {
+  const input = mediaSegment.input;
+  const at = { path: "/c.mp4", time: "1.5" };
+
+  it("takes points, exclusions and a box, with the time in every form", () => {
+    const args = input.parse({ ...at, points: [{ x: 0.5, y: 0.4 }], exclude: [{ x: 0.5, y: 0.9 }], box: [0.2, 0.1, 0.8, 0.95] });
+    expect(args.time).toBe(1.5);
+    expect(input.parse({ path: "/c.mp4", time: "45f", box: [0, 0, 1, 1] }).time).toBe(1.5);
+  });
+
+  it("needs the object prompted by points or a box", () => {
+    expect(issues(input.safeParse(at))).toHaveProperty("points");
+    expect(issues(input.safeParse({ ...at, exclude: [{ x: 0.1, y: 0.1 }] }))).toHaveProperty("points");
+    expect(input.safeParse({ ...at, points: [{ x: 0, y: 1 }] }).success).toBe(true);
+  });
+
+  it("keeps prompts inside the frame and boxes the right way round", () => {
+    expect(input.safeParse({ ...at, points: [{ x: 1.2, y: 0.5 }] }).success).toBe(false);
+    expect(issues(input.safeParse({ ...at, box: [0.8, 0.1, 0.2, 0.9] }))).toHaveProperty("box");
+    expect(issues(input.safeParse({ ...at, box: [-0.1, 0.1, 0.2, 0.9] }))).toHaveProperty("box");
+  });
+
+  it("rejects a span or an output on a preview", () => {
+    const preview = { ...at, points: [{ x: 0.5, y: 0.5 }], preview: true };
+    expect(input.safeParse(preview).success).toBe(true);
+    expect(issues(input.safeParse({ ...preview, start: 1 }))).toHaveProperty("start");
+    expect(issues(input.safeParse({ ...preview, output: "masks/a.mask" }))).toHaveProperty("output");
+  });
+
+  it("tracks a span that holds the prompted frame", () => {
+    const track = { ...at, points: [{ x: 0.5, y: 0.5 }] };
+    expect(input.safeParse({ ...track, start: 1, end: "0:03" }).success).toBe(true);
+    expect(issues(input.safeParse({ ...track, start: 2 }))).toHaveProperty("time");
+    expect(issues(input.safeParse({ ...track, end: 1.5 }))).toHaveProperty("time");
+    expect(issues(input.safeParse({ ...track, start: 3, end: 2 }))).toHaveProperty("end");
+  });
+
+  it("answers a background track with its paths and span alone", () => {
+    const span = { model: "tiny", frameRate: 30, start: 0, end: 2, frames: 60 };
+    expect(mediaSegment.output.safeParse({ path: "/p/assets/masks/a.mask", src: "masks/a.mask", state: "tracking", ...span }).success).toBe(true);
+    expect(mediaSegment.output.safeParse({ path: "/p/assets/masks/a.mask", state: "queued", ...span }).success).toBe(false);
+  });
+
+  it("names only the models the app offers", () => {
+    expect(input.safeParse({ ...at, box: [0, 0, 1, 1], model: "base-plus" }).success).toBe(true);
+    expect(input.safeParse({ ...at, box: [0, 0, 1, 1], model: "huge" }).success).toBe(false);
   });
 });

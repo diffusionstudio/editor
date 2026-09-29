@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { trait } from 'koota';
 
 import { BlendModeType, EffectType, ScaleModeType, StrokeJoin, StrokeCap } from '../constants';
@@ -35,6 +36,14 @@ export const ScaleMode = trait({ value: ScaleModeType.COVER as ScaleModeType });
 export const Effect = trait({
 	type: EffectType.DROP_SHADOW as EffectType,
 	value: 0,
+});
+
+// A `<mask>`: limits the effect holding it to where its picture is, ChildOf the effect.
+export const Mask = trait({
+	offset: 0,
+	inverted: false,
+	// How much a mask file's edge is smoothed, 0 to 1 (see `traceMask`).
+	smoothing: DEFAULT_MASK_SMOOTHING,
 });
 
 // Single gradient stop: its position along the gradient (0-1). Its color and

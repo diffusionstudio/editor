@@ -59,7 +59,9 @@ export type BlendMode =
 /**
  * An `<effect>`'s filter — the CSS filter functions, applied to the parent's
  * rendered pixels. `blur` takes a radius in px, `hueRotate` degrees, the
- * rest an amount 0–1.
+ * rest an amount 0–1. `opacity` is the node's opacity as an effect (0–1,
+ * default 1): on its own it is the node's `opacity` prop; with a `<mask>`
+ * under it, what is outside the mask goes transparent — the cut-out.
  */
 export type EffectType =
   | "blur"
@@ -69,7 +71,8 @@ export type EffectType =
   | "hueRotate"
   | "invert"
   | "saturate"
-  | "sepia";
+  | "sepia"
+  | "opacity";
 
 /**
  * Easing for the segment from a keyframe to the next one: a named preset or
@@ -541,15 +544,17 @@ export type AdjustmentLayerProps =
 
 export type RectProps = CommonProps & FillProps & {
   /**
-   * Makes the rect a mask of its parent: it clips the parent (its fills,
+   * Makes the rect a clip path of its parent: it clips the parent (its fills,
    * strokes and children show only inside the rect's box) instead of drawing.
    * The rect keeps its transform, `cornerRadius` and timing — a keyframed
-   * mask sliding across a text is a wipe, one that ends early lets go — and
-   * several masks under one parent intersect. A mask is never rendered or
-   * hit, so its `fill`, `opacity`, `blendMode` and paint children have no
-   * effect. Without `width`/`height` a mask is 500×500, and without `end` it
-   * clips for the parent's whole window.
+   * clip path sliding across a text is a wipe, one that ends early lets go —
+   * and several clip paths under one parent intersect. A clip path is never
+   * rendered or hit, so its `fill`, `opacity`, `blendMode` and paint children
+   * have no effect. Without `width`/`height` a clip path is 500×500, and
+   * without `end` it clips for the parent's whole window.
    */
+  clipPath?: boolean;
+  /** @deprecated The old spelling of `clipPath`, read when `clipPath` is not set. */
   mask?: boolean;
   /**
    * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
@@ -590,13 +595,50 @@ export type ShadowProps = ColorProps & OpacityProps & Pick<CompositeProps, "hidd
 /**
  * `<effect>` — a filter over the parent's rendered pixels (its fills, strokes
  * and children together), a sub-entity like a paint. Several stack in
- * document order.
+ * document order. `<mask>` children limit where the effect applies.
  */
-export type EffectProps = Pick<CompositeProps, "hidden"> & TrackChildren & {
+export type EffectProps = Pick<CompositeProps, "hidden"> & {
   /** Which filter to apply. */
   type: EffectType;
   /** The amount: px for "blur", degrees for "hueRotate", 0–1 otherwise. */
   value: number;
+  /** `<Mask>` children limiting the effect, and `<KeyframeTrack>` children. */
+  children?: SolidJSX.Element;
+};
+
+/**
+ * `<mask>` — a matte limiting the `<effect>` holding it: a picture whose
+ * alpha says where the effect applies, fitted into the node's box the way
+ * the node fits its footage. Under an `"opacity"` effect it is the cut-out:
+ * what is outside the mask goes transparent. What the editor's object mask
+ * tool makes: it tracks an object through a video and writes the frames it
+ * found as a directory of numbered images, which `src` names. Several under
+ * one effect intersect. Without a `src` a mask does nothing.
+ */
+export type MaskProps = Pick<CompositeProps, "hidden"> & TrackChildren & {
+  /** The mask's frames: a directory of numbered images whose alpha is the mask. */
+  src?: string;
+  /** The parent's source time the first frame belongs to, so the frames stay on the footage they were made from whatever the trim. Default 0. */
+  sourceIn?: Time;
+  /** Frames per second the frames were written at (the composition's). Default 30. */
+  frameRate?: number;
+  /** Feather: radius in px the edge falls off over. Default 0. */
+  blur?: number;
+  /**
+   * How strongly the mask limits the effect, 0–1. At 1 the effect stops at
+   * the mask's edge; lower lets that much of it through outside; 0 is no
+   * mask. Default 1.
+   */
+  opacity?: number;
+  /** Covers what the picture does not instead. Default false. */
+  inverted?: boolean;
+  /**
+   * How much a mask file's edge is smoothed, 0–1. At 0 it is exactly where
+   * the model put it; the more, the rounder,
+   * and the more of what is thin or small melts away. Sharp at any size
+   * either way. Default 0.25.
+   */
+  smoothing?: number;
 };
 
 /**

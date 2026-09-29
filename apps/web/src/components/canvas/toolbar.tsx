@@ -16,16 +16,31 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
-import { Show } from "solid-js";
+import { ObjectMaskBar } from "./object-mask-bar";
+import { ClipPathBar } from "./clip-path-bar";
+import { For, Match, Show, Switch, createEffect, createMemo } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { useTool } from "@/engine";
+import { clearClipPathTarget, useTool } from "@/engine";
 import { usePromptInput } from "@/context/prompt-input";
+
+const CURSOR_TOOLS = [
+  { tool: ToolType.MOVE, label: 'Move', shortcut: 'V', icon: 'move', menuIcon: 'move-small' },
+  { tool: ToolType.HAND, label: 'Hand', shortcut: 'H', icon: 'hand', menuIcon: 'hand' },
+  { tool: ToolType.OBJECT_MASK, label: 'Object Mask', shortcut: 'M', icon: 'object-mask', menuIcon: 'object-mask' },
+] as const;
 
 export function Toolbar() {
   const world = useWorld();
   const { promptInputOpen, promptInputConfig, openPromptInput, setPromptInputOpen } = usePromptInput();
   const selectedTool = useTool();
+  const cursorTool = createMemo(() => CURSOR_TOOLS.find((cursor) => cursor.tool === selectedTool()));
+
+  createEffect(() => {
+    if (selectedTool() !== ToolType.CLIP_PATH) {
+      clearClipPathTarget();
+    }
+  });
 
   const handleToolChange = (tool: ToolType) => {
     world.set(Tool, { value: tool });
@@ -37,7 +52,14 @@ export function Toolbar() {
         <PromptInput initialConfig={promptInputConfig()} />
       </Show>
       <Show when={!promptInputOpen()}>
-        <ActionBar openPromptInput={openPromptInput} />
+        <Switch fallback={<ActionBar openPromptInput={openPromptInput} />}>
+          <Match when={selectedTool() === ToolType.OBJECT_MASK}>
+            <ObjectMaskBar />
+          </Match>
+          <Match when={selectedTool() === ToolType.CLIP_PATH}>
+            <ClipPathBar />
+          </Match>
+        </Switch>
       </Show>
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl p-1.5 bg-background border border-border-strong flex gap-2 items-center z-10">
         <div class="flex gap-1">
@@ -45,16 +67,14 @@ export function Toolbar() {
             <TooltipTrigger
               as={Button}
               size="icon-square"
-              class={[ToolType.MOVE, ToolType.HAND].includes(selectedTool()) ? 'text-foreground' : 'text-muted-foreground'}
-              variant={[ToolType.MOVE, ToolType.HAND].includes(selectedTool()) ? 'default' : 'ghost'}
-              onClick={() => handleToolChange(
-                selectedTool() === ToolType.HAND ? ToolType.HAND : ToolType.MOVE
-              )}
+              class={cursorTool() ? 'text-foreground' : 'text-muted-foreground'}
+              variant={cursorTool() ? 'default' : 'ghost'}
+              onClick={() => handleToolChange(cursorTool()?.tool ?? ToolType.MOVE)}
             >
-              <Icon name={selectedTool() === ToolType.HAND ? 'hand' : 'move'} />
+              <Icon name={(cursorTool() ?? CURSOR_TOOLS[0]!).icon} />
             </TooltipTrigger>
-            <TooltipContent shortcut={selectedTool() === ToolType.HAND ? 'H' : 'V'}>
-              {selectedTool() === ToolType.HAND ? 'Hand' : 'Move'}
+            <TooltipContent shortcut={(cursorTool() ?? CURSOR_TOOLS[0]!).shortcut}>
+              {(cursorTool() ?? CURSOR_TOOLS[0]!).label}
             </TooltipContent>
           </Tooltip>
           <DropdownMenu placement="top-start">
@@ -75,22 +95,18 @@ export function Toolbar() {
             </Tooltip>
             <DropdownMenuPortal>
               <DropdownMenuContent>
-                <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.MOVE)}>
-                  <div classList={{ "visible": selectedTool() === ToolType.MOVE }} class="invisible">
-                    <Icon name="confirm-check" class="text-foreground" />
-                  </div>
-                  <Icon name="move-small" class="text-foreground" />
-                  <span class="min-w-12 mx-1">Move</span>
-                  <DropdownMenuShortcut>V</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(ToolType.HAND)}>
-                  <div classList={{ "visible": selectedTool() === ToolType.HAND }} class="invisible">
-                    <Icon name="confirm-check" class="text-foreground" />
-                  </div>
-                  <Icon name="hand" class="text-foreground" />
-                  <span class="min-w-12 mx-1">Hand</span>
-                  <DropdownMenuShortcut>H</DropdownMenuShortcut>
-                </DropdownMenuItem>
+                <For each={CURSOR_TOOLS}>
+                  {(cursor) => (
+                    <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(cursor.tool)}>
+                      <div classList={{ "visible": selectedTool() === cursor.tool }} class="invisible">
+                        <Icon name="confirm-check" class="text-foreground" />
+                      </div>
+                      <Icon name={cursor.menuIcon} class="text-foreground" />
+                      <span class="mx-1 flex-1 whitespace-nowrap">{cursor.label}</span>
+                      <DropdownMenuShortcut class="pl-6">{cursor.shortcut}</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  )}
+                </For>
               </DropdownMenuContent>
             </DropdownMenuPortal>
           </DropdownMenu>

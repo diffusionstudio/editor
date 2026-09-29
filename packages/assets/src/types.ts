@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import type { MaskRecipe } from './mask';
+
 /** Whatever hands out the asset's bytes: a real File on desktop, an OPFS
  *  file on the web, a fetched blob for a URL. */
 export interface AssetFileHandle {
@@ -106,13 +108,28 @@ export interface SequenceAsset extends AssetBase {
 	directoryHandle: AssetDirectoryHandle;
 }
 
+/**
+ * A tracked matte in a mask file (see `mask.ts`): the model's logits on its
+ * grid, a field a frame, stretched over the footage's frame. `recipe` is how the frames were made,
+ * kept here too so a mask whose file went missing can be made again.
+ */
+export interface MaskAsset extends AssetBase {
+	type: 'MASK';
+	width: number;
+	height: number;
+	frameRate: number;
+	duration: number;
+	recipe?: MaskRecipe;
+}
+
 export type Asset =
 	| ImageAsset
 	| AudioAsset
 	| VideoAsset
 	| TranscriptAsset
 	| ScriptAsset
-	| SequenceAsset;
+	| SequenceAsset
+	| MaskAsset;
 
 export type AssetType = Asset['type'];
 

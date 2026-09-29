@@ -6,9 +6,10 @@
  * The pictures the timeline draws inside clips, in the two kinds the two
  * kinds of clip need.
  *
- * A still — an image, or a frames directory shown by its first frame — is one
- * picture tiled along the clip, so it is decoded once per asset at whatever
- * size the row is currently drawn at, and kept until the row changes size.
+ * A still — an image, a frames directory shown by its first frame, or a mask
+ * shown by its first matte — is one picture tiled along the clip, so it is
+ * decoded once per asset at whatever size the row is currently drawn at, and
+ * kept until the row changes size.
  *
  * A video is a strip of its own frames, which is a decode per tile, so it
  * comes in two layers like the peaks do. The asset layer decodes a handful of
@@ -24,6 +25,7 @@
 
 import { CanvasSink } from 'mediabunny';
 import { getAssetFile, getVideoTrack, secondsToFrames } from '@diffusionstudio/runtime';
+import { deriveThumbnail } from '@diffusionstudio/assets';
 
 import { MAX_CLIP_HEIGHT } from './config';
 
@@ -119,12 +121,25 @@ export function resolveStill(asset: Asset, width: number): Still | null {
 	return existing ?? null;
 }
 
+/**
+ * What a still is decoded from: the file itself, or for a mask — a file of
+ * logits, not a picture — its matte rendered as one.
+ */
+async function stillSource(asset: Asset, width: number): Promise<Blob> {
+	const file = await getAssetFile(asset);
+	if (asset.type !== 'MASK') return file;
+
+	const thumbnail = await deriveThumbnail(file, asset.mimeType, Math.ceil(width * window.devicePixelRatio));
+	if (!thumbnail) throw new Error('Could not render the mask');
+	return thumbnail;
+}
+
 async function decodeStill(asset: Asset, width: number, hash: string): Promise<void> {
 	if (stillsDecoding.has(asset.id)) return;
 	stillsDecoding.add(asset.id);
 
 	try {
-		const bitmap = await createImageBitmap(await getAssetFile(asset));
+		const bitmap = await createImageBitmap(await stillSource(asset, width));
 
 		try {
 			// Big enough for the widest tile and the tallest row it could be

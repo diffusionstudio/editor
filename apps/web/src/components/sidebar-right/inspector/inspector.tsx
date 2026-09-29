@@ -11,7 +11,7 @@ import {
   isAudio,
   isCaption,
   isGroup,
-  isMask,
+  isClipPath,
   isScene,
   isSequence,
   isShape,
@@ -32,13 +32,13 @@ import { TransformSettings } from "./transform";
 import { CaptionSettings } from "./caption-settings";
 import { TextPanel } from "./text";
 import { FillsSettings } from "./fills";
-import { SourceSettings } from "./source";
 import { StrokesSettings } from "./strokes";
 import { ShadowsSettings } from "./shadows";
 import { EffectsSettings } from "./effects";
 import { AnimationsSettings } from "./animations";
 import { TransitionSettings } from "./transition";
-import { MasksSettings } from "./masks";
+import { ClipPathsSettings } from "./clip-paths";
+import { TrackingSettings } from "./tracking";
 import { AudioSettings } from "./audio";
 import { InterpolationSettings } from "./interpolation";
 
@@ -49,7 +49,7 @@ export type SelectionTarget =
   | "keyframe"
   | "asset"
   | "scene"
-  | "mask"
+  | "clip-path"
   | "sequence"
   | "caption"
   | "audio"
@@ -61,7 +61,7 @@ export type SelectionTarget =
 
 function classifyNode(entity: Entity): SelectionTarget {
   if (isScene(entity)) return "scene";
-  if (isMask(entity)) return "mask";
+  if (isClipPath(entity)) return "clip-path";
   if (isSequence(entity)) return "sequence";
   if (isCaption(entity)) return "caption";
   if (isAudio(entity)) return "audio";
@@ -128,19 +128,19 @@ export function Inspector() {
             <VariablesSettings />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "mask", "adjustment")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment")}>
             <TimeSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "mask", "adjustment")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment")}>
             <TransformSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "mask")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path")}>
             <LayoutPanel selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "scene", "caption", "group", "audio", "mask")}>
+          <Show when={includesTarget("shape", "text", "scene", "caption", "group", "audio", "clip-path")}>
             <AppearanceSettings selection={nodes()} />
           </Show>
 
@@ -156,8 +156,8 @@ export function Inspector() {
             <FillsSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "caption")}>
-            <SourceSettings selection={nodes()} />
+          <Show when={includesTarget("shape")}>
+            <TrackingSettings selection={nodes()} />
           </Show>
 
           <Show when={includesTarget("shape", "text", "scene", "caption")}>
@@ -172,7 +172,7 @@ export function Inspector() {
             <EffectsSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "caption", "group", "mask")}>
+          <Show when={includesTarget("shape", "text", "caption", "group", "clip-path")}>
             <AnimationsSettings selection={nodes()} />
           </Show>
 
@@ -181,7 +181,7 @@ export function Inspector() {
           </Show>
 
           <Show when={includesTarget("shape", "text", "caption", "group")}>
-            <MasksSettings selection={nodes()} />
+            <ClipPathsSettings selection={nodes()} />
           </Show>
 
           <Show when={includesTarget("shape", "audio", "group")}>

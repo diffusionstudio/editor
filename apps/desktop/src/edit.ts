@@ -257,8 +257,10 @@ function jsxText(text: string): string {
 
 /**
  * Replaces what an element says between its tags; a self-closing one is opened
- * up around the new text. Everything outside the body keeps its bytes, so an
- * element that says something else is otherwise the element it was.
+ * up around the new text. Only the text is replaced: the elements it holds
+ * besides (its paint, a stroke, a range) stay, and so does everything outside
+ * the body, so an element that says something else is otherwise the element
+ * it was.
  */
 function setText(sourceFile: SourceFile, tag: JsxTag, text: string): void {
   const element = elementOf(tag);
@@ -270,7 +272,44 @@ function setText(sourceFile: SourceFile, tag: JsxTag, text: string): void {
     return;
   }
 
-  sourceFile.replaceText([element.getOpeningElement().getEnd(), element.getClosingElement().getStart()], content);
+  const ranges = element.getJsxChildren().filter(isSaid).map(saidRange);
+  // Nothing said yet: it is said first, the way an insert spells it.
+  if (!ranges.length) {
+    if (content) sourceFile.insertText(element.getOpeningElement().getEnd(), content);
+    return;
+  }
+
+  // The first part says all of it and the rest say nothing. Later parts go
+  // first, so the positions of the earlier ones still hold.
+  for (const range of ranges.slice(1).reverse()) sourceFile.replaceText(range, "");
+  sourceFile.replaceText(ranges[0]!, content);
+}
+
+/**
+ * Whether a child of an element is part of what it says: text JSX keeps, or
+ * an expression with no element in it. A comment (an expression with nothing
+ * in it) says nothing.
+ */
+function isSaid(child: Node): boolean {
+  if (child.isKind(SyntaxKind.JsxText)) return !child.containsOnlyTriviaWhiteSpaces();
+  const expression = child.asKind(SyntaxKind.JsxExpression)?.getExpression();
+  if (!expression) return false;
+  return !JSX_KINDS.some((kind) => expression.isKind(kind) || expression.getFirstDescendantByKind(kind));
+}
+
+const JSX_KINDS = [SyntaxKind.JsxElement, SyntaxKind.JsxSelfClosingElement, SyntaxKind.JsxFragment] as const;
+
+/**
+ * Where a part of what an element says is spelled. For text, that is without
+ * the whitespace JSX drops around line breaks: the layout of the body is the
+ * file's, not the text's.
+ */
+function saidRange(child: Node): [number, number] {
+  if (!child.isKind(SyntaxKind.JsxText)) return [child.getStart(), child.getEnd()];
+  const raw = child.getFullText();
+  const leading = /^[ \t]*\n\s*/.exec(raw)?.[0].length ?? 0;
+  const trailing = /\s*\n[ \t]*$/.exec(raw)?.[0].length ?? 0;
+  return [child.getPos() + leading, child.getEnd() - trailing];
 }
 
 // ---------------------------------------------------------------------------

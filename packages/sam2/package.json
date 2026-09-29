@@ -1,0 +1,31 @@
+{
+  "name": "@diffusionstudio/sam2",
+  "version": "0.1.0",
+  "description": "SAM 2.1 video object segmentation and tracking in the browser: ONNX Runtime on WebGPU, frames decoded with mediabunny. Weights are fetched from Hugging Face on first use and cached locally.",
+  "license": "MPL-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./mask": "./src/mask.ts",
+    "./models": "./src/constants.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "keywords": [
+    "sam2",
+    "segmentation",
+    "tracking",
+    "webgpu",
+    "onnx"
+  ],
+  "dependencies": {
+    "mediabunny": "^1.32.2",
+    "onnxruntime-web": "^1.30.0"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.71",
+    "typescript": "~5.9.3"
+  }
+}

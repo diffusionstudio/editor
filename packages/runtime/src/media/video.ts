@@ -9,6 +9,7 @@ import { assert } from '../utils/assert';
 import { getAsset, getAssetFile, getSequenceFrameRate } from '../actions/assets';
 import { FrameCache } from './frame-cache';
 import { getKeyframeIndex } from './keyframe-index';
+import { MaskDecoder } from './mask';
 import { SequenceDecoder } from './sequence';
 
 import type { Entity, World } from 'koota';
@@ -677,13 +678,13 @@ export class VideoExporter {
 }
 
 /**
- * What a video paint decodes through. Three implementations of one interface
- * — `seekTo`, `toBitmap`, `idle`, `dispose` — picked by what the source turns
- * out to be and what the world is doing with it: a demuxed buffer for playing
- * a file, an exact-seeking reader for encoding one, and a frames directory
- * read off disk. Nothing downstream of `resolveVideoDecoder` asks which.
+ * What a video paint decodes through. Four implementations of one interface
+ * — `seekTo`, `toBitmap`, `dispose` — picked by what the source turns out to
+ * be and what the world is doing with it: a demuxed buffer for playing a
+ * file, an exact-seeking reader for encoding one, a frames directory read off
+ * disk, and a mask file. Nothing downstream of `resolveVideoDecoder` asks which.
  */
-export type VideoDecoderInstance = VideoBuffer | VideoExporter | SequenceDecoder;
+export type VideoDecoderInstance = VideoBuffer | VideoExporter | SequenceDecoder | MaskDecoder;
 
 const videoTrackCache = new Map<string, Promise<InputVideoTrack | null>>();
 
@@ -719,9 +720,9 @@ export function getVideoTrack(source: VideoAsset) {
  * The decoder `entity`'s video paint draws from, built on first use and kept
  * until the asset it was built for is no longer the one asked for.
  *
- * A sequence's rate is the element's to set, so it is pushed on every call
- * rather than fixed at construction — re-reading a folder to play it slower
- * would be a rebuild for nothing.
+ * A sequence's or mask's rate is the element's to set, so it is pushed on
+ * every call rather than fixed at construction — re-reading a folder to play
+ * it slower would be a rebuild for nothing.
  */
 export function resolveVideoDecoder(world: World, entity: Entity): VideoDecoderInstance | null {
 	const assetId = entity.get(AssetId)?.value;
@@ -738,6 +739,8 @@ export function resolveVideoDecoder(world: World, entity: Entity): VideoDecoderI
 		if (existing instanceof SequenceDecoder) {
 			existing.hasCache = hasCache;
 			existing.frameRate = getSequenceFrameRate(entity, existing.asset);
+		} else if (existing instanceof MaskDecoder) {
+			existing.frameRate = getSequenceFrameRate(entity, existing.asset);
 		}
 		return existing;
 	}
@@ -751,6 +754,9 @@ export function resolveVideoDecoder(world: World, entity: Entity): VideoDecoderI
 	let decoder: VideoDecoderInstance;
 	if (asset.type === 'SEQUENCE') {
 		decoder = new SequenceDecoder(asset, hasCache);
+		decoder.frameRate = getSequenceFrameRate(entity, asset);
+	} else if (asset.type === 'MASK') {
+		decoder = new MaskDecoder(asset);
 		decoder.frameRate = getSequenceFrameRate(entity, asset);
 	} else if (asset.type === 'VIDEO') {
 		decoder = hasCache ? new VideoBuffer(asset) : new VideoExporter(asset);

@@ -4,7 +4,7 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
     "erasableSyntaxOnly": false,
     "lib": ["es2024", "DOM", "DOM.Iterable"],
-    "types": ["@webgpu/types"]
+    "types": ["@webgpu/types", "@types/wicg-file-system-access"]
   },
   "include": ["src"]
 }

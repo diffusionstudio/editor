@@ -12,7 +12,7 @@ import { Not, Or } from 'koota';
 import { store } from '../world/store';
 import { PaintType } from '../constants';
 import {
-	ChildOf, Hidden, Culled, Dragging,
+	ChildOf, Hidden, Culled, Dragging, AssetId, Cache, Mask,
 	Geometry, Group, AdjustmentLayer, Paint, Audio, Caption, Muted, Soloed,
 	Sequential, Transition, Playback, Workarea,
 	AudioPlayback, Computed,
@@ -222,6 +222,49 @@ function forwardImageDecoder(world: World, _scene: Entity, _entity: Entity, fill
 }
 
 /**
+ * Seeks the frame sequences of the masks under the entity's effects: a
+ * mask's frame `i` belongs to source frame `offset + i` of the clip, so the
+ * seek is the clip's own source frame less the offset, at the rate the
+ * sequence was written at (the composition's, authored as its frameRate).
+ */
+function forwardMaskDecoders(world: World, scene: Entity, entity: Entity): void {
+	const cache = store(world, Cache);
+	const effects = cache.effects[entity.id()];
+	if (!effects?.length) return;
+
+	const computed = store(world, Computed);
+	const maskStore = store(world, Mask);
+	const eid = entity.id();
+	const fps = world.get(FrameRate)?.value ?? 30;
+
+	const globalFrame = computed.localTime[scene.id()]!;
+	const localFrame = computed.localTime[eid]!;
+	const start = computed.start[eid]!;
+	const end = computed.end[eid]!;
+	const hasCache = world.get(Mode)?.value === 'realtime';
+	const warmupDecoder = globalFrame >= start - WARMUP_FRAMES && globalFrame < end + WARMUP_FRAMES && hasCache;
+	if (computed.visibility[eid] !== 1 && !warmupDecoder) return;
+
+	const source = getSourceWindow(entity);
+	const sourceFrame = clamp(localFrame, source.in, source.out);
+
+	for (const effect of effects) {
+		if (effect.has(Hidden)) continue;
+		for (const mask of cache.masks[effect.id()] ?? []) {
+			if (mask.has(Hidden) || !mask.has(AssetId)) continue;
+
+			const decoder = resolveVideoDecoder(world, mask);
+			if (!decoder) continue;
+			const frame = Math.max(0, sourceFrame - (maskStore.offset[mask.id()] ?? 0));
+			// Seek first: the editor keeps no promise list, and an optional call
+			// skips its arguments along with itself.
+			const seek = decoder.seekTo(frame, fps);
+			framePromises(world)?.push(seek ?? null);
+		}
+	}
+}
+
+/**
  * Forward decoders for a child entity and its node descendants.
  */
 function forwardDecoders(world: World, scene: Entity, entity: Entity): void {
@@ -268,6 +311,10 @@ function forwardDecoders(world: World, scene: Entity, entity: Entity): void {
 				const ready = resolveShaderHost(world, fill)?.whenReady();
 				if (ready) framePromises(world)?.push(ready);
 			}
+		}
+
+		if (visualsEnabled && entity.has(Geometry)) {
+			forwardMaskDecoders(world, scene, entity);
 		}
 	}
 

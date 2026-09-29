@@ -222,7 +222,12 @@ export function DrawOverlay() {
         );
       }
       if (tool === ToolType.TEXT) {
-        return <Text name={name} x={x} y={y} {...size} fontSize={fontSize} color={cfg.fillColor}>Text</Text>;
+        return (
+          <Text name={name} x={x} y={y} {...size} fontSize={fontSize}>
+            Text
+            <SolidPaint color={cfg.fillColor} />
+          </Text>
+        );
       }
       return (
         <Rect name={name} x={x} y={y} {...size}>

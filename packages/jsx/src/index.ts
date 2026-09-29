@@ -69,6 +69,7 @@ export type {
   ColorStopProps,
   Easing,
   EffectProps,
+  MaskProps,
   EffectType,
   Fit,
   GradientPaintProps,

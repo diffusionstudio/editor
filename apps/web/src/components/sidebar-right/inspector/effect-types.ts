@@ -33,6 +33,7 @@ export const EFFECT_OPTIONS: EffectOption[] = [
   { name: "invert", label: "Invert", unit: "amount", value: 0.5 },
   { name: "saturate", label: "Saturate", unit: "amount", value: 0.8 },
   { name: "sepia", label: "Sepia", unit: "amount", value: 0.5 },
+  { name: "opacity", label: "Opacity", unit: "amount", value: 1 },
 ];
 
 /** What the panel's plus inserts, spelled out. */

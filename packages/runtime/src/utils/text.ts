@@ -17,6 +17,7 @@ import {
 import { clamp } from '../math/common';
 import { colorToHex } from './color';
 import { applyStrokeStyle, findWidestStroke } from './stroke';
+import { getSurfaceContext } from './surface';
 import { createLinearGradient, createRadialGradient } from '../systems/gradients';
 
 import type { Entity, World } from 'koota';
@@ -434,7 +435,7 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 
 /** Render text tokens directly to the world's render surface. */
 export function renderText(world: World, entity: Entity) {
-	const ctx = world.get(RenderSurface)?.ctx;
+	const ctx = getSurfaceContext(world);
 	if (!ctx) return;
 	tokenizeText(world, entity);
 	shapeTokens(world, entity);

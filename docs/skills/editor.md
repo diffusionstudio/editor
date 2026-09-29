@@ -46,6 +46,7 @@ How to confirm a change actually produced what you intended. A clean save does n
 - Use the built-in tags for the media a composition is made of (audio, video, images, captions).
 - Hoist the properties that define the composition's look — title copy, font family and size, accent colors, key padding — into top-level consts annotated with `@inspect`, so they become live controls in the app's inspector.
 - For anything 3D, use Three.js drawn into a `<surface>` tag.
+- To cut an object out of footage, or confine an effect to it, track it with `media_segment` (preview the prompt first) and name the mask file in a `<mask>` under the clip's `<effect>`. A track into the library runs in the background: keep working, and poll `context` until its row in `masks` is done before naming it.
 - For motion graphics, overlays and UI-heavy graphics, the `<html>` tag driven by a paused [anime.js](https://animejs.com) timeline
 - Before animating anything, read the [easings reference](../guides/motion/easings.md) and choose easings deliberately — default or linear easing is what makes motion read as a slideshow.
 - Add auto captions last, after everything else is assembled, so they transcribe the finished audio at its final placement.

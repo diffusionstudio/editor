@@ -31,10 +31,8 @@ export const Toaster = (props: Parameters<typeof Sonner>[0]) => {
           description: 'text-xs',
           content: 'flex gap-0.5',
           icon: 'size-6 mb-1',
-
-          // actionButton: 'bg-zinc-400',
-          // cancelButton: 'bg-orange-400',
-          // closeButton: 'bg-lime-400',
+          actionButton: 'mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer',
+          cancelButton: 'mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer',
         },
       }}
       {...props}

@@ -12,6 +12,7 @@
 import { trait } from 'koota';
 
 import type { CanvasPointerEvent, Point } from '@diffusionstudio/runtime';
+import type { ObjectMaskMode, ObjectMaskOp } from './object-mask/store';
 import type { ProjectConfig as ProjectConfigStore } from './project-config';
 
 export type PointerPhase = 'pressed' | 'lifted';
@@ -71,6 +72,21 @@ export type HudMode = 'idle' | 'moving' | 'marquee';
  * 'marquee' turns the drag rectangle into a selection.
  */
 export const Hud = trait({ mode: 'idle' as HudMode });
+
+/**
+ * How the object mask tool prompts: with points or the brush (`mode`),
+ * adding to the object or subtracting from it (`op`), and the brush's radius
+ * in 0..1 of the frame's height. `brushShown` is whether the brush's ring is
+ * drawn under the pointer, standing in for the cursor, which the stage hides
+ * meanwhile. Putting the tool down brings mode and op back to points that
+ * add; the radius is kept.
+ */
+export const ObjectMaskTool = trait({
+	mode: 'points' as ObjectMaskMode,
+	op: 'add' as ObjectMaskOp,
+	brushRadius: 0.03,
+	brushShown: false,
+});
 
 /**
  * Queue of pointer events to be processed by the input system.

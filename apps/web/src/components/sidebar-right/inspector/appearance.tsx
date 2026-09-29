@@ -38,6 +38,7 @@ import {
 } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
+import { SourceRows } from "./source";
 import { BLEND_MODE_ORDER, BLEND_MODE_SEPARATORS, blendModeName, displayBlendMode } from "./blend-modes";
 
 import type { Entity } from "koota";
@@ -70,18 +71,21 @@ type Corner = 'cornerRadiusTopLeft' | 'cornerRadiusTopRight' | 'cornerRadiusBott
 const CORNERS: Corner[] = ['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'];
 
 /**
- * Opacity, blending, visibility and corner radii. All of them are props
+ * Opacity, blending, source, visibility and corner radii. All of them are props
  * (`opacity`, `blendMode`, `hidden`, `cornerRadius` and the four per-corner
  * radii) written through the editor; the shown values are Computed, which
  * the motion system writes, hence `useDerived`. A radius the panel leaves
  * at its default is unset rather than written as 0, and a mode switch
  * drops the other mode's props and tracks: uniform is `cornerRadius`,
- * separate is the four corners with `cornerRadius` gone.
+ * separate is the four corners with `cornerRadius` gone. The source rows
+ * show only when the node has an intrinsic paint or fill (see `SourceRows`).
  */
 export function AppearanceSettings(props: AppearanceSettingsProps) {
   const world = useWorld();
   const editor = useEditor();
   const entity = () => props.selection[0]!;
+
+  let anchorRef!: HTMLDivElement;
 
   const opacity = useDerived(() => entity().get(Computed)?.opacity ?? 1);
   const blendModeTrait = useTrait(entity, BlendMode);
@@ -181,6 +185,7 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
   return (
     <PanelSection
       title="Appearance"
+      ref={anchorRef}
       actions={
         <Tooltip>
           <TooltipTrigger
@@ -242,6 +247,8 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
           </Select>
         </div>
       </ControlRow>
+
+      <SourceRows node={entity()} anchorRef={anchorRef} />
 
       <Show when={isRect(entity()) && !isAudio(entity())}>
         <ContextMenu>

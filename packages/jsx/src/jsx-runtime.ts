@@ -27,6 +27,7 @@ import type {
   CaptionsProps,
   ColorStopProps,
   EffectProps,
+  MaskProps,
   GradientPaintProps,
   MediaPaintProps,
   GroupProps,
@@ -98,6 +99,7 @@ export declare namespace JSX {
     stroke: StrokeProps & SourceProps;
     shadow: ShadowProps & SourceProps;
     effect: EffectProps & SourceProps;
+    mask: MaskProps & SourceProps;
     animation: AnimationProps & SourceProps;
     keyframeTrack: KeyframeTrackProps & SourceProps;
     keyframe: KeyframeProps & SourceProps;
