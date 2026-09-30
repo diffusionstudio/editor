@@ -21,8 +21,8 @@ const HEIGHT = 200;
 // The preset's base TextStyle; the document writes it and authored style
 // props overwrite it (see CAPTION_PRESET_STYLES).
 export const GUINEA_TEXT_STYLE = {
-	fontFamily: 'Poppins',
-	fontWeight: '800',
+	fontFamily: 'Outfit',
+	fontWeight: '700',
 	fontSize: 62,
 	textAlign: TextAlign.CENTER,
 	textBaseline: TextBaseline.MIDDLE,
