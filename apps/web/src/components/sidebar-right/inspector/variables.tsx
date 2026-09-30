@@ -39,12 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { For, Match, Switch, createMemo, createSignal } from "solid-js";
-import { WebFonts, loadWebFont } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { useEditor } from "@/engine/hooks";
 import { useInspectEntries } from "@/engine/inspect";
 import { colorToHex, parseColor } from "@/utils/color";
-import { FontDropdown, GrowingTextArea } from "./text";
+import { FontDropdown } from "./font-picker";
+import { GrowingTextArea } from "./text";
 
 import type { InspectEntry } from "@diffusionstudio/reconciler";
 import type { InspectValue } from "@diffusionstudio/jsx";
@@ -75,7 +75,6 @@ export function VariablesSettings() {
 }
 
 function VariableControl(props: { entry: InspectEntry }) {
-  const world = useWorld();
   const editor = useEditor();
   const entry = () => props.entry;
 
@@ -99,12 +98,7 @@ function VariableControl(props: { entry: InspectEntry }) {
             // Hovering previews on the live signal alone; closing puts the
             // committed family back (the dropdown hands it back itself).
             onPreview={(family) => entry().set(family)}
-            onFamilyChange={(family) => {
-              commit(family);
-              if (family in WebFonts) {
-                void loadWebFont(world, family as keyof typeof WebFonts);
-              }
-            }}
+            onFamilyChange={(family) => commit(family)}
             onWeightsChange={() => {}}
           />
         </ControlRow>

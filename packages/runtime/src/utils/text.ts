@@ -141,7 +141,7 @@ function applyFont(ctx: Ctx, world: World, entity: Entity, ranges: Entity[]) {
 	const mappedStyle = FontStyle[style]!.toLowerCase();
 	const mappedBaseline = TextBaseline[baseline]!.toLowerCase() as CanvasTextBaseline;
 
-	ctx.font = `${mappedStyle} ${weight.toLowerCase()} ${size}px ${family}`.trim();
+	ctx.font = `${mappedStyle} ${weight.toLowerCase()} ${size}px "${family.replace(/"/g, '')}", Inter`;
 	ctx.textBaseline = mappedBaseline;
 	ctx.letterSpacing = `${spacing}px`;
 }

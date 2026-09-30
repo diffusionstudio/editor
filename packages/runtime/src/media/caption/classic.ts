@@ -5,7 +5,6 @@
 import { CaptionAlign, CaptionType, FontStyle, TextAlign, TextBaseline, TextCase } from '../../constants';
 import { Color, Shadow, Opacity, Blur, Offset } from '../../traits';
 import { renderText } from '../../utils/text';
-import { loadWebFont } from '../../fonts/utils';
 import { groupBy, findActiveGroup, resolveTranscript, setChars } from './utils';
 import { placeCaption } from './position';
 import { createEntity } from '../../actions/entities';
@@ -76,7 +75,6 @@ export class ClassicCaptionDecoder implements CaptionDecoder {
 		shadow.set(Offset, { x: 0, y: 5 });
 		appendChild(world, shadow, entity);
 
-		loadWebFont(world, CLASSIC_TEXT_STYLE.fontFamily);
 		return true;
 	}
 
