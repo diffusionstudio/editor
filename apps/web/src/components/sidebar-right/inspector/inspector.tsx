@@ -38,7 +38,6 @@ import { EffectsSettings } from "./effects";
 import { AnimationsSettings } from "./animations";
 import { TransitionSettings } from "./transition";
 import { ClipPathsSettings } from "./clip-paths";
-import { TrackingSettings } from "./tracking";
 import { AudioSettings } from "./audio";
 import { InterpolationSettings } from "./interpolation";
 
@@ -154,10 +153,6 @@ export function Inspector() {
 
           <Show when={includesTarget("shape", "text", "scene")}>
             <FillsSettings selection={nodes()} />
-          </Show>
-
-          <Show when={includesTarget("shape")}>
-            <TrackingSettings selection={nodes()} />
           </Show>
 
           <Show when={includesTarget("shape", "text", "scene", "caption")}>

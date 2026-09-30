@@ -290,6 +290,8 @@ program
   .command("fonts")
   .description(describe("fonts"))
   .option("-f, --family <pattern>", field("fonts", "family"))
+  .option("-p, --provider <provider>", field("fonts", "provider"))
+  .option("--popular", field("fonts", "popular"))
   .option("-w, --weights <weights...>", field("fonts", "weights"))
   .option("-s, --style <style>", field("fonts", "style"))
   .option("-l, --limit <n>", field("fonts", "limit"), numeric)

@@ -6,7 +6,6 @@ import { store } from '../../world/store';
 import { CaptionAlign, CaptionType, PaintType, FontStyle, TextAlign, TextBaseline, TextCase } from '../../constants';
 import { Paint, Color, Caption, TextRange } from '../../traits';
 import { renderText } from '../../utils/text';
-import { loadWebFont } from '../../fonts/utils';
 import { groupBy, findActiveGroup, clearTextRanges, resolveTranscript, setChars } from './utils';
 import { placeCaption } from './position';
 import { createEntity } from '../../actions/entities';
@@ -19,13 +18,13 @@ import type { CaptionDecoder, CaptionPresetStyle } from './types';
 
 const WIDTH = 700;
 const HEIGHT = 100;
-const HIGHLIGHT_COLOR = 0x24D5FF;
+const HIGHLIGHT_COLOR = 0x19FF75;
 
 // The preset's base TextStyle; the document writes it and authored style
 // props overwrite it (see CAPTION_PRESET_STYLES).
 export const SPOTLIGHT_TEXT_STYLE = {
-	fontFamily: 'The Bold Font',
-	fontWeight: '500',
+	fontFamily: 'Outfit',
+	fontWeight: '600',
 	fontStyle: FontStyle.NORMAL,
 	fontSize: 70,
 	textAlign: TextAlign.CENTER,
@@ -65,7 +64,6 @@ export class SpotlightCaptionDecoder implements CaptionDecoder {
 	public applyStyles(world: World, entity: Entity): boolean {
 		if (!this.reposition(world, entity)) return false;
 
-		loadWebFont(world, SPOTLIGHT_TEXT_STYLE.fontFamily);
 		return true;
 	}
 

@@ -633,7 +633,7 @@ All of them talk to the running app, except \`fonts\`.
 | \`listen\` | \`diffusion media listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
 | \`models\` | \`diffusion models [type]\` | Generation models and their per-model constraints. |
 | \`voices\` | \`diffusion voices\` | Speech voices for \`generate.voice\`. |
-| \`fonts\` | \`diffusion fonts\` | Local font families, valid as \`fontFamily\`. |
+| \`fonts\` | \`diffusion fonts\` | Google Fonts and local font families, valid as \`fontFamily\`. |
 | \`logs\` | \`diffusion logs\` | Recent console output from the app. |
 | \`screenshot\` | \`diffusion screenshot\` | The whole app window as a PNG. |
 | \`report\` | \`diffusion report <title>\` | File a bug against the editor, with diagnostics attached. |

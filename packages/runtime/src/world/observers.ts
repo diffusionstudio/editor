@@ -12,7 +12,7 @@ import {
 	ColorStop, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
 	ImageDecoderHandle, VideoDecoderHandle,
 	AudioDecoderHandle, CaptionDecoderHandle, WaveformHandle,
-	ShaderHostHandle, AudioBusHandle,
+	ShaderHostHandle, AudioBusHandle, TextStyle, TextRange,
 } from '../traits';
 import { getParentEntity } from '../queries/hierarchy';
 import { evictFromCaches, rebuildCaches, refileClipPath } from '../actions/cache';
@@ -25,6 +25,7 @@ import {
 } from '../actions/timing';
 import { propagateSize, resolveConstraintOffsets } from '../actions/resize';
 import { resetAnimatedValues } from '../systems/motion';
+import { requestTextFonts } from '../fonts/utils';
 
 import type { Entity, Trait, World } from 'koota';
 
@@ -46,6 +47,10 @@ export function observeWorld(world: World): () => void {
 		reactToChildAttached(world, child);
 		syncStagePlayback(child);
 		syncStagePlayback(parent);
+
+		if (child.has(TextRange)) {
+			requestTextFonts(world, child);
+		}
 	}));
 
 	// On re-target (and destroy) the remove event fires while the child is
@@ -91,7 +96,9 @@ export function observeWorld(world: World): () => void {
 		rebuildCaches(world, entity, getParentEntity(entity));
 	}));
 
-	// ── Model invariants ──────────────────────────────────────
+	// Fonts
+	subs.push(world.onAdd(TextStyle, (e) => requestTextFonts(world, e)));
+	subs.push(world.onChange(TextStyle, (e) => requestTextFonts(world, e)));
 
 	// A sequence is a group without spatial identity of its own.
 	subs.push(world.onAdd(Sequential, (entity) => {

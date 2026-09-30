@@ -6,7 +6,6 @@ import { store } from '../../world/store';
 import { CaptionAlign, CaptionType, PaintType, FontStyle, TextAlign, TextBaseline, TextCase } from '../../constants';
 import { Paint, Color, Caption, ItemIndex, TextRange, TextStyle } from '../../traits';
 import { renderText } from '../../utils/text';
-import { loadWebFont } from '../../fonts/utils';
 import { groupBy, findActiveGroup, splitSequence, clearTextRanges, resolveTranscript, setChars } from './utils';
 import { placeCaption } from './position';
 import { createEntity } from '../../actions/entities';
@@ -22,8 +21,8 @@ const HEIGHT = 200;
 // The preset's base TextStyle; the document writes it and authored style
 // props overwrite it (see CAPTION_PRESET_STYLES).
 export const GUINEA_TEXT_STYLE = {
-	fontFamily: 'The Bold Font',
-	fontWeight: '500',
+	fontFamily: 'Outfit',
+	fontWeight: '700',
 	fontSize: 62,
 	textAlign: TextAlign.CENTER,
 	textBaseline: TextBaseline.MIDDLE,
@@ -70,7 +69,6 @@ export class GuineaCaptionDecoder implements CaptionDecoder {
 	public applyStyles(world: World, entity: Entity): boolean {
 		if (!this.reposition(world, entity)) return false;
 
-		loadWebFont(world, GUINEA_TEXT_STYLE.fontFamily);
 		return true;
 	}
 

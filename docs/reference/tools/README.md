@@ -48,7 +48,7 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 | [`voices`](./voices.md) | `diffusion voices` | Speech voices |
 | [`logs`](./logs.md) | `diffusion logs` | App logs |
 | [`screenshot`](./screenshot.md) | `diffusion screenshot` | Window screenshot |
-| [`fonts`](./fonts.md) | `diffusion fonts` | Local fonts |
+| [`fonts`](./fonts.md) | `diffusion fonts` | Fonts |
 | [`report`](./report.md) | `diffusion report` | Report a bug |
 
 How the surface is divided:

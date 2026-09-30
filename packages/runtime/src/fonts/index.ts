@@ -1,3 +1,4 @@
 export * from './types';
-export * from './fixtures';
+export * from './google';
+export * from './face-set';
 export * from './utils';
