@@ -11,8 +11,9 @@
 
 import { getAssetSpec, isAssetRef, isTransformSpec, mapAssetInputs, transform } from "@diffusionstudio/jsx";
 import { authoredElement } from "@diffusionstudio/reconciler";
+import { PaintType } from "@diffusionstudio/runtime";
 import { useEditor } from "@/engine/hooks";
-import { useMediaSelection } from "./selection";
+import { resolveMedia, useMediaSelection } from "./selection";
 
 import type { AssetInput, TransformType } from "@diffusionstudio/jsx";
 import type { Entity } from "koota";
@@ -42,6 +43,18 @@ function withoutTransform(input: AssetInput, type: TransformType): AssetInput {
 function sourceOf(entity: Entity): AssetInput | undefined {
   const src = authoredElement(entity)?.props.src;
   return typeof src === "string" && src !== "" ? src : isAssetRef(src) ? src : undefined;
+}
+
+/**
+ * The element `type` would be put over for `node`: the one its media source
+ * lives on, when that paints what the transform takes and has a `src` to wrap.
+ */
+export function transformTarget(node: Entity, type: TransformType): Entity | undefined {
+  const { source, paint } = resolveMedia(node);
+  if (paint === undefined || sourceOf(source) === undefined) return undefined;
+  if (type === "removeBackground" && paint !== PaintType.IMAGE) return undefined;
+  if (type === "addAudio" && paint !== PaintType.VIDEO) return undefined;
+  return source;
 }
 
 export function useTransforms() {
@@ -82,5 +95,19 @@ export function useTransforms() {
     }
   };
 
-  return { isOn, toggle };
+  /**
+   * Puts `type` over the sources of `nodes` that do not ask for it yet — on,
+   * never off, and outermost like a toggle puts it.
+   */
+  const apply = (type: TransformType, nodes: Entity[]): void => {
+    for (const node of nodes) {
+      const entity = transformTarget(node, type);
+      const src = entity && sourceOf(entity);
+      if (entity && src !== undefined && !hasTransform(src, type)) {
+        editor.editProperty(entity, "src", transform[type](src));
+      }
+    }
+  };
+
+  return { isOn, toggle, apply };
 }

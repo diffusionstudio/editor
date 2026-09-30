@@ -35,6 +35,7 @@ import { Not, Or } from 'koota';
 
 import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
 import { applyClipPaths, cancelClipPath } from '../clip-path';
+import { cancelCommand, commandPending, confirmCommand } from '../command';
 import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
@@ -459,6 +460,9 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	// Clip path tool shortcuts, ahead of the Esc and ⌘↵ the rest of the editor answers to.
 	{ keys: ['escape'], action: cancelClipPath, active: clipPathTool },
 	{ keys: ['enter', 'mod', '!shift', '!alt'], action: applyClipPaths, active: clipPathTool },
+	// The command bar's, likewise: Esc takes it down, ⌘↵ runs it on the picks.
+	{ keys: ['escape'], action: cancelCommand, active: commandPending },
+	{ keys: ['enter', 'mod', '!shift', '!alt'], action: confirmCommand, active: commandPending },
 	{ keys: ['z', 'mod', '!shift'], action: undoEdit },
 	{ keys: ['z', 'mod', 'shift'], action: redoEdit },
 	{ keys: ['backspace'], action: deleteSelection },

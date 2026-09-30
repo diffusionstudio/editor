@@ -5,6 +5,7 @@
 import { createMemo, createResource } from "solid-js";
 import { getAssetSpec, isAssetRef, isTransformSpec } from "@diffusionstudio/jsx";
 import { authoredElement } from "@diffusionstudio/reconciler";
+import { AssetId } from "@diffusionstudio/runtime";
 import { useLibrary } from "@/engine/library";
 import { supabase } from "@/lib/supabase";
 import { useMediaSelection } from "./selection";
@@ -19,6 +20,13 @@ import { generationConfigSchema, type GenerationConfig } from "./schemas";
 
 import type { AssetInput, AssetRef, GenerateSpec } from "@diffusionstudio/jsx";
 import type { AssetLibrary } from "@diffusionstudio/assets";
+import type { Entity } from "koota";
+
+interface UsageRecord {
+  id: string;
+  credits: number;
+  config: unknown;
+}
 
 /**
  * The stored `usage_records.config` IS the server-side adapter input, which
@@ -110,6 +118,62 @@ function generationUnder(ref: AssetRef): GenerateSpec | undefined {
   return isAssetRef(spec.input) ? generationUnder(spec.input) : undefined;
 }
 
+/** The generation `source` declares its `src` to be, looked through its transforms. */
+function declaredGeneration(source: Entity): GenerateSpec | undefined {
+  const src = authoredElement(source)?.props.src;
+  return isAssetRef(src) ? generationUnder(src) : undefined;
+}
+
+/** The server's id for the generation that made `source`'s asset, when one did. */
+function generationIdOf(source: Entity, library: AssetLibrary | undefined): string | undefined {
+  const id = source.get(AssetId)?.value;
+  return (id && library?.get(id)?.generation?.id) || undefined;
+}
+
+/** Whether `source` holds a generation: one it declares, or an asset the server made. */
+export function isGenerated(source: Entity, library: AssetLibrary | undefined): boolean {
+  return declaredGeneration(source) !== undefined || generationIdOf(source, library) !== undefined;
+}
+
+async function fetchUsageRecords(ids: string[]): Promise<UsageRecord[]> {
+  if (ids.length === 0 || !supabase) return [];
+  const { data, error } = await supabase
+    .from("usage_records")
+    .select("id,credits,config")
+    .in("id", ids);
+
+  if (error) {
+    console.error("[credits] Failed to load usage records", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    credits: (row.credits as number | null) ?? 0,
+    config: row.config as unknown,
+  }));
+}
+
+/**
+ * What each of `sources` was generated with, in order, as the prompt box
+ * would be set to run it again. A declaration answers for itself; an asset
+ * generated before the project was written in JSX is looked up on record.
+ * Sources with no generation behind them are left out.
+ */
+export async function generationConfigs(sources: Entity[], library: AssetLibrary): Promise<GenerationConfig[]> {
+  const declared = sources.map(declaredGeneration);
+  const recorded = sources.map((source, index) => (declared[index] ? undefined : generationIdOf(source, library)));
+  const records = await fetchUsageRecords([...new Set(recorded.filter((id): id is string => id !== undefined))]);
+
+  return sources
+    .map((_, index) => {
+      const spec = declared[index];
+      if (spec) return toPromptConfig(spec, library);
+      return toClientConfig(records.find((record) => record.id === recorded[index])?.config);
+    })
+    .filter((config): config is GenerationConfig => config !== undefined);
+}
+
 export function useGenerationRecords() {
   const library = useLibrary();
   const { bound, sources } = useMediaSelection();
@@ -120,9 +184,7 @@ export function useGenerationRecords() {
   // are looked through: the generation under them is what the box made.
   const declarations = createMemo(() =>
     sources()
-      .map((entity) => authoredElement(entity)?.props.src)
-      .filter(isAssetRef)
-      .map(generationUnder)
+      .map(declaredGeneration)
       .filter((spec): spec is GenerateSpec => spec !== undefined),
   );
 
@@ -135,25 +197,7 @@ export function useGenerationRecords() {
     return [...ids];
   });
 
-  const [records] = createResource(() => generationIds(), async (ids) => {
-    if (ids.length === 0 || !supabase) return [];
-    const { data, error } = await supabase
-      .from("usage_records")
-      .select("id,credits,config")
-      .in("id", ids);
-
-    if (error) {
-      console.error("[credits] Failed to load usage records", error);
-      return [];
-    }
-
-    return (data ?? []).map((row) => ({
-      id: row.id as string,
-      credits: (row.credits as number | null) ?? 0,
-      config: row.config as unknown,
-    }));
-  },
-  );
+  const [records] = createResource(() => generationIds(), fetchUsageRecords);
 
   const totalCredits = createMemo(() => {
     return (records() ?? []).reduce((sum, r) => sum + r.credits, 0);
