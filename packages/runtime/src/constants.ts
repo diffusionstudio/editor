@@ -177,5 +177,4 @@ export enum ToolType {
   TEXT,
   TEXT_EDIT,
   OBJECT_MASK,
-  CLIP_PATH,
 }

@@ -17,12 +17,11 @@ import {
 import { PromptInput } from "../genai/prompt-input";
 import { CommandBar, CommandPalette, useCommands } from "../commands";
 import { ObjectMaskBar } from "./object-mask-bar";
-import { ClipPathBar } from "./clip-path-bar";
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on } from "solid-js";
+import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { clearClipPathTarget, useTool } from "@/engine";
-import { cancelCommand, pendingCommand } from "@/engine/command";
+import { useTool } from "@/engine";
+import { usePendingCommand } from "@/context/command";
 import { usePromptInput } from "@/context/prompt-input";
 
 const CURSOR_TOOLS = [
@@ -36,23 +35,9 @@ export function Toolbar() {
   const { promptInputOpen, promptInputConfig, setPromptInputOpen } = usePromptInput();
   const selectedTool = useTool();
   const commands = useCommands();
+  const { pending } = usePendingCommand();
   const [paletteOpen, setPaletteOpen] = createSignal(false);
   const cursorTool = createMemo(() => CURSOR_TOOLS.find((cursor) => cursor.tool === selectedTool()));
-
-  createEffect(() => {
-    if (selectedTool() !== ToolType.CLIP_PATH) {
-      clearClipPathTarget();
-    }
-  });
-
-  // A command picks by selecting: a tool that draws or aims, or the prompt
-  // box coming up, takes it down.
-  createEffect(on(selectedTool, (tool) => {
-    if (tool !== ToolType.MOVE && tool !== ToolType.HAND) cancelCommand();
-  }, { defer: true }));
-  createEffect(on(promptInputOpen, (open) => {
-    if (open) cancelCommand();
-  }, { defer: true }));
 
   const handleToolChange = (tool: ToolType) => {
     world.set(Tool, { value: tool });
@@ -68,11 +53,8 @@ export function Toolbar() {
           <Match when={selectedTool() === ToolType.OBJECT_MASK}>
             <ObjectMaskBar />
           </Match>
-          <Match when={selectedTool() === ToolType.CLIP_PATH}>
-            <ClipPathBar />
-          </Match>
-          <Match when={pendingCommand()}>
-            <CommandBar commands={commands} />
+          <Match when={pending()}>
+            <CommandBar />
           </Match>
         </Switch>
       </Show>
@@ -184,8 +166,8 @@ export function Toolbar() {
           <TooltipTrigger
             as={Button}
             size="icon-square"
-            class={paletteOpen() || pendingCommand() ? 'text-foreground' : 'text-muted-foreground'}
-            variant={paletteOpen() || pendingCommand() ? 'default' : 'ghost'}
+            class={paletteOpen() ? 'text-foreground' : 'text-muted-foreground'}
+            variant={paletteOpen() ? 'default' : 'ghost'}
             onClick={() => setPaletteOpen(true)}
           >
             <Icon name="tool.actions-spotlight" />

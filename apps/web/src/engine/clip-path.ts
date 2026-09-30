@@ -5,16 +5,14 @@
 import {
 	Computed,
 	Flip,
+	Name,
 	Source,
-	Tool,
-	ToolType,
 	decompose2D,
 	entityAnchor,
 	entityOffset,
 	entityWorldMat,
 	getEntityTree,
 	getIntrinsicPaint,
-	getSelection,
 	invert2D,
 	isClipPath,
 	isShape,
@@ -22,36 +20,42 @@ import {
 	store,
 	translate2D,
 } from '@diffusionstudio/runtime';
-import { createSignal } from 'solid-js';
-
 import { getDocumentEditor } from './editor';
 import { editTransform } from './input/interactions';
 
 import type { Entity, World } from 'koota';
+import type { Command } from './command';
 import type { TransformWrite } from './input/interactions';
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-// The node the tool is aimed at, reactive so the bar follows it.
-const [clipPathTarget, setClipPathTarget] = createSignal<Entity | null>(null);
+/**
+ * The command that clips `target`: the bar over the canvas counts the
+ * selected rects that would clip it, Confirm makes them its clip paths, and
+ * either way out leaves `target` selected. The selection stays on it until a
+ * rect is picked.
+ */
+export function clipPathCommand(world: World, target: Entity): Command {
+	const editor = getDocumentEditor(world);
+	const reselect = () => {
+		if (target.isAlive()) editor.select(target);
+	};
 
-/** The node the picked rects will clip, reactive; null while the tool is down. */
-export { clipPathTarget };
-
-export function getClipPathTarget(): Entity | null {
-	const target = clipPathTarget();
-	return target?.isAlive() ? target : null;
-}
-
-/** Picks the tool to add clip paths to `target`. The selection stays on it until a rect is picked. */
-export function beginClipPathFor(world: World, target: Entity): void {
-	setClipPathTarget(target);
-	world.set(Tool, { value: ToolType.CLIP_PATH });
-}
-
-/** Forgets the target: the tool is down. */
-export function clearClipPathTarget(): void {
-	setClipPathTarget(null);
+	return {
+		id: 'clip-path',
+		label: `Clip ${target.get(Name)?.value || 'this layer'}`,
+		description: 'Use the picked shapes as clip paths of the layer',
+		icon: 'mask-small',
+		hint: 'Pick a shape to use as the clipping source',
+		noun: ['shape', 'shapes'],
+		accepts: (entity) => canClipWith(world, target, entity),
+		run: (rects) => {
+			applyClipPaths(world, target, rects);
+			reselect();
+		},
+		available: () => target.isAlive(),
+		cancel: reselect,
+	};
 }
 
 /**
@@ -66,32 +70,20 @@ export function canClipWith(world: World, target: Entity, entity: Entity): boole
 	return !getEntityTree(world, entity).includes(target);
 }
 
-/** The selected rects Confirm would apply to the target, in selection order. */
-export function getClipPathPicks(world: World): Entity[] {
-	const target = getClipPathTarget();
-	if (!target) return [];
-	return getSelection(world).filter((entity) => canClipWith(world, target, entity));
-}
-
 /**
- * Makes the picked rects clip paths of the target, one undo step, and puts
- * the tool down with the target selected. Each rect keeps its place on the
- * canvas: its matrix is carried from the parent it had into the target's
+ * Makes `rects` clip paths of `target`, one undo step. Each rect keeps its
+ * place on the canvas: its matrix is carried from the parent it had into the target's
  * space and written back as `x`, `y` and `rotation`, with whatever scale the
  * move adds (a target drawn at half size, say) folded into its `width` and
  * `height` rather than its own scale.
  */
-export function applyClipPaths(world: World): void {
-	const target = getClipPathTarget();
-	const picks = getClipPathPicks(world);
-	if (!target || picks.length === 0) return;
-
+export function applyClipPaths(world: World, target: Entity, rects: Entity[]): void {
 	const editor = getDocumentEditor(world);
 	const computed = store(world, Computed);
 	const flip = store(world, Flip);
 	const targetInverse = invert2D(entityWorldMat(world, target));
 
-	for (const rect of picks) {
+	for (const rect of rects) {
 		const eid = rect.id();
 		const width = computed.width[eid] ?? 0;
 		const height = computed.height[eid] ?? 0;
@@ -126,17 +118,4 @@ export function applyClipPaths(world: World): void {
 		if (nextHeight !== Math.round(height)) writes.push(['height', nextHeight]);
 		if (writes.length) editTransform(world, editor, rect, writes);
 	}
-
-	leaveClipPathTool(world, target);
-}
-
-/** Puts the tool down without applying anything; the selection goes back to the target. */
-export function cancelClipPath(world: World): void {
-	leaveClipPathTool(world, getClipPathTarget());
-}
-
-function leaveClipPathTool(world: World, target: Entity | null): void {
-	clearClipPathTarget();
-	if (target) getDocumentEditor(world).select(target);
-	if (world.get(Tool)?.value === ToolType.CLIP_PATH) world.set(Tool, { value: ToolType.MOVE });
 }

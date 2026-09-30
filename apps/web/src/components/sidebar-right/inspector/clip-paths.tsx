@@ -10,7 +10,8 @@ import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from "@/components/ui/panel-section";
 import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { Cache, Name } from "@diffusionstudio/runtime";
-import { beginClipPathFor } from "@/engine/clip-path";
+import { clipPathCommand } from "@/engine/clip-path";
+import { usePendingCommand } from "@/context/command";
 import { useDerived, useEditor } from "@/engine/hooks";
 
 import type { Entity } from "koota";
@@ -26,13 +27,14 @@ type ClipPathsSettingsProps = {
  * The `<rect clipPath>` children of the selected node: the boxes it is
  * clipped to (several intersect). A clip path is a rect like any other, so it
  * has no inspector of its own — a row selects it and the transform, time and
- * appearance panels are then its own. The plus picks up the clip path tool,
- * whose bar over the canvas turns the rects selected there into clip paths
- * of this node.
+ * appearance panels are then its own. The plus puts up the clip path
+ * command, whose bar over the canvas turns the rects selected there into
+ * clip paths of this node.
  */
 export function ClipPathsSettings(props: ClipPathsSettingsProps) {
   const world = useWorld();
   const editor = useEditor();
+  const { begin } = usePendingCommand();
   const entity = () => props.selection[0]!;
 
   // Cache is derived state, written without change events.
@@ -48,7 +50,7 @@ export function ClipPathsSettings(props: ClipPathsSettingsProps) {
             size="icon"
             variant="ghost"
             class="text-muted-foreground"
-            onClick={() => beginClipPathFor(world, entity())}
+            onClick={() => begin(clipPathCommand(world, entity()))}
           >
             <Icon name="plus-add" />
           </TooltipTrigger>

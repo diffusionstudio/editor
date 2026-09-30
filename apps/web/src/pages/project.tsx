@@ -7,6 +7,7 @@ import { Navigate, useLocation, useNavigate } from '@solidjs/router';
 import { EditorPage } from './editor';
 import { LayoutProvider } from "@/context/layout";
 import { PromptInputProvider } from "@/context/prompt-input";
+import { CommandProvider } from "@/context/command";
 import { EditorApiProvider } from '@/dapi';
 import { ExportProvider } from '@/context/export';
 import { ProjectProvider } from '@/context/project';
@@ -60,9 +61,11 @@ export function ProjectPage() {
                 <TimelineProvider>
                   <ExportProvider>
                     <PromptInputProvider>
-                      <LayoutProvider>
-                        <EditorPage />
-                      </LayoutProvider>
+                      <CommandProvider>
+                        <LayoutProvider>
+                          <EditorPage />
+                        </LayoutProvider>
+                      </CommandProvider>
                     </PromptInputProvider>
                   </ExportProvider>
                 </TimelineProvider>
