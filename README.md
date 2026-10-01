@@ -4,7 +4,7 @@
   </a>
 </p>
 
-<p align="center">The professional video editor built for agents</p>
+<p align="center">Turn your agent into a professional video editor</p>
 
 <p align="center">
   <a href="https://www.diffusion.studio/download"><img src="https://img.shields.io/badge/Download-macOS%20%7C%20Windows-161616?style=flat&labelColor=000000" alt="Download for macOS or Windows" /></a>
