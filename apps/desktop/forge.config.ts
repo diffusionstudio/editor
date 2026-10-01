@@ -93,6 +93,13 @@ const config: ForgeConfig = {
     }),
   ],
   hooks: {
+    prePackage: async () => {
+      if (process.platform === 'win32' && !process.env.SKIP_SIGN && !sign) {
+        throw new Error(
+          'Windows signing needs WINDOWS_SIGNTOOL_PATH, WINDOWS_SIGN_DLIB and WINDOWS_SIGN_METADATA; set SKIP_SIGN=1 for an unsigned build.',
+        );
+      }
+    },
     preMake: async () => ensure7zip(),
   },
 };
@@ -111,9 +118,7 @@ function windowsSign() {
   } = process.env;
 
   if (!signToolPath || !dlib || !metadata) {
-    throw new Error(
-      'Windows signing needs WINDOWS_SIGNTOOL_PATH, WINDOWS_SIGN_DLIB and WINDOWS_SIGN_METADATA; set SKIP_SIGN=1 for an unsigned build.',
-    );
+    return undefined;
   }
 
   return {
