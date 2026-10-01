@@ -11,7 +11,8 @@ import type { MainContext } from "../handler";
 
 const entry = (ts: number, message: string, level: LogEntry["level"] = "info"): LogEntry => ({ ts, level, message, source: "" });
 
-const ctx = (entries: LogEntry[]): MainContext => ({ signal: new AbortController().signal, logs: () => entries, version: "0" });
+const noWindow = { visible: () => false, show: async () => {}, hide: () => {} };
+const ctx = (entries: LogEntry[]): MainContext => ({ signal: new AbortController().signal, logs: () => entries, version: "0", window: noWindow });
 
 describe("logs", () => {
   it("returns the last LOG_TAIL entries when no tail is given", async () => {

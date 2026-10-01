@@ -10,7 +10,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build:preload": "esbuild src/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/preload.js",
-    "build:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --external:electron --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --outfile=dist/main.js",
+    "build:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --loader:.png=binary --external:electron --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --outfile=dist/main.js",
     "build:native": "node scripts/build-native.mjs",
     "build": "npm run check && npm run build:main && npm run build:preload && npm run build:agent-host && npm run build:native",
     "build:web": "npm --prefix ../web run build:desktop",

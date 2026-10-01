@@ -105,7 +105,9 @@ program
   .argument("[path]", `${field("open", "dir")} (default: none — just launch the app)`)
   .option("-b, --background", "launch or keep the app in the background, without raising a window")
   .action(async (path: string | undefined, opts: { background?: boolean }) => {
-    const launched = await launchApp(opts.background ?? false);
+    const background = opts.background ?? false;
+    const running = background && (await ping().then(() => true, (e) => (isAppDown(e) ? false : appError(e))));
+    const launched = !running && (await launchApp(background));
     await (launched ? waitForApp() : ping()).catch(appError);
     if (path !== undefined) await run("open", { dir: resolve(path) });
   });
@@ -275,6 +277,15 @@ program
   .description(describe("screenshot"))
   .option("-o, --output <dir>", field("screenshot", "output"))
   .action((opts: ToolInput<"screenshot">) => run("screenshot", { output: opts.output && resolve(opts.output) }));
+
+program
+  .command("window")
+  .description(describe("window"))
+  .argument("[state]", "show (and focus) or hide the window (default: leave it as it is)")
+  .action((state: string | undefined) => {
+    if (state !== undefined && state !== "show" && state !== "hide") fail(`Expected show or hide, got "${state}".`);
+    return run("window", { visible: state === undefined ? undefined : state === "show" });
+  });
 
 program
   .command("report")

@@ -13,3 +13,10 @@ declare module "@babel/preset-typescript" {
   const preset: unknown;
   export default preset;
 }
+
+// The tray icons, bundled into main.js as bytes (`--loader:.png=binary`):
+// the packaged app ships dist/ and web/ only.
+declare module "*.png" {
+  const bytes: Uint8Array;
+  export default bytes;
+}

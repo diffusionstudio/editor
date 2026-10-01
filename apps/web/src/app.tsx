@@ -4,7 +4,7 @@
 
 import { Router, HashRouter, Route, useLocation } from '@solidjs/router';
 import { ColorModeProvider } from '@kobalte/core';
-import { Show, createEffect, type JSX } from 'solid-js';
+import { Show, createEffect, createMemo, type JSX } from 'solid-js';
 import { Toaster } from "@/components/ui/sonner";
 import { AppContextMenu } from "@/components/app-context-menu";
 
@@ -14,6 +14,7 @@ import { useColorMode } from "@kobalte/core";
 import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
 import { EditorApi } from '@/dapi';
+import { renderOverlay } from '@/context/render';
 import { UpgradeDialog } from '@/components/upgrade-dialog';
 import { PurchaseSuccess } from '@/components/purchase-success';
 import { ScreenTooSmall } from '@/components/screen-too-small';
@@ -62,6 +63,20 @@ function TitleBarColorMode() {
   return null;
 }
 
+// A render goes on when the user closes the window, which only hides it;
+// main is told, so the hidden window is not torn down under it once idle.
+function ReportRendering() {
+  const rendering = createMemo(() => renderOverlay() !== null);
+
+  createEffect(() => {
+    if (window.desktop) {
+      mainBridge.call(MAIN_CHANNELS.WINDOW_SET_BUSY, { busy: rendering() });
+    }
+  });
+
+  return null;
+}
+
 function EnvironmentOverlays() {
   const location = useLocation();
   const onCheckoutPage = () => location.pathname.startsWith('/checkout');
@@ -93,6 +108,7 @@ function App() {
           <EnvironmentOverlays />
           <PersistRoute />
           <TitleBarColorMode />
+          <ReportRendering />
         </ColorModeProvider>
       )}
     >

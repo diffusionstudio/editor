@@ -14,7 +14,6 @@ import { DapiHttpServer } from "./http";
 const PORT = 3200 + Math.floor(Math.random() * 500);
 const PATH = "/mcp";
 let server: DapiHttpServer;
-let firstConnections = 0;
 let sessionsCreated = 0;
 
 beforeAll(async () => {
@@ -22,7 +21,6 @@ beforeAll(async () => {
     host: "127.0.0.1",
     port: PORT,
     path: PATH,
-    onFirstConnection: () => void firstConnections++,
     createSession() {
       sessionsCreated++;
       const session = new McpServer({ name: "test", version: "0.0.0" }, { instructions: "Test instructions." });
@@ -60,12 +58,11 @@ describe("mcp over http", () => {
     await client.close();
   });
 
-  it("gives each client its own session and reports the first once", async () => {
+  it("gives each client its own session", async () => {
     const before = sessionsCreated;
     const a = await connect();
     const b = await connect();
     expect(sessionsCreated - before).toBe(2);
-    expect(firstConnections).toBe(1);
     await a.close();
     await b.close();
   });

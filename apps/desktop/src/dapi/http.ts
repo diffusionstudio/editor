@@ -23,15 +23,7 @@ export type HttpServerDeps = {
   path: string;
   /** A fresh MCP server with the tools and resources registered, one per session. */
   createSession(): McpServer;
-  /**
-   * Called once, when the first session initializes — unless that session
-   * says `?client=chat` in its URL: the in-app chat is watched by the user,
-   * so it must not switch the app into remote-controlled mode.
-   */
-  onFirstConnection(): void;
 };
-
-const CHAT_CLIENT = "chat";
 
 type Session = { transport: StreamableHTTPServerTransport; server: McpServer };
 
@@ -41,7 +33,6 @@ export class DapiHttpServer {
   private readonly deps: HttpServerDeps;
   private readonly sessions = new Map<string, Session>();
   private server: Server | null = null;
-  private connected = false;
 
   constructor(deps: HttpServerDeps) {
     this.deps = deps;
@@ -98,14 +89,14 @@ export class DapiHttpServer {
       }
       // No session: either an `initialize`, which the transport answers with
       // a new id, or a stray request it rejects with 400.
-      await this.open(url.searchParams.get("client")).transport.handleRequest(req, res);
+      await this.open().transport.handleRequest(req, res);
     } catch (error) {
       console.error("[dapi] http request failed:", error);
       if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" }).end("Internal error");
     }
   }
 
-  private open(client: string | null): Session {
+  private open(): Session {
     const server = this.deps.createSession();
     const hosts = [this.deps.host, "localhost"];
     const transport = new StreamableHTTPServerTransport({
@@ -114,10 +105,6 @@ export class DapiHttpServer {
       allowedHosts: [...hosts, ...hosts.map((host) => `${host}:${this.deps.port}`)],
       onsessioninitialized: (id) => {
         this.sessions.set(id, session);
-        if (!this.connected && client !== CHAT_CLIENT) {
-          this.connected = true;
-          this.deps.onFirstConnection();
-        }
       },
       onsessionclosed: (id) => {
         this.sessions.delete(id);

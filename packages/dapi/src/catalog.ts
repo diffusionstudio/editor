@@ -23,6 +23,7 @@ import { mediaListen } from "./tools/media-listen";
 import { mediaSegment } from "./tools/media-segment";
 import { fonts } from "./tools/fonts";
 import { report } from "./tools/report";
+import { appWindow } from "./tools/window";
 
 /**
  * Every tool, in the order a listing shows them: the project loop first
@@ -46,6 +47,7 @@ export const catalog = [
   voices,
   logs,
   screenshot,
+  appWindow,
   fonts,
   report,
 ] as const;
