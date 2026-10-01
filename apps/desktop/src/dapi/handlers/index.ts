@@ -4,8 +4,9 @@
 
 import { logs } from "./logs";
 import { report } from "./report";
+import { window } from "./window";
 
 import type { MainHandlers } from "../handler";
 
 /** Every tool main answers itself, keyed by its catalog name. */
-export const mainHandlers: MainHandlers = { logs, report };
+export const mainHandlers: MainHandlers = { logs, report, window };

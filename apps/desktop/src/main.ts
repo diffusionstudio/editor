@@ -8,15 +8,16 @@ import { existsSync } from "node:fs";
 import { mkdir, open, rename, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
-import { updateElectronApp } from "update-electron-app";
+import { makeUserNotifier, updateElectronApp } from "update-electron-app";
 import { tempPathFor } from "./atomic";
 import { DapiServer } from "./dapi/server";
-import { agentChatEndpoint, deleteProjectChats, startAgentChat, stopAgentChat } from "./agent-chat";
+import { agentChatEndpoint, configureAgentChat, deleteProjectChats, stopAgentChat } from "./agent-chat";
 import { cliStatus, installCli, refreshCliShim, uninstallCli } from "./cli-install";
 import { applyMcp, healMcpRegistrations, mcpStatus } from "./mcp-install";
-import { enableHeadless } from "./headless";
 import { trackEvent, trackInstall } from "./analytics";
 import { setupAppMenu } from "./menu";
+import { AppTray } from "./tray";
+import { WindowHost } from "./window-host";
 import { handleSquirrelEvent } from "./squirrel";
 import { mainBridge } from "./main-manager";
 import { MAIN_CHANNELS } from "./main-channels";
@@ -52,6 +53,7 @@ import type { DeepLinkChannel } from "./main-channels";
 import type { LogEntry } from "@diffusionstudio/dapi";
 
 const DEV_URL = "http://localhost:5173";
+const WINDOW_IDLE_MS = 10 * 60 * 1000;
 const AUTH_PROTOCOL = "diffusion";
 const MACOS_CORNER_RADIUS = 18;
 const MACOS_BACKDROP = { blur: 80, red: 0.07, green: 0.07, blue: 0.07, alpha: 0.9 };
@@ -105,13 +107,36 @@ function setColorMode(mode: "dark" | "light") {
   mainWindow.setTitleBarOverlay({ ...WINDOWS_OVERLAY_COLORS[mode], height: WINDOWS_OVERLAY_HEIGHT });
 }
 
-if (app.isPackaged && !squirrelLaunch && !process.argv.includes("--hidden")) {
-  updateElectronApp({ repo: "diffusionstudio/editor" });
+if (app.isPackaged && !squirrelLaunch) {
+  const notifyUser = makeUserNotifier();
+  updateElectronApp({
+    repo: "diffusionstudio/editor",
+    onNotifyUser: function (info) {
+      if (windows.visible()) {
+        notifyUser(info);
+      }
+    },
+  });
 }
 
 const openWrites = new Map<string, { handle: FileHandle; path: string; temp: string; reserved: boolean }>();
 
 let mainWindow: BrowserWindow | null = null;
+let lastProject: string | null = null;
+
+const windows = new WindowHost({
+  create: createWindow,
+  idleMs: WINDOW_IDLE_MS,
+  onChange: () => tray.refresh(),
+});
+
+const tray = new AppTray({
+  visible: () => windows.visible(),
+  active: () => windows.active(),
+  project: () => lastProject,
+  show: () => void windows.show(),
+  hide: () => windows.hide(),
+});
 
 // Deep links that arrived before the renderer could take them, keyed by the
 // channel they belong to so auth and checkout never drain each other's link.
@@ -133,12 +158,19 @@ function docsDir(): string | null {
 }
 
 // The MCP server agents and the diffusion CLI talk to. Started once the app is
-// ready; the first connection switches the app into headless mode.
+// ready; renderer tools create the window when there is none.
 const dapi = new DapiServer({
   version: app.getVersion(),
   logs: () => logBuffer,
   docsDir: docsDir(),
-  onFirstConnection: enableHeadless,
+  window: {
+    visible: () => windows.visible(),
+    show: () => windows.show(),
+    hide: () => windows.hide(),
+    acquire: () => windows.acquire(),
+    hold: () => windows.hold(),
+    lastProject: () => lastProject,
+  },
 });
 
 function pushLog(level: LogEntry["level"], message: string, source: string) {
@@ -220,7 +252,8 @@ async function setFileInputFiles(selector: string, absolutePath: string) {
   });
 }
 
-function createWindow(show = true) {
+// The main window, not shown: WindowHost decides when it is.
+function createWindow(): BrowserWindow {
 
   const options: Electron.BrowserWindowConstructorOptions = {
     show: false,
@@ -260,10 +293,6 @@ function createWindow(show = true) {
   mainWindow.once("ready-to-show", () => {
     applyCornerRadius(MACOS_CORNER_RADIUS);
     applyBackdrop();
-
-    if (show) {
-      mainWindow?.show();
-    }
   });
 
   mainWindow.on("show", () => {
@@ -281,6 +310,7 @@ function createWindow(show = true) {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
+    unwatchAll();
   });
 
   if (!app.isPackaged) {
@@ -288,6 +318,8 @@ function createWindow(show = true) {
   } else {
     mainWindow.loadFile(join(app.getAppPath(), "web", "index.html"));
   }
+
+  return mainWindow;
 }
 
 if (process.defaultApp && process.argv.length >= 2) {
@@ -301,24 +333,24 @@ if (process.defaultApp && process.argv.length >= 2) {
 if (squirrelLaunch) {
   // Update.exe is at work; handleSquirrelEvent quits the app when it is done.
 } else if (app.requestSingleInstanceLock()) {
+  if (isHiddenLaunch(process.argv)) {
+    app.dock?.hide();
+  }
+
   app.on("second-instance", (_event, argv) => {
     const url = findProtocolUrl(argv);
-    if (url) deliverDeepLink(url);
-
-    const hidden = isHiddenLaunch(argv);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      if (hidden) return;
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
-    } else {
-      createWindow(!hidden);
+    if (url) {
+      deliverDeepLink(url);
+    }
+    if (!isHiddenLaunch(argv)) {
+      windows.show();
     }
   });
 
   app.on("open-url", (event, url) => {
     event.preventDefault();
     deliverDeepLink(url);
+    windows.show();
   });
 
   mainBridge.handle(MAIN_CHANNELS.APP_OPEN_EXTERNAL, ({ url }) => shell.openExternal(url));
@@ -332,6 +364,7 @@ if (squirrelLaunch) {
   );
   mainBridge.handle(MAIN_CHANNELS.WINDOW_IS_FULLSCREEN, () => mainWindow?.isFullScreen() ?? false);
   mainBridge.handle(MAIN_CHANNELS.WINDOW_SET_COLOR_MODE, ({ mode }) => setColorMode(mode));
+  mainBridge.handle(MAIN_CHANNELS.WINDOW_SET_BUSY, ({ busy }) => windows.setBusy(busy));
   mainBridge.handle(MAIN_CHANNELS.WINDOW_CAPTURE, async () => {
     if (!mainWindow || mainWindow.isDestroyed()) throw new Error("No main window");
     const image = await mainWindow.webContents.capturePage(undefined, { stayHidden: true });
@@ -362,10 +395,18 @@ if (squirrelLaunch) {
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_DELETE, ({ dir }) => deleteProject(dir).then(deleteProjectChats));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_COMPILE, ({ dir }) => compileProject(dir));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_WRITE, ({ dir, edits }) => writeProject(dir, edits));
-  mainBridge.handle(MAIN_CHANNELS.PROJECTS_WATCH, ({ dir }, event) =>
-    watchProject(BrowserWindow.fromWebContents(event.sender), dir),
-  );
-  mainBridge.handle(MAIN_CHANNELS.PROJECTS_UNWATCH, ({ dir }) => unwatchProject(dir));
+  mainBridge.handle(MAIN_CHANNELS.PROJECTS_WATCH, ({ dir }, event) => {
+    lastProject = dir;
+    tray.refresh();
+    watchProject(BrowserWindow.fromWebContents(event.sender), dir);
+  });
+  mainBridge.handle(MAIN_CHANNELS.PROJECTS_UNWATCH, ({ dir }) => {
+    if (lastProject === dir) {
+      lastProject = null;
+      tray.refresh();
+    }
+    unwatchProject(dir);
+  });
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_MANIFEST_READ, ({ dir }) => readManifest(dir));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_MANIFEST_WRITE, ({ dir, manifest }) => writeManifest(dir, manifest));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_CONFIG_READ, ({ dir }) => readConfig(dir));
@@ -455,45 +496,38 @@ if (squirrelLaunch) {
     if (url) deliverDeepLink(url);
 
     dapi.start();
-    // The chat's sessions get the MCP server by URL; `?client=chat` keeps the
-    // app from switching into remote-controlled mode for them (see dapi/http).
+    // The chat's sessions get the MCP server by URL.
     dapi.mcpUrl().then((url) =>
-      startAgentChat({
+      configureAgentChat({
         dataDir: join(app.getPath("userData"), "agent-chat"),
-        mcpUrl: url ? `${url}?client=chat` : null,
+        mcpUrl: url,
         version: app.getVersion(),
       }),
     );
     refreshCliShim();
     healMcpRegistrations();
     trackInstall();
-    createWindow(!isHiddenLaunch(process.argv));
+    tray.start();
+
+    // Opened by a person (Finder, Dock, Start menu): show the editor
+    if (!isHiddenLaunch(process.argv)) {
+      windows.show();
+    }
   });
 
   app.on("before-quit", () => {
     unwatchAll();
     stopAgentChat();
     dapi.stop();
+    tray.destroy();
   });
 
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
-  });
+  // No window is no reason to quit: the app keeps serving agents from the
+  // tray, and the window is destroyed whenever it idles out. Only Quit ends it.
+  app.on("window-all-closed", () => { });
 
-  app.on("activate", () => {
-    if (!mainWindow || mainWindow.isDestroyed()) {
-      createWindow();
-      return;
-    }
-
-    if (mainWindow.isMinimized()) {
-      mainWindow.restore();
-    }
-    mainWindow.show();
-    mainWindow.focus();
-  });
+  // The Dock icon, or launching the app again while it runs.
+  app.on("activate", () => windows.show());
 } else {
   app.quit();
 }

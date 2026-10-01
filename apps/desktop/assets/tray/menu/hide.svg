@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="#000" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+<mask id="gap"><rect width="16" height="16" fill="#fff" stroke="none"/><path d="M2.5 2.5l11 11" stroke="#000" stroke-width="3.25"/></mask>
+<g mask="url(#gap)"><path d="M1.75 8S4 3.75 8 3.75 14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8z"/><circle cx="8" cy="8" r="2"/></g><path d="M2.5 2.5l11 11"/>
+</svg>

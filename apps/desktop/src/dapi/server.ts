@@ -11,7 +11,8 @@ import { RendererCalls } from "./renderer-calls";
 import { serveCatalog } from "./tools-session";
 
 import type { LogEntry } from "@diffusionstudio/dapi";
-import type { MainContext, MainToolName } from "./handler";
+import type { AppWindow, MainContext, MainToolName } from "./handler";
+import type { RendererHost } from "./renderer-calls";
 
 /**
  * The name the server introduces itself with, and so the namespace an agent
@@ -25,8 +26,11 @@ export type DapiServerDeps = {
   version: string;
   /** The app's console buffer, for `logs` and `report`. */
   logs(): LogEntry[];
-  /** Called once, on the first connection: an agent is driving, so the UI may step back. */
-  onFirstConnection(): void;
+  /** The main window: where renderer tools run, and what `window` shows and hides. */
+  window: AppWindow & RendererHost & {
+    /** Keeps the window from idling out while a call runs; returns the release. */
+    hold(): () => void;
+  };
   /** The staged docs: INSTRUCTIONS.md, their path, and the skill headers, all for every session. Null when not staged. */
   docsDir: string | null;
 };
@@ -40,13 +44,14 @@ export type DapiServerDeps = {
  */
 export class DapiServer {
   private readonly deps: DapiServerDeps;
-  private readonly renderer = new RendererCalls();
+  private readonly renderer: RendererCalls;
   private readonly http: DapiHttpServer;
   private instructionsText: string | null = null;
   private httpReady: Promise<boolean> = Promise.resolve(false);
 
   constructor(deps: DapiServerDeps) {
     this.deps = deps;
+    this.renderer = new RendererCalls(deps.window);
     for (const tool of tools) {
       if (tool.environment === "main" && !(tool.name in mainHandlers)) {
         throw new Error(`Main-process tool "${tool.name}" has no handler`);
@@ -57,7 +62,6 @@ export class DapiServer {
       port: MCP_PORT,
       path: MCP_PATH,
       createSession: () => this.createSession(),
-      onFirstConnection: () => deps.onFirstConnection(),
     });
   }
 
@@ -94,16 +98,21 @@ export class DapiServer {
     // `name` is the machine identity, and matches the key we write into agent
     // configs; `title` is what a client shows a person.
     const session = new McpServer({ name: SERVER_NAME, title: "Diffusion Studio", version: this.deps.version }, { instructions: this.instructionsText });
-    serveCatalog(session, (tool, args, signal) =>
-      tool.environment === "main" ?
-        this.runInMain(tool.name as MainToolName, args, signal)
-        : this.renderer.call(tool.name, args, signal),
-    );
+    serveCatalog(session, async (tool, args, signal) => {
+      const release = this.deps.window.hold();
+      try {
+        return await (tool.environment === "main" ?
+          this.runInMain(tool.name as MainToolName, args, signal)
+          : this.renderer.call(tool.name, args, signal));
+      } finally {
+        release();
+      }
+    });
     return session;
   }
 
   private runInMain(name: MainToolName, args: unknown, signal: AbortSignal): Promise<unknown> {
-    const ctx: MainContext = { signal, logs: this.deps.logs, version: this.deps.version };
+    const ctx: MainContext = { signal, logs: this.deps.logs, version: this.deps.version, window: this.deps.window };
     // Each handler takes its own parsed args; the map's union type cannot
     // express that pairing, so the call site widens.
     return (mainHandlers[name] as (args: unknown, ctx: MainContext) => Promise<unknown>)(args, ctx);

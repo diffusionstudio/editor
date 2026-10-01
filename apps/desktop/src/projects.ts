@@ -18,7 +18,6 @@ import type { BuildOptions, Plugin } from "esbuild";
 
 import { isTempPath, TEMP_PREFIX, writeFileAtomic } from "./atomic";
 import { windowsCloudSyncKind } from "./cloud-sync-windows";
-import { isHeadless } from "./headless";
 import { mainBridge } from "./main-manager";
 import { MAIN_CHANNELS } from "./main-channels";
 import { applyEdits, editLabel, stampProject } from "./edit";
@@ -344,8 +343,8 @@ export async function cloudSyncKind(path: string): Promise<string | null> {
 /**
  * Whether to go ahead with `path`: true when nothing syncs it, and when the
  * user has been told what syncing does to a project and wants it anyway.
- * Headless runs are never asked — there is nobody to ask — and proceed with
- * the warning in the log.
+ * Nobody is asked while the window is hidden — an agent is driving and there
+ * is nobody to ask — and the project goes ahead with the warning in the log.
  */
 async function confirmCloudLocation(
   window: BrowserWindow | null,
@@ -355,7 +354,7 @@ async function confirmCloudLocation(
   const kind = await cloudSyncKind(path);
   if (!kind) return true;
 
-  if (isHeadless()) {
+  if (!window?.isVisible()) {
     console.warn(`[projects] ${path} is synced by ${kind}; projects there may misbehave`);
     return true;
   }

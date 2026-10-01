@@ -1,7 +1,7 @@
 {
   "name": "@diffusionstudio/desktop",
   "private": true,
-  "version": "0.208.0",
+  "version": "0.209.0",
   "license": "MPL-2.0",
   "repository": {
     "type": "git",
@@ -10,7 +10,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build:preload": "esbuild src/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/preload.js",
-    "build:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --external:electron --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --outfile=dist/main.js",
+    "build:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --loader:.png=binary --external:electron --external:esbuild --external:@babel/core --external:@babel/preset-typescript --external:babel-preset-solid --outfile=dist/main.js",
     "build:native": "node scripts/build-native.mjs",
     "build": "npm run check && npm run build:main && npm run build:preload && npm run build:agent-host && npm run build:native",
     "build:web": "npm --prefix ../web run build:desktop",
@@ -26,7 +26,8 @@
     "test": "vitest run",
     "build:agent-host": "esbuild ../../packages/agent-chat/src/bin.ts --bundle --platform=node --format=esm --target=node20 --external:electron \"--external:@anthropic-ai/claude-agent-sdk-*\" --banner:js=\"import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);\" --outfile=dist/agent-host.mjs",
     "make:ico": "python3 scripts/win-assets.py ico",
-    "make:spinner": "python3 scripts/win-assets.py spinner"
+    "make:spinner": "python3 scripts/win-assets.py spinner",
+    "make:tray-menu": "sh scripts/tray-menu-icons.sh"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",

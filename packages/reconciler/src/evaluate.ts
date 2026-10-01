@@ -27,7 +27,7 @@ export function evaluate(code: string): () => unknown {
 		return resolved;
 	};
 
-	new Function('require', 'module', 'exports', code)(require, module, module.exports);
+	new Function('require', 'module', 'exports', `${code}\n//# sourceURL=project.js`)(require, module, module.exports);
 
 	const component = module.exports.default;
 	if (typeof component !== 'function') {

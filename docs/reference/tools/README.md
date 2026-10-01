@@ -48,6 +48,7 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 | [`voices`](./voices.md) | `diffusion voices` | Speech voices |
 | [`logs`](./logs.md) | `diffusion logs` | App logs |
 | [`screenshot`](./screenshot.md) | `diffusion screenshot` | Window screenshot |
+| [`window`](./window.md) | `diffusion window` | App window |
 | [`fonts`](./fonts.md) | `diffusion fonts` | Fonts |
 | [`report`](./report.md) | `diffusion report` | Report a bug |
 
@@ -57,7 +58,7 @@ How the surface is divided:
 - **Media inspection** (`media_*`): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
 - **Masks.** [`media_segment`](./media/segment.md) segments and tracks an object in footage and writes the mask file a `<mask src>` names.
 - **What a declaration may name.** [`models`](./models.md), [`voices`](./voices.md), [`fonts`](./fonts.md). Generation itself is declared in the project module (`generate.*`, see [jsx/generate.md](../jsx/generate.md)); no tool generates.
-- **The app and the machine.** [`logs`](./logs.md), [`screenshot`](./screenshot.md), [`report`](./report.md).
+- **The app and the machine.** [`logs`](./logs.md), [`screenshot`](./screenshot.md), [`window`](./window.md), [`report`](./report.md).
 
 ## Downloading footage
 
