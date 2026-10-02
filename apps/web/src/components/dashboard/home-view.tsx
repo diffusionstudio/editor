@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -35,6 +36,7 @@ import {
   createDropZone,
   currentModel,
   mergeAttachments,
+  pickAttachments,
   setStoredModel,
   startChat,
   type Attachment,
@@ -108,7 +110,8 @@ export function DashboardHomeView() {
   const [busy, setBusy] = createSignal(false);
   const [attachments, setAttachments] = createSignal<Attachment[]>([]);
 
-  const drop = createDropZone((dropped) => setAttachments((current) => mergeAttachments(current, dropped)));
+  const attach = (added: Attachment[]) => setAttachments((current) => mergeAttachments(current, added));
+  const drop = createDropZone(attach);
 
 
   let textarea: HTMLTextAreaElement | undefined;
@@ -403,19 +406,32 @@ export function DashboardHomeView() {
               </div>
 
               <div class="flex min-h-4 items-center justify-between">
-                <ModelPicker value={model()} onSelect={setStoredModel} />
-
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit()}
-                  aria-label="Send to the coding agent"
-                  class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 focus-ring"
+                <Button
+                  variant="ghost"
+                  size="icon-square"
+                  onClick={async () => attach(await pickAttachments())}
+                  aria-label="Add files"
+                  title="Add files"
+                  class="text-muted-foreground hover:bg-muted"
                 >
-                  <Show when={busy()} fallback={<Icon name="arrow-top" />}>
-                    <Icon name="spinner-loader" class="animate-spin" />
-                  </Show>
-                </button>
+                  <Icon name="plus-add" />
+                </Button>
+
+                <div class="flex min-w-0 items-center gap-1.5">
+                  <ModelPicker value={model()} onSelect={setStoredModel} class="min-w-0" />
+
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!canSubmit()}
+                    aria-label="Send to the coding agent"
+                    class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 focus-ring"
+                  >
+                    <Show when={busy()} fallback={<Icon name="arrow-top" />}>
+                      <Icon name="spinner-loader" class="animate-spin" />
+                    </Show>
+                  </button>
+                </div>
               </div>
 
               <Show when={drop.dragging()}>

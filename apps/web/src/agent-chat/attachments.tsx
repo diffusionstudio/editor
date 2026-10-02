@@ -2,12 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Dropping files and folders onto a composer. Nothing is read, copied or
-// uploaded: an attachment is a path the agent reads where it is, so drops
-// only work where the shell can say where a file lives (the desktop app).
-// Shared by the home view and the chat composer.
 
 import { Show, createSignal } from "solid-js";
+
+import { pickFiles } from "@diffusionstudio/assets";
 
 import { Icon } from "@/components/ui/icon";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -52,17 +50,22 @@ export function droppedAttachments(event: DragEvent): Attachment[] {
     const file = item.getAsFile();
     if (!file) continue;
 
-    const path = window.desktop?.getPathForFile(file) || null;
-    const name = entry?.name || file.name;
-    result.push({
-      key: path ?? `${name}:${file.size}:${file.lastModified}`,
-      name,
-      kind: entry?.isDirectory ? "folder" : "file",
-      path,
-    });
+    result.push(fileAttachment(file, entry?.isDirectory ? "folder" : "file", entry?.name || file.name));
   }
 
   return result;
+}
+
+/** A file picked or dropped without the entry API, which only a drop has. */
+function fileAttachment(file: File, kind: Attachment["kind"] = "file", name = file.name): Attachment {
+  const path = window.desktop?.getPathForFile(file) || null;
+  return { key: path ?? `${name}:${file.size}:${file.lastModified}`, name, kind, path };
+}
+
+/** Files chosen from the system picker, as attachments; folders can only be dropped. */
+export async function pickAttachments(): Promise<Attachment[]> {
+  const files = await pickFiles({ accept: "" });
+  return files.map((file) => fileAttachment(file));
 }
 
 /** The same file dropped twice is one attachment, not two tiles. */
