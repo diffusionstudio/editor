@@ -33,11 +33,17 @@ import {
   startTopupCheckout,
 } from "@/lib/checkout";
 import { track } from "@/lib/analytics";
+import { mainBridge } from "@/lib/ipc";
+import { MAIN_CHANNELS } from "@desktop/main-channels";
 
 const [open, setOpen] = createSignal(false);
 
 export function showUpgradeDialog() {
   setOpen(true);
+
+  if (window.desktop) {
+    mainBridge.call(MAIN_CHANNELS.WINDOW_SHOW, undefined).catch(() => {});
+  }
 }
 
 function formatCredits(value: number): string {
