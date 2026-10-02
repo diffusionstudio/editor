@@ -1013,17 +1013,37 @@ export async function readConfig(dir: string): Promise<unknown> {
   return pkg?.[CONFIG_FIELD] ?? null;
 }
 
+/** Settles when the config write last asked for is done, by project. */
+const configWrites = new Map<string, Promise<void>>();
+
 /**
  * Replaces the project's config in its package.json (removes the field for
  * null), leaving the rest of the record alone. The watcher is told to keep
  * quiet about it, like the manifest: the app already shows these values.
+ *
+ * One at a time, in the order asked: each reads the record the last one left,
+ * and the file ends up holding the config the app was given last rather than
+ * whichever write happened to finish last.
  */
 export async function writeConfig(dir: string, config: unknown): Promise<void> {
-  const pkg = (await readPackage(dir)) ?? packageJson(basename(dir), basename(dir));
-  const next: PackageJson = { ...pkg };
-  if (config === null || config === undefined) delete next[CONFIG_FIELD];
-  else next[CONFIG_FIELD] = config;
-  await writePackage(dir, next);
+  const previous = configWrites.get(dir);
+  let release!: () => void;
+  const done = new Promise<void>((resolve) => (release = resolve));
+  configWrites.set(dir, done);
+
+  try {
+    await previous;
+    const pkg = (await readPackage(dir)) ?? packageJson(basename(dir), basename(dir));
+    const next: PackageJson = { ...pkg };
+    if (config === null || config === undefined) delete next[CONFIG_FIELD];
+    else next[CONFIG_FIELD] = config;
+    await writePackage(dir, next);
+  } finally {
+    release();
+    if (configWrites.get(dir) === done) {
+      configWrites.delete(dir);
+    }
+  }
 }
 
 /** Entries of a directory; [] when it is missing or not a directory. */
@@ -1121,8 +1141,8 @@ const watchers = new Map<string, FSWatcher>();
 
 /**
  * What the app believes is on disk, by absolute path: a digest of the content
- * of every file it has written, and of every change it has already been told
- * about. The watcher stays on — anything else may be editing these files, and
+ * of every file whose write has been answered for (see `claimed`), and of
+ * every change it has already been told about. The watcher stays on — anything else may be editing these files, and
  * should still reach the canvas — but the app's own writes must not come back
  * as a change, or every key stamp and every dragged rect would cost a
  * recompile and a remount of the scene the user is looking at.
@@ -1135,6 +1155,36 @@ const watchers = new Map<string, FSWatcher>();
  * it was given, a checkout of the blob already there — costs nothing either.
  */
 const known = new Map<string, string>();
+
+/**
+ * Writes claimed that no event has answered for yet, oldest first, by absolute
+ * path. More than one at a time: a slider writes the config on every move, so
+ * the next write is claimed before the event for the last one is answered,
+ * and that event must still be recognized as ours. One that matches settles
+ * every claim made before it, which can no longer land after it.
+ */
+const claimed = new Map<string, string[]>();
+
+/** Claims kept per path; past this the oldest is taken to have been answered. */
+const CLAIMS_MAX = 32;
+
+function claim(path: string, digest: string): void {
+  const claims = claimed.get(path) ?? [];
+  claims.push(digest);
+  if (claims.length > CLAIMS_MAX) claims.shift();
+  claimed.set(path, claims);
+}
+
+/** Whether `current` is what a claimed write put at `path`; settles it if so. */
+function settleClaim(path: string, current: string): boolean {
+  const claims = claimed.get(path);
+  const index = claims?.indexOf(current) ?? -1;
+  if (index < 0) return false;
+  claims!.splice(0, index + 1);
+  if (!claims!.length) claimed.delete(path);
+  known.set(path, current);
+  return true;
+}
 
 /** Digests for what has no content: a file that is not there, and a folder. */
 const ABSENT = "";
@@ -1172,9 +1222,9 @@ async function digestOf(path: string): Promise<string> {
  * round, and self-correcting either way.
  */
 export function noteContent(path: string, text: string | null): void {
-  if (text === null) known.set(path, ABSENT);
+  if (text === null) claim(path, ABSENT);
   else if (Buffer.byteLength(text) > DIGEST_MAX) known.delete(path);
-  else known.set(path, digest(text));
+  else claim(path, digest(text));
 }
 
 /**
@@ -1188,7 +1238,7 @@ export function noteContent(path: string, text: string | null): void {
  * exactly what an event will find at `as`.
  */
 export async function noteRenamed(temp: string, as: string): Promise<void> {
-  known.set(as, await digestOf(temp));
+  claim(as, await digestOf(temp));
 }
 
 export function watchProject(window: BrowserWindow | null, dir: string): void {
@@ -1214,7 +1264,7 @@ export function watchProject(window: BrowserWindow | null, dir: string): void {
     queue = queue
       .then(async () => {
         const current = await digestOf(file);
-        if (known.get(file) === current) return;
+        if (settleClaim(file, current) || known.get(file) === current) return;
         known.set(file, current);
         mainBridge.emit(window, MAIN_CHANNELS.PROJECTS_CHANGED, { dir, path });
       })
@@ -1231,6 +1281,7 @@ export function unwatchProject(dir: string): void {
   // remember: the next watch starts from a fresh load of the project anyway.
   const prefix = dir.endsWith(sep) ? dir : dir + sep;
   for (const path of known.keys()) if (path.startsWith(prefix)) known.delete(path);
+  for (const path of claimed.keys()) if (path.startsWith(prefix)) claimed.delete(path);
 }
 
 export function unwatchAll(): void {
