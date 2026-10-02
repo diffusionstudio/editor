@@ -1,0 +1,72 @@
+name: Bump winget package
+
+# Opens a pull request on microsoft/winget-pkgs for each published release,
+# the Windows counterpart of bump-cask.yml. Komac reads the manifest of the
+# version already in winget-pkgs, swaps in the new installer URL and its
+# checksum, and submits from the token owner's fork of winget-pkgs. The
+# package's first version is submitted by hand; this only updates it.
+#
+# Needs the WINGET_TOKEN secret: a classic personal access token with the
+# `public_repo` scope (Komac cannot open the pull request with a
+# fine-grained one), whose account has a fork of microsoft/winget-pkgs.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to submit (vX.Y.Z). Empty means the latest release.
+        required: false
+
+env:
+  PACKAGE_ID: DiffusionStudio.DiffusionStudio
+  KOMAC_VERSION: 2.16.0
+  KOMAC_SHA256: 7d2707fa6210f2789a3702de49fbd150b736dbf426ee0b9bc8e098736f9fd82d
+
+jobs:
+  bump-winget:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release
+        id: info
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [ -z "$TAG" ]; then
+            TAG=$(curl -sf https://api.github.com/repos/diffusionstudio/editor/releases/latest | jq -r .tag_name)
+          fi
+          # Draft releases carry a placeholder tag (untagged-<hash>); never submit that.
+          if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Refusing to bump winget: '$TAG' is not a vX.Y.Z tag" >&2
+            exit 1
+          fi
+          URL="https://github.com/diffusionstudio/editor/releases/download/${TAG}/Diffusion-Studio-x64-Setup.exe"
+          # Komac downloads the installer to hash it; make sure it is there first (retrying like bump-cask.yml).
+          curl -sfIL --retry 10 --retry-delay 30 --retry-all-errors -o /dev/null "$URL"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Install Komac
+        run: |
+          curl -sfL -o komac.tar.gz "https://github.com/russellbanks/Komac/releases/download/v${KOMAC_VERSION}/komac-${KOMAC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${KOMAC_SHA256}  komac.tar.gz" | sha256sum -c -
+          tar -xzf komac.tar.gz komac
+          ./komac --version
+
+      - name: Submit to winget-pkgs
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          VERSION: ${{ steps.info.outputs.version }}
+          URL: ${{ steps.info.outputs.url }}
+          TAG: ${{ steps.info.outputs.tag }}
+        # On a rerun Komac finds the pull request it opened before and, in CI,
+        # exits without opening another.
+        run: |
+          ./komac update "$PACKAGE_ID" \
+            --version "$VERSION" \
+            --urls "$URL" \
+            --release-notes-url "https://github.com/diffusionstudio/editor/releases/tag/${TAG}" \
+            --submit
