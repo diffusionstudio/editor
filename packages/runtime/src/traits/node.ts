@@ -31,6 +31,8 @@ export const Audio = trait();
 
 export const AdjustmentLayer = trait();
 
+export const PromptNode = trait();
+
 // Tag marking an entity as a clip path (`<rect clipPath>`). Clip paths are
 // ChildOf their target; Cache.clipPaths on the target is derived from IsClipPath + ChildOf queries.
 export const IsClipPath = trait();

@@ -101,6 +101,7 @@ export const COMPOSITION_TAGS = [
   "sequence",
   "captions",
   "adjustmentLayer",
+  "prompt",
   "solidPaint",
   "linearGradientPaint",
   "radialGradientPaint",

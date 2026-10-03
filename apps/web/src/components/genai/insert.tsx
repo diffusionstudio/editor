@@ -8,6 +8,7 @@ import { findEmptyPlacement } from "@/engine/placement";
 import { toast } from "somoto";
 
 import type { AssetRef } from "@diffusionstudio/jsx";
+import type { AABB } from "@diffusionstudio/runtime";
 import type { DocumentEditor } from "@/engine/editor";
 import type { Entity, World } from "koota";
 
@@ -44,13 +45,14 @@ export function insertGenerated(
   element: (box: GenerationBox, index: number) => unknown,
   count = 1,
   sources: AssetRef[] = [],
+  near?: AABB,
 ): Entity[] {
   const root = world.get(Root);
   const inserted: Entity[] = [];
 
   if (root) {
     const totalWidth = count * size.width + (count - 1) * GAP;
-    const center = findEmptyPlacement(world, totalWidth, size.height, GAP);
+    const center = findEmptyPlacement(world, totalWidth, size.height, GAP, near);
     const left = center.x - totalWidth / 2;
     const y = Math.round(center.y - size.height / 2);
 

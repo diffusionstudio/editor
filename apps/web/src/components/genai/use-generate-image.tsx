@@ -12,12 +12,13 @@ import { ASPECT_RATIO_DIMENSIONS } from "./config";
 import { insertGenerated, randomSeed } from "./insert";
 
 import type { ImageGenerationConfig } from "./schemas";
+import type { AABB } from "@diffusionstudio/runtime";
 
 export function useGenerateImage() {
   const world = useWorld();
   const editor = useEditor();
 
-  const run = async (config: ImageGenerationConfig) => {
+  const run = async (config: ImageGenerationConfig, near?: AABB) => {
     const library = world.get(Library);
 
     // References travel by library path: durable in the file, and readable
@@ -42,7 +43,7 @@ export function useGenerateImage() {
       <Rect keepAspectRatio x={box.x} y={box.y} width={box.width} height={box.height}>
         <ImagePaint src={sources[index]} />
       </Rect>
-    ), config.count, sources);
+    ), config.count, sources, near);
   };
 
   return { generate: run } as const;

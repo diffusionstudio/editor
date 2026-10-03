@@ -70,8 +70,8 @@ import type { ThumbnailAsset } from "@/components/ui/asset-thumbnail";
 
 export type PromptInputMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";
 
-const DEFAULT_BUTTON_CLASS = "text-muted-foreground gap-0 pr-2 pl-0";
-const MAX_IMAGE_REFERENCES = 5;
+export const DEFAULT_BUTTON_CLASS = "text-muted-foreground gap-0 pr-2 pl-0";
+export const MAX_IMAGE_REFERENCES = 5;
 
 type GenerationConfgs = {
   IMAGE: ImageGenerationConfig;
@@ -756,7 +756,7 @@ type PromptInputCompactMenuProps = {
   triggerIcon?: string;
 }
 
-function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
+export function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
   const selectedOption = () =>
     props.options.find((option) => option.value === props.value()) ?? props.options[0];
   const selectedIcon = () => selectedOption()?.icon ?? props.triggerIcon ?? "chevron-down";
@@ -831,7 +831,7 @@ type ModelMenuProps = {
   onChange(value: string): void;
 }
 
-function ModelMenu(props: ModelMenuProps) {
+export function ModelMenu(props: ModelMenuProps) {
   const [query, setQuery] = createSignal("");
 
   const filteredOptions = createMemo(() => {
@@ -921,7 +921,7 @@ type VoiceMenuProps = {
   onChange(value: string): void;
 }
 
-function VoiceMenu(props: VoiceMenuProps) {
+export function VoiceMenu(props: VoiceMenuProps) {
   const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal("");
   const [playingVoice, setPlayingVoice] = createSignal<string | null>(null);
@@ -1064,7 +1064,7 @@ type PromptInputReferenceImageButtonProps = {
   onRemove(): void;
 }
 
-function PromptInputReferenceImageButton(props: PromptInputReferenceImageButtonProps) {
+export function PromptInputReferenceImageButton(props: PromptInputReferenceImageButtonProps) {
   return (
     <div class={cx("group relative shrink-0", props.class)}>
       <div class="size-full overflow-hidden rounded-md bg-input outline-none">

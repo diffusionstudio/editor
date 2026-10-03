@@ -58,6 +58,7 @@ export { INSPECT_TAG, INSPECT_TYPES, __inspect } from "./inspect";
 export type { InspectDeclaration, InspectType, InspectValue } from "./inspect";
 export type {
   AdjustmentLayerProps,
+  PromptProps,
   AnimatableProperty,
   AnimationProps,
   AnimationType,

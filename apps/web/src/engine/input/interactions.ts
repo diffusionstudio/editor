@@ -23,7 +23,7 @@ import {
 	computeGroupBounds, computeLocalMatrix, decompose2D, entityAnchor,
 	entityOffset, entityQuad, entityWorldMat, enterEntity,
 	findKeyframeTrackEntity, getParentEntity, getParentNode, getSceneAncestor,
-	getSelection, getSelectionMask, identity2D, invert2D, isPointerInEntity,
+	getSelection, getSelectionMask, identity2D, invert2D, isPointerInEntity, isPrompt,
 	multiply2D, quadCenter, quadContainsQuad, quadsIntersect, rectToQuad,
 	rotate2D, scale2D,
 	store, syncInteractiveState, togglePlayback, transformPoint, transformSystem,
@@ -32,6 +32,7 @@ import {
 import { Not, Or } from 'koota';
 
 import { getDocumentEditor } from '../editor';
+import { PROMPT_MIN_SIZE } from '../prompt';
 import { syncKeyframe } from '../keyframes';
 import { Hud, Keys, Pointer, SnapLines } from '../traits';
 import { getToolCursor, updateCursor, type CursorType } from './cursor';
@@ -501,8 +502,9 @@ function resizeNode(world: World, entity: Entity, oldTr: Mat2D, localScale: Mat2
 
 	// Scale the authored size by how much the node's own scale changed, which
 	// is what accounts for it sitting at an angle to the mask.
-	const width = snapshot.width * (decomposed.scaleX / snapshot.scaleX);
-	const height = snapshot.height * (decomposed.scaleY / snapshot.scaleY);
+	const minimum = isPrompt(entity) ? PROMPT_MIN_SIZE : { width: 0, height: 0 };
+	const width = Math.max(minimum.width, snapshot.width * (decomposed.scaleX / snapshot.scaleX));
+	const height = Math.max(minimum.height, snapshot.height * (decomposed.scaleY / snapshot.scaleY));
 	const offset = entityOffset(world, entity);
 
 	const writes: TransformWrite[] = [

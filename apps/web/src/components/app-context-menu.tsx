@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { For, Show, createSignal } from "solid-js"
 import type { JSX } from "solid-js"
 import {
   ContextMenu,
@@ -12,8 +13,12 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { takeContextMenuItems } from "@/components/context-menu-extras"
+import type { ContextMenuExtra } from "@/components/context-menu-extras"
 
 export function AppContextMenu(props: { children: JSX.Element }) {
+  const [extras, setExtras] = createSignal<ContextMenuExtra[]>([])
+
   const handleUndo = () => {
     document.execCommand("undo")
   }
@@ -58,11 +63,17 @@ export function AppContextMenu(props: { children: JSX.Element }) {
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger class="contents">
+      <ContextMenuTrigger class="contents" onContextMenu={(event: MouseEvent) => setExtras(takeContextMenuItems(event))}>
         {props.children}
       </ContextMenuTrigger>
       <ContextMenuPortal>
         <ContextMenuContent class="w-[200px]">
+          <Show when={extras().length > 0}>
+            <For each={extras()}>
+              {(item) => <ContextMenuItem onSelect={item.onSelect}>{item.label}</ContextMenuItem>}
+            </For>
+            <ContextMenuSeparator />
+          </Show>
           <ContextMenuItem onSelect={handleUndo}>
             Undo
             <ContextMenuShortcut>⌘Z</ContextMenuShortcut>

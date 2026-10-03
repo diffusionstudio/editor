@@ -4,7 +4,7 @@
 
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { findSceneAt, screenToWorld, worldToLocal, Library, Root } from "@diffusionstudio/runtime";
-import { CameraController, EngineCanvas } from "@/engine";
+import { CameraController, EngineCanvas, getDocumentEditor } from "@/engine";
 import { insertAsset } from "@/engine/insert-asset";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { Toolbar } from "./toolbar";
@@ -12,6 +12,8 @@ import { DrawOverlay } from "./draw-overlay";
 import { DesktopAppBanner } from "./desktop-app-banner";
 import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
+import { PromptNodes, insertPrompt } from "./prompt-node";
+import { offerContextMenuItems } from "@/components/context-menu-extras";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
 import type { JSX } from "solid-js";
@@ -73,18 +75,29 @@ export function Canvas(props: CanvasProps) {
     event.stopPropagation();
   }
 
+  const handleContextMenu = (event: MouseEvent & { currentTarget: HTMLElement }) => {
+    if (!(event.target instanceof HTMLCanvasElement)) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const point = screenToWorld(world, event.clientX - rect.left, event.clientY - rect.top);
+    offerContextMenuItems(event, [
+      { label: "Add prompt", onSelect: () => insertPrompt(world, getDocumentEditor(world), point) },
+    ]);
+  };
+
   return (
     <div class="relative size-full bg-background" style={props.style}>
       <div
         class="absolute inset-0"
         on:drop={handleDropEvent}
         on:dragover={handleDragOver}
+        onContextMenu={handleContextMenu}
       >
         <Toolbar />
         <DesktopAppBanner />
         <DrawOverlay />
         <SceneInitOverlay />
         <EngineCanvas />
+        <PromptNodes />
         <CameraController />
       </div>
     </div>

@@ -22,6 +22,7 @@ import type { JSX as SolidJSX } from "solid-js";
 import type { AssetInput } from "./generate";
 import type {
   AdjustmentLayerProps,
+  PromptProps,
   AnimationProps,
   AudioProps,
   CaptionsProps,
@@ -90,6 +91,7 @@ export declare namespace JSX {
     sequence: SequenceProps & SourceProps;
     captions: CaptionsProps & SourceProps;
     adjustmentLayer: AdjustmentLayerProps & SourceProps;
+    prompt: PromptProps & SourceProps;
     solidPaint: SolidPaintProps & SourceProps;
     linearGradientPaint: GradientPaintProps & SourceProps;
     radialGradientPaint: GradientPaintProps & SourceProps;

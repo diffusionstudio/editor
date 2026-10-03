@@ -8,6 +8,7 @@ import {
   ToolType,
   getParentNode,
   isAdjustmentLayer,
+  isPrompt,
   isAudio,
   isCaption,
   isGroup,
@@ -55,6 +56,7 @@ export type SelectionTarget =
   | "adjustment"
   | "text"
   | "shape"
+  | "prompt"
   | "group"
   | "stage";
 
@@ -66,6 +68,7 @@ function classifyNode(entity: Entity): SelectionTarget {
   if (isAudio(entity)) return "audio";
   if (isAdjustmentLayer(entity)) return "adjustment";
   if (isText(entity)) return "text";
+  if (isPrompt(entity)) return "prompt";
   if (isShape(entity)) return "shape";
   if (isGroup(entity)) return "group";
   return "stage";
@@ -131,11 +134,11 @@ export function Inspector() {
             <TimeSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment", "prompt")}>
             <TransformSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path", "prompt")}>
             <LayoutPanel selection={nodes()} />
           </Show>
 

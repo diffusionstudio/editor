@@ -14,12 +14,13 @@ import { AUDIO_SIZE } from "@/engine/insert-asset";
 import { insertGenerated, randomSeed } from "./insert";
 
 import type { VoiceGenerationConfig } from "./schemas";
+import type { AABB } from "@diffusionstudio/runtime";
 
 export function useGenerateVoice() {
   const world = useWorld();
   const editor = useEditor();
 
-  const run = async (config: VoiceGenerationConfig) => {
+  const run = async (config: VoiceGenerationConfig, near?: AABB) => {
     const src = generate.voice({
       prompt: config.prompt,
       voice: config.voice,
@@ -28,7 +29,7 @@ export function useGenerateVoice() {
 
     insertGenerated(world, editor, AUDIO_SIZE, (box) => (
       <Audio src={src} x={box.x} y={box.y} width={box.width} height={box.height} />
-    ), 1, [src]);
+    ), 1, [src], near);
   };
 
   return { generate: run } as const;

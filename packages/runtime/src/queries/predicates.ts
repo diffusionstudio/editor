@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import {
-	Scene, Group, Sequential, Audio, AdjustmentLayer, Caption, Geometry, IsClipPath,
+	Scene, Group, Sequential, Audio, AdjustmentLayer, Caption, Geometry, IsClipPath, PromptNode,
 	Paint, Cache, Stage,
 } from '../traits';
 import { GeometryType, PaintType } from '../constants';
@@ -36,6 +36,10 @@ export function isAudio(entity: Entity): boolean {
 
 export function isAdjustmentLayer(entity: Entity): boolean {
 	return entity.has(AdjustmentLayer);
+}
+
+export function isPrompt(entity: Entity): boolean {
+	return entity.has(PromptNode);
 }
 
 export function isCaption(entity: Entity): boolean {

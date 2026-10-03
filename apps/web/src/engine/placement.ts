@@ -66,7 +66,7 @@ const distance = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y
  * The middle of the view when the canvas is empty, or when nothing has a free
  * side left; the origin when no surface is mounted yet.
  */
-export function findEmptyPlacement(world: World, width: number, height: number, gap: number): Point {
+export function findEmptyPlacement(world: World, width: number, height: number, gap: number, near?: AABB): Point {
 	const viewport = viewportBounds(world);
 	const center = viewport ? centerOf(viewport) : { x: 0, y: 0 };
 
@@ -77,6 +77,7 @@ export function findEmptyPlacement(world: World, width: number, height: number, 
 	const ordered = (inView.length > 0 ? inView : boxes)
 		.slice()
 		.sort((a, b) => distance(centerOf(a), center) - distance(centerOf(b), center));
+	if (near) ordered.unshift(near);
 
 	const free = (rect: AABB): boolean => !boxes.some((box) => aabbsIntersect(rect, box));
 

@@ -4,7 +4,7 @@
 
 import type { JSX as SolidJSX } from "solid-js";
 import type { Entity } from "koota";
-import type { AssetRef } from "./generate";
+import type { AspectRatio, AssetRef } from "./generate";
 
 /**
  * Composition-relative time: seconds (number), frames ("30f"), or a
@@ -540,6 +540,25 @@ export type AdjustmentLayerProps =
   & {
     /** `<Animation>` and `<KeyframeTrack>` children — what the layer's transform is animated with. */
     children?: SolidJSX.Element;
+  };
+
+export type PromptProps =
+  & IdentityProps
+  & PositionProps
+  & SizeProps
+  & Pick<CompositeProps, "hidden">
+  & {
+    mode?: "image" | "video" | "voice" | "audio";
+    prompt?: string;
+    model?: string;
+    aspectRatio?: AspectRatio;
+    count?: number;
+    refs?: string[];
+    startFrame?: string;
+    endFrame?: string;
+    duration?: number;
+    audio?: boolean;
+    voice?: string;
   };
 
 export type RectProps = CommonProps & FillProps & {

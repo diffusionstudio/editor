@@ -11,12 +11,13 @@ import { ASPECT_RATIO_DIMENSIONS } from "./config";
 import { insertGenerated, randomSeed } from "./insert";
 
 import type { VideoGenerationConfig } from "./schemas";
+import type { AABB } from "@diffusionstudio/runtime";
 
 export function useGenerateVideo() {
   const world = useWorld();
   const editor = useEditor();
 
-  const run = async (config: VideoGenerationConfig) => {
+  const run = async (config: VideoGenerationConfig, near?: AABB) => {
     const library = world.get(Library);
     const frame = (id: string | undefined) => (id ? library?.get(id)?.path : undefined);
 
@@ -39,7 +40,7 @@ export function useGenerateVideo() {
       <Rect keepAspectRatio x={box.x} y={box.y} width={box.width} height={box.height}>
         <VideoPaint src={src} />
       </Rect>
-    ), 1, [src]);
+    ), 1, [src], near);
   };
 
   return { generate: run } as const;
