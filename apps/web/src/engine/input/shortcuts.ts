@@ -33,6 +33,7 @@ import {
 } from '@diffusionstudio/runtime';
 import { Not, Or } from 'koota';
 
+import { tidySelection } from '../align';
 import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
 import { applyClipPaths, cancelClipPath } from '../clip-path';
 import { getDocumentEditor } from '../editor';
@@ -466,6 +467,9 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['d', 'mod', '!shift'], action: duplicateSelection },
 	{ keys: ['g', 'mod', '!shift'], action: groupSelection },
 	{ keys: ['g', 'mod', 'shift'], action: ungroupSelection },
+	// macOS can spell ⌥T as the character it types, †.
+	{ keys: ['t', 'control', 'alt'], action: tidySelection },
+	{ keys: ['†', 'control', 'alt'], action: tidySelection },
 	{ keys: ['enter', 'mod', '!shift', '!alt'], action: wrapSelectionInScene },
 	{ keys: ['enter', 'mod', 'alt', '!shift'], action: wrapSelectionInSequence },
 	{ keys: ['enter', 'mod', 'alt', 'shift'], action: unwrapSequenceSelection },
