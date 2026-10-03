@@ -45,10 +45,15 @@ export type Axis = "x" | "y";
 
 type Box = { minX: number; minY: number; maxX: number; maxY: number };
 
+type Sized = { box: Box };
+
 type Item = { entity: Entity; box: Box };
 
 /** Tidy's spacing, as a share of the items' shorter side, when the selection has none to read off. */
 const FALLBACK_GAP = 0.2;
+
+/** How far apart two items' sizes may be, on either side, and still read as alike. */
+const SIMILAR_SIZE = 1.5;
 
 /** The selected nodes alignment moves: top-level ones and direct children of scenes. */
 export function getAlignableSelection(world: World): Entity[] {
@@ -171,10 +176,10 @@ export function distributeSelection(world: World, axis: Axis): void {
  * Groups items into bands along `axis`: sorted by their leading edge, an item
  * joins the open band while its center falls inside that band's first item.
  */
-function bands(items: Item[], axis: Axis): Item[][] {
+function bands<T extends Sized>(items: T[], axis: Axis): T[][] {
   const min = (box: Box) => (axis === "x" ? box.minX : box.minY);
   const max = (box: Box) => (axis === "x" ? box.maxX : box.maxY);
-  const result: { items: Item[]; end: number }[] = [];
+  const result: { items: T[]; end: number }[] = [];
 
   for (const item of [...items].sort((a, b) => min(a.box) - min(b.box))) {
     const center = (min(item.box) + max(item.box)) / 2;
@@ -196,74 +201,156 @@ function typicalGap(values: number[]): number | undefined {
   return lowerMedian(values.filter((value) => value > 0));
 }
 
-function offsets(sizes: number[], gap: number, start: number): number[] {
-  let cursor = start;
-  return sizes.map((size) => {
-    const offset = cursor;
-    cursor += size + gap;
-    return offset;
-  });
+/** A square-ish column count, widened until the last row is more than half full. */
+function squareColumns(count: number): number {
+  let columns = Math.ceil(Math.sqrt(count));
+  while ((count % columns || columns) <= columns / 2) columns++;
+  return columns;
 }
 
+const widthOf = (box: Box) => box.maxX - box.minX;
+const heightOf = (box: Box) => box.maxY - box.minY;
+const sizeRatio = (a: number, b: number) => Math.max(a, b) / Math.min(a, b);
+
+/** Where each item goes, from the arrangement's top-left corner, and the room it all takes. */
+type Arrangement<T> = { placed: { item: T; x: number; y: number }[]; width: number; height: number; gap: number };
+
 /**
- * Lays the selection out as a grid with even gaps from its top-left corner,
- * in reading order. The layout it already has picks the shape: one row stays
- * a row, a rough grid keeps its column count, and a scatter with no structure
- * to keep becomes a square-ish grid. A row or a grid keeps the gaps already
- * there between neighbours, each axis on its own, in whole document units,
- * though in a grid a gap an item would fit in is an empty cell rather than
- * spacing. A scatter's gaps are happenstance, so it gets the fallback.
+ * Lays items out as a grid with one even gap, in reading order. The layout
+ * they already have picks the shape: one row stays a row, a rough grid keeps
+ * its longest row or tallest column (whichever is wider), and a scatter with
+ * no structure to keep becomes a square-ish grid. A row or a grid keeps the
+ * tighter of the gaps already there between neighbours, in whole document
+ * units, though in a grid a gap an item would fit in is an empty cell rather
+ * than spacing. A scatter's gaps are happenstance, so it gets the fallback.
+ * `flow` packs each row left to right instead of lining up columns, for items
+ * whose widths have nothing to line up; `gap` overrides the one read off.
  */
-export function tidySelection(world: World): void {
-  const entities = getAlignableSelection(world);
-  if (entities.length < 2) return;
-
-  const items = entities.map((entity) => ({ entity, box: boundsOf(world, entity) }));
+function arrange<T extends Sized>(items: T[], scale: number, options: { gap?: number; flow?: boolean } = {}): Arrangement<T> {
   const rows = bands(items, "y").map((row) => row.sort((a, b) => a.box.minX - b.box.minX));
-  const columnBands = bands(items, "x").length;
+  const columnBands = bands(items, "x");
   const count = items.length;
+  const longest = (groups: T[][]) => Math.max(...groups.map((group) => group.length));
 
-  const structured = rows.length === 1 || rows.length * columnBands <= 2 * count;
+  // Read both ways, so one item sitting between two columns does not add a third.
+  const structured = rows.length === 1 || rows.length * columnBands.length <= 2 * count;
   const columns =
     rows.length === 1 ? count
-    : structured ? columnBands
-    : Math.ceil(Math.sqrt(count));
+    : structured ? Math.max(longest(rows), Math.ceil(count / longest(columnBands)))
+    : squareColumns(count);
 
-  // Device pixels per document unit.
-  const scale = getCameraScale(world) * (world.get(RenderSurface)?.resolution ?? 1);
   const toUnits = (gap: number) => Math.round(gap / scale) * scale;
 
-  const planar = rows.length > 1 && columnBands > 1;
-  const width = lowerMedian(items.map(({ box }) => box.maxX - box.minX))!;
-  const height = lowerMedian(items.map(({ box }) => box.maxY - box.minY))!;
+  const planar = rows.length > 1 && columnBands.length > 1;
+  const width = lowerMedian(items.map(({ box }) => widthOf(box)))!;
+  const height = lowerMedian(items.map(({ box }) => heightOf(box)))!;
   const spacing = (gap: number | undefined, size: number) =>
     !structured || gap === undefined || (planar && gap >= size) ? undefined : toUnits(gap);
 
   const gapX = spacing(typicalGap(rows.flatMap((row) => row.slice(1).map((item, index) => item.box.minX - row[index]!.box.maxX))), width);
   const gapY = spacing(typicalGap(rows.slice(1).map((row, index) =>
     Math.min(...row.map((item) => item.box.minY)) - Math.max(...rows[index]!.map((item) => item.box.maxY)))), height);
-  const fallback = toUnits(Math.min(width, height) * FALLBACK_GAP);
+  const measured = [gapX, gapY].filter((gap) => gap !== undefined);
+  const gap = options.gap ?? (measured.length ? Math.min(...measured) : toUnits(Math.min(width, height) * FALLBACK_GAP));
 
   const order = rows.flat();
   const widths = new Array<number>(columns).fill(0);
-  const heights = new Array<number>(Math.ceil(count / columns)).fill(0);
   order.forEach(({ box }, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    widths[column] = Math.max(widths[column]!, box.maxX - box.minX);
-    heights[row] = Math.max(heights[row]!, box.maxY - box.minY);
+    widths[index % columns] = Math.max(widths[index % columns]!, widthOf(box));
   });
 
-  const origin = union(items.map((item) => item.box));
-  const lefts = offsets(widths, gapX ?? gapY ?? fallback, origin.minX);
-  const tops = offsets(heights, gapY ?? gapX ?? fallback, origin.minY);
+  const placed: Arrangement<T>["placed"] = [];
+  let top = 0;
+  let right = 0;
+  for (let start = 0; start < count; start += columns) {
+    const line = order.slice(start, start + columns);
+    let left = 0;
+    line.forEach((item, column) => {
+      placed.push({ item, x: left, y: top });
+      left += (options.flow ? widthOf(item.box) : widths[column]!) + gap;
+    });
+    right = Math.max(right, left - gap);
+    top += Math.max(...line.map(({ box }) => heightOf(box))) + gap;
+  }
 
+  return { placed, width: right, height: top - gap, gap };
+}
+
+/** The same kind of node (a scene is not a shape), within `SIMILAR_SIZE` on both sides. */
+function alike(a: Item, b: Item): boolean {
+  return isScene(a.entity) === isScene(b.entity)
+    && sizeRatio(widthOf(a.box), widthOf(b.box)) <= SIMILAR_SIZE
+    && sizeRatio(heightOf(a.box), heightOf(b.box)) <= SIMILAR_SIZE;
+}
+
+/**
+ * The items split into groups, each the items `alike` chains together. Where
+ * they stand plays no part, so a tidy cannot regroup what it just tidied.
+ */
+function groupsOf(items: Item[]): Item[][] {
+  const groups: Item[][] = [];
+  const seen = new Set<Item>();
+
+  for (const start of items) {
+    if (seen.has(start)) continue;
+    seen.add(start);
+    const group = [start];
+    for (let index = 0; index < group.length; index++) {
+      for (const other of items) {
+        if (seen.has(other) || !alike(group[index]!, other)) continue;
+        seen.add(other);
+        group.push(other);
+      }
+    }
+    groups.push(group);
+  }
+
+  return groups;
+}
+
+/**
+ * Tidies the selection into a grid (see `arrange`) from its top-left corner.
+ * Alike items make one grid, and so does a single row or column. Anything
+ * else that mixes sizes is sorted like with like instead: each group of alike
+ * items (see `groupsOf`) is tidied on its own, then the groups are laid out
+ * as blocks, rows packed left to right, twice as far apart as the widest gap
+ * inside any of them so they still read as groups.
+ */
+export function tidySelection(world: World): void {
+  const entities = getAlignableSelection(world);
+  if (entities.length < 2) return;
+
+  const items = entities.map((entity) => ({ entity, box: boundsOf(world, entity) }));
+  // Device pixels per document unit.
+  const scale = getCameraScale(world) * (world.get(RenderSurface)?.resolution ?? 1);
+
+  const spread = (sizes: number[]) => sizeRatio(Math.max(...sizes), Math.min(...sizes));
+  const mixed = spread(items.map(({ box }) => widthOf(box))) > SIMILAR_SIZE
+    || spread(items.map(({ box }) => heightOf(box))) > SIMILAR_SIZE;
+  // A row or a column keeps its order, whatever sizes it mixes.
+  const linear = bands(items, "y").length === 1 || bands(items, "x").length === 1;
+  const groups = mixed && !linear ? groupsOf(items) : [items];
+
+  let placed: Arrangement<Item>["placed"];
+  if (groups.length === 1) {
+    placed = arrange(items, scale).placed;
+  } else {
+    const blocks = groups.map((group) => {
+      const inner = arrange(group, scale);
+      const at = union(group.map(({ box }) => box));
+      return { inner, box: { minX: at.minX, minY: at.minY, maxX: at.minX + inner.width, maxY: at.minY + inner.height } };
+    });
+    const innerGaps = blocks.filter(({ inner }) => inner.placed.length > 1).map(({ inner }) => inner.gap);
+    const outer = arrange(blocks, scale, { flow: true, gap: innerGaps.length ? 2 * Math.max(...innerGaps) : undefined });
+    placed = outer.placed.flatMap(({ item: block, x, y }) =>
+      block.inner.placed.map((spot) => ({ item: spot.item, x: x + spot.x, y: y + spot.y })));
+  }
+
+  const origin = union(items.map(({ box }) => box));
   // Under half a unit rounds back to where it was: no edit for nothing.
   const settle = (delta: number) => (Math.abs(delta) < scale / 2 ? 0 : delta);
 
-  order.forEach(({ entity, box }, index) => {
-    const dx = lefts[index % columns]! - box.minX;
-    const dy = tops[Math.floor(index / columns)]! - box.minY;
-    moveByWorldDelta(world, entity, settle(dx), settle(dy));
-  });
+  for (const { item, x, y } of placed) {
+    moveByWorldDelta(world, item.entity, settle(origin.minX + x - item.box.minX), settle(origin.minY + y - item.box.minY));
+  }
 }
