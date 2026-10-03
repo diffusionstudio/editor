@@ -5,6 +5,7 @@
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,10 +39,13 @@ function TidyUpButton() {
   const world = useWorld();
 
   return (
-    <Button variant="ghost" class="gap-0 pl-0.5 text-muted-foreground" onClick={() => tidySelection(world)}>
-      <Icon name="view.grid" />
-      Tidy up
-    </Button>
+    <Tooltip>
+      <TooltipTrigger as={Button} variant="ghost" class="gap-0 pl-0.5 text-muted-foreground" onClick={() => tidySelection(world)}>
+        <Icon name="view.grid" />
+        Tidy up
+      </TooltipTrigger>
+      <TooltipContent shortcut="⌃⌥T">Tidy up</TooltipContent>
+    </Tooltip>
   );
 }
 
