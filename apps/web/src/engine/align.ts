@@ -47,8 +47,8 @@ type Box = { minX: number; minY: number; maxX: number; maxY: number };
 
 type Item = { entity: Entity; box: Box };
 
-/** Tidy's spacing, in document units, when the selection has none to read off. */
-const DEFAULT_GAP = 40;
+/** Tidy's spacing, as a share of the items' shorter side, when the selection has none to read off. */
+const FALLBACK_GAP = 0.2;
 
 /** The selected nodes alignment moves: top-level ones and direct children of scenes. */
 export function getAlignableSelection(world: World): Entity[] {
@@ -186,10 +186,14 @@ function bands(items: Item[], axis: Axis): Item[][] {
   return result.map((band) => band.items);
 }
 
+function lowerMedian(values: number[]): number | undefined {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
 /** The lower median of the positive values; one stray wide gap does not set the spacing. */
 function typicalGap(values: number[]): number | undefined {
-  const sorted = values.filter((value) => value > 0).sort((a, b) => a - b);
-  return sorted[Math.floor((sorted.length - 1) / 2)];
+  return lowerMedian(values.filter((value) => value > 0));
 }
 
 function offsets(sizes: number[], gap: number, start: number): number[] {
@@ -205,8 +209,10 @@ function offsets(sizes: number[], gap: number, start: number): number[] {
  * Lays the selection out as a grid with even gaps from its top-left corner,
  * in reading order. The layout it already has picks the shape: one row stays
  * a row, a rough grid keeps its column count, and a scatter with no structure
- * to keep becomes a square-ish grid. The gaps are the ones already there
- * between neighbours, each axis on its own, in whole document units.
+ * to keep becomes a square-ish grid. A row or a grid keeps the gaps already
+ * there between neighbours, each axis on its own, in whole document units,
+ * though in a grid a gap an item would fit in is an empty cell rather than
+ * spacing. A scatter's gaps are happenstance, so it gets the fallback.
  */
 export function tidySelection(world: World): void {
   const entities = getAlignableSelection(world);
@@ -217,19 +223,26 @@ export function tidySelection(world: World): void {
   const columnBands = bands(items, "x").length;
   const count = items.length;
 
+  const structured = rows.length === 1 || rows.length * columnBands <= 2 * count;
   const columns =
     rows.length === 1 ? count
-    : rows.length * columnBands <= 2 * count ? columnBands
+    : structured ? columnBands
     : Math.ceil(Math.sqrt(count));
 
   // Device pixels per document unit.
   const scale = getCameraScale(world) * (world.get(RenderSurface)?.resolution ?? 1);
-  const toUnits = (gap: number | undefined) => (gap === undefined ? undefined : Math.round(gap / scale) * scale);
+  const toUnits = (gap: number) => Math.round(gap / scale) * scale;
 
-  const gapX = toUnits(typicalGap(rows.flatMap((row) => row.slice(1).map((item, index) => item.box.minX - row[index]!.box.maxX))));
-  const gapY = toUnits(typicalGap(rows.slice(1).map((row, index) =>
-    Math.min(...row.map((item) => item.box.minY)) - Math.max(...rows[index]!.map((item) => item.box.maxY)))));
-  const fallback = DEFAULT_GAP * scale;
+  const planar = rows.length > 1 && columnBands > 1;
+  const width = lowerMedian(items.map(({ box }) => box.maxX - box.minX))!;
+  const height = lowerMedian(items.map(({ box }) => box.maxY - box.minY))!;
+  const spacing = (gap: number | undefined, size: number) =>
+    !structured || gap === undefined || (planar && gap >= size) ? undefined : toUnits(gap);
+
+  const gapX = spacing(typicalGap(rows.flatMap((row) => row.slice(1).map((item, index) => item.box.minX - row[index]!.box.maxX))), width);
+  const gapY = spacing(typicalGap(rows.slice(1).map((row, index) =>
+    Math.min(...row.map((item) => item.box.minY)) - Math.max(...rows[index]!.map((item) => item.box.maxY)))), height);
+  const fallback = toUnits(Math.min(width, height) * FALLBACK_GAP);
 
   const order = rows.flat();
   const widths = new Array<number>(columns).fill(0);
