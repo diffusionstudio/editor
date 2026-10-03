@@ -14,9 +14,14 @@ import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
+import type { JSX } from "solid-js";
 import type { Asset } from "@diffusionstudio/assets";
 
-export function Canvas() {
+type CanvasProps = {
+  style?: JSX.CSSProperties;
+}
+
+export function Canvas(props: CanvasProps) {
   const world = useWorld();
 
   /**
@@ -69,7 +74,7 @@ export function Canvas() {
   }
 
   return (
-    <div class="relative size-full bg-background">
+    <div class="relative size-full bg-background" style={props.style}>
       <div
         class="absolute inset-0"
         on:drop={handleDropEvent}

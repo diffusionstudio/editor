@@ -44,6 +44,7 @@ export function EditorPage() {
   const world = useWorld();
   const engine = useEngineContext();
   const { nodes } = useSelection();
+  const inspectorFloating = () => !uiVisible() && nodes().length > 0;
 
   // Keyed on the folder, not the project: a rename moves it, and everything
   // below holds a path — the watcher, the library, the writer — so all of it
@@ -256,7 +257,8 @@ export function EditorPage() {
         <SidebarLeft />
         <div class="bg-border-strong" />
       </Show>
-      <Canvas />
+      {/* Clipped, not just covered: macOS vibrancy only shows where the page is transparent. */}
+      <Canvas style={inspectorFloating() ? { 'clip-path': `inset(0 ${INSPECTOR_WIDTH + 1}px 0 0)` } : undefined} />
       <Show when={uiVisible()}>
         <div class="bg-border-strong" />
         <Inspector />
@@ -290,7 +292,7 @@ export function EditorPage() {
         </Show>
       </Show>
       {/* Overlaid rather than a grid column, so selecting never resizes the canvas under the pointer. */}
-      <Show when={!uiVisible() && nodes().length > 0}>
+      <Show when={inspectorFloating()}>
         <div
           class="fixed right-0 bottom-0 top-(--titlebar-height) z-30 bg-sidebar border-l border-border-strong"
           style={{ width: `${INSPECTOR_WIDTH + 1}px` }}
