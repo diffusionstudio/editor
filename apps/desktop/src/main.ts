@@ -365,6 +365,7 @@ if (squirrelLaunch) {
   mainBridge.handle(MAIN_CHANNELS.WINDOW_IS_FULLSCREEN, () => mainWindow?.isFullScreen() ?? false);
   mainBridge.handle(MAIN_CHANNELS.WINDOW_SET_COLOR_MODE, ({ mode }) => setColorMode(mode));
   mainBridge.handle(MAIN_CHANNELS.WINDOW_SET_BUSY, ({ busy }) => windows.setBusy(busy));
+  mainBridge.handle(MAIN_CHANNELS.WINDOW_SHOW, () => windows.show());
   mainBridge.handle(MAIN_CHANNELS.WINDOW_CAPTURE, async () => {
     if (!mainWindow || mainWindow.isDestroyed()) throw new Error("No main window");
     const image = await mainWindow.webContents.capturePage(undefined, { stayHidden: true });

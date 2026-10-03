@@ -8,11 +8,12 @@
 
 import { For, Show, createEffect } from "solid-js";
 
+import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 
 import type { ModelRef } from "@diffusionstudio/agent-chat";
 
-import { AttachmentTile, DropOverlay, createDropZone, mergeAttachments, type Attachment } from "./attachments";
+import { AttachmentTile, DropOverlay, createDropZone, mergeAttachments, pickAttachments, type Attachment } from "./attachments";
 import { ModelPicker } from "./model-picker";
 
 const MAX_HEIGHT_PX = 160;
@@ -37,7 +38,8 @@ type ComposerProps = {
 export function Composer(props: ComposerProps) {
   let textarea: HTMLTextAreaElement | undefined;
 
-  const drop = createDropZone((dropped) => props.onAttachments(mergeAttachments(props.attachments, dropped)));
+  const attach = (added: Attachment[]) => props.onAttachments(mergeAttachments(props.attachments, added));
+  const drop = createDropZone(attach);
 
   const canSend = () => !props.running && !props.blocked && props.model !== null && (props.text.trim().length > 0 || props.attachments.length > 0);
 
@@ -103,32 +105,44 @@ export function Composer(props: ComposerProps) {
       />
 
       <div class="flex min-h-4 items-center justify-between gap-1">
-        <ModelPicker value={props.model} onSelect={props.onModel} class="min-w-0" />
-        <Show
-          when={props.running}
-          fallback={
+        <Button
+          variant="ghost"
+          size="icon-square"
+          onClick={async () => attach(await pickAttachments())}
+          aria-label="Add files"
+          title="Add files"
+          class="text-muted-foreground hover:bg-muted"
+        >
+          <Icon name="plus-add" />
+        </Button>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <ModelPicker value={props.model} onSelect={props.onModel} class="min-w-0" />
+          <Show
+            when={props.running}
+            fallback={
+              <button
+                type="button"
+                onClick={() => canSend() && props.onSend()}
+                disabled={!canSend()}
+                aria-label="Send"
+                title={sendTitle()}
+                class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 focus-ring"
+              >
+                <Icon name="arrow-top" />
+              </button>
+            }
+          >
             <button
               type="button"
-              onClick={() => canSend() && props.onSend()}
-              disabled={!canSend()}
-              aria-label="Send"
-              title={sendTitle()}
-              class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 focus-ring"
+              onClick={props.onStop}
+              aria-label="Stop"
+              title="Stop"
+              class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-primary-hover focus-ring"
             >
-              <Icon name="arrow-top" />
+              <Icon name="stop" />
             </button>
-          }
-        >
-          <button
-            type="button"
-            onClick={props.onStop}
-            aria-label="Stop"
-            title="Stop"
-            class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-primary-hover focus-ring"
-          >
-            <Icon name="stop" />
-          </button>
-        </Show>
+          </Show>
+        </div>
       </div>
 
       <Show when={drop.dragging()}>

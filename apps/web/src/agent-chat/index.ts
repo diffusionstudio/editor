@@ -28,5 +28,6 @@ export {
   createDropZone,
   droppedAttachments,
   mergeAttachments,
+  pickAttachments,
   type Attachment,
 } from "./attachments";

@@ -37,6 +37,7 @@ export const MAIN_CHANNELS = {
   WINDOW_SET_COLOR_MODE: "window:set-color-mode",
   WINDOW_CAPTURE: "window:capture",
   WINDOW_SET_BUSY: "window:set-busy",
+  WINDOW_SHOW: "window:show",
   FILE_TRANSFER: "file:transfer",
   FILE_WRITE_OPEN: "file:write-open",
   FILE_WRITE_CHUNK: "file:write-chunk",
@@ -194,6 +195,7 @@ export type MainRequestMap = {
   [MAIN_CHANNELS.WINDOW_SET_COLOR_MODE]: { request: { mode: "light" | "dark" }; response: void };
   [MAIN_CHANNELS.WINDOW_CAPTURE]: { request: void; response: ScreenshotResult };
   [MAIN_CHANNELS.WINDOW_SET_BUSY]: { request: { busy: boolean }; response: void };
+  [MAIN_CHANNELS.WINDOW_SHOW]: { request: void; response: void };
   [MAIN_CHANNELS.FILE_TRANSFER]: {
     request: { selector: string; absolutePath: string };
     response: void;
