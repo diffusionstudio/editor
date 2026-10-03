@@ -28,6 +28,7 @@ import { compileProject, isWindowsDesktop, refreshProject, watchProject } from '
 import { captureProjectCover } from '@/projects/cover';
 import { useProject } from "@/context/project";
 import { useEngineContext } from "@/engine";
+import { useSelection } from "@/engine/hooks";
 
 import type { Mount } from '@diffusionstudio/reconciler';
 import type { EditWriter } from '@/projects/edits';
@@ -42,6 +43,7 @@ export function EditorPage() {
   const project = useProject();
   const world = useWorld();
   const engine = useEngineContext();
+  const { nodes } = useSelection();
 
   // Keyed on the folder, not the project: a rename moves it, and everything
   // below holds a path — the watcher, the library, the writer — so all of it
@@ -286,6 +288,15 @@ export function EditorPage() {
         <Show when={!timelineMinimized()}>
           <Soundboard />
         </Show>
+      </Show>
+      {/* Overlaid rather than a grid column, so selecting never resizes the canvas under the pointer. */}
+      <Show when={!uiVisible() && nodes().length > 0}>
+        <div
+          class="fixed right-0 bottom-0 top-(--titlebar-height) z-30 bg-sidebar border-l border-border-strong"
+          style={{ width: `${INSPECTOR_WIDTH + 1}px` }}
+        >
+          <Inspector />
+        </div>
       </Show>
       {/* The Windows title bar stays up with the UI hidden and offers the same. */}
       <Show when={!uiVisible() && !isWindowsDesktop()}>
