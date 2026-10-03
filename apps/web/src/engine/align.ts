@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * Align and distribute the selection: the nodes are moved in device space
+ * Align, distribute and tidy the selection: the nodes are moved in device space
  * against the upright box of them all (`WorldBounds`, which the transform
  * system writes), and each move becomes the `x`/`y` a drag would write, in
  * the node's own parent's space. Only nodes directly inside a scene (or
@@ -15,9 +15,11 @@ import {
   Geometry,
   Group,
   Position,
+  RenderSurface,
   Selected,
   WorldBounds,
   entityWorldMat,
+  getCameraScale,
   getParentEntity,
   getParentNode,
   invert2D,
@@ -42,6 +44,11 @@ export type AlignAction =
 export type Axis = "x" | "y";
 
 type Box = { minX: number; minY: number; maxX: number; maxY: number };
+
+type Item = { entity: Entity; box: Box };
+
+/** Tidy's spacing, in document units, when the selection has none to read off. */
+const DEFAULT_GAP = 40;
 
 /** The selected nodes alignment moves: top-level ones and direct children of scenes. */
 export function getAlignableSelection(world: World): Entity[] {
@@ -158,4 +165,92 @@ export function distributeSelection(world: World, axis: Axis): void {
     moveByWorldDelta(world, entity, horizontal ? delta : 0, horizontal ? 0 : delta);
     cursor += size(box) + gap;
   }
+}
+
+/**
+ * Groups items into bands along `axis`: sorted by their leading edge, an item
+ * joins the open band while its center falls inside that band's first item.
+ */
+function bands(items: Item[], axis: Axis): Item[][] {
+  const min = (box: Box) => (axis === "x" ? box.minX : box.minY);
+  const max = (box: Box) => (axis === "x" ? box.maxX : box.maxY);
+  const result: { items: Item[]; end: number }[] = [];
+
+  for (const item of [...items].sort((a, b) => min(a.box) - min(b.box))) {
+    const center = (min(item.box) + max(item.box)) / 2;
+    const band = result[result.length - 1];
+    if (band && center < band.end) band.items.push(item);
+    else result.push({ items: [item], end: max(item.box) });
+  }
+
+  return result.map((band) => band.items);
+}
+
+/** The lower median of the positive values; one stray wide gap does not set the spacing. */
+function typicalGap(values: number[]): number | undefined {
+  const sorted = values.filter((value) => value > 0).sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
+function offsets(sizes: number[], gap: number, start: number): number[] {
+  let cursor = start;
+  return sizes.map((size) => {
+    const offset = cursor;
+    cursor += size + gap;
+    return offset;
+  });
+}
+
+/**
+ * Lays the selection out as a grid with even gaps from its top-left corner,
+ * in reading order. The layout it already has picks the shape: one row stays
+ * a row, a rough grid keeps its column count, and a scatter with no structure
+ * to keep becomes a square-ish grid. The gaps are the ones already there
+ * between neighbours, each axis on its own, in whole document units.
+ */
+export function tidySelection(world: World): void {
+  const entities = getAlignableSelection(world);
+  if (entities.length < 2) return;
+
+  const items = entities.map((entity) => ({ entity, box: boundsOf(world, entity) }));
+  const rows = bands(items, "y").map((row) => row.sort((a, b) => a.box.minX - b.box.minX));
+  const columnBands = bands(items, "x").length;
+  const count = items.length;
+
+  const columns =
+    rows.length === 1 ? count
+    : rows.length * columnBands <= 2 * count ? columnBands
+    : Math.ceil(Math.sqrt(count));
+
+  // Device pixels per document unit.
+  const scale = getCameraScale(world) * (world.get(RenderSurface)?.resolution ?? 1);
+  const toUnits = (gap: number | undefined) => (gap === undefined ? undefined : Math.round(gap / scale) * scale);
+
+  const gapX = toUnits(typicalGap(rows.flatMap((row) => row.slice(1).map((item, index) => item.box.minX - row[index]!.box.maxX))));
+  const gapY = toUnits(typicalGap(rows.slice(1).map((row, index) =>
+    Math.min(...row.map((item) => item.box.minY)) - Math.max(...rows[index]!.map((item) => item.box.maxY)))));
+  const fallback = DEFAULT_GAP * scale;
+
+  const order = rows.flat();
+  const widths = new Array<number>(columns).fill(0);
+  const heights = new Array<number>(Math.ceil(count / columns)).fill(0);
+  order.forEach(({ box }, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    widths[column] = Math.max(widths[column]!, box.maxX - box.minX);
+    heights[row] = Math.max(heights[row]!, box.maxY - box.minY);
+  });
+
+  const origin = union(items.map((item) => item.box));
+  const lefts = offsets(widths, gapX ?? gapY ?? fallback, origin.minX);
+  const tops = offsets(heights, gapY ?? gapX ?? fallback, origin.minY);
+
+  // Under half a unit rounds back to where it was: no edit for nothing.
+  const settle = (delta: number) => (Math.abs(delta) < scale / 2 ? 0 : delta);
+
+  order.forEach(({ entity, box }, index) => {
+    const dx = lefts[index % columns]! - box.minX;
+    const dy = tops[Math.floor(index / columns)]! - box.minY;
+    moveByWorldDelta(world, entity, settle(dx), settle(dy));
+  });
 }

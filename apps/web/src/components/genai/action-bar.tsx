@@ -14,6 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createMemo, Show } from "solid-js";
+import { useWorld } from "@diffusionstudio/koota-solid";
+import { useSelection } from "@/engine/hooks";
+import { tidySelection } from "@/engine/align";
 import { useGenerationRecords } from "./use-generation-records";
 import { useGenerateImage } from "./use-generate-image";
 import { useGenerateVideo } from "./use-generate-video";
@@ -31,8 +34,20 @@ interface ActionBarProps {
   openPromptInput?(config: GenerationConfig): void;
 }
 
+function TidyUpButton() {
+  const world = useWorld();
+
+  return (
+    <Button variant="ghost" class="gap-0 pl-0.5 text-muted-foreground" onClick={() => tidySelection(world)}>
+      <Icon name="view.grid" />
+      Tidy up
+    </Button>
+  );
+}
+
 export function ActionBar(props: ActionBarProps) {
   const { imageNodes, videoNodes } = useMediaSelection();
+  const { nodes } = useSelection();
   const { isOn, toggle } = useTransforms();
 
   const { generate: generateImage } = useGenerateImage();
@@ -44,9 +59,10 @@ export function ActionBar(props: ActionBarProps) {
 
   const isImage = createMemo(() => imageNodes().length > 0);
   const isVideo = createMemo(() => videoNodes().length > 0);
+  const canTidy = createMemo(() => nodes().length > 1);
 
   const visible = createMemo(() => {
-    return isImage() || isVideo() || hasScene();
+    return isImage() || isVideo() || hasScene() || canTidy();
   })
 
   const handleRerun = () => {
@@ -130,6 +146,9 @@ export function ActionBar(props: ActionBarProps) {
                 <Icon name="ai-generate" />
                 Edit with prompt
               </Button>
+              <Show when={canTidy()}>
+                <TidyUpButton />
+              </Show>
               <Show when={isGenerated()}>
                 <DropdownMenu placement="right">
                   <DropdownMenuTrigger<typeof Button>
@@ -216,6 +235,12 @@ export function ActionBar(props: ActionBarProps) {
                 </DropdownMenu>
               </Show>
             </div>
+          </Show>
+          <Show when={canTidy() && !isImage()}>
+            <Show when={isVideo() || hasScene()}>
+              <Separator orientation="vertical" class="min-h-5" />
+            </Show>
+            <TidyUpButton />
           </Show>
         </div>
       </Show>
