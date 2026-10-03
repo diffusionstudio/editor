@@ -257,7 +257,6 @@ export function EditorPage() {
         <SidebarLeft />
         <div class="bg-border-strong" />
       </Show>
-      {/* Clipped, not just covered: macOS vibrancy only shows where the page is transparent. */}
       <Canvas style={inspectorFloating() ? { 'clip-path': `inset(0 ${INSPECTOR_WIDTH + 1}px 0 0)` } : undefined} />
       <Show when={uiVisible()}>
         <div class="bg-border-strong" />
@@ -291,7 +290,6 @@ export function EditorPage() {
           <Soundboard />
         </Show>
       </Show>
-      {/* Overlaid rather than a grid column, so selecting never resizes the canvas under the pointer. */}
       <Show when={inspectorFloating()}>
         <div
           class="fixed right-0 bottom-0 top-(--titlebar-height) z-30 bg-sidebar border-l border-border-strong"

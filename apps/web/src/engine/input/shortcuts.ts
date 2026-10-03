@@ -467,7 +467,6 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['d', 'mod', '!shift'], action: duplicateSelection },
 	{ keys: ['g', 'mod', '!shift'], action: groupSelection },
 	{ keys: ['g', 'mod', 'shift'], action: ungroupSelection },
-	// macOS can spell ⌥T as the character it types, †.
 	{ keys: ['t', 'control', 'alt'], action: tidySelection },
 	{ keys: ['†', 'control', 'alt'], action: tidySelection },
 	{ keys: ['enter', 'mod', '!shift', '!alt'], action: wrapSelectionInScene },

@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * Align, distribute and tidy the selection: the nodes are moved in device space
+ * Align and distribute the selection: the nodes are moved in device space
  * against the upright box of them all (`WorldBounds`, which the transform
  * system writes), and each move becomes the `x`/`y` a drag would write, in
  * the node's own parent's space. Only nodes directly inside a scene (or
@@ -49,16 +49,12 @@ type Sized = { box: Box };
 
 type Item = { entity: Entity; box: Box };
 
-/** Tidy's spacing, as a share of the items' shorter side, when the selection has none to read off. */
 const FALLBACK_GAP = 0.2;
 
-/** How far apart two items' sizes may be, on either side, and still read as alike. */
 const SIMILAR_SIZE = 1.5;
 
-/** How far apart two items' aspect ratios may be and still read as one shape: 4:5 and 3:4 do, 4:3 and 16:9 do not. */
 const SIMILAR_ASPECT = 1.15;
 
-/** The screen shape packed groups aim to fit: they are most often looked at zoomed to fit one. */
 const PACK_ASPECT = 16 / 9;
 
 /** The selected nodes alignment moves: top-level ones and direct children of scenes. */
@@ -178,10 +174,6 @@ export function distributeSelection(world: World, axis: Axis): void {
   }
 }
 
-/**
- * Groups items into bands along `axis`: sorted by their leading edge, an item
- * joins the open band while its center falls inside that band's first item.
- */
 function bands<T extends Sized>(items: T[], axis: Axis): T[][] {
   const min = (box: Box) => (axis === "x" ? box.minX : box.minY);
   const max = (box: Box) => (axis === "x" ? box.maxX : box.maxY);
@@ -202,12 +194,10 @@ function lowerMedian(values: number[]): number | undefined {
   return sorted[Math.floor((sorted.length - 1) / 2)];
 }
 
-/** The lower median of the positive values; one stray wide gap does not set the spacing. */
 function typicalGap(values: number[]): number | undefined {
   return lowerMedian(values.filter((value) => value > 0));
 }
 
-/** A square-ish column count, widened until the last row is more than half full. */
 function squareColumns(count: number): number {
   let columns = Math.ceil(Math.sqrt(count));
   while ((count % columns || columns) <= columns / 2) columns++;
@@ -218,36 +208,19 @@ const widthOf = (box: Box) => box.maxX - box.minX;
 const heightOf = (box: Box) => box.maxY - box.minY;
 const sizeRatio = (a: number, b: number) => Math.max(a, b) / Math.min(a, b);
 
-/** Where each item goes, from the arrangement's top-left corner, and the room it all takes. */
 type Arrangement<T> = { placed: { item: T; x: number; y: number }[]; width: number; height: number; gap: number };
 
-/**
- * The gap for items with none to read off: a share of their average shorter
- * side, in whole document units. The average, so a few large items get room
- * however many small ones there are.
- */
 function fallbackGap(items: Sized[], scale: number): number {
   const side = items.reduce((sum, { box }) => sum + Math.min(widthOf(box), heightOf(box)), 0) / items.length;
   return Math.round((side * FALLBACK_GAP) / scale) * scale;
 }
 
-/**
- * Lays items out as a grid with one even gap, in reading order. The layout
- * they already have picks the shape: one row stays a row, a rough grid keeps
- * its longest row or tallest column (whichever is wider), and a scatter with
- * no structure to keep becomes a square-ish grid. A row or a grid keeps the
- * tighter of the gaps already there between neighbours, in whole document
- * units, though in a grid a gap an item would fit in is an empty cell rather
- * than spacing. A scatter's gaps are happenstance, so it gets the fallback.
- * `fixedGap`, when given, is used instead of any of that.
- */
 function arrange<T extends Sized>(items: T[], scale: number, fixedGap?: number): Arrangement<T> {
   const rows = bands(items, "y").map((row) => row.sort((a, b) => a.box.minX - b.box.minX));
   const columnBands = bands(items, "x");
   const count = items.length;
   const longest = (groups: T[][]) => Math.max(...groups.map((group) => group.length));
 
-  // Read both ways, so one item sitting between two columns does not add a third.
   const structured = rows.length === 1 || rows.length * columnBands.length <= 2 * count;
   const columns =
     rows.length === 1 ? count
@@ -293,12 +266,6 @@ type Shelf<T> = { height: number; columns: Column<T>[] };
 const shelfWidth = (shelf: Shelf<unknown>, gap: number) =>
   shelf.columns.reduce((sum, column) => sum + column.width, 0) + gap * (shelf.columns.length - 1);
 
-/**
- * Shelves `sorted` (tallest first) no wider than `limit`: each shelf is as
- * tall as the first item on it, and an item goes under another in whichever
- * column it leaves the least room in, else starts a column on the first shelf
- * with width to spare, else starts a shelf.
- */
 function shelve<T extends Sized>(sorted: T[], gap: number, limit: number): Shelf<T>[] {
   const shelves: Shelf<T>[] = [];
 
@@ -330,16 +297,10 @@ function shelve<T extends Sized>(sorted: T[], gap: number, limit: number): Shelf
   return shelves;
 }
 
-/**
- * Packs blocks of mixed sizes with one even gap: shelved tallest first (see
- * `shelve`), at whichever width needs the least zoom to fit a `PACK_ASPECT`
- * screen. Sizes alone decide it, so packing what it packed changes nothing.
- */
 function pack<T extends Sized>(blocks: T[], gap: number): Arrangement<T> {
   const sorted = [...blocks].sort((a, b) =>
     heightOf(b.box) - heightOf(a.box) || widthOf(b.box) - widthOf(a.box) || a.box.minY - b.box.minY || a.box.minX - b.box.minX);
 
-  // Every width a shelf can break at, from the widest block alone to all of them in one row.
   const limits = [Math.max(...sorted.map(({ box }) => widthOf(box)))];
   sorted.reduce((sum, { box }) => {
     limits.push(sum + widthOf(box));
@@ -373,7 +334,6 @@ function pack<T extends Sized>(blocks: T[], gap: number): Arrangement<T> {
   return { placed, width: best!.width, height: best!.height, gap };
 }
 
-/** The same kind of node (a scene is not a shape), alike in size (`SIMILAR_SIZE`) and shape (`SIMILAR_ASPECT`). */
 function alike(a: Item, b: Item): boolean {
   return isScene(a.entity) === isScene(b.entity)
     && sizeRatio(widthOf(a.box), widthOf(b.box)) <= SIMILAR_SIZE
@@ -381,10 +341,6 @@ function alike(a: Item, b: Item): boolean {
     && sizeRatio(widthOf(a.box) / heightOf(a.box), widthOf(b.box) / heightOf(b.box)) <= SIMILAR_ASPECT;
 }
 
-/**
- * The items split into groups, each the items `alike` chains together. Where
- * they stand plays no part, so a tidy cannot regroup what it just tidied.
- */
 function groupsOf(items: Item[]): Item[][] {
   const groups: Item[][] = [];
   const seen = new Set<Item>();
@@ -406,22 +362,13 @@ function groupsOf(items: Item[]): Item[][] {
   return groups;
 }
 
-/**
- * Tidies the selection from its top-left corner. Alike items make one grid
- * (see `arrange`), and so does a single row or column, whatever it mixes.
- * Anything else is sorted like with like: each group of alike items (see
- * `groupsOf`) becomes a grid of its own, and the grids and the odd ones out
- * are packed together (see `pack`), all with one gap read off their sizes.
- */
 export function tidySelection(world: World): void {
   const entities = getAlignableSelection(world);
   if (entities.length < 2) return;
 
   const items = entities.map((entity) => ({ entity, box: boundsOf(world, entity) }));
-  // Device pixels per document unit.
   const scale = getCameraScale(world) * (world.get(RenderSurface)?.resolution ?? 1);
 
-  // A row or a column keeps its order, whatever sizes it mixes.
   const linear = bands(items, "y").length === 1 || bands(items, "x").length === 1;
   const groups = linear ? [items] : groupsOf(items);
 
@@ -440,7 +387,6 @@ export function tidySelection(world: World): void {
   }
 
   const origin = union(items.map(({ box }) => box));
-  // Under half a unit rounds back to where it was: no edit for nothing.
   const settle = (delta: number) => (Math.abs(delta) < scale / 2 ? 0 : delta);
 
   for (const { item, x, y } of placed) {
