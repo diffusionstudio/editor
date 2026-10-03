@@ -55,6 +55,12 @@ const FALLBACK_GAP = 0.2;
 /** How far apart two items' sizes may be, on either side, and still read as alike. */
 const SIMILAR_SIZE = 1.5;
 
+/** How far apart two items' aspect ratios may be and still read as one shape: 4:5 and 3:4 do, 4:3 and 16:9 do not. */
+const SIMILAR_ASPECT = 1.15;
+
+/** The screen shape packed groups aim to fit: they are most often looked at zoomed to fit one. */
+const PACK_ASPECT = 16 / 9;
+
 /** The selected nodes alignment moves: top-level ones and direct children of scenes. */
 export function getAlignableSelection(world: World): Entity[] {
   return [...world.query(Selected, Or(Geometry, Group))].filter((entity) => {
@@ -216,6 +222,16 @@ const sizeRatio = (a: number, b: number) => Math.max(a, b) / Math.min(a, b);
 type Arrangement<T> = { placed: { item: T; x: number; y: number }[]; width: number; height: number; gap: number };
 
 /**
+ * The gap for items with none to read off: a share of their average shorter
+ * side, in whole document units. The average, so a few large items get room
+ * however many small ones there are.
+ */
+function fallbackGap(items: Sized[], scale: number): number {
+  const side = items.reduce((sum, { box }) => sum + Math.min(widthOf(box), heightOf(box)), 0) / items.length;
+  return Math.round((side * FALLBACK_GAP) / scale) * scale;
+}
+
+/**
  * Lays items out as a grid with one even gap, in reading order. The layout
  * they already have picks the shape: one row stays a row, a rough grid keeps
  * its longest row or tallest column (whichever is wider), and a scatter with
@@ -223,10 +239,9 @@ type Arrangement<T> = { placed: { item: T; x: number; y: number }[]; width: numb
  * tighter of the gaps already there between neighbours, in whole document
  * units, though in a grid a gap an item would fit in is an empty cell rather
  * than spacing. A scatter's gaps are happenstance, so it gets the fallback.
- * `flow` packs each row left to right instead of lining up columns, for items
- * whose widths have nothing to line up; `gap` overrides the one read off.
+ * `fixedGap`, when given, is used instead of any of that.
  */
-function arrange<T extends Sized>(items: T[], scale: number, options: { gap?: number; flow?: boolean } = {}): Arrangement<T> {
+function arrange<T extends Sized>(items: T[], scale: number, fixedGap?: number): Arrangement<T> {
   const rows = bands(items, "y").map((row) => row.sort((a, b) => a.box.minX - b.box.minX));
   const columnBands = bands(items, "x");
   const count = items.length;
@@ -239,19 +254,17 @@ function arrange<T extends Sized>(items: T[], scale: number, options: { gap?: nu
     : structured ? Math.max(longest(rows), Math.ceil(count / longest(columnBands)))
     : squareColumns(count);
 
-  const toUnits = (gap: number) => Math.round(gap / scale) * scale;
-
   const planar = rows.length > 1 && columnBands.length > 1;
   const width = lowerMedian(items.map(({ box }) => widthOf(box)))!;
   const height = lowerMedian(items.map(({ box }) => heightOf(box)))!;
   const spacing = (gap: number | undefined, size: number) =>
-    !structured || gap === undefined || (planar && gap >= size) ? undefined : toUnits(gap);
+    !structured || gap === undefined || (planar && gap >= size) ? undefined : Math.round(gap / scale) * scale;
 
   const gapX = spacing(typicalGap(rows.flatMap((row) => row.slice(1).map((item, index) => item.box.minX - row[index]!.box.maxX))), width);
   const gapY = spacing(typicalGap(rows.slice(1).map((row, index) =>
     Math.min(...row.map((item) => item.box.minY)) - Math.max(...rows[index]!.map((item) => item.box.maxY)))), height);
   const measured = [gapX, gapY].filter((gap) => gap !== undefined);
-  const gap = options.gap ?? (measured.length ? Math.min(...measured) : toUnits(Math.min(width, height) * FALLBACK_GAP));
+  const gap = fixedGap ?? (measured.length ? Math.min(...measured) : fallbackGap(items, scale));
 
   const order = rows.flat();
   const widths = new Array<number>(columns).fill(0);
@@ -261,26 +274,111 @@ function arrange<T extends Sized>(items: T[], scale: number, options: { gap?: nu
 
   const placed: Arrangement<T>["placed"] = [];
   let top = 0;
-  let right = 0;
   for (let start = 0; start < count; start += columns) {
     const line = order.slice(start, start + columns);
     let left = 0;
     line.forEach((item, column) => {
       placed.push({ item, x: left, y: top });
-      left += (options.flow ? widthOf(item.box) : widths[column]!) + gap;
+      left += widths[column]! + gap;
     });
-    right = Math.max(right, left - gap);
     top += Math.max(...line.map(({ box }) => heightOf(box))) + gap;
   }
 
-  return { placed, width: right, height: top - gap, gap };
+  return { placed, width: widths.reduce((sum, size) => sum + size, 0) + gap * (columns - 1), height: top - gap, gap };
 }
 
-/** The same kind of node (a scene is not a shape), within `SIMILAR_SIZE` on both sides. */
+type Column<T> = { items: T[]; width: number; height: number };
+type Shelf<T> = { height: number; columns: Column<T>[] };
+
+const shelfWidth = (shelf: Shelf<unknown>, gap: number) =>
+  shelf.columns.reduce((sum, column) => sum + column.width, 0) + gap * (shelf.columns.length - 1);
+
+/**
+ * Shelves `sorted` (tallest first) no wider than `limit`: each shelf is as
+ * tall as the first item on it, and an item goes under another in whichever
+ * column it leaves the least room in, else starts a column on the first shelf
+ * with width to spare, else starts a shelf.
+ */
+function shelve<T extends Sized>(sorted: T[], gap: number, limit: number): Shelf<T>[] {
+  const shelves: Shelf<T>[] = [];
+
+  for (const item of sorted) {
+    const width = widthOf(item.box);
+    const height = heightOf(item.box);
+
+    let fit: { column: Column<T>; room: number } | undefined;
+    for (const shelf of shelves) {
+      for (const column of shelf.columns) {
+        const room = shelf.height - column.height - gap - height;
+        const widened = shelfWidth(shelf, gap) - column.width + Math.max(column.width, width);
+        if (room >= 0 && widened <= limit && (!fit || room < fit.room)) fit = { column, room };
+      }
+    }
+
+    if (fit) {
+      fit.column.items.push(item);
+      fit.column.height += gap + height;
+      fit.column.width = Math.max(fit.column.width, width);
+      continue;
+    }
+
+    const shelf = shelves.find((candidate) => shelfWidth(candidate, gap) + gap + width <= limit);
+    if (shelf) shelf.columns.push({ items: [item], width, height });
+    else shelves.push({ height, columns: [{ items: [item], width, height }] });
+  }
+
+  return shelves;
+}
+
+/**
+ * Packs blocks of mixed sizes with one even gap: shelved tallest first (see
+ * `shelve`), at whichever width needs the least zoom to fit a `PACK_ASPECT`
+ * screen. Sizes alone decide it, so packing what it packed changes nothing.
+ */
+function pack<T extends Sized>(blocks: T[], gap: number): Arrangement<T> {
+  const sorted = [...blocks].sort((a, b) =>
+    heightOf(b.box) - heightOf(a.box) || widthOf(b.box) - widthOf(a.box) || a.box.minY - b.box.minY || a.box.minX - b.box.minX);
+
+  // Every width a shelf can break at, from the widest block alone to all of them in one row.
+  const limits = [Math.max(...sorted.map(({ box }) => widthOf(box)))];
+  sorted.reduce((sum, { box }) => {
+    limits.push(sum + widthOf(box));
+    return sum + widthOf(box) + gap;
+  }, 0);
+
+  let best: { shelves: Shelf<T>[]; width: number; height: number; zoom: number } | undefined;
+  for (const limit of limits) {
+    const shelves = shelve(sorted, gap, limit);
+    const width = Math.max(...shelves.map((shelf) => shelfWidth(shelf, gap)));
+    const height = shelves.reduce((sum, shelf) => sum + shelf.height, 0) + gap * (shelves.length - 1);
+    const zoom = Math.max(width, height * PACK_ASPECT);
+    if (!best || zoom < best.zoom) best = { shelves, width, height, zoom };
+  }
+
+  const placed: Arrangement<T>["placed"] = [];
+  let top = 0;
+  for (const shelf of best!.shelves) {
+    let left = 0;
+    for (const column of shelf.columns) {
+      let y = top;
+      for (const item of column.items) {
+        placed.push({ item, x: left, y });
+        y += heightOf(item.box) + gap;
+      }
+      left += column.width + gap;
+    }
+    top += shelf.height + gap;
+  }
+
+  return { placed, width: best!.width, height: best!.height, gap };
+}
+
+/** The same kind of node (a scene is not a shape), alike in size (`SIMILAR_SIZE`) and shape (`SIMILAR_ASPECT`). */
 function alike(a: Item, b: Item): boolean {
   return isScene(a.entity) === isScene(b.entity)
     && sizeRatio(widthOf(a.box), widthOf(b.box)) <= SIMILAR_SIZE
-    && sizeRatio(heightOf(a.box), heightOf(b.box)) <= SIMILAR_SIZE;
+    && sizeRatio(heightOf(a.box), heightOf(b.box)) <= SIMILAR_SIZE
+    && sizeRatio(widthOf(a.box) / heightOf(a.box), widthOf(b.box) / heightOf(b.box)) <= SIMILAR_ASPECT;
 }
 
 /**
@@ -309,12 +407,11 @@ function groupsOf(items: Item[]): Item[][] {
 }
 
 /**
- * Tidies the selection into a grid (see `arrange`) from its top-left corner.
- * Alike items make one grid, and so does a single row or column. Anything
- * else that mixes sizes is sorted like with like instead: each group of alike
- * items (see `groupsOf`) is tidied on its own, then the groups are laid out
- * as blocks, rows packed left to right, twice as far apart as the widest gap
- * inside any of them so they still read as groups.
+ * Tidies the selection from its top-left corner. Alike items make one grid
+ * (see `arrange`), and so does a single row or column, whatever it mixes.
+ * Anything else is sorted like with like: each group of alike items (see
+ * `groupsOf`) becomes a grid of its own, and the grids and the odd ones out
+ * are packed together (see `pack`), all with one gap read off their sizes.
  */
 export function tidySelection(world: World): void {
   const entities = getAlignableSelection(world);
@@ -324,25 +421,21 @@ export function tidySelection(world: World): void {
   // Device pixels per document unit.
   const scale = getCameraScale(world) * (world.get(RenderSurface)?.resolution ?? 1);
 
-  const spread = (sizes: number[]) => sizeRatio(Math.max(...sizes), Math.min(...sizes));
-  const mixed = spread(items.map(({ box }) => widthOf(box))) > SIMILAR_SIZE
-    || spread(items.map(({ box }) => heightOf(box))) > SIMILAR_SIZE;
   // A row or a column keeps its order, whatever sizes it mixes.
   const linear = bands(items, "y").length === 1 || bands(items, "x").length === 1;
-  const groups = mixed && !linear ? groupsOf(items) : [items];
+  const groups = linear ? [items] : groupsOf(items);
 
   let placed: Arrangement<Item>["placed"];
   if (groups.length === 1) {
     placed = arrange(items, scale).placed;
   } else {
+    const gap = fallbackGap(items, scale);
     const blocks = groups.map((group) => {
-      const inner = arrange(group, scale);
+      const inner = arrange(group, scale, gap);
       const at = union(group.map(({ box }) => box));
       return { inner, box: { minX: at.minX, minY: at.minY, maxX: at.minX + inner.width, maxY: at.minY + inner.height } };
     });
-    const innerGaps = blocks.filter(({ inner }) => inner.placed.length > 1).map(({ inner }) => inner.gap);
-    const outer = arrange(blocks, scale, { flow: true, gap: innerGaps.length ? 2 * Math.max(...innerGaps) : undefined });
-    placed = outer.placed.flatMap(({ item: block, x, y }) =>
+    placed = pack(blocks, gap).placed.flatMap(({ item: block, x, y }) =>
       block.inner.placed.map((spot) => ({ item: spot.item, x: x + spot.x, y: y + spot.y })));
   }
 
