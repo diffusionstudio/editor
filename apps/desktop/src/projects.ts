@@ -21,6 +21,7 @@ import { windowsCloudSyncKind } from "./cloud-sync-windows";
 import { mainBridge } from "./main-manager";
 import { MAIN_CHANNELS } from "./main-channels";
 import { applyEdits, editLabel, stampProject } from "./edit";
+import { migrateGenerations } from "./legacy-generations";
 import { canonicalizeTagsPlugin, inspectPlugin, sourcePlugin } from "./source";
 import type { CompileResult, FsEntry, FsStat, ProjectInfo, SourceEdit, WriteResult } from "./main-channels";
 import type { SourceContext } from "./edit";
@@ -902,6 +903,11 @@ export async function compileProject(dir: string): Promise<CompileResult> {
   // Fills in the package.json record for folders that predate it; the rest
   // of the scaffold is the dashboard's (see `initProject`).
   await ensureRecord(dir);
+
+  // Projects from before generation was removed declare assets the JSX can
+  // no longer load; they are pointed at what those declarations produced.
+  // Writes nothing to a project with nothing left to migrate.
+  await migrateGenerations(sourceContext(dir), await readManifest(dir).catch(() => null));
 
   // Names every element before it is numbered, so the ids this compile hands
   // the canvas are durable ones. A fully keyed project is not written to.

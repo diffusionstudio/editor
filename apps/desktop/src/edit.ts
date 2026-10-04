@@ -454,7 +454,7 @@ function isLiteral(node: Node): boolean {
 // Files
 
 /** Every project source file, project-relative and `/`-separated. */
-async function sourceFiles(dir: string, prefix = ""): Promise<string[]> {
+export async function sourceFiles(dir: string, prefix = ""): Promise<string[]> {
   let entries;
   try {
     entries = await readdir(prefix ? join(dir, ...prefix.split("/")) : dir, { withFileTypes: true });
