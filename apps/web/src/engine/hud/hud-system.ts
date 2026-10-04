@@ -22,6 +22,7 @@ import { getMarqueeQuad } from '../input/snapping';
 import { getMountedNameInput } from './name-input';
 import { drawObjectMasks } from '../object-mask';
 import { generationLabel } from '../generation-progress';
+import { folderLabel } from '../asset-folders';
 
 import type { Entity, World } from 'koota';
 import type { Mat2D } from '@diffusionstudio/runtime';
@@ -32,6 +33,7 @@ const ERROR_COLOR = '#FF8A8A';
 const HEADER_FONT = '350 11px Inter, sans-serif';
 const HEADER_HEIGHT = 22;
 const ACTIVE_BADGE_WIDTH = 60;
+const HEADER_GAP = 12;
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -199,6 +201,8 @@ function drawHeader(world: World, ctx: Ctx2D, entity: Entity, resolution: number
 		ctx.fillText('Active', 0, 0);
 	}
 
+	let right = header.width;
+
 	if (playback && (fitted?.width ?? 0) + badgeWidth + 60 < header.width) {
 		ctx.setTransform(header.mat.a, header.mat.b, header.mat.c, header.mat.d, header.mat.e, header.mat.f);
 		ctx.translate(header.width, 3);
@@ -219,7 +223,29 @@ function drawHeader(world: World, ctx: Ctx2D, entity: Entity, resolution: number
 
 		ctx.fillText(`${minutes}:${rest}`, 0, 0);
 		ctx.globalAlpha = 1;
+		right -= ctx.measureText(`${minutes}:${rest}`).width + HEADER_GAP;
 	}
+
+	const folder = progress || failure ? '' : folderLabel(world, entity);
+	if (!folder) return;
+
+	ctx.font = HEADER_FONT;
+	if (labelStart + (fitted?.width ?? 0) + badgeWidth + HEADER_GAP + ctx.measureText(folder).width > right) return;
+
+	ctx.setTransform(header.mat.a, header.mat.b, header.mat.c, header.mat.d, header.mat.e, header.mat.f);
+	ctx.translate(right, 3);
+	ctx.textAlign = 'right';
+	ctx.textBaseline = 'top';
+
+	if (selected) {
+		ctx.globalAlpha = 0.7;
+		ctx.fillStyle = '#cce8ff';
+	} else {
+		ctx.fillStyle = 'rgba(121, 121, 121, 1)';
+	}
+
+	ctx.fillText(folder, 0, 0);
+	ctx.globalAlpha = 1;
 }
 
 /**

@@ -7,6 +7,7 @@ import { findSceneAt, getSelection, isPointerInEntity, screenToWorld, worldToLoc
 import { CameraController, EngineCanvas } from "@/engine";
 import { forkPrompt, forkTemplate, insertPrompt } from "@/engine/prompt";
 import { insertAsset } from "@/engine/insert-asset";
+import { selectionAssets } from "@/engine/asset-folders";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { Toolbar } from "./toolbar";
 import { DrawOverlay } from "./draw-overlay";
@@ -18,10 +19,32 @@ import { offerContextMenuItems } from "@/components/context-menu-extras";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
 import type { JSX } from "solid-js";
-import type { Asset } from "@diffusionstudio/assets";
+import { assetFolder } from "@diffusionstudio/assets";
+import type { Asset, AssetLibrary } from "@diffusionstudio/assets";
+import type { ContextMenuExtra } from "@/components/context-menu-extras";
 
 type CanvasProps = {
   style?: JSX.CSSProperties;
+}
+
+const byPath = (a: string, b: string): number => {
+  const left = a.split("/");
+  const right = b.split("/");
+  for (let index = 0; index < Math.min(left.length, right.length); index++) {
+    if (left[index] !== right[index]) return left[index]! < right[index]! ? -1 : 1;
+  }
+  return left.length - right.length;
+};
+
+function moveToFolder(library: AssetLibrary, assets: Asset[]): ContextMenuExtra {
+  const current = new Set(assets.map(assetFolder));
+  const target = (folder: string, label: string): ContextMenuExtra => ({
+    label,
+    checked: current.size === 1 && current.has(folder),
+    onSelect: () => library.move(assets, folder),
+  });
+  const folders = [...library.folders()].sort(byPath);
+  return { label: "Move to folder", items: [target("", "All assets"), ...folders.map((folder) => target(folder, folder.split("/").join(" / ")))] };
 }
 
 export function Canvas(props: CanvasProps) {
@@ -84,9 +107,12 @@ export function Canvas(props: CanvasProps) {
     const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const device = { x: (event.clientX - bounds.left) * resolution, y: (event.clientY - bounds.top) * resolution };
     const forkable = getSelection(world).find((entity) => isPointerInEntity(world, entity, device) && forkTemplate(entity));
+    const library = world.get(Library);
+    const assets = getSelection(world).some((entity) => isPointerInEntity(world, entity, device)) ? selectionAssets(world) : [];
     offerContextMenuItems(event, [
       { label: "Add prompt", shortcut: "N", onSelect: () => insertPrompt(world, point) },
       ...(forkable ? [{ label: "Fork", shortcut: "⇧N", onSelect: () => forkPrompt(world, forkable) }] : []),
+      ...(library && assets.length ? [moveToFolder(library, assets)] : []),
     ]);
   };
 

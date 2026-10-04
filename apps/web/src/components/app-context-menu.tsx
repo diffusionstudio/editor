@@ -11,8 +11,12 @@ import {
   ContextMenuPortal,
   ContextMenuSeparator,
   ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { Icon } from "@/components/ui/icon"
 import { takeContextMenuItems } from "@/components/context-menu-extras"
 import type { ContextMenuExtra } from "@/components/context-menu-extras"
 
@@ -61,6 +65,44 @@ export function AppContextMenu(props: { children: JSX.Element }) {
     window.location.reload()
   }
 
+  const renderExtra = (item: ContextMenuExtra): JSX.Element => (
+    <Show
+      when={item.items}
+      fallback={
+        <ContextMenuItem
+          classList={{ "pr-0!": item.checked !== undefined }}
+          onSelect={() => {
+            keepFocus = true
+            item.onSelect?.()
+          }}
+        >
+          <span class="min-w-0 flex-1 truncate">{item.label}</span>
+          <Show when={item.shortcut}>
+            <ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
+          </Show>
+          <Show when={item.checked !== undefined}>
+            <span class="flex h-7 w-6 shrink-0 items-center justify-center">
+              <Show when={item.checked}>
+                <Icon name="confirm-check" class="size-6" />
+              </Show>
+            </span>
+          </Show>
+        </ContextMenuItem>
+      }
+    >
+      {(items) => (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>{item.label}</ContextMenuSubTrigger>
+          <ContextMenuPortal>
+            <ContextMenuSubContent class="min-w-[200px] max-w-[320px]">
+              <For each={items()}>{renderExtra}</For>
+            </ContextMenuSubContent>
+          </ContextMenuPortal>
+        </ContextMenuSub>
+      )}
+    </Show>
+  )
+
 
   return (
     <ContextMenu>
@@ -76,21 +118,7 @@ export function AppContextMenu(props: { children: JSX.Element }) {
           }}
         >
           <Show when={extras().length > 0}>
-            <For each={extras()}>
-              {(item) => (
-                <ContextMenuItem
-                  onSelect={() => {
-                    keepFocus = true
-                    item.onSelect()
-                  }}
-                >
-                  {item.label}
-                  <Show when={item.shortcut}>
-                    <ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
-                  </Show>
-                </ContextMenuItem>
-              )}
-            </For>
+            <For each={extras()}>{renderExtra}</For>
             <ContextMenuSeparator />
           </Show>
           <ContextMenuItem onSelect={handleUndo}>
