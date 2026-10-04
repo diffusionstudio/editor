@@ -20,6 +20,7 @@ import { AssetThumbnail } from "../ui/asset-thumbnail";
 import { formatAssetDuration } from "@/utils";
 import { useLibrary } from "@/engine/library";
 import { ASSET_DRAG_TYPE } from "./folder-item";
+import { assetFinderPath, revealAssetInFinder } from "./reveal";
 
 import type { Asset } from "@diffusionstudio/assets";
 
@@ -99,6 +100,7 @@ export function LazyAssetItem(props: LazyAssetItemProps) {
   };
 
   const handleSaveAs = () => saveAssetAs(props.asset);
+  const handleRevealInFinder = () => revealAssetInFinder(world, props.asset);
   const handleInsertToTimeline = () => insertAssetAtPlayhead(world, props.asset);
 
   return (
@@ -167,6 +169,11 @@ export function LazyAssetItem(props: LazyAssetItemProps) {
           <ContextMenuItem onSelect={handleSaveAs}>
             Save as
           </ContextMenuItem>
+          <Show when={assetFinderPath(world, props.asset)}>
+            <ContextMenuItem onSelect={handleRevealInFinder}>
+              Reveal in finder
+            </ContextMenuItem>
+          </Show>
           <ContextMenuSeparator />
           <ContextMenuItem onSelect={handleDeleteAsset}>
             Delete

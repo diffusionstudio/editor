@@ -27,15 +27,24 @@ export function revealInAssets(world: World): void {
   setAssetReveal(asset);
 }
 
-export function finderPath(world: World): string | undefined {
-  const [asset] = selectionAssets(world);
-  return window.desktop && asset ? assetFilePath(world, asset) : undefined;
+export function assetFinderPath(world: World, asset: Asset): string | undefined {
+  return window.desktop ? assetFilePath(world, asset) : undefined;
 }
 
-export function revealInFinder(world: World): void {
-  const path = finderPath(world);
+export function revealAssetInFinder(world: World, asset: Asset): void {
+  const path = assetFinderPath(world, asset);
   if (!path) return;
   revealPath(path).catch((error: unknown) => {
     toast.error("Failed to reveal in finder", { description: (error as Error).message });
   });
+}
+
+export function finderPath(world: World): string | undefined {
+  const [asset] = selectionAssets(world);
+  return asset && assetFinderPath(world, asset);
+}
+
+export function revealInFinder(world: World): void {
+  const [asset] = selectionAssets(world);
+  if (asset) revealAssetInFinder(world, asset);
 }
