@@ -437,6 +437,25 @@ export function handleResizeInteraction(world: World, event: DispatchedPointerEv
 			}
 		}
 
+		const prompts = selection.flatMap((selected) => resizeTargets(world, selected)).filter(isPrompt);
+		if (prompts.length > 0) {
+			const minScale = (axis: 'width' | 'height') => Math.max(...prompts.map((entity) => {
+				const size = getTransformSnapshot(entity)?.[axis] ?? 0;
+				return size > 0 ? PROMPT_MIN_SIZE[axis] / size : 0;
+			}));
+			let scaleX = minScale('width');
+			let scaleY = minScale('height');
+			if (lockAspect) scaleX = scaleY = Math.max(scaleX, scaleY);
+			const minWidth = snapshot.width * scaleX;
+			const minHeight = snapshot.height * scaleY;
+
+			if (newWidth < minWidth || newHeight < minHeight) {
+				snapLines.length = 0;
+				newWidth = Math.max(newWidth, minWidth);
+				newHeight = Math.max(newHeight, minHeight);
+			}
+		}
+
 		const localScale = scaleAbout(pivotX, pivotY, newWidth / snapshot.width, newHeight / snapshot.height);
 
 		// Groups have no Size of their own, so a group resize transforms its
@@ -449,11 +468,7 @@ export function handleResizeInteraction(world: World, event: DispatchedPointerEv
 		const writeAngles = selection.length > 1 || hasGroup;
 
 		for (const selected of selection) {
-			const targets = selected.has(Group)
-				? [...world.query(Or(Geometry, Group), ChildOf(selected))]
-				: [selected];
-
-			for (const entity of targets) {
+			for (const entity of resizeTargets(world, selected)) {
 				resizeNode(world, entity, oldTr, localScale, writeAngles);
 
 				// The walk is parent-first, so a group's box is built from its
@@ -479,6 +494,10 @@ export function handleResizeInteraction(world: World, event: DispatchedPointerEv
 	}
 }
 
+function resizeTargets(world: World, selected: Entity): Entity[] {
+	return selected.has(Group) ? [...world.query(Or(Geometry, Group), ChildOf(selected))] : [selected];
+}
+
 /**
  * Applies the mask's scale to one node: the delta is composed in world space,
  * mapped back through the node's parent, and decomposed into the size,
@@ -502,9 +521,8 @@ function resizeNode(world: World, entity: Entity, oldTr: Mat2D, localScale: Mat2
 
 	// Scale the authored size by how much the node's own scale changed, which
 	// is what accounts for it sitting at an angle to the mask.
-	const minimum = isPrompt(entity) ? PROMPT_MIN_SIZE : { width: 0, height: 0 };
-	const width = Math.max(minimum.width, snapshot.width * (decomposed.scaleX / snapshot.scaleX));
-	const height = Math.max(minimum.height, snapshot.height * (decomposed.scaleY / snapshot.scaleY));
+	const width = snapshot.width * (decomposed.scaleX / snapshot.scaleX);
+	const height = snapshot.height * (decomposed.scaleY / snapshot.scaleY);
 	const offset = entityOffset(world, entity);
 
 	const writes: TransformWrite[] = [
