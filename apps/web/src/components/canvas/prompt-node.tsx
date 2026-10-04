@@ -294,7 +294,7 @@ export function PromptNodes() {
   };
 
   const stopPicking = (event: KeyboardEvent) => {
-    if (event.key !== "Escape" || !picking()) return;
+    if ((event.key !== "Escape" && event.key !== "Enter") || !picking()) return;
     event.preventDefault();
     event.stopPropagation();
     setPicking(null);
