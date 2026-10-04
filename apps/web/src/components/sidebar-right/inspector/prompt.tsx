@@ -2,10 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { authoredElement } from "@diffusionstudio/reconciler";
 import { ControlRow } from "@/components/ui/control-group";
 import { PanelSection } from "@/components/ui/panel-section";
 import { useDerived, useEditor } from "@/engine/hooks";
+import { promptText, setPromptText } from "@/engine/prompt";
 import { GrowingTextArea } from "./text";
 
 import type { Entity } from "koota";
@@ -18,10 +18,7 @@ export function PromptPanel(props: PromptPanelProps) {
   const editor = useEditor();
   const entity = () => props.selection[0]!;
 
-  const prompt = useDerived(() => {
-    const value = authoredElement(entity())?.props.prompt;
-    return typeof value === "string" ? value : "";
-  });
+  const prompt = useDerived(() => promptText(entity()));
 
   return (
     <PanelSection title="Prompt">
@@ -31,7 +28,7 @@ export function PromptPanel(props: PromptPanelProps) {
           placeholder="Describe what you want to create."
           minRows={2}
           maxRows={8}
-          onInput={(value) => editor.editProperty(entity(), "prompt", value)}
+          onInput={(value) => setPromptText(editor, entity(), value)}
         />
       </ControlRow>
     </PanelSection>

@@ -62,9 +62,9 @@ export function toClientConfig(stored: unknown): GenerationConfig | undefined {
  * "Rerun" and "Reuse" work from. Inputs are named by library path in the
  * file and by asset id in the prompt box, so they are looked up on the way.
  */
-function toPromptConfig(spec: GenerateSpec, library: AssetLibrary): GenerationConfig {
+export function toPromptConfig(spec: GenerateSpec, library: AssetLibrary | undefined): GenerationConfig {
   const idOf = (input: AssetInput | undefined): string | undefined =>
-    typeof input === "string" ? library.get(input)?.id : undefined;
+    typeof input === "string" ? library?.get(input)?.id : undefined;
 
   switch (spec.type) {
     case "image":

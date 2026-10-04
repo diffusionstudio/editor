@@ -4,12 +4,12 @@
 
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js";
 import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { authoredElement } from "@diffusionstudio/reconciler";
+import { generate, getAssetSpec } from "@diffusionstudio/jsx";
+import { Audio, ImagePaint, Rect, VideoPaint, authoredElement } from "@diffusionstudio/reconciler";
 import {
   Background, Computed, Culled, DEFAULT_BACKGROUND, HitRegions, Hidden, Hovering, Name, PromptNode, RenderSurface, Root, Selected,
   Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, isPointerInEntity, pointInQuad, store,
 } from "@diffusionstudio/runtime";
-import { toast } from "somoto";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
@@ -20,10 +20,12 @@ import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useDerived, useEditor, useSelection } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
 import { getMountedNameInput } from "@/engine/hud/name-input";
-import { PROMPT_SCALE, PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
+import { AUDIO_SIZE } from "@/engine/insert-asset";
+import { PROMPT_SCALE, PROMPT_SIZE, generateRef, generationOf, setPromptText, takePromptFocus, templateOf, withGeneration } from "@/engine/prompt";
 import { Hud, Pointer } from "@/engine/traits";
 import {
   ALL_DURATION_OPTIONS,
+  ASPECT_RATIO_DIMENSIONS,
   ALL_VIDEO_ASPECT_RATIO_OPTIONS,
   PROMPT_INPUT_AUDIO_MODEL_OPTIONS,
   PROMPT_INPUT_IMAGE_ASPECT_RATIO_OPTIONS,
@@ -43,13 +45,11 @@ import {
   VoiceMenu,
   createDefaultConfig,
 } from "@/components/genai/prompt-input";
-import { useGenerateImage } from "@/components/genai/use-generate-image";
-import { useGenerateVideo } from "@/components/genai/use-generate-video";
-import { useGenerateVoice } from "@/components/genai/use-generate-voice";
-import { useGenerateAudio } from "@/components/genai/use-generate-audio";
+import { insertGenerated, randomSeed } from "@/components/genai/insert";
+import { toPromptConfig } from "@/components/genai/use-generation-records";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
-import type { PropValue } from "@diffusionstudio/jsx";
+import type { AssetRef, GenerateSpec } from "@diffusionstudio/jsx";
 import type { AABB } from "@diffusionstudio/runtime";
 import type { Entity } from "koota";
 import type { PromptInputMode } from "@/components/genai/prompt-input";
@@ -62,8 +62,10 @@ const COMMIT_DELAY = 400;
 const text = (value: unknown) => (typeof value === "string" && value !== "" ? value : undefined);
 const number = (value: unknown) => (typeof value === "number" ? value : undefined);
 
-function toConfig(props: Props, library: AssetLibrary | undefined): GenerationConfig {
-  const mode = (text(props.mode) ?? "image").toUpperCase() as PromptInputMode;
+const LEGACY_PROPS = ["mode", "type", "prompt", "model", "aspectRatio", "refs", "startFrame", "endFrame", "duration", "audio", "voice"];
+
+function legacyConfig(props: Props, library: AssetLibrary | undefined): GenerationConfig {
+  const mode = (text(props.type) ?? text(props.mode) ?? "image").toUpperCase() as PromptInputMode;
   const base = createDefaultConfig(mode, text(props.prompt) ?? "");
   const idOf = (path: unknown) => {
     const value = text(path);
@@ -96,29 +98,44 @@ function toConfig(props: Props, library: AssetLibrary | undefined): GenerationCo
   }
 }
 
-function toProps(config: GenerationConfig, library: AssetLibrary | undefined): Record<string, PropValue> {
-  const pathOf = (id: string | undefined) => (id && library?.get(id)?.path) || false;
-  const unset = { aspectRatio: false, count: false, refs: false, startFrame: false, endFrame: false, duration: false, audio: false, voice: false };
-  const common = { ...unset, mode: config.mode.toLowerCase(), prompt: config.prompt, model: config.model };
+function toConfig(props: Props, library: AssetLibrary | undefined): GenerationConfig {
+  const template = templateOf(props.template);
+  const generation = template && generationOf(template);
+  if (!generation) return legacyConfig(props, library);
+  const config = toPromptConfig(getAssetSpec(generation) as GenerateSpec, library);
+  return config.mode === "IMAGE" ? { ...config, count: number(props.count) ?? 1 } : config;
+}
+
+function toGeneration(config: GenerationConfig, library: AssetLibrary | undefined): AssetRef {
+  const pathOf = (id: string | undefined) => (id ? library?.get(id)?.path : undefined);
 
   switch (config.mode) {
     case "IMAGE": {
-      const refs = (config.imageRefIds ?? []).map(pathOf).filter((path): path is string => path !== false);
-      return { ...common, aspectRatio: config.aspectRatio, count: config.count, refs: refs.length ? refs : false };
+      const refs = (config.imageRefIds ?? []).map(pathOf).filter((path): path is string => path !== undefined);
+      return generate.image({
+        prompt: config.prompt,
+        model: config.model,
+        aspectRatio: config.aspectRatio,
+        ...(refs.length ? { refs } : {}),
+      });
     }
-    case "VIDEO":
-      return {
-        ...common,
+    case "VIDEO": {
+      const startFrame = pathOf(config.startFrameImageId);
+      const endFrame = pathOf(config.endFrameImageId);
+      return generate.video({
+        prompt: config.prompt,
+        model: config.model,
         aspectRatio: config.aspectRatio,
         duration: config.duration,
         audio: config.generateAudio ?? false,
-        startFrame: pathOf(config.startFrameImageId),
-        endFrame: pathOf(config.endFrameImageId),
-      };
+        ...(startFrame ? { startFrame } : {}),
+        ...(endFrame ? { endFrame } : {}),
+      });
+    }
     case "VOICE":
-      return { ...common, voice: config.voice };
+      return generate.voice({ prompt: config.prompt, voice: config.voice });
     case "AUDIO":
-      return common;
+      return generate.audio({ prompt: config.prompt, model: config.model });
   }
 }
 
@@ -259,10 +276,6 @@ function PromptNodeBox(props: { entity: Entity }) {
   const editor = useEditor();
   const library = useLibrary();
   const { frame } = useEngineContext();
-  const { generate: generateImage } = useGenerateImage();
-  const { generate: generateVideo } = useGenerateVideo();
-  const { generate: generateVoice } = useGenerateVoice();
-  const { generate: generateAudio } = useGenerateAudio();
 
   let box!: HTMLDivElement;
   let label!: HTMLDivElement;
@@ -317,10 +330,25 @@ function PromptNodeBox(props: { entity: Entity }) {
     if (takePromptFocus(props.entity)) textarea.focus({ preventScroll: true });
   });
 
+  const templateFor = (next: GenerationConfig): AssetRef => {
+    const generation = toGeneration(next, library());
+    const previous = templateOf(authored().template);
+    if (!previous) return generation;
+    const current = generationOf(previous);
+    const sameKind = current !== undefined && getAssetSpec(current).type === next.mode.toLowerCase();
+    return sameKind ? withGeneration(previous, generation) : generation;
+  };
+
   const write = (next: GenerationConfig) => {
     const current = authored();
-    for (const [name, value] of Object.entries(toProps(next, library()))) {
-      if (!sameValue(current[name], value)) editor.editProperty(props.entity, name, value);
+    const template = templateFor(next);
+    if (!sameValue(templateOf(current.template), template)) editor.editProperty(props.entity, "template", template);
+
+    const count = next.mode === "IMAGE" ? next.count : false;
+    if (!sameValue(current.count, count)) editor.editProperty(props.entity, "count", count);
+
+    for (const name of LEGACY_PROPS) {
+      if (!unsetValue(current[name])) editor.editProperty(props.entity, name, false);
     }
   };
 
@@ -330,7 +358,9 @@ function PromptNodeBox(props: { entity: Entity }) {
 
   const commitPrompt = () => {
     clearTimeout(commitTimer);
-    if (draft() !== config().prompt) editor.editProperty(props.entity, "prompt", draft());
+    if (draft() === config().prompt) return;
+    if (templateOf(authored().template)) setPromptText(editor, props.entity, draft());
+    else write({ ...config(), prompt: draft() } as GenerationConfig);
   };
 
   onCleanup(() => clearTimeout(commitTimer));
@@ -479,30 +509,40 @@ function PromptNodeBox(props: { entity: Entity }) {
 
   const handleSubmit = () => {
     commitPrompt();
-    const current = { ...config(), prompt: draft().trim() } as GenerationConfig;
-    if (!current.prompt) return;
+    const next = { ...config(), prompt: draft().trim() } as GenerationConfig;
+    if (!next.prompt) return;
+    if (next.mode === "IMAGE") next.imageRefIds = imageRefIds();
+    if (next.mode === "VIDEO") {
+      next.startFrameImageId = frameId("start");
+      next.endFrameImageId = frameId("end");
+    }
+
+    const template = templateFor(next);
+    const generation = generationOf(template);
+    if (!generation) return;
+
+    const spec = getAssetSpec(generation) as GenerateSpec;
+    const count = next.mode === "IMAGE" ? next.count : 1;
+    const sources = Array.from({ length: count }, () => withGeneration(template, generateRef({ ...spec, seed: randomSeed() })));
 
     const bounds = getEntityBounds(world, [props.entity]);
     const near: AABB | undefined = bounds
       ? { minX: bounds.x, minY: bounds.y, maxX: bounds.x + bounds.width, maxY: bounds.y + bounds.height }
       : undefined;
 
-    const promise = (() => {
-      switch (current.mode) {
-        case "IMAGE":
-          return generateImage({ ...current, imageRefIds: imageRefIds() }, near);
-        case "VIDEO":
-          return generateVideo({ ...current, startFrameImageId: frameId("start"), endFrameImageId: frameId("end") }, near);
-        case "VOICE":
-          return generateVoice(current, near);
-        case "AUDIO":
-          return generateAudio(current, near);
-      }
-    })();
+    if (spec.type === "image" || spec.type === "video") {
+      const size = ASPECT_RATIO_DIMENSIONS[spec.aspectRatio ?? "16:9"] ?? { width: 1920, height: 1080 };
+      insertGenerated(world, editor, size, (box, index) => (
+        <Rect keepAspectRatio x={box.x} y={box.y} width={box.width} height={box.height}>
+          {spec.type === "image" ? <ImagePaint src={sources[index]} /> : <VideoPaint src={sources[index]} />}
+        </Rect>
+      ), count, sources, near);
+      return;
+    }
 
-    promise.catch((error) => {
-      toast("Generation failed", { description: error instanceof Error ? error.message : String(error) });
-    });
+    insertGenerated(world, editor, AUDIO_SIZE, (box, index) => (
+      <Audio src={sources[index]} x={box.x} y={box.y} width={box.width} height={box.height} />
+    ), count, sources, near);
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {

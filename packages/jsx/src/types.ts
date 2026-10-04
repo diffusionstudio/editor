@@ -4,7 +4,7 @@
 
 import type { JSX as SolidJSX } from "solid-js";
 import type { Entity } from "koota";
-import type { AspectRatio, AssetRef } from "./generate";
+import type { AssetRef } from "./generate";
 
 /**
  * Composition-relative time: seconds (number), frames ("30f"), or a
@@ -548,17 +548,8 @@ export type PromptProps =
   & SizeProps
   & Pick<CompositeProps, "hidden">
   & {
-    mode?: "image" | "video" | "voice" | "audio";
-    prompt?: string;
-    model?: string;
-    aspectRatio?: AspectRatio;
+    template?: AssetRef;
     count?: number;
-    refs?: string[];
-    startFrame?: string;
-    endFrame?: string;
-    duration?: number;
-    audio?: boolean;
-    voice?: string;
   };
 
 export type RectProps = CommonProps & FillProps & {
