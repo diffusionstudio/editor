@@ -127,9 +127,11 @@ export function PromptNodes() {
   const prompts = useQuery(PromptNode);
 
   return (
-    <For each={prompts()}>
-      {(entity) => <PromptNodeBox entity={entity} />}
-    </For>
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+      <For each={prompts()}>
+        {(entity) => <PromptNodeBox entity={entity} />}
+      </For>
+    </div>
   );
 }
 
