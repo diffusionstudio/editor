@@ -12,7 +12,7 @@ import type { Point } from '@diffusionstudio/runtime';
 import type { Entity, World } from 'koota';
 
 export const PROMPT_SCALE = 2;
-export const PROMPT_SIZE = { width: 576 * PROMPT_SCALE, height: 384 * PROMPT_SCALE };
+export const PROMPT_SIZE = { width: 544 * PROMPT_SCALE, height: 248 * PROMPT_SCALE };
 export const PROMPT_MIN_SIZE = { width: 400 * PROMPT_SCALE, height: 200 * PROMPT_SCALE };
 
 let focusRequest: Entity | null = null;
