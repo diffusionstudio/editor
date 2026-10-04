@@ -169,7 +169,8 @@ export function PromptNodes() {
       world.get(HitRegions)?.list.forEach((region, index) => {
         if (region.target.kind === "entity") order.set(region.target.id, index);
       });
-      return [...prompts()].sort((a, b) => (order.get(a) ?? -1) - (order.get(b) ?? -1));
+      const layer = (entity: Entity | null): number => (entity ? order.get(entity) ?? layer(getParentEntity(entity)) : order.size);
+      return [...prompts()].sort((a, b) => layer(a) - layer(b));
     },
     (a, b) => a.length === b.length && a.every((entity, index) => entity === b[index]),
   );
