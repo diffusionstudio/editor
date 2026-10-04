@@ -235,8 +235,8 @@ function isSerializedSpec(spec: unknown): spec is SerializedAssetSpec {
 // The declarations
 
 function requirePrompt(value: unknown, call: string): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`${call} requires a non-empty string prompt`);
+  if (typeof value !== "string") {
+    throw new Error(`${call} requires a string prompt`);
   }
   return value;
 }

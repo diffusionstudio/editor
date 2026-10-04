@@ -218,6 +218,8 @@ export class EditorGenAi extends GenAi {
       return { type: spec.type, inputId: input.id };
     }
 
+    if (!spec.prompt.trim()) throw new Error("Needs a prompt");
+
     switch (spec.type) {
       case "image": {
         const refs = await Promise.all((spec.refs ?? []).map((ref) => this.resolveInput(ref)));
