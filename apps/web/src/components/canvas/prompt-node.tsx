@@ -18,7 +18,7 @@ import { useEngineContext } from "@/engine";
 import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
-import { PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
+import { PROMPT_SCALE, PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
 import {
   ALL_DURATION_OPTIONS,
   ALL_VIDEO_ASPECT_RATIO_OPTIONS,
@@ -214,14 +214,15 @@ function PromptNodeBox(props: { entity: Entity }) {
 
   createEffect(() => {
     frame();
-    const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const matrix = entityWorldMat(world, props.entity);
     const computed = store(world, Computed);
     const eid = props.entity.id();
+    const resolution = world.get(RenderSurface)?.resolution ?? 1;
+    const scale = PROMPT_SCALE / resolution;
 
-    box.style.width = `${computed.width[eid] ?? PROMPT_SIZE.width}px`;
-    box.style.height = `${computed.height[eid] ?? PROMPT_SIZE.height}px`;
-    box.style.transform = `matrix(${matrix.a / resolution}, ${matrix.b / resolution}, ${matrix.c / resolution}, ${matrix.d / resolution}, ${matrix.e / resolution}, ${matrix.f / resolution})`;
+    box.style.width = `${(computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE}px`;
+    box.style.height = `${(computed.height[eid] ?? PROMPT_SIZE.height) / PROMPT_SCALE}px`;
+    box.style.transform = `matrix(${matrix.a * scale}, ${matrix.b * scale}, ${matrix.c * scale}, ${matrix.d * scale}, ${matrix.e / resolution}, ${matrix.f / resolution})`;
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
 
     if (takePromptFocus(props.entity)) textarea.focus({ preventScroll: true });
