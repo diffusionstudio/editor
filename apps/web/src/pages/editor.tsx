@@ -8,6 +8,7 @@ import { leftSidebarWidth } from "@/agent-chat";
 import { Timeline, Layers } from "@/components/timeline";
 import { Soundboard, Inspector } from "@/components/sidebar-right";
 import { EditorTitleBar, FloatingProjectHeader, SidebarLeft } from "@/components/sidebar-left";
+import { assetReveal } from "@/components/sidebar-left/reveal";
 import { useLayout, MIN_TIMELINE_HEIGHT } from "@/context/layout";
 import { useEditorApi } from "@/dapi";
 import { RULER_HEIGHT } from "@/engine/timeline";
@@ -38,7 +39,7 @@ const MIN_CANVAS_HEIGHT = 200;
 const INSPECTOR_WIDTH = 264;
 
 export function EditorPage() {
-  const { uiVisible, timelineMinimized, timelineHeight, setTimelineHeight } = useLayout();
+  const { uiVisible, toggleUI, timelineMinimized, timelineHeight, setTimelineHeight } = useLayout();
   const { isDesktop, isFullscreen } = useEditorApi();
   const [resizing, setResizing] = createSignal(false);
   const project = useProject();
@@ -46,6 +47,10 @@ export function EditorPage() {
   const engine = useEngineContext();
   const { nodes } = useSelection();
   const inspectorFloating = () => !uiVisible() && nodes().some((node) => !isPrompt(node));
+
+  createEffect(() => {
+    if (assetReveal() && !untrack(uiVisible)) toggleUI();
+  });
 
   // Keyed on the folder, not the project: a rename moves it, and everything
   // below holds a path — the watcher, the library, the writer — so all of it

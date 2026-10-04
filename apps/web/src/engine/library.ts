@@ -7,7 +7,7 @@
 // edit in the file).
 
 import { AssetId, Library } from '@diffusionstudio/runtime';
-import { AssetLibrary, MANIFEST_FILE, ASSETS_DIR } from '@diffusionstudio/assets';
+import { AssetLibrary, MANIFEST_FILE, ASSETS_DIR, isUrlSource } from '@diffusionstudio/assets';
 import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
 import { authoredElement } from '@diffusionstudio/reconciler';
 import { isAssetRef, mapAssetInputs } from '@diffusionstudio/jsx';
@@ -20,6 +20,8 @@ import type { Asset } from '@diffusionstudio/assets';
 import type { AssetInput } from '@diffusionstudio/jsx';
 import type { World } from 'koota';
 
+const locations = new WeakMap<World, (source: string) => string>();
+
 /**
  * Creates the library of the project at `dir`, attaches it to the world and
  * starts loading it. Renames in the library are written through to every
@@ -27,7 +29,9 @@ import type { World } from 'koota';
  * disposer that flushes the manifest and detaches it.
  */
 export function attachLibrary(world: World, dir: string) {
-	const library = new AssetLibrary(createProjectFS(dir), {
+	const fs = createProjectFS(dir);
+	if (fs.absolute) locations.set(world, fs.absolute);
+	const library = new AssetLibrary(fs, {
 		onRename: (asset, from) => followRename(world, asset, from),
 		onRelink: (asset, from) => followRelink(world, asset, from),
 	});
@@ -35,6 +39,10 @@ export function attachLibrary(world: World, dir: string) {
 	world.set(Library, library);
 
 	return library;
+}
+
+export function assetFilePath(world: World, asset: Asset): string | undefined {
+	return isUrlSource(asset.source) ? undefined : locations.get(world)?.(asset.source);
 }
 
 /** Whether a changed project file is the library's business rather than the JSX's. */

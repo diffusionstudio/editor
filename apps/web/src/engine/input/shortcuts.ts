@@ -44,6 +44,7 @@ import { getEditHistory } from '../history';
 import { syncKeyframe } from '../keyframes';
 import { cancelObjectMask, getObjectTrack, trackObjectMask, undoMaskStroke } from '../object-mask';
 import { forkSelection, insertPrompt } from '../prompt';
+import { revealInAssets, revealInFinder } from '@/components/sidebar-left/reveal';
 import { splitAtPlayhead } from '../split';
 import { Keys, MODIFIER_KEYS, ObjectMaskTool, Pointer } from '../traits';
 import { editTransform } from './interactions';
@@ -522,6 +523,9 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['0', 'mod'], action: zoomActualSize },
 	{ keys: ['1', 'mod'], action: zoomToFit },
 	{ keys: ['2', 'mod'], action: zoomToSelection },
+	{ keys: ['o', 'mod', 'shift', '!alt'], action: revealInAssets },
+	{ keys: ['o', 'mod', 'alt', '!shift'], action: revealInFinder },
+	{ keys: ['ø', 'mod', 'alt', '!shift'], action: revealInFinder },
 	...[...'0123456789'].map((digit) => ({ keys: [digit, '!mod'], action: typeOpacity })),
 	{ keys: ['v', '!mod'], action: selectTool(ToolType.MOVE) },
 	{ keys: ['h', '!mod'], action: selectTool(ToolType.HAND) },

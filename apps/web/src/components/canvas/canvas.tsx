@@ -16,6 +16,7 @@ import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
 import { PromptNodes } from "./prompt-node";
 import { offerContextMenuItems } from "@/components/context-menu-extras";
+import { finderPath, revealInAssets, revealInFinder } from "@/components/sidebar-left/reveal";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
 import type { JSX } from "solid-js";
@@ -118,7 +119,12 @@ export function Canvas(props: CanvasProps) {
     offerContextMenuItems(event, [
       { label: "Add prompt", shortcut: "N", onSelect: () => insertPrompt(world, point) },
       ...(forkable ? [{ label: "Fork", shortcut: "⇧N", onSelect: () => forkPrompt(world, forkable) }] : []),
-      ...(library && assets.length ? [moveToFolder(library, assets)] : []),
+      ...(library && assets.length ? [
+        moveToFolder(library, assets),
+        { separator: true as const },
+        { label: "Reveal in assets", shortcut: "⇧⌘O", onSelect: () => revealInAssets(world) },
+        ...(finderPath(world) ? [{ label: "Reveal in finder", shortcut: "⌥⌘O", onSelect: () => revealInFinder(world) }] : []),
+      ] : []),
     ]);
   };
 

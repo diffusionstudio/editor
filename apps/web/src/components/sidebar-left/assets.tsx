@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { basename, dirname } from "@diffusionstudio/assets";
+import { assetFolder, basename, dirname } from "@diffusionstudio/assets";
 import { usePromptInput } from "@/context/prompt-input";
 import { createDefaultConfig } from "@/components/genai/prompt-input";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
@@ -30,6 +30,7 @@ import {
 import { LazyAssetItem } from "./asset-item";
 import { PartialAssetItem } from "./partial-asset-item";
 import { FolderItem, handleFolderDrop, isAssetOrFolderDrag, ASSET_DRAG_TYPE, FOLDER_DRAG_TYPE } from "./folder-item";
+import { assetReveal, clearAssetReveal } from "./reveal";
 import { useLibrary } from "@/engine/library";
 import { useAssetSelection } from "@/engine/hooks";
 import { droppedFiles, importFiles, pickAndImport } from "@/engine/asset-actions";
@@ -122,6 +123,16 @@ export function Assets() {
     if (!folders || !folder || folders.has(folder)) return;
     while (folder && !folders.has(folder)) folder = dirname(folder);
     setCurrentFolder(folder);
+  });
+
+  createEffect(() => {
+    const asset = assetReveal();
+    if (!asset) return;
+    clearAssetReveal();
+    setAssetFilter("ALL");
+    openFolder(assetFolder(asset));
+    setSelectedAssetId(asset);
+    requestAnimationFrame(() => root?.querySelector(`[data-asset-id="${asset.id}"]`)?.scrollIntoView({ block: "nearest" }));
   });
 
   const withLibrary = (run: (library: AssetLibrary) => void | Promise<void>) => {
