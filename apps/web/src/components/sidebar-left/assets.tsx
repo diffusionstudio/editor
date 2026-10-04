@@ -28,7 +28,6 @@ import {
   BreadcrumbsSeparator,
 } from "../ui/breadcrumbs";
 import { LazyAssetItem } from "./asset-item";
-import { PartialAssetItem } from "./partial-asset-item";
 import { FolderItem, handleFolderDrop, isAssetOrFolderDrag, ASSET_DRAG_TYPE, FOLDER_DRAG_TYPE } from "./folder-item";
 import { useLibrary } from "@/engine/library";
 import { useAssetSelection } from "@/engine/hooks";
@@ -58,7 +57,6 @@ export function Assets() {
   const [currentFolder, setCurrentFolder] = createSignal("");
 
   const allAssets = createMemo(() => library()?.list().filter((asset) => asset.type !== "SCRIPT") ?? []);
-  const allPartials = createMemo(() => library()?.partials() ?? []);
   const allFolders = createMemo(() => [...(library()?.folders() ?? [])].sort());
 
   const activeFilterLabel = () => {
@@ -77,7 +75,6 @@ export function Assets() {
   };
 
   const filteredAssets = createMemo(() => allAssets().filter(isShown));
-  const filteredPartials = createMemo(() => allPartials().filter(isShown));
 
   const visibleFolders = createMemo(() => {
     const q = query().trim().toLowerCase();
@@ -87,7 +84,7 @@ export function Assets() {
     return library()?.childrenOf(currentFolder()).folders ?? [];
   });
 
-  const itemCount = createMemo(() => visibleFolders().length + filteredPartials().length + filteredAssets().length);
+  const itemCount = createMemo(() => visibleFolders().length + filteredAssets().length);
 
   // Deep paths collapse like the breadcrumbs docs example:
   // All assets / … / parent / current, with the hidden folders in a dropdown.
@@ -224,7 +221,7 @@ export function Assets() {
 
     if (event.key === "Backspace" || event.key === "Delete") {
       const selected = selectedAssetId();
-      const entry = selected ? (library()?.get(selected) ?? library()?.getPartial(selected)) : undefined;
+      const entry = selected ? library()?.get(selected) : undefined;
       if (entry) {
         event.preventDefault();
         event.stopPropagation();
@@ -261,9 +258,9 @@ export function Assets() {
   };
 
   const hasAssets = () => allAssets().length > 0;
-  const hasContent = () => hasAssets() || allPartials().length > 0 || allFolders().length > 0;
+  const hasContent = () => hasAssets() || allFolders().length > 0;
   const isFiltering = () => query().trim().length > 0 || assetFilter() !== "ALL";
-  const isEmptyView = () => visibleFolders().length === 0 && filteredPartials().length === 0 && filteredAssets().length === 0;
+  const isEmptyView = () => visibleFolders().length === 0 && filteredAssets().length === 0;
 
   const handleCreateFolder = () => withLibrary((lib) => {
     const parent = currentFolder();
@@ -521,15 +518,6 @@ export function Assets() {
                     onRenameStart={() => setRenamingFolder(folder)}
                     onRenameEnd={() => setRenamingFolder(null)}
                     onOpen={() => openFolder(folder)}
-                  />
-                )}
-              </For>
-              <For each={filteredPartials()}>
-                {(partial) => (
-                  <PartialAssetItem
-                    partial={partial}
-                    selected={selectedAssetId() === partial.id}
-                    onSelect={() => handleSelectAsset(partial.id)}
                   />
                 )}
               </For>

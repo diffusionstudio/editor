@@ -104,16 +104,16 @@ const speakerX = () =>
 
 ## 8. Captions
 
-Add captions last, after the trim and framing are verified. Use the **`classic`** preset centred — it is the first choice for vertical content.
+Add captions last, after the trim and framing are verified. `src` names the episode's subtitle file (`.srt`, `.vtt`, or a transcript `.json`). Use the **`classic`** preset centred — it is the first choice for vertical content.
 
 ```tsx
-<captions preset="classic" verticalAlign="center" />
+<captions src="episode.srt" preset="classic" verticalAlign="center" />
 ```
 
 If the caption block lands on the speakers' faces, push it off with `offsetY` rather than changing the framing you just verified:
 
 ```tsx
-<captions preset="classic" verticalAlign="center" offsetY={420} />
+<captions src="episode.srt" preset="classic" verticalAlign="center" offsetY={420} />
 ```
 
 Capture a frame per caption line with `capture` and check readability at delivery size — a caption over a mouth is worse than no caption.

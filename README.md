@@ -49,7 +49,6 @@ The agent handles everything from there:
 Beyond finishing a cut, it covers:
 
 - **Motion graphics**: explainers, promos, and title sequences
-- **Generative assets**: images, video, and voiceover, declared in code and composited into the timeline
 - **Clipping**: highlights from a long video, reformatted for social
 - **Video understanding**: summaries, scene search, quotes with timestamps
 
@@ -141,10 +140,6 @@ The root is a `<stage>` holding one `<scene>` per frame you cut in:
 
 ```tsx
 import { For } from "solid-js";
-import { generate } from "@diffusionstudio/jsx";
-
-const hero = generate.image({ prompt: "A neon city at night, cinematic", aspectRatio: "16:9" });
-const motion = generate.video({ prompt: "slow camera push-in", startFrame: hero, duration: 5 });
 
 const TITLES = [
   { text: "The Grid", start: 0, end: 2.5 },
@@ -155,7 +150,7 @@ export default function Project() {
   return (
     <stage camera={[0.3, 0, 0, 0.3, 85, 150]}>
       <scene name="Intro" width={1920} height={1080} fill="black" active>
-        <video src={motion} start={0} end={5} width={1920} height={1080} />
+        <video src="footage/city.mp4" start={0} end={5} width={1920} height={1080} />
         <For each={TITLES}>
           {(t) => (
             <text
@@ -203,7 +198,7 @@ Each command is the MCP tool of the same name: `diffusion media grab` is `media_
 | `diffusion capture` | Render frames of a scene, as an export would, to a labelled contact sheet or one PNG per position |
 | `diffusion check` | Check a node's subtree for structural mistakes (black-frame gaps, never-visible nodes, failed sources) and report subtree stats |
 | `diffusion media …` | Inspect a file by id or path: `probe`, `grab`, `filmstrip`, `waveform`, `transcribe`, `listen` |
-| `diffusion models` / `diffusion voices` / `diffusion fonts` | Discover generation models, speech voices, local fonts |
+| `diffusion fonts` | Discover Google Fonts and local font families |
 | `diffusion screenshot` / `diffusion logs` | The app itself: capture the window, read recent console output |
 | `diffusion report` | Report a bug in the tools or the app: diagnostics bundled, filed as a GitHub issue via `gh` |
 
@@ -212,8 +207,8 @@ Conventions throughout: every result is one JSON object, the same structured con
 ## Documentation
 
 - [Tool reference](docs/reference/tools/README.md): every tool and CLI command, its options, and its output
-- [JSX reference](docs/reference/jsx/README.md): the composition markup with elements, timing, paints, generative assets, and captions
-- [Examples](docs/examples/README.md): runnable compositions, from basic scenes and generative assets to three.js and raw WebGPU
+- [JSX reference](docs/reference/jsx/README.md): the composition markup with elements, timing, paints, and captions
+- [Examples](docs/examples/README.md): runnable compositions, from basic scenes to three.js and raw WebGPU
 
 ## Repository layout
 
@@ -224,7 +219,7 @@ Conventions throughout: every result is one JSON object, the same structured con
 | `apps/cli` | `@diffusionstudio/cli` | The `diffusion` CLI (`dapi` alias): a client of the app's MCP server |
 | `packages/runtime` | `@diffusionstudio/runtime` | Headless editor runtime: the koota world, traits, actions, systems, media decoding, capture. No DOM, no Solid |
 | `packages/reconciler` | `@diffusionstudio/reconciler` | Evaluates a compiled project bundle and reconciles its element tree onto runtime entities, via Solid's universal renderer |
-| `packages/jsx` | `@diffusionstudio/jsx` | The authoring API: element vocabulary, types, and generated assets (`generate.*`) |
+| `packages/jsx` | `@diffusionstudio/jsx` | The authoring API: element vocabulary and types |
 | `packages/assets` | `@diffusionstudio/assets` | A project's asset library: the `assets.yml` manifest, content hashing, probing, resolution |
 | `packages/encoder` | `@diffusionstudio/encoder` | Offline video/audio/image encoding over runtime worlds (mediabunny) |
 | `packages/koota-solid` | `@diffusionstudio/koota-solid` | Solid bindings for koota, ported from `@koota/react` |

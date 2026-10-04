@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@diffusionstudio/agent-chat": "*",
-    "@diffusionstudio/api-contract": "^0.1.0",
     "@diffusionstudio/assets": "*",
     "@diffusionstudio/dapi": "*",
     "@diffusionstudio/encoder": "*",
@@ -30,8 +29,6 @@
     "@solid-primitives/resize-observer": "^2.1.3",
     "@solidjs/router": "^0.15.4",
     "@supabase/supabase-js": "^2.99.2",
-    "@trpc/client": "^11.10.0",
-    "@trpc/server": "^11.10.0",
     "animejs": "^4.4.1",
     "cmdk-solid": "^1.1.2",
     "colord": "^2.9.3",

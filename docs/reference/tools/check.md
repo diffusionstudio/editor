@@ -1,6 +1,6 @@
 # check
 
-Check a node's subtree for obvious structural mistakes, without rendering (local analysis, no credits): spans where no visual is scheduled (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load or generate — plus subtree stats (node count by kind, nesting depth, played duration). Times in issue ranges are seconds relative to the node's start — for a scene whose workarea starts at 0, the same clock capture uses. Structural only: a scheduled clip can still render black (dark footage, content smaller than the canvas), so confirm suspicious spans visually with capture.
+Check a node's subtree for obvious structural mistakes, without rendering (local analysis, no credits): spans where no visual is scheduled (likely black frames), children that never become visible, zero-duration or fully transparent nodes, and assets that failed to load — plus subtree stats (node count by kind, nesting depth, played duration). Times in issue ranges are seconds relative to the node's start — for a scene whose workarea starts at 0, the same clock capture uses. Structural only: a scheduled clip can still render black (dark footage, content smaller than the canvas), so confirm suspicious spans visually with capture.
 
 | | |
 | --- | --- |
@@ -52,7 +52,7 @@ One JSON object:
 | `never-visible` | warning | A node scheduled entirely outside the window its ancestors play |
 | `zero-duration` | warning | A node that spans no frames |
 | `transparent` | warning | A node with static opacity 0 (nodes with keyframes are given the benefit of the doubt) |
-| `source-error` | error | An asset that failed to load or generate, with the failure message |
+| `source-error` | error | An asset that failed to load, with the failure message |
 
 ## Severity and the shell
 

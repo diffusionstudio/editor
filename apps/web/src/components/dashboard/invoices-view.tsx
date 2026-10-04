@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { trpc } from "@/lib/trpc";
+import { backend } from "@/lib/backend";
 
 import { DashboardDividedStack, DashboardSurfaceCard } from "./shared";
 
@@ -145,7 +145,7 @@ function DashboardInvoicesList(props: { invoices: InvoiceItem[] }) {
 export function DashboardInvoicesView() {
   const [invoices] = createResource<InvoiceItem[]>(async () => {
     try {
-      const raw = await trpc.listInvoices.query();
+      const raw = await backend.listInvoices();
       return raw.map(toInvoiceItem);
     } catch (err) {
       console.error("Failed to load invoices", err);

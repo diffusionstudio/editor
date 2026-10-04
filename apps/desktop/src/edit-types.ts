@@ -6,16 +6,12 @@
 // canvas (renderer) and the edit writer (main). Types only, with no Node
 // imports, so the renderer's program can include it without Node's types.
 
-import type { InspectValue, PropValue, SerializedAssetRef } from "@diffusionstudio/jsx";
+import type { InspectValue, PropValue } from "@diffusionstudio/jsx";
 
-export type { PropValue, SerializedAssetRef };
+export type { PropValue };
 
-/**
- * A value an edit can carry: what a source spells as a literal, or a
- * `generate.*` declaration in its wire form, spelled as the call that
- * reproduces it (see `setProp`).
- */
-export type EditValue = PropValue | SerializedAssetRef;
+/** A value an edit can carry: what a source spells as a literal (see `setProp`). */
+export type EditValue = PropValue;
 
 export interface SourceContext {
   /** Absolute path of the project folder. */

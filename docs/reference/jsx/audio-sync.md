@@ -19,4 +19,4 @@
 
 ## Execution
 
-Alignment runs at the resolve stage of the [pipeline](./README.md#pipeline), after both sides' assets have landed (either side may be generated) and before captions read the scene. It is local and consumes no credits. A correlation too weak to trust is reported rather than guessed at (see [errors.md](./errors.md)), and the node keeps its default placement. Offsets are **cached** by the pair of source contents, so re-mounting an unchanged project re-measures nothing.
+Alignment runs at the resolve stage of the [pipeline](./README.md#pipeline), after both sides' assets have loaded. It is local and consumes no credits. A correlation too weak to trust is reported rather than guessed at (see [errors.md](./errors.md)), and the node keeps its default placement. Offsets are **cached** by the pair of source contents, so re-mounting an unchanged project re-measures nothing.

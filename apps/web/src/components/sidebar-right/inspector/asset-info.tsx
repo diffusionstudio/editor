@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Button } from "@/components/ui/button";
-import { For, Show, Match, Switch, createMemo, createResource, createSignal, type Accessor } from "solid-js";
+import { For, Show, Match, Switch, createMemo, createSignal, type Accessor } from "solid-js";
 import {
   formatAspectRatio,
   formatBytes,
@@ -13,93 +13,16 @@ import {
   formatAssetDate
 } from "@/utils/formatters";
 import { AssetInfoPreview } from "./asset-info-preview";
-import { supabase } from "@/lib/supabase";
-import { toClientConfig } from "@/components/genai/use-generation-records";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { assetName } from "@diffusionstudio/assets";
 import { useLibrary } from "@/engine/library";
 import { useAssetSelection } from "@/engine/hooks";
 import { insertAssetAtPlayhead, replaceAssetSource } from "@/engine/asset-actions";
-import { retryGeneration } from "@/engine/generations";
 
-import type { Asset, PartialAsset } from "@diffusionstudio/assets";
+import type { Asset } from "@diffusionstudio/assets";
 
-/** Information about the library entry picked in the assets panel. */
+
 export function AssetInfoPanel() {
-  const selection = useAssetSelection();
-
-  return (
-    <Show when={selection.partial()} fallback={<AssetDetails />}>
-      {(partial) => <PartialDetails partial={partial()} />}
-    </Show>
-  );
-}
-
-/**
- * A generation without bytes: where it stands, and — once it has failed —
- * the reason, and the way to ask again.
- */
-function PartialDetails(props: { partial: PartialAsset }) {
-  const world = useWorld();
-  const library = useLibrary();
-
-  const failed = () => props.partial.state === "error";
-
-  const handleRetry = async () => {
-    const lib = library();
-    if (lib) await retryGeneration(world, lib, props.partial);
-  };
-
-  const handleDelete = async () => {
-    await library()?.remove([props.partial]);
-  };
-
-  return (
-    <div class="flex flex-col w-full px-4 border-t border-border">
-      <div class="h-12 flex items-center justify-between">
-        <span class="text-base font-strong">Information</span>
-      </div>
-
-      <div class="py-3 border-t border-b border-border text-xs break-all">
-        {assetName(props.partial)}
-      </div>
-
-      <div class="flex flex-col gap-1 my-2 text-xs text-muted-foreground">
-        <div class="flex h-7 items-center gap-2">
-          <span class="w-20 shrink-0">Status</span>
-          <span class="min-w-0 flex-1 text-right" classList={{ "text-destructive": failed() }}>
-            {failed() ? "Failed" : "Generating…"}
-          </span>
-        </div>
-        <Show when={props.partial.error}>
-          {(error) => (
-            <div class="flex flex-col gap-2 py-1">
-              <span class="w-20 shrink-0">Error</span>
-              <span class="min-w-0 text-left wrap-break-words text-destructive">{error()}</span>
-            </div>
-          )}
-        </Show>
-        <div class="flex h-7 items-center gap-2">
-          <span class="w-20 shrink-0">Requested</span>
-          <span class="min-w-0 flex-1 text-right truncate">{formatAssetDate(props.partial.createdAt)}</span>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-2 my-2">
-        <Show when={failed()}>
-          <Button variant="default" class="w-full" onClick={handleRetry}>
-            Retry generation
-          </Button>
-        </Show>
-        <Button variant="secondary" class="w-full" onClick={handleDelete}>
-          Delete
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function AssetDetails() {
   const world = useWorld();
   const library = useLibrary();
   const selection = useAssetSelection();
@@ -188,22 +111,6 @@ function AssetDetails() {
 }
 
 export function useAssetMetadataRows(asset: Accessor<Asset | undefined>) {
-  const generationId = createMemo(() => asset()?.generation?.id ?? null);
-
-  const [config] = createResource(() => generationId(), async (id) => {
-    if (!id || !supabase) return undefined;
-    const { data, error } = await supabase
-      .from("usage_records")
-      .select("config")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) {
-      console.error("[asset-info] Failed to load generation record", error);
-      return undefined;
-    }
-    return toClientConfig(data?.config);
-  });
-
   return createMemo(() => {
     const a = asset();
     if (!a) return [];
@@ -227,9 +134,9 @@ export function useAssetMetadataRows(asset: Accessor<Asset | undefined>) {
         : null;
     const imported = formatAssetDate(a.createdAt);
     const modified = a.stat ? formatAssetDate(a.stat.mtime) : null;
-    const c = config();
-    const prompt = c?.prompt ?? null;
-    const model = c?.model ?? null;
+    // How the asset was generated: placeholders until generation is back.
+    const prompt: string | null = null;
+    const model: string | null = null;
 
     return [
       { label: "Dimensions", value: dimensions },

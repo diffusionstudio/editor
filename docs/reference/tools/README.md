@@ -44,8 +44,6 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 | [`media_waveform`](./media/waveform.md) | `diffusion media waveform` | Waveform preview |
 | [`media_listen`](./media/listen.md) | `diffusion media listen` | Listen to audio |
 | [`media_segment`](./media/segment.md) | `diffusion media segment` | Segment object |
-| [`models`](./models.md) | `diffusion models` | Generation models |
-| [`voices`](./voices.md) | `diffusion voices` | Speech voices |
 | [`logs`](./logs.md) | `diffusion logs` | App logs |
 | [`screenshot`](./screenshot.md) | `diffusion screenshot` | Window screenshot |
 | [`window`](./window.md) | `diffusion window` | App window |
@@ -57,7 +55,7 @@ How the surface is divided:
 - **The project loop.** [`open`](./open.md) a folder, edit its JSX, [`context`](./context.md) for what the source cannot say, [`capture`](./capture.md) and [`check`](./check.md) to verify, [`export`](./export.md) when asked.
 - **Media inspection** (`media_*`): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
 - **Masks.** [`media_segment`](./media/segment.md) segments and tracks an object in footage and writes the mask file a `<mask src>` names.
-- **What a declaration may name.** [`models`](./models.md), [`voices`](./voices.md), [`fonts`](./fonts.md). Generation itself is declared in the project module (`generate.*`, see [jsx/generate.md](../jsx/generate.md)); no tool generates.
+- **What a declaration may name.** [`fonts`](./fonts.md).
 - **The app and the machine.** [`logs`](./logs.md), [`screenshot`](./screenshot.md), [`window`](./window.md), [`report`](./report.md).
 
 ## Downloading footage

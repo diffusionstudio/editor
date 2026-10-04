@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogPortal } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { useAuth } from "@/context/auth";
 import { cx } from "@/lib/cva";
-import { trpc } from "@/lib/trpc";
+import { backend } from "@/lib/backend";
 import {
   For,
   Show,
@@ -249,7 +249,7 @@ function formatCurrency(amountCents: number, currency: string) {
 
 export function DashboardProPlanDetails() {
   const auth = useAuth();
-  const [summary] = createResource(() => trpc.getSubscriptionSummary.query());
+  const [summary] = createResource(() => backend.getSubscriptionSummary());
 
   const priceLabel = () => {
     const s = summary();

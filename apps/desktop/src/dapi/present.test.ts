@@ -103,7 +103,7 @@ describe("present", () => {
       id: "track-1", src: "masks/a.mask", video: "a.mp4", state: "done" as const, progress: 1,
       model: "tiny" as const, frameRate: 30, start: 0, end: 2, frames: 60, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
     };
-    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [], generations: [] };
+    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [] };
     const first = await present("context", {}, { ...base, masks: [{ ...row, png: png(8) }] });
     const image = (first.output as { masks: { image: string }[] }).masks[0]!.image;
     expect(image).toMatch(/dapi-segment-.*\.png$/);

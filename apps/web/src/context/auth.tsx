@@ -15,10 +15,9 @@ import {
 } from 'solid-js';
 import { toast } from 'somoto';
 import type { Session, User } from '@supabase/supabase-js';
-import { FREE_CREDITS_QUOTA, type UserData } from '@diffusionstudio/api-contract';
 
 import { supabase } from '@/lib/supabase';
-import { trpc } from '@/lib/trpc';
+import { backend, FREE_CREDITS_QUOTA, type UserData } from '@/lib/backend';
 import { identify, resetIdentity, track } from '@/lib/analytics';
 import { mainBridge } from '@/lib/ipc';
 import { MAIN_CHANNELS } from '@desktop/main-channels';
@@ -247,12 +246,8 @@ export function AuthProvider(props: { children: JSX.Element }) {
       return { error: 'Not authenticated' };
     }
 
-    if (!trpc) {
-      return { error: 'API is not configured' };
-    }
-
     try {
-      await trpc.deleteAccount.mutate();
+      await backend.deleteAccount();
       track('account_deleted');
 
       // Sign out locally after successful server-side deletion

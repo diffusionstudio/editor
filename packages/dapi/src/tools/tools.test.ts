@@ -100,7 +100,7 @@ describe("logs and export", () => {
 describe("context", () => {
   it("reports the same shape with and without an open project", () => {
     expect(
-      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [], generations: [], masks: [] }).success,
+      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [], masks: [] }).success,
     ).toBe(true);
     expect(
       context.output.safeParse({
@@ -108,7 +108,6 @@ describe("context", () => {
         projectDir: "/p/a",
         currentTime: null,
         fontFamilies: ["Inter"],
-        generations: [{ element: "index.tsx:3", name: null, state: "done", asset: "gen/a.mp4" }],
         masks: [],
       }).success,
     ).toBe(true);
@@ -119,7 +118,7 @@ describe("context", () => {
     const span = { model: "tiny", frameRate: 30, start: 0, end: 2, frames: 60 };
     const running = { id: "t1", src: "masks/a/Tracking 1.mask", video: "a.mp4", state: "tracking", progress: 0.4, ...span };
     const found = { bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [] };
-    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [], generations: [] };
+    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [] };
     expect(context.output.safeParse({ ...base, masks: [running] }).success).toBe(true);
     expect(context.result!.safeParse({ ...base, masks: [{ ...running, state: "done", progress: 1, png: new Uint8Array(3), ...found }] }).success).toBe(true);
     expect(context.output.safeParse({ ...base, masks: [{ ...running, state: "done", progress: 1, image: "/tmp/s.png", ...found }] }).success).toBe(true);

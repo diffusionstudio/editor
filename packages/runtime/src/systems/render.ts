@@ -29,7 +29,7 @@ import {
 import { getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
-import { FAILED_COLOR, getGeneratingColor, getSourceFailure, isGenerating } from '../utils/generating';
+import { FAILED_COLOR, getSourceFailure } from '../utils/source-failure';
 import { applyStrokeStyle } from '../utils/stroke';
 import { renderText } from '../utils/text';
 import { getTransitionWindow } from '../utils/transition';
@@ -589,14 +589,13 @@ function renderStrokes(world: World, entity: Entity): void {
 }
 
 /**
- * The pulse a node waiting on a generation is filled with
+ * The still fill a node whose source failed is left with
  */
-function renderGenerating(world: World, entity: Entity): void {
-	const errored = getSourceFailure(entity) !== undefined;
-	if (!errored && !isGenerating(entity)) return;
+function renderSourceFailure(world: World, entity: Entity): void {
+	if (getSourceFailure(entity) === undefined) return;
 
 	const ctx = getCtx(world);
-	ctx.fillStyle = errored ? FAILED_COLOR : getGeneratingColor(world);
+	ctx.fillStyle = FAILED_COLOR;
 	ctx.fill();
 }
 
@@ -667,7 +666,7 @@ function renderShapeNode(world: World, entity: Entity): void {
 	renderShadows(world, entity);
 	renderIntrinsicFill(world, entity);
 	renderFills(world, entity);
-	renderGenerating(world, entity);
+	renderSourceFailure(world, entity);
 	renderStrokes(world, entity);
 }
 

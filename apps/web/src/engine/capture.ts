@@ -22,8 +22,8 @@
 
 import { mount } from '@diffusionstudio/reconciler';
 import {
-	Ai, ChildOf, FramePromises, FrameRate, Fonts, Hidden, Library, Mode, Project,
-	RenderSurface, Root, Source, TranscriptionRequest,
+	ChildOf, FramePromises, FrameRate, Fonts, Hidden, Library, Mode, Project,
+	RenderSurface, Root, Source,
 	createRuntimeWorld, disposeDecoders, getParentNode, removeChild, resetCamera,
 } from '@diffusionstudio/runtime';
 
@@ -112,14 +112,13 @@ export async function createCapture(source: World, node: Entity, options: Captur
 	canvas.style.cssText = 'position:fixed;left:0;top:0;z-index:-9999;opacity:0;will-change:opacity;pointer-events:none;';
 	document.body.appendChild(canvas);
 
-	// Shares the source's assets and generation service — a `src` names the
-	// same file in both — and its fonts, which are loaded into the document
+	// Shares the source's assets — a `src` names the same file in both — and
+	// its fonts, which are loaded into the document
 	// already, so copying the list only tracks them as loaded rather than
 	// having this world add them again.
 	const world = createRuntimeWorld(source.get(Project)?.id ?? '');
 	world.set(Mode, { value: mode });
 	world.set(Library, source.get(Library) ?? null);
-	world.set(Ai, source.get(Ai) ?? null);
 	world.set(Fonts, { list: [...(source.get(Fonts)?.list ?? [])] });
 	world.set(RenderSurface, { canvas, ctx: canvas.getContext('2d'), resolution: 1 });
 	world.set(FrameRate, { value: frameRate });
@@ -174,16 +173,6 @@ export async function createCapture(source: World, node: Entity, options: Captur
 	// editor was last looking — no part of the composition, and the view an
 	// encode draws with is the plain one.
 	resetCamera(world);
-
-	// A `<captions>` with no src transcribes the scene it is in, and a
-	// transcription encodes that scene's audio — through a capture world of
-	// its own, whose captions would ask for the transcript that is still being
-	// made. Nothing audible comes from a caption anyway.
-	if (mode === 'offline-audio') {
-		for (const entity of world.query(TranscriptionRequest)) {
-			entity.remove(TranscriptionRequest);
-		}
-	}
 
 	return { world, node: rendered, dispose: dispose(mounted) };
 }

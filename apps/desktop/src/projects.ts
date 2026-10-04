@@ -464,8 +464,6 @@ const SCRIPTS: Record<string, string> = {
   filmstrip: "diffusion media filmstrip",
   waveform: "diffusion media waveform",
   listen: "diffusion media listen",
-  models: "diffusion models",
-  voices: "diffusion voices",
   fonts: "diffusion fonts",
   logs: "diffusion logs",
   screenshot: "diffusion screenshot",
@@ -552,8 +550,8 @@ a new session.
 | \`index.tsx\` | The entry. Its default export renders the composition. |
 | \`package.json\` | The project record: \`projectId\` (its identity, kept across renames), \`displayName\` (the name shown in the app), \`main\` (the entry), \`diffusion\` (how each scene is exported), and the diffusion commands as scripts. |
 | \`tsconfig.json\` | Types for the composition tags, through \`jsxImportSource\`. |
-| \`assets.yml\` | The asset library: for every asset its library path, where its bytes are, and what it was found to be; for a generation without bytes, where it stands. Written by the app; hand edits are read on the next load. |
-| \`assets/\` | The library's files: put one here and it is taken in while the app watches, and the app writes its own here too — generations under \`assets/generated/\`. Media imported through the app is linked where it lies instead, never copied. |
+| \`assets.yml\` | The asset library: for every asset its library path, where its bytes are, and what it was found to be. Written by the app; hand edits are read on the next load. |
+| \`assets/\` | The library's files: put one here and it is taken in while the app watches, and the app writes its own here too. Media imported through the app is linked where it lies instead, never copied. |
 | \`cache/\` | Derived data (thumbnails, waveforms). Disposable, and not checked in. |
 
 ## Authoring
@@ -599,10 +597,6 @@ export default function Project() {
   and the gradient paints, \`<stroke>\`, \`<shadow>\`, \`<effect>\`.
 - \`src\` takes a library path (\`"b-roll/drone.mp4"\` — the portable form, it
   survives the file being relinked), an asset id, a URL, or an absolute path.
-- Generated assets are declared rather than fetched: \`src={generate.image({ prompt })}\`,
-  and \`generate.video\`, \`generate.voice\`, \`generate.audio\`. They are produced on
-  mount, in dependency order. \`diffusion context\` reports where each stands:
-  generating, failed with the reason, or done with the asset path it landed as.
 - Solid is fully available while mounting: \`<For>\`, \`<Show>\`, \`createMemo\`, and
   \`useTicker()\` for values that follow the playhead.
 - npm packages work as they normally do. The folder is a real npm package, so
@@ -622,7 +616,7 @@ All of them talk to the running app, except \`fonts\`.
 | Script | Command | What it does |
 | ------ | ------- | ------------ |
 | \`open\` | \`diffusion open .\` | Launch the app with this project open. |
-| \`context\` | \`diffusion context\` | Which project the app has open, where its playhead sits, its fonts, where its generations stand. |
+| \`context\` | \`diffusion context\` | Which project the app has open, where its playhead sits, its fonts, its background mask tracks. |
 | \`capture\` | \`diffusion capture <id>\` | Render frames of a scene, as an export would, to labelled PNG contact sheets. |
 | \`probe\` | \`diffusion media probe <id\\|path>\` | Container and per-track metadata, without decoding. |
 | \`transcribe\` | \`diffusion media transcribe <id\\|path>\` | Timed speech transcript, word by word. |
@@ -630,8 +624,6 @@ All of them talk to the running app, except \`fonts\`.
 | \`filmstrip\` | \`diffusion media filmstrip <id\\|path>\` | Thumbnail grid across a window of a video. |
 | \`waveform\` | \`diffusion media waveform <id\\|path>\` | Loudness over time, with the silences marked. |
 | \`listen\` | \`diffusion media listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
-| \`models\` | \`diffusion models [type]\` | Generation models and their per-model constraints. |
-| \`voices\` | \`diffusion voices\` | Speech voices for \`generate.voice\`. |
 | \`fonts\` | \`diffusion fonts\` | Google Fonts and local font families, valid as \`fontFamily\`. |
 | \`logs\` | \`diffusion logs\` | Recent console output from the app. |
 | \`screenshot\` | \`diffusion screenshot\` | The whole app window as a PNG. |
@@ -639,7 +631,7 @@ All of them talk to the running app, except \`fonts\`.
 
 ## Reference
 
-- [JSX reference](https://github.com/diffusionstudio/editor/blob/main/docs/reference/jsx/README.md): elements, timing, paints, generation, captions
+- [JSX reference](https://github.com/diffusionstudio/editor/blob/main/docs/reference/jsx/README.md): elements, timing, paints, captions
 - [Tool reference](https://github.com/diffusionstudio/editor/blob/main/docs/reference/tools/README.md): every tool and command, its options and its output
 - [Examples](https://github.com/diffusionstudio/editor/tree/main/docs/examples): runnable compositions to read
 `;

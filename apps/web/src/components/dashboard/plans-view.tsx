@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Show, createSignal } from "solid-js";
-import type { SubscriptionCredits } from "@diffusionstudio/api-contract";
+import type { SubscriptionCredits } from "@/lib/backend";
 
 import { Button } from "@/components/ui/button";
 import {

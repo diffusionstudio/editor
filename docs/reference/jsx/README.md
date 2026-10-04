@@ -40,7 +40,7 @@ export default function Project() {
 | [html.md](./html.md) | `<html>`: reactive HTML children drawn into the box |
 | [surface-paint.md](./surface-paint.md) | `<surface>`: a ref-provided canvas you draw into, sampled every frame |
 | [shader-paint.md](./shader-paint.md) | `<shaderPaint>`: a WGSL fragment shader over the media paint below it |
-| [media.md](./media.md) | `src` resolution (paths, URLs, asset ids, `AssetRef`), image sequences, transforms, adding an asset to the library |
+| [media.md](./media.md) | `src` resolution (paths, URLs, asset ids), image sequences, adding an asset to the library |
 | [timing.md](./timing.md) | `start` / `end` / `sourceIn` / `sourceOut` / `playbackRate`, time formats |
 | [keyframes.md](./keyframes.md) | Keyframe animation and easing |
 | [animations.md](./animations.md) | `<animation>`: preset in/out animations |
@@ -49,7 +49,6 @@ export default function Project() {
 | [adjustment-layer.md](./adjustment-layer.md) | `<adjustmentLayer>`: a transform over the clip below it |
 | [audio-sync.md](./audio-sync.md) | `syncTo` audio alignment |
 | [captions.md](./captions.md) | `<captions>` and style presets |
-| [generate.md](./generate.md) | Declarative AI asset generation (`generate.*`) |
 | [variables.md](./variables.md) | `@inspect` variables: annotated consts as live inspector controls (number, color, text, font, boolean, select) |
 | [lifecycle.md](./lifecycle.md) | Mount lifecycle: always live, persisted + re-executed, `useTicker`, `useResolution` |
 | [errors.md](./errors.md) | Where each pipeline stage fails and with what effect |
@@ -62,7 +61,7 @@ Everything below runs in the app, on open and again on every save of a project f
 2. **Compile**: the entry file bundles with esbuild + `babel-preset-solid` in `universal` mode, so JSX compiles against the editor's renderer runtime instead of the DOM. `solid-js`, `solid-js/store` and `@diffusionstudio/jsx` are external — the app supplies its own instances; everything else is bundled. A compile error is reported and the canvas keeps the last good render.
 3. **Evaluate**: the app imports the module. Top-level code runs to completion. The module's **default export** is the project component.
 4. **Mount**: the component tree renders **directly into the world**. There is no staging tree: each element materializes as an entity as it is created, and the root `<stage>` is the one already there. Mounting is synchronous, and a throw part-way through leaves nothing behind — the document is disposed and the previous render stays on the canvas.
-5. **Resolve**: every `src` resolves in the background — a path or asset id is loaded, a `generate.*` declaration is generated in dependency order, a `<captions>` without a `src` transcribes its scene. Each element renders a generating state until its asset lands, and an element that fails carries the reason (see [generate.md](./generate.md), [errors.md](./errors.md)). Non-blocking: the composition is on the canvas and editable while this runs, and [`context`](../tools/context.md) reports where each generation stands.
+5. **Resolve**: every `src` — a library path, asset id, URL, or absolute path — loads in the background, and an element whose source fails to load carries the reason (see [errors.md](./errors.md#failed-sources)). Non-blocking: the composition is on the canvas and editable while this runs.
 6. **Live**: the reactive graph keeps running for as long as the project is open — signals, effects, `useTicker` (see [lifecycle.md](./lifecycle.md)). Export, capture and the next open re-execute the same module.
 
 A save replaces the whole run: the old mount is disposed and the new one takes the stage. Scenes are rebuilt rather than accumulated, and the entities the previous render owned go with it.

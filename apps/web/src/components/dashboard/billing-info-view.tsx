@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { openBillingPortal } from "@/lib/checkout";
 import { useAuth } from "@/context/auth";
-import { trpc } from "@/lib/trpc";
+import { backend } from "@/lib/backend";
 
 import {
   DashboardDividedStack,
@@ -220,7 +220,7 @@ export function DashboardBillingInfoView(props: DashboardBillingInfoViewProps) {
     () => auth.isPro(),
     async (isPro) => {
       if (!isPro) return undefined;
-      return (await trpc.getBillingInfo.query()) as BillingInfo;
+      return (await backend.getBillingInfo()) ?? undefined;
     },
   );
 

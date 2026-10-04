@@ -12,7 +12,7 @@ All [common props](./elements.md#common-props), plus:
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
-| `src` | `string \| AssetRef` | **required** | See [media.md](./media.md). |
+| `src` | `string` | **required** | See [media.md](./media.md). |
 | `objectFit` | `"cover" \| "contain" \| "fill"` | `"cover"` | How the source maps into the box. |
 | `frameRate` | `number` | `30` | Frames per second for a `src` naming a directory of numbered frames — the only thing that says how long such a clip runs. Nothing for encoded video to read: a file carries its own rate (see [media.md](./media.md#image-sequences)). |
 | `volume` | `number` | `0` | Decibels: `0` = unity, negative attenuates (`-6` ≈ half as loud), `-Infinity` = silence. Not linear. |

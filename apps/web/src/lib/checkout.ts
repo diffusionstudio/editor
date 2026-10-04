@@ -2,24 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { TRPCClientError } from "@trpc/client";
 import { toast } from "somoto";
-import type {
-  BillingPeriod,
-  SubscriptionCredits,
-  TopupCredits,
-} from "@diffusionstudio/api-contract";
 
-import { trpc } from "./trpc";
+import { backend } from "./backend";
 import { mainBridge } from "./ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
 
+import type { BillingPeriod, SubscriptionCredits, TopupCredits } from "./backend";
+
 function toastMessage(err: unknown, fallback: string): string {
-  // Empty / non-JSON 500 bodies (e.g. upstream crashed before tRPC could
-  // serialize the error) surface as a SyntaxError — not useful to display.
-  if (err instanceof TRPCClientError && err.cause instanceof SyntaxError) {
-    return fallback;
-  }
   return err instanceof Error ? err.message : fallback;
 }
 
@@ -103,7 +94,7 @@ export async function startSubscriptionCheckout(input: {
   billingPeriod: BillingPeriod;
 }): Promise<void> {
   try {
-    const { url } = await trpc.createSubscription.mutate({
+    const { url } = await backend.createSubscription({
       ...input,
       ...successAndCancelUrls(),
     });
@@ -117,7 +108,7 @@ export async function startTopupCheckout(
   creditQuantity: TopupCredits,
 ): Promise<void> {
   try {
-    const { url } = await trpc.createTopup.mutate({
+    const { url } = await backend.createTopup({
       creditQuantity,
       ...successAndCancelUrls(),
     });
@@ -130,7 +121,7 @@ export async function startTopupCheckout(
 export async function openBillingPortal(): Promise<void> {
   if (window.desktop) {
     try {
-      const { url } = await trpc.createBillingPortal.mutate();
+      const { url } = await backend.createBillingPortal();
       await mainBridge.call(MAIN_CHANNELS.APP_OPEN_EXTERNAL, { url });
     } catch (err) {
       toast.error(toastMessage(err, "Failed to open billing portal"));
@@ -144,7 +135,7 @@ export async function openBillingPortal(): Promise<void> {
   if (!tab) return;
 
   try {
-    const { url } = await trpc.createBillingPortal.mutate();
+    const { url } = await backend.createBillingPortal();
     tab.location.href = url;
   } catch (err) {
     tab.close();

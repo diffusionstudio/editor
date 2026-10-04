@@ -7,8 +7,6 @@ import { context } from "./context";
 import { capture } from "./capture";
 import { check } from "./check";
 import { exportScene } from "./export";
-import { models } from "./models";
-import { voices } from "./voices";
 import { fonts } from "./fonts";
 import { screenshot } from "./screenshot";
 import { mediaProbe } from "./media-probe";
@@ -28,8 +26,6 @@ export const handlers: Handlers = {
   capture,
   check,
   export: exportScene,
-  models,
-  voices,
   fonts,
   screenshot,
   media_probe: mediaProbe,

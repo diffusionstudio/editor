@@ -26,7 +26,7 @@ The component receives no props. [`open`](../tools/open.md) opens the folder —
 | `package.json` | The project record: `projectId` (its identity, kept across renames), `displayName`, `main`, and the diffusion commands as scripts. |
 | `tsconfig.json` | Types for the composition tags, through `jsxImportSource`. |
 | `assets.yml` | The asset library (see [media.md](./media.md#the-library)). |
-| `assets/` | The library's files: symlinks to media brought in from elsewhere, plus what the app produced itself, generations under `assets/generated/`. Media imported through the app is linked where it lies, never copied. |
+| `assets/` | The library's files: symlinks to media brought in from elsewhere, plus what the app produced itself. Media imported through the app is linked where it lies, never copied. |
 | `cache/` | Derived data (thumbnails, waveforms). Disposable. |
 | `README.md` | What the folder holds and how to work in it — including, for agents, where to find this reference. |
 

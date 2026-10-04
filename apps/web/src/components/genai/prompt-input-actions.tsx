@@ -25,7 +25,7 @@ import { useGenerateAudio } from "./use-generate-audio";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
 
-import type { TransformType } from "@diffusionstudio/jsx";
+import type { TransformType } from "./schemas";
 
 export function PromptInputActions() {
   const { isGenerated, totalCredits, firstConfig } = useGenerationRecords();

@@ -58,9 +58,6 @@ export function useMediaSelection() {
   const imageNodes = painted(PaintType.IMAGE);
   const videoNodes = painted(PaintType.VIDEO);
 
-  /** Every selected node as the element its source props live on. */
-  const sources = createMemo(() => selected().map((node) => node.source));
-
   const bound = createMemo(() => {
     const lib = library();
     if (!lib) return [];
@@ -76,5 +73,5 @@ export function useMediaSelection() {
 
   const images = createMemo(() => bound().filter((entry) => entry.asset.type === "IMAGE"));
 
-  return { bound, images, imageNodes, videoNodes, sources };
+  return { bound, images, imageNodes, videoNodes };
 }

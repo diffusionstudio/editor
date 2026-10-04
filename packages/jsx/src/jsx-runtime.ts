@@ -19,7 +19,6 @@
  */
 
 import type { JSX as SolidJSX } from "solid-js";
-import type { AssetInput } from "./generate";
 import type {
   AdjustmentLayerProps,
   AnimationProps,
@@ -60,9 +59,9 @@ import type {
 type HtmlElementTags = Omit<SolidJSX.HTMLElementTags, "canvas" | "audio" | "video" | "html" | "img">;
 
 // `<img>` keeps every DOM attribute but takes the composition `src` inputs:
-// a path, an asset id, a URL, or a `generate.*` ref all resolve through the
-// host, and `data:`/`blob:` sources pass through to the browser untouched.
-type ImgTag = Omit<SolidJSX.HTMLElementTags["img"], "src"> & { src?: AssetInput };
+// a path, an asset id, or a URL all resolve through the host, and
+// `data:`/`blob:` sources pass through to the browser untouched.
+type ImgTag = Omit<SolidJSX.HTMLElementTags["img"], "src"> & { src?: string };
 
 // The shared names are re-declared below as unions with the composition props.
 type SvgElementTags = Omit<SolidJSX.SVGElementTags, "rect" | "text" | "image">;

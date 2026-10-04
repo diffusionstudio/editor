@@ -92,9 +92,9 @@ const program = new Command();
 program
   .name("diffusion")
   .description(
-    `The Diffusion Studio CLI: understand, generate, and edit footage.
-Analyze video/audio/images, generate them with AI, and compose assets.
-Use for any media analysis, media generation, or video editing task. No ffmpeg needed.`)
+    `The Diffusion Studio CLI: understand and edit footage.
+Analyze video/audio/images and compose assets.
+Use for any media analysis or video editing task. No ffmpeg needed.`)
   .version(version);
 
 program
@@ -251,17 +251,6 @@ media
     const { point: points, ...rest } = opts;
     return run("media_segment", { path: assetPath(ref), ...rest, points, output: opts.output && maskOutput(opts.output) });
   });
-
-program
-  .command("models")
-  .description(describe("models"))
-  .argument("[type]", field("models", "type"))
-  .action((type: ToolInput<"models">["type"]) => run("models", { type }));
-
-program
-  .command("voices")
-  .description(describe("voices"))
-  .action(() => run("voices", {}));
 
 program
   .command("logs")

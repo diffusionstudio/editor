@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, Generating, GenerationRequest, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, TranscriptionRequest, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -11,7 +11,7 @@ import { SVGElements } from 'solid-js/web';
 import { IsExcluded } from 'koota';
 
 import type { CameraMatrix, PropertyPath, SceneNode, TimelineView } from '@diffusionstudio/runtime';
-import type { AnimatableProperty, AssetRef } from '@diffusionstudio/jsx';
+import type { AnimatableProperty } from '@diffusionstudio/jsx';
 
 import type { Entity, World } from 'koota';
 import type { ProjectDocument, ProjectTick } from './host';
@@ -501,7 +501,6 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity.set(Position, { x: 0, y: 0 });
 				entity.add(Chars);
 				entity.add(Caption);
-				entity.add(TranscriptionRequest);
 				entity.add(TextStyle);
 				entity.set(TextStyle, CAPTION_PRESET_STYLES[CaptionType.CLASSIC]);
 				entity.add(Color);
@@ -1189,28 +1188,13 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				return;
 			}
 			case 'src': {
-				// Generating goes with the wait it belongs to: the resolution
-				// running for the old src will not clear it, having been
-				// superseded by whatever this one starts.
-				entity.remove(GenerationRequest, LoadRequest, PendingSource, Generating);
+				// The resolution running for the old src is superseded by
+				// whatever this one starts.
+				entity.remove(LoadRequest, PendingSource);
 
 				// `false` is how an editor unsets a prop (the writer drops the attribute).
-				if (value === undefined || value === null || value === false || value === '') {
+				if (typeof value !== 'string' || value === '') {
 					entity.remove(AssetId);
-					// A `<captions>` without a src transcribes its scene instead.
-					if (entity.has(Caption)) {
-						entity.add(TranscriptionRequest);
-						entity.set(TranscriptionRequest, { seed: toNumber(node.props.seed) ?? 0 });
-					}
-					return;
-				}
-
-				entity.remove(TranscriptionRequest);
-
-				if (typeof value !== 'string') {
-					entity.remove(AssetId);
-					entity.add(GenerationRequest);
-					entity.set(GenerationRequest, { ref: value as AssetRef });
 					return;
 				}
 
@@ -1392,19 +1376,6 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 						? CAPTION_ALIGNS[value]
 						: undefined,
 				});
-				return;
-			}
-			case 'seed': {
-				if (!entity.has(Caption)) return;
-				// An authored src mounts a transcript directly; there is no
-				// transcription for the seed to key.
-				if (node.props.src !== undefined) return;
-				if (entity.has(LoadRequest) || entity.has(GenerationRequest)) return;
-
-				// A resolution running for another seed must not bind late
-				entity.remove(PendingSource, Generating);
-				entity.add(TranscriptionRequest);
-				entity.set(TranscriptionRequest, { seed: toNumber(value) ?? 0 });
 				return;
 			}
 			case 'workarea': {

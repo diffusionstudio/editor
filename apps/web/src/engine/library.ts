@@ -10,14 +10,12 @@ import { AssetId, Library } from '@diffusionstudio/runtime';
 import { AssetLibrary, MANIFEST_FILE, ASSETS_DIR } from '@diffusionstudio/assets';
 import { useTrait, useWorld } from '@diffusionstudio/koota-solid';
 import { authoredElement } from '@diffusionstudio/reconciler';
-import { isAssetRef, mapAssetInputs } from '@diffusionstudio/jsx';
 import type { Accessor } from 'solid-js';
 
 import { createProjectFS } from '@/projects/fs';
 import { getDocumentEditor } from './editor';
 
 import type { Asset } from '@diffusionstudio/assets';
-import type { AssetInput } from '@diffusionstudio/jsx';
 import type { World } from 'koota';
 
 /**
@@ -42,22 +40,13 @@ export function isLibraryFile(path: string): boolean {
 	return path === MANIFEST_FILE || path === ASSETS_DIR || path.startsWith(`${ASSETS_DIR}/`);
 }
 
-/**
- * Rewrites `src` on every element that named an asset by its old path —
- * directly, or as an input somewhere inside a declaration: an element
- * showing `transform.upscale("old.png")` is bound to what the transform made,
- * and its `src` still has to follow the rename.
- */
+/** Rewrites `src` on every element that named an asset by its old path. */
 function followRename(world: World, asset: Asset, from: string): void {
 	const editor = getDocumentEditor(world);
-	const renamed = (input: AssetInput): AssetInput =>
-		isAssetRef(input) ? mapAssetInputs(input, renamed) : input === from ? asset.path : input;
 
 	for (const entity of world.query(AssetId)) {
 		const src = authoredElement(entity)?.props.src;
-		if (typeof src !== 'string' && !isAssetRef(src)) continue;
-		const next = renamed(src);
-		if (next !== src) editor.editProperty(entity, 'src', next);
+		if (src === from) editor.editProperty(entity, 'src', asset.path);
 	}
 }
 

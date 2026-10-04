@@ -10,8 +10,6 @@ import { context } from "./tools/context";
 import { capture } from "./tools/capture";
 import { check } from "./tools/check";
 import { exportScene } from "./tools/export";
-import { models } from "./tools/models";
-import { voices } from "./tools/voices";
 import { logs } from "./tools/logs";
 import { screenshot } from "./tools/screenshot";
 import { mediaProbe } from "./tools/media-probe";
@@ -43,8 +41,6 @@ export const catalog = [
   mediaWaveform,
   mediaListen,
   mediaSegment,
-  models,
-  voices,
   logs,
   screenshot,
   appWindow,

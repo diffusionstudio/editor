@@ -21,7 +21,7 @@ camelCase composition elements map 1:1 onto entities. Lowercase DOM vocabulary i
 | [`<video>`](./video.md) | A video clip: a rect whose intrinsic paint is the media `src` names. |
 | [`<image>`](./image.md) | A picture: a rect whose intrinsic paint is the media `src` names. |
 | [`<audio>`](./audio.md) | A clip with a sound and no picture; on the canvas, a waveform box. |
-| [`<captions>`](./captions.md) | A styled, timed transcript of the enclosing scene (or of a transcript file). |
+| [`<captions>`](./captions.md) | A styled, timed transcript, mounted from a transcript file or an asset that carries one. |
 | [`<adjustmentLayer>`](./adjustment-layer.md) | Draws nothing; its transform composes onto the clip directly below it, for as long as its own clip lasts. |
 | [`<html>`](./html.md) | A rect whose paint is real, reactive HTML drawn into the box by the browser. |
 | [`<surface>`](./surface-paint.md) | A rect whose paint is a canvas your `ref` draws into, sampled every frame. |
@@ -74,7 +74,7 @@ User-defined components are ordinary Solid components; they compose the elements
 
 - A `<text>` given neither `width` nor `height` sizes itself to what it says; giving it either fixes the box and wraps into it.
 - `<group>` and `<sequence>` never take a size: theirs is the union of their children's.
-- How media pixels map into the box is controlled by `objectFit` (default `"cover"`), never by the box itself. A generated asset's placeholder therefore always has a definite size, even before the asset exists.
+- How media pixels map into the box is controlled by `objectFit` (default `"cover"`), never by the box itself. A media element therefore always has a definite size, even before its asset has loaded.
 
 ## Common props
 

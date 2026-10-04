@@ -4,11 +4,7 @@
 
 import { z } from "zod";
 
-/**
- * What a generation request says, in the vocabulary the prompt input speaks.
- * The same shape the server-side adapters take, so a stored `usage_records`
- * config parses back into one (see `use-generation-records.ts`).
- */
+/** What a generation request says, in the vocabulary the prompt input speaks. */
 
 export const aspectRatioSchema = z.enum(["1:1", "4:3", "3:4", "16:9", "9:16"]);
 export type AspectRatio = z.infer<typeof aspectRatioSchema>;
@@ -58,3 +54,6 @@ export type VideoGenerationConfig = z.infer<typeof videoGenerationConfigSchema>;
 export type VoiceGenerationConfig = z.infer<typeof voiceGenerationConfigSchema>;
 export type AudioGenerationConfig = z.infer<typeof audioGenerationConfigSchema>;
 export type GenerationConfig = z.infer<typeof generationConfigSchema>;
+
+/** What can be done to an asset the selection shows. */
+export type TransformType = "upscale" | "removeBackground" | "addAudio";

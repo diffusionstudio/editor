@@ -1,6 +1,8 @@
 # media_listen
 
-Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; of a video only the audio track is analyzed. Needs a signed-in account.
+Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; of a video only the audio track is analyzed.
+
+**Temporarily unavailable in this version:** every call fails with `unsupported`.
 
 | | |
 | --- | --- |
@@ -16,7 +18,7 @@ Prompt a multimodal model for a semantic analysis of an audio track and return i
 | `start` | `Time` | `-s, --start <time>` | start of the segment to analyze (default: 0); timestamps in the analysis are relative to this point |
 | `end` | `Time` | `-e, --end <time>` | end of the segment to analyze (default: media duration) |
 
-With no `prompt` it returns a general description of what is heard; with one it answers that question about the audio (e.g. "who is speaking?", "what music is playing?", "summarize what is said"). See [the prompt guide](../../../guides/prompts/media-listen.md) for prompts that work. Costs credits, and needs a signed-in account; signed out, it fails with `sign-in-required`.
+With no `prompt` it returns a general description of what is heard; with one it answers that question about the audio (e.g. "who is speaking?", "what music is playing?", "summarize what is said"). See [the prompt guide](../../../guides/prompts/media-listen.md) for prompts that work.
 
 ## Output
 
@@ -28,4 +30,4 @@ One JSON object, the model's answer. `start`/`end` echo the analyzed window (in 
 
 ## Errors
 
-Fails when the path can't be resolved, the asset isn't a video or audio asset, `start`/`end` cross (`start` >= `end`), or no account is signed in.
+Fails when the path can't be resolved, the asset isn't a video or audio asset, or `start`/`end` cross (`start` >= `end`). In this version every call fails with `unsupported`.

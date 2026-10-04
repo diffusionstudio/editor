@@ -12,7 +12,7 @@ All [common props](./elements.md#common-props), plus:
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
-| `src` | `string \| AssetRef` | **required** | See [media.md](./media.md). |
+| `src` | `string` | **required** | See [media.md](./media.md). |
 | `objectFit` | `"cover" \| "contain" \| "fill"` | `"cover"` | How the source maps into the box. |
 | `frameRate` | `number` | `30` | Frames per second for a `src` naming a directory of numbered frames, which plays on `<image>` as footage does (see [media.md](./media.md#image-sequences)). Nothing for a still to read. |
 

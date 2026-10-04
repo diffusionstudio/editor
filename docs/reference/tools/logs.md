@@ -16,7 +16,7 @@ Recent console output from the running app (what the devtools console shows: pag
 | `since` | `number` | `--since <ms>` | only entries logged after this unix time in milliseconds; pass the last entry's `ts` to get only new ones |
 | `contains` | `string` | `-c, --contains <text>` | only entries whose message contains this (case-insensitive) |
 
-The buffer lives in the app's main process, so the log survives page reloads and project switches. Progress of long operations — an export's percentage, a generation landing — shows up here, so polling `logs` is how a caller follows work it started; pass `since` with the last `ts` seen so each poll returns only what is new.
+The buffer lives in the app's main process, so the log survives page reloads and project switches. Progress of long operations, such as an export's percentage, shows up here, so polling `logs` is how a caller follows work it started; pass `since` with the last `ts` seen so each poll returns only what is new.
 
 `level`, `since`, and `contains` filter first, then `tail` keeps the last entries of what is left. A message longer than 4000 characters is cut, ending in `… (N more chars)`.
 

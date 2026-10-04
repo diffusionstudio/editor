@@ -8,12 +8,11 @@ import { createMemo } from 'solid-js';
 import { AssetSelection } from '../traits';
 import { useLibrary } from '../library';
 
-import type { Asset, PartialAsset } from '@diffusionstudio/assets';
+import type { Asset } from '@diffusionstudio/assets';
 
 /**
- * Reactive read and write of the AssetSelection trait: the one library entry
- * the assets panel has picked and the inspector describes — an asset, or the
- * partial document of a generation without bytes. Shared between the two
+ * Reactive read and write of the AssetSelection trait: the one asset the
+ * assets panel has picked and the inspector describes. Shared between the two
  * sidebars, so it lives on the world rather than in either panel.
  */
 export function useAssetSelection() {
@@ -32,17 +31,9 @@ export function useAssetSelection() {
 		return lib.list().find((entry) => entry.id === current);
 	});
 
-	/** The picked partial document, when the pick is one; drops out as its bytes land. */
-	const partial = createMemo(() => {
-		const lib = library();
-		const current = id();
-		if (!lib || !current) return undefined;
-		return lib.partials().find((entry) => entry.id === current);
-	});
-
-	const select = (next: Asset | PartialAsset | string | null) => {
+	const select = (next: Asset | string | null) => {
 		world.set(AssetSelection, { id: typeof next === 'string' ? next : (next?.id ?? null) });
 	};
 
-	return { id, asset, partial, select };
+	return { id, asset, select };
 }

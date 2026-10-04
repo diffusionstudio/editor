@@ -27,7 +27,7 @@ import {
 import { TextField, TextFieldInput, TextFieldLabel } from "@/components/ui/text-field";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { trpc } from "@/lib/trpc";
+import { backend } from "@/lib/backend";
 
 import {
   DashboardDividedStack,
@@ -593,7 +593,7 @@ function DashboardAccountEmailPreferencesSection() {
   const handleChange = (column: EmailPreferenceColumn) => async (v: boolean) => {
     setOptimistic({ ...optimistic(), [column]: v });
     try {
-      await trpc.updateEmailPreference.mutate({ column, value: v });
+      await backend.updateEmailPreference({ column, value: v });
     } catch (err) {
       const next = { ...optimistic() };
       delete next[column];

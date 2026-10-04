@@ -22,7 +22,7 @@ import {
 } from "./shared";
 import { DashboardProPlanFeatures } from "./plans-view";
 
-import type { TopupCredits } from "@diffusionstudio/api-contract";
+import type { TopupCredits } from "@/lib/backend";
 
 function formatCredits(value: number): string {
   return value.toLocaleString();

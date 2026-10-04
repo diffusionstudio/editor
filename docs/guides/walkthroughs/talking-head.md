@@ -97,9 +97,9 @@ One line of copy is a job for the native `<text>` tag:
 
 ## 7. Captions (optional)
 
-Add captions **last**, after every cut and overlay is verified, so they transcribe the final audio at its final placement. Use the **`whisper`** preset aligned to the bottom, and start it where the hook ends — set both `start` and `sourceIn` to that timestamp so the transcript stays aligned (see `reference/jsx/captions.md` in the project's docs). Keep captions off overlays and off the important part of the A-roll.
+Add captions **last**, after every cut and overlay is verified. `src` names the recording's subtitle file (`.srt`, `.vtt`, or a transcript `.json`). Use the **`whisper`** preset aligned to the bottom, and start it where the hook ends — set both `start` and `sourceIn` to that timestamp so the transcript stays aligned (see `reference/jsx/captions.md` in the project's docs). Keep captions off overlays and off the important part of the A-roll.
 
 ```tsx
 {/* Hook holds until 00:03; captions begin there. */}
-<captions preset="whisper" verticalAlign="bottom" start={3} sourceIn={3} />
+<captions src="talk.srt" preset="whisper" verticalAlign="bottom" start={3} sourceIn={3} />
 ```

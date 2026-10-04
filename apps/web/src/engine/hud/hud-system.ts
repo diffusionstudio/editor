@@ -8,7 +8,7 @@ import {
 	HitRegions, Hovering, Name, Playback, RenderSurface, Root, Selected,
 	Sequential, ChildOf,
 	entityQuad, entityWorldMat, getMaskSelection, getSelectionMask, getSourceFailure,
-	invert2D, isGenerating,
+	invert2D,
 	multiply2D, rectToQuad, rotate2D, scale2D, store, transformPoint,
 	translate2D,
 } from '@diffusionstudio/runtime';
@@ -110,7 +110,7 @@ function drawHoverOutlines(world: World, ctx: Ctx2D, resolution: number): void {
  */
 function drawHeader(world: World, ctx: Ctx2D, entity: Entity, resolution: number): void {
 	const failure = getSourceFailure(entity);
-	const label = failure || (isGenerating(entity) ? 'Generating...' : entity.get(Name)?.value);
+	const label = failure || entity.get(Name)?.value;
 	if (!label) return;
 
 	const header = getHeaderLayout(world, entity, resolution);
