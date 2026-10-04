@@ -22,7 +22,6 @@ import type { ContextMenuExtra } from "@/components/context-menu-extras"
 
 export function AppContextMenu(props: { children: JSX.Element }) {
   const [extras, setExtras] = createSignal<ContextMenuExtra[]>([])
-  const [open, setOpen] = createSignal(false)
   let keepFocus = false
 
   const handleUndo = () => {
@@ -74,7 +73,7 @@ export function AppContextMenu(props: { children: JSX.Element }) {
   const selectFolderRow = (item: { onSelect?(): void }) => {
     if (!item.onSelect) return
     select(item)
-    setOpen(false)
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" }))
   }
 
   const checkCell = (checked: boolean | undefined) => (
@@ -126,7 +125,7 @@ export function AppContextMenu(props: { children: JSX.Element }) {
   }
 
   return (
-    <ContextMenu open={open()} onOpenChange={setOpen}>
+    <ContextMenu>
       <ContextMenuTrigger class="contents" onContextMenu={(event: MouseEvent) => setExtras(takeContextMenuItems(event))}>
         {props.children}
       </ContextMenuTrigger>

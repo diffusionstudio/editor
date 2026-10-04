@@ -421,9 +421,7 @@ export function PromptNodes() {
 function AttachMenu(props: { icon: string; label: string; class: string; onPick(): void; onUpload(): void }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger<typeof PromptInputAttachButton>
-        as={(triggerProps) => <PromptInputAttachButton {...triggerProps} icon={props.icon} label={props.label} class={props.class} />}
-      />
+      <DropdownMenuTrigger as={PromptInputAttachButton} icon={props.icon} label={props.label} class={props.class} />
       <DropdownMenuPortal>
         <DropdownMenuContent>
           <DropdownMenuItem onSelect={props.onPick}>
