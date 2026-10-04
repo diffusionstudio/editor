@@ -30,7 +30,7 @@ type CanvasProps = {
 
 let recentFolders: string[] = [];
 
-function moveToFolder(library: AssetLibrary, assets: Asset[]): ContextMenuExtra {
+function setFolder(library: AssetLibrary, assets: Asset[]): ContextMenuExtra {
   const current = new Set(assets.map(assetFolder));
   const checked = (folder: string) => current.size === 1 && current.has(folder);
   const move = (folder: string) => () => {
@@ -44,7 +44,7 @@ function moveToFolder(library: AssetLibrary, assets: Asset[]): ContextMenuExtra 
   const recents = recentFolders.filter((folder) => library.folders().has(folder));
 
   return {
-    label: "Move to folder",
+    label: "Set folder",
     items: [
       ...recents.map((folder) => ({ label: basename(folder), checked: checked(folder), onSelect: move(folder) })),
       ...(recents.length ? [{ separator: true as const }] : []),
@@ -120,8 +120,8 @@ export function Canvas(props: CanvasProps) {
       { label: "Add prompt", shortcut: "N", onSelect: () => insertPrompt(world, point) },
       ...(forkable ? [{ label: "Fork", shortcut: "⇧N", onSelect: () => forkPrompt(world, forkable) }] : []),
       ...(library && assets.length ? [
-        moveToFolder(library, assets),
         { separator: true as const },
+        setFolder(library, assets),
         { label: "Reveal in assets", shortcut: "⇧⌘O", onSelect: () => revealInAssets(world) },
         ...(finderPath(world) ? [{ label: "Reveal in finder", shortcut: "⌥⌘O", onSelect: () => revealInFinder(world) }] : []),
       ] : []),
