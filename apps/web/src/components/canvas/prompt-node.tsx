@@ -7,7 +7,7 @@ import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { authoredElement } from "@diffusionstudio/reconciler";
 import {
   Background, Computed, Culled, DEFAULT_BACKGROUND, HitRegions, Hidden, Hovering, Name, PromptNode, RenderSurface, Root, Selected,
-  Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, store,
+  Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, isPointerInEntity, pointInQuad, store,
 } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 import { useEngineContext } from "@/engine";
 import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
-import { useDerived, useEditor } from "@/engine/hooks";
+import { useDerived, useEditor, useSelection } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
 import { getMountedNameInput } from "@/engine/hud/name-input";
 import { PROMPT_SCALE, PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
-import { Pointer } from "@/engine/traits";
+import { Hud, Pointer } from "@/engine/traits";
 import {
   ALL_DURATION_OPTIONS,
   ALL_VIDEO_ASPECT_RATIO_OPTIONS,
@@ -267,6 +267,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   let box!: HTMLDivElement;
   let label!: HTMLDivElement;
   let ring!: HTMLDivElement;
+  let frameBox!: HTMLDivElement;
   let textarea!: HTMLTextAreaElement;
   let commitTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -276,6 +277,8 @@ function PromptNodeBox(props: { entity: Entity }) {
   );
   const selected = useDerived(() => props.entity.has(Selected));
   const hovered = useDerived(() => props.entity.has(Hovering));
+  const { nodes } = useSelection();
+  const showHandles = () => selected() && nodes().length === 1;
   const [pointerInside, setPointerInside] = createSignal(false);
   const name = useDerived(() => (getParentEntity(props.entity) === world.get(Root) ? props.entity.get(Name)?.value ?? "" : ""));
   const config = createMemo(() => toConfig(authored(), library()));
@@ -296,7 +299,7 @@ function PromptNodeBox(props: { entity: Entity }) {
     const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const scale = PROMPT_SCALE / resolution;
     const screenScale = Math.hypot(matrix.a, matrix.b) * scale;
-    const ringWidth = (hovered() || pointerInside() ? 2 : 2 / resolution) / screenScale;
+    const ringWidth = (selected() ? 2 / resolution : 2) / screenScale;
     const layoutWidth = (computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE;
 
     box.style.width = `${layoutWidth}px`;
@@ -305,6 +308,8 @@ function PromptNodeBox(props: { entity: Entity }) {
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
     ring.style.inset = `${-1 - ringWidth / 2}px`;
     ring.style.borderWidth = `${ringWidth}px`;
+    frameBox.style.setProperty("--handle", `${9 / screenScale}px`);
+    frameBox.style.setProperty("--handle-border", `${1 / screenScale}px`);
     label.style.transform = `scale(${1 / screenScale}) translateY(-22px)`;
     label.style.maxWidth = `${layoutWidth * screenScale + 4}px`;
     label.style.visibility = getMountedNameInput()?.entity === props.entity ? "hidden" : "";
@@ -334,10 +339,29 @@ function PromptNodeBox(props: { entity: Entity }) {
     if (!props.entity.has(Selected)) editor.select([props.entity]);
   };
 
+  const canvasHitsThis = (event: PointerEvent): boolean => {
+    const surface = world.get(RenderSurface);
+    if (!(surface?.canvas instanceof HTMLCanvasElement)) return false;
+    const rect = surface.canvas.getBoundingClientRect();
+    const point = { x: (event.clientX - rect.left) * surface.resolution, y: (event.clientY - rect.top) * surface.resolution };
+    const regions = world.get(HitRegions)?.list ?? [];
+
+    for (let index = regions.length - 1; index >= 0; index--) {
+      const { target } = regions[index]!;
+      if (target.kind === "entity") {
+        if (target.id.isAlive() && isPointerInEntity(world, target.id, point)) return target.id === props.entity;
+      } else if (pointInQuad(point.x, point.y, target.quad)) {
+        return target.entity === props.entity;
+      }
+    }
+    return false;
+  };
+
   const handlePress = (event: PointerEvent) => {
     if (event.button !== 0 || isControl(event.target) || world.get(Tool)?.value === ToolType.HAND) return;
-    if (props.entity.has(Selected)) return;
+    if (props.entity.has(Selected) || canvasHitsThis(event)) return;
     editor.select(props.entity, { extend: event.shiftKey });
+    world.set(Hud, { mode: "moving" });
     delayedPresses.add(event);
   };
 
@@ -718,6 +742,13 @@ function PromptNodeBox(props: { entity: Entity }) {
         class="pointer-events-none absolute border-solid border-[#008CFF]"
         classList={{ invisible: !selected() && !hovered() && !pointerInside() }}
       />
+      <div ref={frameBox} class="pointer-events-none absolute -inset-px" classList={{ invisible: !showHandles() }}>
+        <For each={["left-0 top-0 -translate-1/2", "right-0 top-0 translate-x-1/2 -translate-y-1/2", "right-0 bottom-0 translate-1/2", "left-0 bottom-0 -translate-x-1/2 translate-y-1/2"]}>
+          {(corner) => (
+            <div class={`absolute size-(--handle) border-[length:var(--handle-border)] border-solid border-[#008CFF] bg-white ${corner}`} />
+          )}
+        </For>
+      </div>
     </div>
   );
 }
