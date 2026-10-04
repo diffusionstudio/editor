@@ -6,7 +6,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, o
 import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { authoredElement } from "@diffusionstudio/reconciler";
 import {
-  Background, Computed, Culled, DEFAULT_BACKGROUND, Hidden, PromptNode, RenderSurface, Root, Selected, Tool, ToolType,
+  Background, Computed, Culled, DEFAULT_BACKGROUND, Hidden, Hovering, PromptNode, RenderSurface, Root, Selected, Tool, ToolType,
   colorToHex, entityWorldMat, getEntityBounds, store,
 } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
@@ -20,6 +20,7 @@ import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
 import { PROMPT_SCALE, PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
+import { Pointer } from "@/engine/traits";
 import {
   ALL_DURATION_OPTIONS,
   ALL_VIDEO_ASPECT_RATIO_OPTIONS,
@@ -139,6 +140,7 @@ export function PromptNodes() {
   const world = useWorld();
   const prompts = useQuery(PromptNode);
   const background = useTrait(world.get(Root)!, Background);
+  const pressed = useDerived(() => world.get(Pointer)?.phase === "pressed");
 
   const canvas = () => {
     const target = world.get(RenderSurface)?.canvas;
@@ -175,6 +177,7 @@ export function PromptNodes() {
   return (
     <div
       class="pointer-events-none absolute inset-0 overflow-hidden"
+      classList={{ "[&_*]:pointer-events-none!": pressed() }}
       style={{ "--canvas-background": colorToHex(background()?.value ?? DEFAULT_BACKGROUND) }}
       on:wheel={handleWheel}
       on:pointerdown={handlePointerDown}
@@ -197,6 +200,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   const { generate: generateAudio } = useGenerateAudio();
 
   let box!: HTMLDivElement;
+  let ring!: HTMLDivElement;
   let textarea!: HTMLTextAreaElement;
   let commitTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -205,6 +209,7 @@ function PromptNodeBox(props: { entity: Entity }) {
     (a, b) => JSON.stringify(a) === JSON.stringify(b),
   );
   const selected = useDerived(() => props.entity.has(Selected));
+  const hovered = useDerived(() => props.entity.has(Hovering));
   const config = createMemo(() => toConfig(authored(), library()));
 
   const [draft, setDraft] = createSignal(config().prompt);
@@ -222,11 +227,14 @@ function PromptNodeBox(props: { entity: Entity }) {
     const eid = props.entity.id();
     const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const scale = PROMPT_SCALE / resolution;
+    const ringWidth = (hovered() ? 2 : 2 / resolution) / (Math.hypot(matrix.a, matrix.b) * scale);
 
     box.style.width = `${(computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE}px`;
     box.style.height = `${(computed.height[eid] ?? PROMPT_SIZE.height) / PROMPT_SCALE}px`;
     box.style.transform = `matrix(${matrix.a * scale}, ${matrix.b * scale}, ${matrix.c * scale}, ${matrix.d * scale}, ${matrix.e / resolution}, ${matrix.f / resolution})`;
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
+    ring.style.inset = `${-1 - ringWidth / 2}px`;
+    ring.style.borderWidth = `${ringWidth}px`;
 
     if (takePromptFocus(props.entity)) textarea.focus({ preventScroll: true });
   });
@@ -406,8 +414,7 @@ function PromptNodeBox(props: { entity: Entity }) {
     <div
       ref={box}
       data-prompt-node
-      class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
-      classList={{ "border-primary": selected(), "border-border": !selected() }}
+      class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border border-border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
     >
       <Switch>
         <Match when={imageConfig()}>
@@ -615,6 +622,11 @@ function PromptNodeBox(props: { entity: Entity }) {
           </div>
         </div>
       </Show>
+      <div
+        ref={ring}
+        class="pointer-events-none absolute border-solid border-[#008CFF]"
+        classList={{ invisible: !selected() && !hovered() }}
+      />
     </div>
   );
 }
