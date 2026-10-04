@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js";
 import { useQuery, useWorld } from "@diffusionstudio/koota-solid";
 import { authoredElement } from "@diffusionstudio/reconciler";
 import {
@@ -124,11 +124,14 @@ const sameValue = (a: unknown, b: unknown) =>
   (unsetValue(a) && unsetValue(b)) || JSON.stringify(a) === JSON.stringify(b);
 
 const MIDDLE_BUTTON = 1;
+const GESTURE_GAP = 250;
 
-function scrollsItself(event: WheelEvent): boolean {
+const zooming = (event: WheelEvent) => event.ctrlKey || event.metaKey;
+
+function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
   const target = event.target;
-  if (!(target instanceof HTMLTextAreaElement) || event.ctrlKey || event.metaKey) return false;
-  return Math.abs(event.deltaY) >= Math.abs(event.deltaX) && target.scrollHeight > target.clientHeight;
+  if (!(target instanceof HTMLTextAreaElement) || !target.closest("[data-prompt-node]") || zooming(event)) return null;
+  return Math.abs(event.deltaY) >= Math.abs(event.deltaX) && target.scrollHeight > target.clientHeight ? target : null;
 }
 
 export function PromptNodes() {
@@ -140,9 +143,22 @@ export function PromptNodes() {
     return target instanceof HTMLCanvasElement ? target : undefined;
   };
 
+  let lastWheel = -Infinity;
+  let textOwner: HTMLTextAreaElement | null = null;
+
+  const trackGesture = (event: WheelEvent) => {
+    if (!event.isTrusted) return;
+    if (event.timeStamp - lastWheel > GESTURE_GAP) textOwner = scrollableText(event);
+    lastWheel = event.timeStamp;
+    if (textOwner && event.target !== textOwner && !zooming(event)) event.stopPropagation();
+  };
+
+  onMount(() => window.addEventListener("wheel", trackGesture, { capture: true, passive: true }));
+  onCleanup(() => window.removeEventListener("wheel", trackGesture, { capture: true }));
+
   const handleWheel = (event: WheelEvent) => {
     const target = canvas();
-    if (!target || scrollsItself(event)) return;
+    if (!target || (event.target === textOwner && !zooming(event))) return;
     event.preventDefault();
     target.dispatchEvent(new WheelEvent(event.type, event));
   };
@@ -385,6 +401,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   return (
     <div
       ref={box}
+      data-prompt-node
       class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border bg-input p-2"
       classList={{ "border-primary": selected(), "border-border": !selected() }}
     >
