@@ -3,12 +3,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js";
+import { Not, Or } from "koota";
 import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { generate, getAssetSpec } from "@diffusionstudio/jsx";
 import { Audio, ImagePaint, Rect, VideoPaint, authoredElement } from "@diffusionstudio/reconciler";
 import {
-  AssetId, Background, Computed, Culled, DEFAULT_BACKGROUND, HitRegions, Hidden, Hovering, Name, PaintType, PromptNode, RenderSurface, Root,
-  Selected, Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, isPointerInEntity, pointInQuad, store,
+  AssetId, Background, Computed, Culled, DEFAULT_BACKGROUND, Geometry, Group, HitRegions, Hidden, Hovering, Name, PaintType, PromptNode,
+  RenderSurface, Root, Selected, Sequential, Tool, ToolType, colorToHex, entityQuad, entityWorldMat, getEntityBounds, getMaskSelection,
+  getParentEntity, getSelectionMask, invert2D, isPointerInEntity, multiply2D, pointInQuad, rectToQuad, store, transformPoint, translate2D,
 } from "@diffusionstudio/runtime";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,13 +22,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 import { useEngineContext } from "@/engine";
 import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
-import { useDerived, useEditor, useSelection } from "@/engine/hooks";
+import { useDerived, useEditor } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
 import { useCursor } from "@/hooks/use-cursor";
 import { getMountedNameInput } from "@/engine/hud/name-input";
 import { AUDIO_SIZE } from "@/engine/insert-asset";
 import { PROMPT_SCALE, PROMPT_SIZE, generateRef, generationOf, setPromptText, takePromptFocus, templateOf, withGeneration } from "@/engine/prompt";
-import { Hud, Pointer } from "@/engine/traits";
+import { getMarqueeQuad } from "@/engine/input/snapping";
+import { Hud, Keys, Pointer, SnapLines } from "@/engine/traits";
 import {
   ALL_DURATION_OPTIONS,
   ASPECT_RATIO_DIMENSIONS,
@@ -55,8 +58,8 @@ import { resolveMedia } from "@/components/genai/selection";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateSpec } from "@diffusionstudio/jsx";
-import type { AABB } from "@diffusionstudio/runtime";
-import type { Entity } from "koota";
+import type { AABB, Point, Quad, SelectionMask } from "@diffusionstudio/runtime";
+import type { Entity, World } from "koota";
 import type { PromptInputMode } from "@/components/genai/prompt-input";
 import type { AspectRatio, GenerationConfig } from "@/components/genai/schemas";
 
@@ -160,6 +163,7 @@ const delayedPresses = new WeakSet<PointerEvent>();
 type Picking = { entity: Entity; pick(assetId: string): boolean };
 
 const [picking, setPicking] = createSignal<Picking | null>(null);
+const [pointerBox, setPointerBox] = createSignal<Entity | null>(null);
 
 const zooming = (event: WheelEvent) => event.ctrlKey || event.metaKey;
 
@@ -167,6 +171,35 @@ function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
   const target = event.target;
   if (!(target instanceof HTMLTextAreaElement) || !target.closest("[data-prompt-node]") || zooming(event)) return null;
   return Math.abs(event.deltaY) >= Math.abs(event.deltaX) && target.scrollHeight > target.clientHeight ? target : null;
+}
+
+function sizeReadout(world: World, mask: SelectionMask, selection: Entity[]) {
+  if (selection.length !== 1) {
+    const inverse = invert2D(entityWorldMat(world, null));
+    inverse.e = 0;
+    inverse.f = 0;
+    const size = transformPoint(inverse, mask.width, mask.height);
+    return { x: mask.mat.e, y: mask.mat.f + mask.height, rotation: 0, center: mask.width / 2, width: size.x, height: size.y };
+  }
+
+  const eid = selection[0]!.id();
+  const computed = store(world, Computed);
+  const [left, right] = [...entityQuad(world, selection[0]!)].sort((a, b) => b.y - a.y).slice(0, 2).sort((a, b) => a.x - b.x);
+  return {
+    x: left!.x,
+    y: left!.y,
+    rotation: Math.atan2(right!.y - left!.y, right!.x - left!.x),
+    center: Math.hypot(right!.x - left!.x, right!.y - left!.y) / 2,
+    width: (computed.width[eid] ?? 0) * Math.abs(computed.scaleX[eid] ?? 1),
+    height: (computed.height[eid] ?? 0) * Math.abs(computed.scaleY[eid] ?? 1),
+  };
+}
+
+function handleQuads(mask: SelectionMask, resolution: number): Quad[] {
+  const size = Math.round(8 * resolution);
+  const offset = Math.round(size / 2);
+  const corners: [number, number][] = [[-offset, -offset], [mask.width - offset, -offset], [mask.width - offset, mask.height - offset], [-offset, mask.height - offset]];
+  return corners.map(([x, y]) => rectToQuad(multiply2D(mask.mat, translate2D(x, y)), size, size));
 }
 
 export function PromptNodes() {
@@ -190,6 +223,12 @@ export function PromptNodes() {
   const { frame } = useEngineContext();
 
   let layer!: HTMLDivElement;
+  let snapGuides!: SVGPathElement;
+  let hoverOutlines!: SVGPathElement;
+  let outline!: SVGPathElement;
+  let handles!: SVGPathElement;
+  let sizeBadge!: HTMLDivElement;
+  let marquee!: SVGPathElement;
   let lastForwardedPress = -Infinity;
   let pendingPress: PointerEvent | null = null;
 
@@ -209,6 +248,45 @@ export function PromptNodes() {
     frame();
     layer.style.cursor = canvas()?.style.cursor ?? "";
     flushPress();
+  });
+
+  createEffect(() => {
+    frame();
+    const resolution = world.get(RenderSurface)?.resolution ?? 1;
+    const line = Math.round(resolution) / resolution;
+    const at = (x: number, y: number) => `${x / resolution} ${y / resolution}`;
+    const path = (quad: Quad) => `M${quad.map((point) => at(point.x, point.y)).join("L")}Z`;
+    const keys = world.get(Keys)?.held;
+
+    const cross = Math.round(3 * resolution);
+    const crossAt = ({ x, y }: Point) => `M${at(x - cross, y - cross)}L${at(x + cross, y + cross)}M${at(x - cross, y + cross)}L${at(x + cross, y - cross)}`;
+    const snaps = keys?.has("mod") ? [] : world.get(SnapLines)?.list ?? [];
+    snapGuides.setAttribute("d", snaps.map(({ from, to }) => `M${at(from.x, from.y)}L${at(to.x, to.y)}${crossAt(from)}${crossAt(to)}`).join(""));
+    snapGuides.setAttribute("stroke-width", `${line}`);
+
+    const panning = world.get(Tool)?.value === ToolType.HAND || (keys?.has(" ") ?? false);
+    const boxed = pointerBox();
+    const hovered = panning ? [] : boxed?.isAlive() ? [boxed] : world.query(Hovering, Or(Geometry, Group), Not(Sequential), Not(Culled));
+    hoverOutlines.setAttribute("d", hovered.map((entity) => path(entityQuad(world, entity))).join(""));
+    hoverOutlines.setAttribute("stroke-width", `${Math.round(2 * resolution) / resolution}`);
+
+    const mask = world.get(Hud)?.mode === "moving" ? null : getSelectionMask(world);
+    const selection = mask ? getMaskSelection(world) : [];
+    outline.setAttribute("d", mask ? [...selection.map((entity) => entityQuad(world, entity)), rectToQuad(mask.mat, mask.width, mask.height)].map(path).join("") : "");
+    outline.setAttribute("stroke-width", `${(selection.length === 1 ? 2 : Math.round(resolution)) / resolution}`);
+    handles.setAttribute("d", mask ? handleQuads(mask, resolution).map(path).join("") : "");
+    handles.setAttribute("stroke-width", `${line}`);
+
+    const marqueeQuad = getMarqueeQuad(world);
+    marquee.setAttribute("d", marqueeQuad ? path(marqueeQuad) : "");
+    marquee.setAttribute("stroke-width", `${line}`);
+
+    sizeBadge.style.display = mask ? "" : "none";
+    if (!mask) return;
+    const { x, y, rotation, center, width, height } = sizeReadout(world, mask, selection);
+    const text = `${Math.round(width * 100) / 100}x${Math.round(height * 100) / 100}`;
+    if (sizeBadge.textContent !== text) sizeBadge.textContent = text;
+    sizeBadge.style.transform = `translate(${x / resolution}px, ${y / resolution}px) rotate(${rotation}rad) translate(${center / resolution}px, 16px) translate(-50%, -9px)`;
   });
 
   onMount(() => {
@@ -316,6 +394,20 @@ export function PromptNodes() {
       <For each={stacked()}>
         {(entity) => <PromptNodeBox entity={entity} />}
       </For>
+      <svg class="absolute inset-0 z-[1] size-full">
+        <path ref={snapGuides} fill="none" stroke="#F43535" />
+        <path ref={hoverOutlines} fill="none" stroke="#008CFF" />
+        <path ref={outline} fill="none" stroke="#008CFF" />
+        <path ref={handles} fill="#FFFFFF" stroke="#008CFF" />
+      </svg>
+      <div
+        ref={sizeBadge}
+        class="absolute left-0 top-0 z-[1] h-4 origin-top-left whitespace-nowrap rounded-[3px] bg-[#008CFF] px-1 text-white"
+        style={{ font: "11px/18px Inter, sans-serif" }}
+      />
+      <svg class="absolute inset-0 z-[1] size-full">
+        <path ref={marquee} fill="#008CFF" fill-opacity="0.15" stroke="#008CFF" />
+      </svg>
       <div
         ref={(element) => cursor.set(element, "pick")}
         class="pointer-events-auto absolute inset-0"
@@ -356,8 +448,6 @@ function PromptNodeBox(props: { entity: Entity }) {
 
   let box!: HTMLDivElement;
   let label!: HTMLDivElement;
-  let ring!: HTMLDivElement;
-  let frameBox!: HTMLDivElement;
   let textarea!: HTMLTextAreaElement;
   let commitTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -366,10 +456,6 @@ function PromptNodeBox(props: { entity: Entity }) {
     (a, b) => JSON.stringify(a) === JSON.stringify(b),
   );
   const selected = useDerived(() => props.entity.has(Selected));
-  const hovered = useDerived(() => props.entity.has(Hovering));
-  const { nodes } = useSelection();
-  const showHandles = () => selected() && nodes().length === 1;
-  const [pointerInside, setPointerInside] = createSignal(false);
   const name = useDerived(() => (getParentEntity(props.entity) === world.get(Root) ? props.entity.get(Name)?.value ?? "" : ""));
   const config = createMemo(() => toConfig(authored(), library()));
 
@@ -389,17 +475,12 @@ function PromptNodeBox(props: { entity: Entity }) {
     const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const scale = PROMPT_SCALE / resolution;
     const screenScale = Math.hypot(matrix.a, matrix.b) * scale;
-    const ringWidth = (selected() ? 2 / resolution : 2) / screenScale;
     const layoutWidth = (computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE;
 
     box.style.width = `${layoutWidth}px`;
     box.style.height = `${(computed.height[eid] ?? PROMPT_SIZE.height) / PROMPT_SCALE}px`;
     box.style.transform = `matrix(${matrix.a * scale}, ${matrix.b * scale}, ${matrix.c * scale}, ${matrix.d * scale}, ${matrix.e / resolution}, ${matrix.f / resolution})`;
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
-    ring.style.inset = `${-1 - ringWidth / 2}px`;
-    ring.style.borderWidth = `${ringWidth}px`;
-    frameBox.style.setProperty("--handle", `${9 / screenScale}px`);
-    frameBox.style.setProperty("--handle-border", `${1 / screenScale}px`);
     label.style.transform = `scale(${1 / screenScale}) translateY(-22px)`;
     label.style.maxWidth = `${layoutWidth * screenScale + 4}px`;
     label.style.visibility = getMountedNameInput()?.entity === props.entity ? "hidden" : "";
@@ -444,6 +525,11 @@ function PromptNodeBox(props: { entity: Entity }) {
   onCleanup(() => {
     if (picking()?.entity === props.entity) setPicking(null);
   });
+
+  const leaveBox = () => {
+    if (pointerBox() === props.entity) setPointerBox(null);
+  };
+  onCleanup(leaveBox);
 
   createEffect(on(picking, (current, previous) => {
     if (!current && previous?.entity === props.entity) textarea.focus({ preventScroll: true });
@@ -663,8 +749,8 @@ function PromptNodeBox(props: { entity: Entity }) {
       data-prompt-node
       class="pointer-events-auto absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border border-border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
       on:pointerdown={handlePress}
-      on:pointerenter={() => setPointerInside(true)}
-      on:pointerleave={() => setPointerInside(false)}
+      on:pointerenter={() => setPointerBox(props.entity)}
+      on:pointerleave={leaveBox}
     >
       <div
         ref={label}
@@ -887,18 +973,6 @@ function PromptNodeBox(props: { entity: Entity }) {
           </div>
         </div>
       </Show>
-      <div
-        ref={ring}
-        class="pointer-events-none absolute border-solid border-[#008CFF]"
-        classList={{ invisible: !selected() && !hovered() && !pointerInside() }}
-      />
-      <div ref={frameBox} class="pointer-events-none absolute -inset-px" classList={{ invisible: !showHandles() }}>
-        <For each={["left-0 top-0 -translate-1/2", "right-0 top-0 translate-x-1/2 -translate-y-1/2", "right-0 bottom-0 translate-1/2", "left-0 bottom-0 -translate-x-1/2 translate-y-1/2"]}>
-          {(corner) => (
-            <div class={`absolute size-(--handle) border-[length:var(--handle-border)] border-solid border-[#008CFF] bg-white ${corner}`} />
-          )}
-        </For>
-      </div>
     </div>
   );
 }
