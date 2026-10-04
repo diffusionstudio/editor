@@ -824,6 +824,11 @@ export function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
   );
 }
 
+function focusSearch(event: Event, search: HTMLInputElement): void {
+  event.preventDefault();
+  setTimeout(() => search.focus());
+}
+
 type ModelMenuProps = {
   searchPlaceholder: string;
   options: { id: string; name: string; description: string; icon: string }[];
@@ -833,6 +838,7 @@ type ModelMenuProps = {
 
 export function ModelMenu(props: ModelMenuProps) {
   const [query, setQuery] = createSignal("");
+  let search!: HTMLInputElement;
 
   const filteredOptions = createMemo(() => {
     const q = query().trim().toLowerCase();
@@ -871,8 +877,9 @@ export function ModelMenu(props: ModelMenuProps) {
         )}
       />
       <DropdownMenuPortal>
-        <DropdownMenuContent class="w-[340px] p-0">
+        <DropdownMenuContent class="w-[340px] p-0" onOpenAutoFocus={(event: Event) => focusSearch(event, search)}>
           <SearchInput
+            ref={search}
             placeholder={props.searchPlaceholder}
             value={query()}
             onValue={setQuery}
@@ -927,6 +934,7 @@ export function VoiceMenu(props: VoiceMenuProps) {
   const [playingVoice, setPlayingVoice] = createSignal<string | null>(null);
 
   let audioRef: HTMLAudioElement | undefined;
+  let search!: HTMLInputElement;
 
   const selectedLabel = () =>
     props.options.find((o) => o.value === props.value())?.label ?? props.value();
@@ -994,8 +1002,9 @@ export function VoiceMenu(props: VoiceMenuProps) {
         )}
       />
       <PopoverPortal>
-        <PopoverContent class="w-[340px] p-0 rounded-xl">
+        <PopoverContent class="w-[340px] p-0 rounded-xl" onOpenAutoFocus={(event: Event) => focusSearch(event, search)}>
           <SearchInput
+            ref={search}
             placeholder="Search in voices"
             value={query()}
             onValue={setQuery}

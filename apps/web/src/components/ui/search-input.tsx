@@ -8,6 +8,7 @@ export type SearchInputProps = {
   placeholder: string;
   value: string;
   onValue: (value: string) => void;
+  ref?: HTMLInputElement | ((element: HTMLInputElement) => void);
 };
 
 export function SearchInput(props: SearchInputProps) {
@@ -15,6 +16,7 @@ export function SearchInput(props: SearchInputProps) {
     <div class="mx-2 relative flex h-11 items-center border-b border-border">
       <Icon name="search" class="text-muted-foreground" />
       <input
+        ref={props.ref}
         type="text"
         value={props.value}
         onInput={(e) => props.onValue(e.currentTarget.value)}
