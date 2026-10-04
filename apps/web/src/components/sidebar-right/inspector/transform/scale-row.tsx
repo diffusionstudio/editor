@@ -23,6 +23,7 @@ import type { Entity } from "koota";
 
 export type ScaleRowProps = {
   node: Entity;
+  keyframes?: boolean;
   onRemoveAddon(): void;
 };
 
@@ -115,7 +116,7 @@ export function ScaleRow(props: ScaleRowProps) {
           autoSelect
           sliderEnabled
           limitEvents
-          keyframe={<Keyframe target={props.node} property="scale" />}
+          keyframe={props.keyframes === false ? undefined : <Keyframe target={props.node} property="scale" />}
         />
         <SegmentedIconTabs
           value={() => scaleMode()}
@@ -132,7 +133,7 @@ export function ScaleRow(props: ScaleRowProps) {
             autoSelect
             sliderEnabled
             limitEvents
-            keyframe={<Keyframe target={props.node} property="scaleX" />}
+            keyframe={props.keyframes === false ? undefined : <Keyframe target={props.node} property="scaleX" />}
           />
           <ControlledTextField
             icon={<Icon name="prop-y-position" />}
@@ -143,7 +144,7 @@ export function ScaleRow(props: ScaleRowProps) {
             autoSelect
             sliderEnabled
             limitEvents
-            keyframe={<Keyframe target={props.node} property="scaleY" />}
+            keyframe={props.keyframes === false ? undefined : <Keyframe target={props.node} property="scaleY" />}
           />
         </Show>
       </ContextMenuTrigger>

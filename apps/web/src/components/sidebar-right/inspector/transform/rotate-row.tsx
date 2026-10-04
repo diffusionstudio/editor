@@ -23,6 +23,7 @@ import type { Entity } from 'koota';
 
 type RotateRowProps = {
   node: Entity;
+  keyframes?: boolean;
   onRemoveAddon(): void;
 };
 
@@ -74,7 +75,7 @@ export function RotateRow(props: RotateRowProps) {
           autoSelect
           sliderEnabled
           limitEvents
-          keyframe={<Keyframe target={props.node} property="rotation" />}
+          keyframe={props.keyframes === false ? undefined : <Keyframe target={props.node} property="rotation" />}
         />
         <div class="flex flex-1 gap-px rounded-md overflow-hidden">
           <Tooltip>

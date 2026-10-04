@@ -38,6 +38,7 @@ import type { Entity } from "koota";
 
 type LayoutPanelProps = {
   selection: Entity[];
+  keyframes?: boolean;
 };
 
 const DEFAULT_WIDTH = 1920;
@@ -257,7 +258,7 @@ export function LayoutPanel(props: LayoutPanelProps) {
           limitEvents
           skipEmpty
           sliderEnabled
-          keyframe={<Keyframe target={entity()} property="width" />}
+          keyframe={props.keyframes === false ? undefined : <Keyframe target={entity()} property="width" />}
         />
         <ControlledTextField
           class="group"
@@ -269,7 +270,7 @@ export function LayoutPanel(props: LayoutPanelProps) {
           limitEvents
           skipEmpty
           sliderEnabled
-          keyframe={<Keyframe target={entity()} property="height" />}
+          keyframe={props.keyframes === false ? undefined : <Keyframe target={entity()} property="height" />}
         />
       </ControlRow>
 

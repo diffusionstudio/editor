@@ -22,6 +22,7 @@ import type { Entity } from "koota";
 
 export type OffsetRowProps = {
   node: Entity;
+  keyframes?: boolean;
   onRemoveAddon(): void;
 };
 
@@ -59,7 +60,7 @@ export function OffsetRow(props: OffsetRowProps) {
           step={1}
           autoSelect
           sliderEnabled
-          keyframe={<Keyframe target={props.node} property="offsetX" />}
+          keyframe={props.keyframes === false ? undefined : <Keyframe target={props.node} property="offsetX" />}
         />
         <ControlledTextField
           icon={<Icon name="prop-y-position" />}
@@ -68,7 +69,7 @@ export function OffsetRow(props: OffsetRowProps) {
           step={1}
           autoSelect
           sliderEnabled
-          keyframe={<Keyframe target={props.node} property="offsetY" />}
+          keyframe={props.keyframes === false ? undefined : <Keyframe target={props.node} property="offsetY" />}
         />
       </ContextMenuTrigger>
       <ContextMenuContent>

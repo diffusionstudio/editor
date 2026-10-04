@@ -39,6 +39,7 @@ import type { Entity } from "koota";
 
 type TransformSettingsProps = {
   selection: Entity[];
+  keyframes?: boolean;
 };
 
 type TransformAddon = 'rotate' | 'anchor' | 'offset' | 'scale' | 'skew' | 'constraints';
@@ -158,7 +159,7 @@ export function TransformSettings(props: TransformSettingsProps) {
         <div class="grid grid-cols-2 gap-2">
           <ControlledTextField
             icon={<Icon name="prop-x-position" />}
-            keyframe={<Keyframe target={entity()} property="x" />}
+            keyframe={props.keyframes === false ? undefined : <Keyframe target={entity()} property="x" />}
             value={positionX()}
             onNumber={updatePositionX}
             step={1}
@@ -168,7 +169,7 @@ export function TransformSettings(props: TransformSettingsProps) {
           />
           <ControlledTextField
             icon={<Icon name="prop-y-position" />}
-            keyframe={<Keyframe target={entity()} property="y" />}
+            keyframe={props.keyframes === false ? undefined : <Keyframe target={entity()} property="y" />}
             value={positionY()}
             onNumber={updatePositionY}
             step={1}
@@ -184,7 +185,7 @@ export function TransformSettings(props: TransformSettingsProps) {
       </Show>
 
       <Show when={showAddon('rotate')}>
-        <RotateRow node={entity()} onRemoveAddon={() => toggleAddon('rotate', false)} />
+        <RotateRow node={entity()} keyframes={props.keyframes} onRemoveAddon={() => toggleAddon('rotate', false)} />
       </Show>
 
       <Show when={showAddon('anchor')}>
@@ -192,11 +193,11 @@ export function TransformSettings(props: TransformSettingsProps) {
       </Show>
 
       <Show when={showAddon('offset')}>
-        <OffsetRow node={entity()} onRemoveAddon={() => toggleAddon('offset', false)} />
+        <OffsetRow node={entity()} keyframes={props.keyframes} onRemoveAddon={() => toggleAddon('offset', false)} />
       </Show>
 
       <Show when={showAddon('scale')}>
-        <ScaleRow node={entity()} onRemoveAddon={() => toggleAddon('scale', false)} />
+        <ScaleRow node={entity()} keyframes={props.keyframes} onRemoveAddon={() => toggleAddon('scale', false)} />
       </Show>
 
       <Show when={showAddon('skew')}>

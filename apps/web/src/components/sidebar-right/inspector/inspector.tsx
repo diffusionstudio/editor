@@ -136,11 +136,11 @@ export function Inspector() {
           </Show>
 
           <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment", "prompt")}>
-            <TransformSettings selection={nodes()} />
+            <TransformSettings selection={nodes()} keyframes={!includesTarget("prompt")} />
           </Show>
 
           <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path", "prompt")}>
-            <LayoutPanel selection={nodes()} />
+            <LayoutPanel selection={nodes()} keyframes={!includesTarget("prompt")} />
           </Show>
 
           <Show when={includesTarget("prompt")}>
