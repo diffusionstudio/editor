@@ -24,6 +24,7 @@ import {
 	getParentNode,
 	getSelection,
 	isGroupLike,
+	isPrompt,
 	isSequence,
 	setPlayhead,
 	shuttlePlayback,
@@ -32,6 +33,7 @@ import {
 	togglePlayback,
 } from '@diffusionstudio/runtime';
 import { Not, Or } from 'koota';
+import { toast } from 'somoto';
 
 import { tidySelection } from '../align';
 import { zoomBy, zoomTo, zoomToFit, zoomToSelection } from '../camera';
@@ -39,6 +41,7 @@ import { applyClipPaths, cancelClipPath } from '../clip-path';
 import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
+import { syncKeyframe } from '../keyframes';
 import { cancelObjectMask, getObjectTrack, trackObjectMask, undoMaskStroke } from '../object-mask';
 import { forkSelection, insertPrompt } from '../prompt';
 import { splitAtPlayhead } from '../split';
@@ -343,6 +346,40 @@ export function toggleSelectionHidden(world: World): void {
 	for (const entity of selected) editor.editProperty(entity, 'hidden', hide);
 }
 
+const OPACITY_WINDOW = 500;
+
+let opacityTyped = { digits: '', at: -Infinity };
+
+function setSelectionOpacity(world: World, percent: number): boolean {
+	const editor = getDocumentEditor(world);
+	const selected = getSelection(world).filter((entity) => !isPrompt(entity));
+	if (!selected.length) return false;
+
+	const value = percent / 100;
+	for (const entity of selected) {
+		if (Math.round((entity.get(Computed)?.opacity ?? 1) * 100) === percent) continue;
+		editor.editProperty(entity, 'opacity', value === 1 ? false : value);
+		syncKeyframe(world, editor, entity, 'opacity', value);
+	}
+	toast(`Opacity set to ${percent}%`, { id: 'opacity', classNames: { toast: 'inset-x-0 mx-auto w-fit!' } });
+	return true;
+}
+
+function typedPercent(digits: string): number {
+	if (digits.length > 1) return Number(digits);
+	return digits === '0' ? 100 : Number(digits) * 10;
+}
+
+function typeOpacity(world: World): void {
+	const now = performance.now();
+	let digits = now - opacityTyped.at < OPACITY_WINDOW ? opacityTyped.digits : '';
+	for (const key of world.get(Keys)?.pressed ?? []) {
+		if (!/^\d$/.test(key)) continue;
+		digits = `${digits}${key}`.slice(-2);
+	}
+	opacityTyped = setSelectionOpacity(world, typedPercent(digits)) ? { digits, at: now } : { digits: '', at: -Infinity };
+}
+
 /**
  * Sends the selection to the front or the back of its siblings. Which of two
  * nodes is drawn on top is which of them the file lists last, so a restack is
@@ -485,6 +522,7 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['0', 'mod'], action: zoomActualSize },
 	{ keys: ['1', 'mod'], action: zoomToFit },
 	{ keys: ['2', 'mod'], action: zoomToSelection },
+	...[...'0123456789'].map((digit) => ({ keys: [digit, '!mod'], action: typeOpacity })),
 	{ keys: ['v', '!mod'], action: selectTool(ToolType.MOVE) },
 	{ keys: ['h', '!mod'], action: selectTool(ToolType.HAND) },
 	{ keys: ['f', '!mod'], action: selectTool(ToolType.SCENE) },
