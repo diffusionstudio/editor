@@ -262,6 +262,8 @@ export function TextPanel(props: TextPanelProps) {
 type GrowingTextAreaProps = {
   value: string;
   onInput(value: string): void;
+  placeholder?: string;
+  minRows?: number;
   maxRows?: number;
   focused?: boolean;
   onBlur?(): void;
@@ -277,7 +279,8 @@ export function GrowingTextArea(props: GrowingTextAreaProps) {
     if (!ref) return;
     ref.style.height = 'auto';
     const max = lineHeight * maxRows() + 8; // 8px for py-1
-    ref.style.height = `${Math.min(ref.scrollHeight, max)}px`;
+    const min = props.minRows ? lineHeight * props.minRows + 8 : 0;
+    ref.style.height = `${Math.max(min, Math.min(ref.scrollHeight, max))}px`;
   };
 
   // Resize when value changes externally (e.g. undo/redo, selection change)
@@ -313,6 +316,7 @@ export function GrowingTextArea(props: GrowingTextAreaProps) {
     <textarea
       ref={ref!}
       value={props.value}
+      placeholder={props.placeholder}
       onInput={handleInput}
       onKeyDown={handleKeyDown}
       onFocus={props.onFocus}

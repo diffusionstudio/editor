@@ -28,6 +28,8 @@ export function PromptPanel(props: PromptPanelProps) {
       <ControlRow label="Content" class="items-start" labelClass="pt-1 leading-[18px]" contentClass="flex flex-col">
         <GrowingTextArea
           value={prompt()}
+          placeholder="Describe what you want to create."
+          minRows={2}
           maxRows={8}
           onInput={(value) => editor.editProperty(entity(), "prompt", value)}
         />
