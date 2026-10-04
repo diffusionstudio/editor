@@ -8,7 +8,7 @@ import {
 	HitRegions, Hovering, Name, Playback, RenderSurface, Root, Selected,
 	Sequential, ChildOf,
 	entityQuad, entityWorldMat, getMaskSelection, getSelectionMask, getSourceFailure,
-	invert2D, isGenerating,
+	invert2D, isGenerating, isPrompt,
 	multiply2D, rectToQuad, rotate2D, scale2D, store, transformPoint,
 	translate2D,
 } from '@diffusionstudio/runtime';
@@ -154,7 +154,7 @@ function drawHeader(world: World, ctx: Ctx2D, entity: Entity, resolution: number
 
 	if (fitted) {
 		ctx.fillStyle = foreground;
-		ctx.fillText(fitted.value, 0, 0);
+		if (!isPrompt(entity)) ctx.fillText(fitted.value, 0, 0);
 
 		regions.push({
 			target: {

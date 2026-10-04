@@ -6,8 +6,8 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, o
 import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { authoredElement } from "@diffusionstudio/reconciler";
 import {
-  Background, Computed, Culled, DEFAULT_BACKGROUND, Hidden, Hovering, PromptNode, RenderSurface, Root, Selected, Tool, ToolType,
-  colorToHex, entityWorldMat, getEntityBounds, store,
+  Background, Computed, Culled, DEFAULT_BACKGROUND, HitRegions, Hidden, Hovering, Name, PromptNode, RenderSurface, Root, Selected,
+  Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, store,
 } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { useEngineContext } from "@/engine";
 import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
+import { getMountedNameInput } from "@/engine/hud/name-input";
 import { PROMPT_SCALE, PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
 import { Pointer } from "@/engine/traits";
 import {
@@ -139,6 +140,16 @@ function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
 export function PromptNodes() {
   const world = useWorld();
   const prompts = useQuery(PromptNode);
+  const stacked = useDerived(
+    () => {
+      const order = new Map<Entity, number>();
+      world.get(HitRegions)?.list.forEach((region, index) => {
+        if (region.target.kind === "entity") order.set(region.target.id, index);
+      });
+      return [...prompts()].sort((a, b) => (order.get(a) ?? -1) - (order.get(b) ?? -1));
+    },
+    (a, b) => a.length === b.length && a.every((entity, index) => entity === b[index]),
+  );
   const background = useTrait(world.get(Root)!, Background);
   const pressed = useDerived(() => world.get(Pointer)?.phase === "pressed");
 
@@ -187,7 +198,7 @@ export function PromptNodes() {
       on:pointerdown={handlePointerDown}
       on:pointermove={handlePointerMove}
     >
-      <For each={prompts()}>
+      <For each={stacked()}>
         {(entity) => <PromptNodeBox entity={entity} />}
       </For>
     </div>
@@ -205,6 +216,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   const { generate: generateAudio } = useGenerateAudio();
 
   let box!: HTMLDivElement;
+  let label!: HTMLDivElement;
   let ring!: HTMLDivElement;
   let textarea!: HTMLTextAreaElement;
   let commitTimer: ReturnType<typeof setTimeout> | undefined;
@@ -215,6 +227,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   );
   const selected = useDerived(() => props.entity.has(Selected));
   const hovered = useDerived(() => props.entity.has(Hovering));
+  const name = useDerived(() => (getParentEntity(props.entity) === world.get(Root) ? props.entity.get(Name)?.value ?? "" : ""));
   const config = createMemo(() => toConfig(authored(), library()));
 
   const [draft, setDraft] = createSignal(config().prompt);
@@ -232,14 +245,19 @@ function PromptNodeBox(props: { entity: Entity }) {
     const eid = props.entity.id();
     const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const scale = PROMPT_SCALE / resolution;
-    const ringWidth = (hovered() ? 2 : 2 / resolution) / (Math.hypot(matrix.a, matrix.b) * scale);
+    const screenScale = Math.hypot(matrix.a, matrix.b) * scale;
+    const ringWidth = (hovered() ? 2 : 2 / resolution) / screenScale;
+    const layoutWidth = (computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE;
 
-    box.style.width = `${(computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE}px`;
+    box.style.width = `${layoutWidth}px`;
     box.style.height = `${(computed.height[eid] ?? PROMPT_SIZE.height) / PROMPT_SCALE}px`;
     box.style.transform = `matrix(${matrix.a * scale}, ${matrix.b * scale}, ${matrix.c * scale}, ${matrix.d * scale}, ${matrix.e / resolution}, ${matrix.f / resolution})`;
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
     ring.style.inset = `${-1 - ringWidth / 2}px`;
     ring.style.borderWidth = `${ringWidth}px`;
+    label.style.transform = `scale(${1 / screenScale}) translateY(-19px)`;
+    label.style.maxWidth = `${layoutWidth * screenScale}px`;
+    label.style.visibility = getMountedNameInput()?.entity === props.entity ? "hidden" : "";
 
     if (takePromptFocus(props.entity)) textarea.focus({ preventScroll: true });
   });
@@ -421,6 +439,14 @@ function PromptNodeBox(props: { entity: Entity }) {
       data-prompt-node
       class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border border-border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
     >
+      <div
+        ref={label}
+        class="absolute -left-px -top-px w-max origin-top-left truncate"
+        classList={{ hidden: !name() }}
+        style={{ font: "350 11px/11px Inter, sans-serif", color: selected() ? "#cce8ff" : "rgba(242, 242, 242, 0.64)" }}
+      >
+        {name()}
+      </div>
       <Switch>
         <Match when={imageConfig()}>
           <div class="pointer-events-auto flex w-fit max-w-full items-start gap-2 overflow-x-auto">
