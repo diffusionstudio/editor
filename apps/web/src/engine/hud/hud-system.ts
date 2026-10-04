@@ -21,6 +21,7 @@ import {
 import { getMarqueeQuad } from '../input/snapping';
 import { getMountedNameInput } from './name-input';
 import { drawObjectMasks } from '../object-mask';
+import { generationLabel } from '../generation-progress';
 
 import type { Entity, World } from 'koota';
 import type { Mat2D } from '@diffusionstudio/runtime';
@@ -110,7 +111,8 @@ function drawHoverOutlines(world: World, ctx: Ctx2D, resolution: number): void {
  */
 function drawHeader(world: World, ctx: Ctx2D, entity: Entity, resolution: number): void {
 	const failure = getSourceFailure(entity);
-	const label = failure || (isGenerating(entity) ? 'Generating...' : entity.get(Name)?.value);
+	const progress = !failure && isGenerating(entity) ? generationLabel(entity) : undefined;
+	const label = failure || progress?.text || entity.get(Name)?.value;
 	if (!label) return;
 
 	const header = getHeaderLayout(world, entity, resolution);
@@ -154,7 +156,9 @@ function drawHeader(world: World, ctx: Ctx2D, entity: Entity, resolution: number
 
 	if (fitted) {
 		ctx.fillStyle = foreground;
+		ctx.globalAlpha = progress?.opacity ?? 1;
 		if (!isPrompt(entity)) ctx.fillText(fitted.value, 0, 0);
+		ctx.globalAlpha = 1;
 
 		regions.push({
 			target: {
