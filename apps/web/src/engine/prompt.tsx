@@ -25,7 +25,7 @@ export const PROMPT_MIN_SIZE = { width: 400 * PROMPT_SCALE, height: 200 * PROMPT
 let focusRequest: Entity | null = null;
 
 export function takePromptFocus(entity: Entity): boolean {
-	if (focusRequest !== entity) return false;
+	if (focusRequest !== entity || document.querySelector("[role='menu']")) return false;
 	focusRequest = null;
 	return true;
 }
