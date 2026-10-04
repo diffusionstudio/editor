@@ -22,6 +22,7 @@ import { useEngineContext } from "@/engine";
 import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useDerived, useEditor, useSelection } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
+import { useCursor } from "@/hooks/use-cursor";
 import { getMountedNameInput } from "@/engine/hud/name-input";
 import { AUDIO_SIZE } from "@/engine/insert-asset";
 import { PROMPT_SCALE, PROMPT_SIZE, generateRef, generationOf, setPromptText, takePromptFocus, templateOf, withGeneration } from "@/engine/prompt";
@@ -171,6 +172,7 @@ function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
 export function PromptNodes() {
   const world = useWorld();
   const library = useLibrary();
+  const cursor = useCursor();
   const prompts = useQuery(PromptNode);
   const stacked = useDerived(
     () => {
@@ -314,9 +316,12 @@ export function PromptNodes() {
       <For each={stacked()}>
         {(entity) => <PromptNodeBox entity={entity} />}
       </For>
-      <Show when={picking()}>
-        <div class="pointer-events-auto absolute inset-0 cursor-crosshair" on:pointerdown={handlePick} />
-      </Show>
+      <div
+        ref={(element) => cursor.set(element, "pick")}
+        class="pointer-events-auto absolute inset-0"
+        classList={{ hidden: !picking() }}
+        on:pointerdown={handlePick}
+      />
     </div>
   );
 }
