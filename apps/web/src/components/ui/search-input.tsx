@@ -8,6 +8,7 @@ export type SearchInputProps = {
   placeholder: string;
   value: string;
   onValue: (value: string) => void;
+  onKeyDown?: (event: KeyboardEvent) => void;
   ref?: HTMLInputElement | ((element: HTMLInputElement) => void);
 };
 
@@ -21,6 +22,7 @@ export function SearchInput(props: SearchInputProps) {
         value={props.value}
         onInput={(e) => props.onValue(e.currentTarget.value)}
         onKeyDown={(e) => {
+          props.onKeyDown?.(e);
           if (e.key === "Escape") return;
           e.stopPropagation();
         }}

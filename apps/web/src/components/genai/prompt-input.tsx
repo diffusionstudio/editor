@@ -829,6 +829,20 @@ function focusSearch(event: Event, search: HTMLInputElement): void {
   setTimeout(() => search.focus());
 }
 
+function moveActive(event: KeyboardEvent, list: HTMLElement, count: number, active: number, setActive: (index: number) => void, choose: (index: number) => void): void {
+  if (count === 0) return;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    choose(active);
+    return;
+  }
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  event.preventDefault();
+  const next = (active + (event.key === "ArrowDown" ? 1 : count - 1)) % count;
+  setActive(next);
+  list.children[next]?.scrollIntoView({ block: "nearest" });
+}
+
 type ModelMenuProps = {
   searchPlaceholder: string;
   options: { id: string; name: string; description: string; icon: string }[];
@@ -837,8 +851,11 @@ type ModelMenuProps = {
 }
 
 export function ModelMenu(props: ModelMenuProps) {
+  const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal("");
+  const [active, setActive] = createSignal(0);
   let search!: HTMLInputElement;
+  let list!: HTMLDivElement;
 
   const filteredOptions = createMemo(() => {
     const q = query().trim().toLowerCase();
@@ -848,8 +865,15 @@ export function ModelMenu(props: ModelMenuProps) {
     );
   });
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) setQuery("");
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    setActive(0);
+    if (!isOpen) setQuery("");
+  };
+
+  const select = (id: string) => {
+    props.onChange(id);
+    setOpen(false);
   };
 
   const icon = createMemo(() => {
@@ -863,8 +887,8 @@ export function ModelMenu(props: ModelMenuProps) {
   });
 
   return (
-    <DropdownMenu placement="top-start" onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger<typeof Button>
+    <Popover placement="top-start" open={open()} onOpenChange={handleOpenChange}>
+      <PopoverTrigger<typeof Button>
         as={(triggerProps) => (
           <Button
             {...triggerProps}
@@ -876,27 +900,36 @@ export function ModelMenu(props: ModelMenuProps) {
           </Button>
         )}
       />
-      <DropdownMenuPortal>
-        <DropdownMenuContent class="w-[340px] p-0" onOpenAutoFocus={(event: Event) => focusSearch(event, search)}>
+      <PopoverPortal>
+        <PopoverContent
+          class="z-[10000] flex max-h-[var(--kb-popper-content-available-height)] w-[340px] min-w-[8rem] flex-col gap-2 overflow-x-hidden overflow-y-auto rounded-xl border-border p-0 shadow-[0px_0px_1px_2px_rgba(0,0,0,0.12),0px_4px_12px_8px_rgba(0,0,0,0.12),0px_12px_16px_0px_rgba(0,0,0,0.16)] outline-none"
+          onOpenAutoFocus={(event: Event) => focusSearch(event, search)}
+        >
           <SearchInput
             ref={search}
             placeholder={props.searchPlaceholder}
             value={query()}
-            onValue={setQuery}
+            onValue={(value) => {
+              setQuery(value);
+              setActive(0);
+            }}
+            onKeyDown={(event) => moveActive(event, list, filteredOptions().length, active(), setActive, (index) => select(filteredOptions()[index]!.id))}
           />
-          <div class="flex flex-col gap-2 px-2 py-1">
+          <div ref={list} class="flex flex-col gap-2 px-2 py-1">
             <For each={filteredOptions()}>
-              {(option) => {
+              {(option, index) => {
                 const selected = props.value() === option.id;
 
                 return (
-                  <DropdownMenuItem
-                    tone="neutral"
-                    class="h-[42px] gap-2 rounded-md px-1 py-1 group"
-                    onSelect={() => props.onChange(option.id)}
+                  <div
+                    class="group relative flex h-[42px] min-h-7 w-full cursor-default select-none items-center gap-2 rounded-md bg-popover px-1 py-1 text-xs outline-hidden [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[highlighted]:bg-input data-[highlighted]:text-foreground data-[highlighted]:[&_svg]:text-foreground"
                     classList={{
                       "data-highlighted:bg-muted": selected,
                     }}
+                    data-highlighted={index() === active() ? "" : undefined}
+                    onPointerMove={() => setActive(index())}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => select(option.id)}
                   >
                     <div class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm" >
                       <Icon name={option.icon!} class="size-6 text-muted-foreground" />
@@ -910,14 +943,14 @@ export function ModelMenu(props: ModelMenuProps) {
                         <Icon name="confirm-check" class="size-6 text-foreground" />
                       </Show>
                     </span>
-                  </DropdownMenuItem>
+                  </div>
                 )
               }}
             </For>
           </div>
-        </DropdownMenuContent>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
   );
 }
 
@@ -931,10 +964,12 @@ type VoiceMenuProps = {
 export function VoiceMenu(props: VoiceMenuProps) {
   const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal("");
+  const [active, setActive] = createSignal(0);
   const [playingVoice, setPlayingVoice] = createSignal<string | null>(null);
 
   let audioRef: HTMLAudioElement | undefined;
   let search!: HTMLInputElement;
+  let list!: HTMLDivElement;
 
   const selectedLabel = () =>
     props.options.find((o) => o.value === props.value())?.label ?? props.value();
@@ -979,6 +1014,7 @@ export function VoiceMenu(props: VoiceMenuProps) {
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
+    setActive(0);
     if (!isOpen) {
       setQuery("");
       stopPlayback();
@@ -1007,19 +1043,26 @@ export function VoiceMenu(props: VoiceMenuProps) {
             ref={search}
             placeholder="Search in voices"
             value={query()}
-            onValue={setQuery}
+            onValue={(value) => {
+              setQuery(value);
+              setActive(0);
+            }}
+            onKeyDown={(event) => moveActive(event, list, filteredOptions().length, active(), setActive, (index) => selectVoice(filteredOptions()[index]!.value))}
           />
-          <div class="flex flex-col gap-2 p-2 max-h-[320px] overflow-y-auto">
+          <div ref={list} class="flex flex-col gap-2 p-2 max-h-[320px] overflow-y-auto">
             <For each={filteredOptions()}>
-              {(option) => {
+              {(option, index) => {
                 const selected = () => props.value() === option.value;
                 const isPlaying = () => playingVoice() === option.value;
 
                 return (
                   <button
                     type="button"
-                    class="flex items-center gap-2 rounded-md px-1 py-1 h-[42px] w-full text-left group hover:bg-accent transition-colors"
+                    class="flex items-center gap-2 rounded-md px-1 py-1 h-[42px] w-full text-left group data-[highlighted]:bg-accent transition-colors"
                     classList={{ "bg-muted": selected() }}
+                    data-highlighted={index() === active() ? "" : undefined}
+                    onPointerMove={() => setActive(index())}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => selectVoice(option.value)}
                   >
                     <div
@@ -1042,7 +1085,7 @@ export function VoiceMenu(props: VoiceMenuProps) {
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
                       <div
-                        class="truncate text-base font-450 group-hover:text-foreground"
+                        class="truncate text-base font-450 group-data-[highlighted]:text-foreground"
                         classList={{ "text-foreground": selected() }}
                       >
                         {option.label}
