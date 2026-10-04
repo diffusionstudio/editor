@@ -372,7 +372,7 @@ export function PromptInput(props: PromptInputProps) {
       return;
     }
     if (history.handleKeyDown(e)) return;
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
     }
@@ -738,7 +738,7 @@ export function PromptInput(props: PromptInputProps) {
           >
             <Icon name="arrow-right" class="-rotate-90 size-6" />
           </TooltipTrigger>
-          <TooltipContent shortcut="↵">Generate</TooltipContent>
+          <TooltipContent shortcut="⌘↵">Generate</TooltipContent>
         </Tooltip>
       </div>
       <Show when={isDragging()}>
