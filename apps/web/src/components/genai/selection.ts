@@ -34,7 +34,7 @@ function isMediaPaint(paint: PaintType | undefined): paint is MediaPaint {
  * else its first media fill. A node that paints no media at all is still its
  * own source element — an `<audio>` carries its `src` like any other.
  */
-function resolve(entity: Entity): SelectedNode {
+export function resolveMedia(entity: Entity): SelectedNode {
   const intrinsic = getIntrinsicPaint(entity);
   if (isMediaPaint(intrinsic)) return { entity, source: entity, paint: intrinsic };
 
@@ -50,7 +50,7 @@ export function useMediaSelection() {
   const library = useLibrary();
   const { nodes } = useSelection();
 
-  const selected = createMemo(() => nodes().map(resolve));
+  const selected = createMemo(() => nodes().map(resolveMedia));
 
   const painted = (paint: MediaPaint) =>
     createMemo(() => selected().filter((node) => node.paint === paint).map((node) => node.source));

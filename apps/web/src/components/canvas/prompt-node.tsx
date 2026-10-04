@@ -7,10 +7,13 @@ import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { generate, getAssetSpec } from "@diffusionstudio/jsx";
 import { Audio, ImagePaint, Rect, VideoPaint, authoredElement } from "@diffusionstudio/reconciler";
 import {
-  Background, Computed, Culled, DEFAULT_BACKGROUND, HitRegions, Hidden, Hovering, Name, PromptNode, RenderSurface, Root, Selected,
-  Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, isPointerInEntity, pointInQuad, store,
+  AssetId, Background, Computed, Culled, DEFAULT_BACKGROUND, HitRegions, Hidden, Hovering, Name, PaintType, PromptNode, RenderSurface, Root,
+  Selected, Tool, ToolType, colorToHex, entityWorldMat, getEntityBounds, getParentEntity, isPointerInEntity, pointInQuad, store,
 } from "@diffusionstudio/runtime";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -47,6 +50,7 @@ import {
 } from "@/components/genai/prompt-input";
 import { insertGenerated, randomSeed } from "@/components/genai/insert";
 import { toPromptConfig } from "@/components/genai/use-generation-records";
+import { resolveMedia } from "@/components/genai/selection";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateSpec } from "@diffusionstudio/jsx";
@@ -152,6 +156,10 @@ const isControl = (target: EventTarget | null) => target instanceof Element && t
 
 const delayedPresses = new WeakSet<PointerEvent>();
 
+type Picking = { entity: Entity; pick(assetId: string): boolean };
+
+const [picking, setPicking] = createSignal<Picking | null>(null);
+
 const zooming = (event: WheelEvent) => event.ctrlKey || event.metaKey;
 
 function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
@@ -162,6 +170,7 @@ function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
 
 export function PromptNodes() {
   const world = useWorld();
+  const library = useLibrary();
   const prompts = useQuery(PromptNode);
   const stacked = useDerived(
     () => {
@@ -255,6 +264,43 @@ export function PromptNodes() {
     canvas()?.dispatchEvent(new PointerEvent(event.type, event));
   };
 
+  const imageAt = (event: PointerEvent): string | undefined => {
+    const target = canvas();
+    if (!target) return undefined;
+    const rect = target.getBoundingClientRect();
+    const resolution = world.get(RenderSurface)?.resolution ?? 1;
+    const point = { x: (event.clientX - rect.left) * resolution, y: (event.clientY - rect.top) * resolution };
+    const regions = world.get(HitRegions)?.list ?? [];
+
+    for (let index = regions.length - 1; index >= 0; index--) {
+      const { target: hit } = regions[index]!;
+      if (hit.kind !== "entity" || !hit.id.isAlive() || !isPointerInEntity(world, hit.id, point)) continue;
+      const { source, paint } = resolveMedia(hit.id);
+      const assetId = paint === PaintType.IMAGE ? source.get(AssetId)?.value : undefined;
+      return assetId && library()?.get(assetId)?.type === "IMAGE" ? assetId : undefined;
+    }
+    return undefined;
+  };
+
+  const handlePick = (event: PointerEvent) => {
+    const current = picking();
+    if (!current || event.button !== 0 || world.get(Tool)?.value === ToolType.HAND) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const assetId = imageAt(event);
+    if (!assetId || !current.pick(assetId)) setPicking(null);
+  };
+
+  const stopPicking = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !picking()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setPicking(null);
+  };
+
+  onMount(() => window.addEventListener("keydown", stopPicking, { capture: true }));
+  onCleanup(() => window.removeEventListener("keydown", stopPicking, { capture: true }));
+
   return (
     <div
       ref={layer}
@@ -268,7 +314,32 @@ export function PromptNodes() {
       <For each={stacked()}>
         {(entity) => <PromptNodeBox entity={entity} />}
       </For>
+      <Show when={picking()}>
+        <div class="pointer-events-auto absolute inset-0 cursor-crosshair" on:pointerdown={handlePick} />
+      </Show>
     </div>
+  );
+}
+
+function AttachMenu(props: { icon: string; label: string; class: string; onPick(): void; onUpload(): void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger<typeof PromptInputAttachButton>
+        as={(triggerProps) => <PromptInputAttachButton {...triggerProps} icon={props.icon} label={props.label} class={props.class} />}
+      />
+      <DropdownMenuPortal>
+        <DropdownMenuContent>
+          <DropdownMenuItem onSelect={props.onPick}>
+            <Icon name="tool.color-picker" class="size-6 mr-2 text-foreground" />
+            Pick from canvas
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={props.onUpload}>
+            <Icon name="attachment" class="size-6 mr-2 text-foreground" />
+            Upload from computer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenuPortal>
+    </DropdownMenu>
   );
 }
 
@@ -365,6 +436,9 @@ function PromptNodeBox(props: { entity: Entity }) {
   };
 
   onCleanup(() => clearTimeout(commitTimer));
+  onCleanup(() => {
+    if (picking()?.entity === props.entity) setPicking(null);
+  });
 
   const select = () => {
     if (!props.entity.has(Selected)) editor.select([props.entity]);
@@ -482,6 +556,25 @@ function PromptNodeBox(props: { entity: Entity }) {
     if (id) patch(frame === "start" ? { startFrameImageId: id } : { endFrameImageId: id });
   };
 
+  const pickReferencesFromCanvas = () => setPicking({
+    entity: props.entity,
+    pick: (assetId) => {
+      if (!imageConfig()) return false;
+      const refs = imageRefIds();
+      const next = refs.includes(assetId) ? refs : [...refs, assetId];
+      patch({ imageRefIds: next });
+      return next.length < MAX_IMAGE_REFERENCES;
+    },
+  });
+
+  const pickFrameFromCanvas = (frame: "start" | "end") => setPicking({
+    entity: props.entity,
+    pick: (assetId) => {
+      if (videoConfig()) patch(frame === "start" ? { startFrameImageId: assetId } : { endFrameImageId: assetId });
+      return false;
+    },
+  });
+
   const handleDrop = async (event: DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -591,7 +684,13 @@ function PromptNodeBox(props: { entity: Entity }) {
               )}
             </For>
             <Show when={imageRefIds().length < MAX_IMAGE_REFERENCES}>
-              <PromptInputAttachButton icon="attachment" label="Image references" class="w-36" onClick={openImageReferencesPicker} />
+              <AttachMenu
+                icon="attachment"
+                label="Image references"
+                class="w-36"
+                onPick={pickReferencesFromCanvas}
+                onUpload={openImageReferencesPicker}
+              />
             </Show>
           </div>
         </Match>
@@ -603,11 +702,12 @@ function PromptNodeBox(props: { entity: Entity }) {
                   <Show
                     when={frameAsset(frame)}
                     fallback={
-                      <PromptInputAttachButton
+                      <AttachMenu
                         icon="image"
                         label={frame === "start" ? "Start frame" : "End frame"}
                         class="w-28"
-                        onClick={() => openVideoFramePicker(frame)}
+                        onPick={() => pickFrameFromCanvas(frame)}
+                        onUpload={() => openVideoFramePicker(frame)}
                       />
                     }
                   >

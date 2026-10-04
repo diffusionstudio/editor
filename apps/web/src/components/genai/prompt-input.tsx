@@ -26,7 +26,9 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  splitProps,
   type Accessor,
+  type JSX,
 } from "solid-js";
 
 import {
@@ -1133,26 +1135,26 @@ export function PromptInputReferenceImageButton(props: PromptInputReferenceImage
   );
 }
 
-type PromptInputAttachButtonProps = {
+type PromptInputAttachButtonProps = JSX.ButtonHTMLAttributes<HTMLButtonElement> & {
   icon: string;
   label: string;
-  class?: string;
-  onClick(): void;
 }
 
 export function PromptInputAttachButton(props: PromptInputAttachButtonProps) {
+  const [local, rest] = splitProps(props, ["icon", "label", "class"]);
+
   return (
     <button
       type="button"
+      {...rest}
       class={cx(
         "flex h-16 shrink-0 items-center justify-center gap-1 overflow-clip rounded-md bg-secondary active:bg-secondary-pressing pl-3 pr-4 py-2 text-muted-foreground transition-colors hover:bg-muted",
-        props.class,
+        local.class,
       )}
-      onClick={props.onClick}
     >
-      <Icon name={props.icon} class="size-6" />
+      <Icon name={local.icon} class="size-6" />
       <span class="whitespace-nowrap text-xs">
-        {props.label}
+        {local.label}
       </span>
     </button>
   );
