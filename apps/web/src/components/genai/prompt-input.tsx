@@ -46,6 +46,7 @@ import {
 } from "./config";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
+import { clearRecentPrompts, createPromptHistory, recentPrompts, rememberPrompt } from "./prompt-history";
 import { toast } from "somoto";
 import { useGenerateImage } from "./use-generate-image";
 import { useGenerateVideo } from "./use-generate-video";
@@ -206,9 +207,6 @@ export function PromptInput(props: PromptInputProps) {
   const effectiveStartFrameId = createMemo(() => frameId("start"));
   const effectiveEndFrameId = createMemo(() => frameId("end"));
 
-  const [recentPrompts, setRecentPrompts] = createStoredSignal(
-    store.define<string[]>("prompt-input.recent-prompts", []),
-  );
   const [slashMenuDismissed, setSlashMenuDismissed] = createSignal(false);
   const [slashMenuIndex, setSlashMenuIndex] = createSignal(-1);
   const [settingsVisible, setSettingsVisible] = createStoredSignal(
@@ -219,7 +217,13 @@ export function PromptInput(props: PromptInputProps) {
   const showSlashMenu = () =>
     prompt().startsWith("/") && !slashMenuDismissed() && recentPrompts().length > 0;
 
+  const history = createPromptHistory(prompt, (text) => {
+    patch({ prompt: text });
+    resizeTextarea();
+  });
+
   const handlePromptInput = (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
+    history.reset();
     patch({ prompt: event.currentTarget.value });
     setSlashMenuDismissed(false);
     setSlashMenuIndex(-1);
@@ -302,13 +306,14 @@ export function PromptInput(props: PromptInputProps) {
   };
 
   const handleSelectRecentPrompt = (prompt: string) => {
+    history.reset();
     patch({ prompt });
     setSlashMenuDismissed(true);
     resizeTextarea();
   };
 
   const handleClearHistory = () => {
-    setRecentPrompts([]);
+    clearRecentPrompts();
   };
 
   const handleSubmit = async () => {
@@ -316,10 +321,8 @@ export function PromptInput(props: PromptInputProps) {
 
     const currentConfig = { ...config(), prompt: prompt().trim() };
 
-    // Add to recent prompts
-    const filtered = recentPrompts().filter((p) => p !== currentConfig.prompt);
-    setRecentPrompts([currentConfig.prompt, ...filtered].slice(0, 10));
-
+    rememberPrompt(currentConfig.prompt);
+    history.reset();
     patch({ prompt: "" });
     resizeTextarea();
 
@@ -368,6 +371,7 @@ export function PromptInput(props: PromptInputProps) {
       }
       return;
     }
+    if (history.handleKeyDown(e)) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();

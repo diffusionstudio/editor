@@ -55,6 +55,7 @@ import {
 import { insertGenerated, randomSeed } from "@/components/genai/insert";
 import { toPromptConfig } from "@/components/genai/use-generation-records";
 import { resolveMedia } from "@/components/genai/selection";
+import { createPromptHistory, rememberPrompt } from "@/components/genai/prompt-history";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateSpec } from "@diffusionstudio/jsx";
@@ -688,16 +689,25 @@ function PromptNodeBox(props: { entity: Entity }) {
     setIsDragging(true);
   };
 
-  const handleInput = (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
-    setDraft(event.currentTarget.value);
+  const editDraft = (text: string) => {
+    setDraft(text);
     clearTimeout(commitTimer);
     commitTimer = setTimeout(commitPrompt, COMMIT_DELAY);
+  };
+
+  const history = createPromptHistory(draft, editDraft);
+
+  const handleInput = (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
+    history.reset();
+    editDraft(event.currentTarget.value);
   };
 
   const handleSubmit = () => {
     commitPrompt();
     const next = { ...config(), prompt: draft().trim() } as GenerationConfig;
     if (!next.prompt) return;
+    rememberPrompt(next.prompt);
+    history.reset();
     if (next.mode === "IMAGE") next.imageRefIds = imageRefIds();
     if (next.mode === "VIDEO") {
       next.startFrameImageId = frameId("start");
@@ -733,6 +743,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
+    if (history.handleKeyDown(event)) return;
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       handleSubmit();
