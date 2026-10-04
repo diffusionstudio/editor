@@ -11,11 +11,15 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuPortal,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createMemo, Show } from "solid-js";
 import { toast } from "somoto";
+import { useWorld } from "@diffusionstudio/koota-solid";
+import { tidySelection } from "@/engine/align";
+import { useSelection } from "@/engine/hooks";
 
 import { useGenerationRecords } from "./use-generation-records";
 import { useGenerateImage } from "./use-generate-image";
@@ -28,6 +32,8 @@ import { useTransforms } from "./use-transforms";
 import type { TransformType } from "@diffusionstudio/jsx";
 
 export function PromptInputActions() {
+  const world = useWorld();
+  const { nodes } = useSelection();
   const { isGenerated, totalCredits, firstConfig } = useGenerationRecords();
   const { imageNodes, videoNodes } = useMediaSelection();
   const { isOn, toggle } = useTransforms();
@@ -39,6 +45,7 @@ export function PromptInputActions() {
 
   const hasImageSelection = createMemo(() => imageNodes().length > 0);
   const hasVideoSelection = createMemo(() => videoNodes().length > 0);
+  const canTidy = createMemo(() => nodes().length > 1);
 
   const handleRerun = () => {
     const config = firstConfig();
@@ -120,6 +127,13 @@ export function PromptInputActions() {
                 <Separator class="my-1" />
               </Show>
               <DropdownMenuGroup>
+                <Show when={canTidy()}>
+                  <DropdownMenuItem onSelect={() => tidySelection(world)}>
+                    <Icon name="view.grid" class="mr-2 text-foreground" />
+                    <span class="flex-1">Tidy up</span>
+                    <DropdownMenuShortcut>⌃⌥T</DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                </Show>
                 <Show when={hasImageSelection() || hasVideoSelection()}>
                   <TransformItem name="upscale" icon="arrow-scale" label="Upscale" isOn={isOn} toggle={toggle} />
                 </Show>
