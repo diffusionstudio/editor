@@ -506,7 +506,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       handleSubmit();
     } else if (event.key === "Escape") {
@@ -724,7 +724,7 @@ function PromptNodeBox(props: { entity: Entity }) {
           >
             <Icon name="arrow-right" class="-rotate-90 size-6" />
           </TooltipTrigger>
-          <TooltipContent shortcut="↵">Generate</TooltipContent>
+          <TooltipContent shortcut="⌘↵">Generate</TooltipContent>
         </Tooltip>
       </div>
 
