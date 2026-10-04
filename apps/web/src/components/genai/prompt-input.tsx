@@ -217,7 +217,7 @@ export function PromptInput(props: PromptInputProps) {
   const showSlashMenu = () =>
     prompt().startsWith("/") && !slashMenuDismissed() && recentPrompts().length > 0;
 
-  const history = createPromptHistory(prompt, (text) => {
+  const history = createPromptHistory((text) => {
     patch({ prompt: text });
     resizeTextarea();
   });
@@ -610,6 +610,7 @@ export function PromptInput(props: PromptInputProps) {
           value={prompt()}
           onInput={handlePromptInput}
           onKeyDown={handleKeyDown}
+          onPointerDown={history.reset}
         />
       </div>
       <div class="flex min-h-4 w-full items-center justify-between">

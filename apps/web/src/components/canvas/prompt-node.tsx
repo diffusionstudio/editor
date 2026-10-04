@@ -695,7 +695,7 @@ function PromptNodeBox(props: { entity: Entity }) {
     commitTimer = setTimeout(commitPrompt, COMMIT_DELAY);
   };
 
-  const history = createPromptHistory(draft, editDraft);
+  const history = createPromptHistory(editDraft);
 
   const handleInput = (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
     history.reset();
@@ -842,6 +842,7 @@ function PromptNodeBox(props: { entity: Entity }) {
           onBlur={commitPrompt}
           onFocus={select}
           onKeyDown={handleKeyDown}
+          onPointerDown={history.reset}
           onDragOver={handleDragOver}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}

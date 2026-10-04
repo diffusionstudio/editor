@@ -23,39 +23,39 @@ export function clearRecentPrompts(): void {
   setRecentPrompts([]);
 }
 
-export function createPromptHistory(read: () => string, write: (text: string) => void) {
+const MODIFIER_KEYS = new Set(["Shift", "Meta", "Alt", "Control", "CapsLock"]);
+
+export function createPromptHistory(write: (text: string) => void) {
   let index = -1;
-  let draft = "";
+  let shown = "";
 
   const reset = () => {
     index = -1;
   };
 
   const handleKeyDown = (event: KeyboardEvent): boolean => {
-    if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return false;
-    const textarea = event.target as HTMLTextAreaElement;
-    const { selectionStart, selectionEnd, value } = textarea;
-    if (selectionStart !== selectionEnd) return false;
-
-    const history = recentPrompts();
-    let next: number;
-    if (event.key === "ArrowUp") {
-      if (value.slice(0, selectionStart).includes("\n") || index >= history.length - 1) return false;
-      next = index + 1;
-    } else if (event.key === "ArrowDown") {
-      if (value.slice(selectionEnd).includes("\n") || index < 0) return false;
-      next = index - 1;
-    } else {
+    const arrow = event.key === "ArrowUp" || event.key === "ArrowDown";
+    if (!arrow || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) {
+      if (!MODIFIER_KEYS.has(event.key)) reset();
       return false;
     }
 
+    const textarea = event.target as HTMLTextAreaElement;
+    const { selectionStart, selectionEnd, value } = textarea;
+    const browsing = index >= 0 && selectionStart === selectionEnd && selectionStart === value.length && value === shown;
+    if (!browsing) reset();
+    if (!browsing && value.trim()) return false;
+
     event.preventDefault();
-    if (index === -1) draft = read();
+    const history = recentPrompts();
+    const next = index + (event.key === "ArrowUp" ? 1 : -1);
+    if (next < -1 || next >= history.length) return true;
+
     index = next;
-    const text = index === -1 ? draft : history[index]!;
-    write(text);
-    textarea.value = text;
-    textarea.setSelectionRange(text.length, text.length);
+    shown = index === -1 ? "" : history[index]!;
+    write(shown);
+    textarea.value = shown;
+    textarea.setSelectionRange(shown.length, shown.length);
     return true;
   };
 
