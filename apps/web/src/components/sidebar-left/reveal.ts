@@ -26,6 +26,7 @@ export function revealInAssets(world: World): void {
   const [asset] = selectionAssets(world);
   if (!asset) return;
   setSidebarTab("assets");
+  world.set(AssetSelection, { id: asset.id });
   setAssetReveal(asset);
 }
 

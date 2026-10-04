@@ -131,7 +131,6 @@ export function Assets() {
     clearAssetReveal();
     setAssetFilter("ALL");
     openFolder(assetFolder(asset));
-    setSelectedAssetId(asset);
     requestAnimationFrame(() => root?.querySelector(`[data-asset-id="${asset.id}"]`)?.scrollIntoView({ block: "nearest" }));
   });
 

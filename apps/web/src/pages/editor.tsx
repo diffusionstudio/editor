@@ -8,7 +8,6 @@ import { leftSidebarWidth } from "@/agent-chat";
 import { Timeline, Layers } from "@/components/timeline";
 import { Soundboard, Inspector } from "@/components/sidebar-right";
 import { EditorTitleBar, FloatingProjectHeader, SidebarLeft } from "@/components/sidebar-left";
-import { assetReveal } from "@/components/sidebar-left/reveal";
 import { useLayout, MIN_TIMELINE_HEIGHT } from "@/context/layout";
 import { useEditorApi } from "@/dapi";
 import { RULER_HEIGHT } from "@/engine/timeline";
@@ -30,7 +29,7 @@ import { compileProject, isWindowsDesktop, refreshProject, watchProject } from '
 import { captureProjectCover } from '@/projects/cover';
 import { useProject } from "@/context/project";
 import { useEngineContext } from "@/engine";
-import { useSelection } from "@/engine/hooks";
+import { useAssetSelection, useSelection } from "@/engine/hooks";
 
 import type { Mount } from '@diffusionstudio/reconciler';
 import type { EditWriter } from '@/projects/edits';
@@ -39,18 +38,16 @@ const MIN_CANVAS_HEIGHT = 200;
 const INSPECTOR_WIDTH = 264;
 
 export function EditorPage() {
-  const { uiVisible, toggleUI, timelineMinimized, timelineHeight, setTimelineHeight } = useLayout();
+  const { uiVisible, timelineMinimized, timelineHeight, setTimelineHeight } = useLayout();
   const { isDesktop, isFullscreen } = useEditorApi();
   const [resizing, setResizing] = createSignal(false);
   const project = useProject();
   const world = useWorld();
   const engine = useEngineContext();
   const { nodes } = useSelection();
+  const { id: pickedAsset } = useAssetSelection();
   const inspectorFloating = () => !uiVisible() && nodes().some((node) => !isPrompt(node));
-
-  createEffect(() => {
-    if (assetReveal() && !untrack(uiVisible)) toggleUI();
-  });
+  const assetsFloating = () => !uiVisible() && pickedAsset() !== null;
 
   // Keyed on the folder, not the project: a rename moves it, and everything
   // below holds a path — the watcher, the library, the writer — so all of it
@@ -263,7 +260,11 @@ export function EditorPage() {
         <SidebarLeft />
         <div class="bg-border-strong" />
       </Show>
-      <Canvas style={inspectorFloating() ? { 'clip-path': `inset(0 ${INSPECTOR_WIDTH + 1}px 0 0)` } : undefined} />
+      <Canvas
+        style={inspectorFloating() || assetsFloating()
+          ? { 'clip-path': `inset(0 ${inspectorFloating() ? INSPECTOR_WIDTH + 1 : 0}px 0 ${assetsFloating() ? leftSidebarWidth() + 1 : 0}px)` }
+          : undefined}
+      />
       <Show when={uiVisible()}>
         <div class="bg-border-strong" />
         <Inspector />
@@ -304,8 +305,16 @@ export function EditorPage() {
           <Inspector />
         </div>
       </Show>
+      <Show when={assetsFloating()}>
+        <div
+          class="fixed left-0 bottom-0 top-(--titlebar-height) z-30 bg-sidebar border-r border-border-strong"
+          style={{ width: `${leftSidebarWidth() + 1}px` }}
+        >
+          <SidebarLeft />
+        </div>
+      </Show>
       {/* The Windows title bar stays up with the UI hidden and offers the same. */}
-      <Show when={!uiVisible() && !isWindowsDesktop()}>
+      <Show when={!uiVisible() && !isWindowsDesktop() && !assetsFloating()}>
         <FloatingProjectHeader />
       </Show>
     </div>
