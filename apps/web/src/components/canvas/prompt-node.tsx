@@ -174,6 +174,10 @@ export function PromptNodes() {
     target.dispatchEvent(new PointerEvent(event.type, event));
   };
 
+  const handlePointerMove = (event: PointerEvent) => {
+    canvas()?.dispatchEvent(new PointerEvent(event.type, event));
+  };
+
   return (
     <div
       class="pointer-events-none absolute inset-0 overflow-hidden"
@@ -181,6 +185,7 @@ export function PromptNodes() {
       style={{ "--canvas-background": colorToHex(background()?.value ?? DEFAULT_BACKGROUND) }}
       on:wheel={handleWheel}
       on:pointerdown={handlePointerDown}
+      on:pointermove={handlePointerMove}
     >
       <For each={prompts()}>
         {(entity) => <PromptNodeBox entity={entity} />}
