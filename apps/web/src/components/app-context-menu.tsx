@@ -22,6 +22,7 @@ import type { ContextMenuExtra } from "@/components/context-menu-extras"
 
 export function AppContextMenu(props: { children: JSX.Element }) {
   const [extras, setExtras] = createSignal<ContextMenuExtra[]>([])
+  const [open, setOpen] = createSignal(false)
   let keepFocus = false
 
   const handleUndo = () => {
@@ -65,47 +66,67 @@ export function AppContextMenu(props: { children: JSX.Element }) {
     window.location.reload()
   }
 
-  const renderExtra = (item: ContextMenuExtra): JSX.Element => (
-    <Show
-      when={item.items}
-      fallback={
-        <ContextMenuItem
-          classList={{ "pr-0!": item.checked !== undefined }}
-          onSelect={() => {
-            keepFocus = true
-            item.onSelect?.()
-          }}
-        >
-          <span class="min-w-0 flex-1 truncate">{item.label}</span>
-          <Show when={item.shortcut}>
-            <ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
-          </Show>
-          <Show when={item.checked !== undefined}>
-            <span class="flex h-7 w-6 shrink-0 items-center justify-center">
-              <Show when={item.checked}>
-                <Icon name="confirm-check" class="size-6" />
-              </Show>
-            </span>
-          </Show>
-        </ContextMenuItem>
-      }
-    >
-      {(items) => (
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>{item.label}</ContextMenuSubTrigger>
-          <ContextMenuPortal>
-            <ContextMenuSubContent class="min-w-[200px] max-w-[320px]">
-              <For each={items()}>{renderExtra}</For>
-            </ContextMenuSubContent>
-          </ContextMenuPortal>
-        </ContextMenuSub>
-      )}
+  const select = (item: { onSelect?(): void }) => {
+    keepFocus = true
+    item.onSelect?.()
+  }
+
+  const selectFolderRow = (item: { onSelect?(): void }) => {
+    if (!item.onSelect) return
+    select(item)
+    setOpen(false)
+  }
+
+  const checkCell = (checked: boolean | undefined) => (
+    <Show when={checked !== undefined}>
+      <span class="flex h-7 w-6 shrink-0 items-center justify-center">
+        <Show when={checked}>
+          <Icon name="confirm-check" class="size-6" />
+        </Show>
+      </span>
     </Show>
   )
 
+  const renderExtra = (entry: ContextMenuExtra): JSX.Element => {
+    if ("separator" in entry) return <ContextMenuSeparator />
+    const item = entry
+
+    if (item.items) {
+      return (
+        <ContextMenuSub>
+          <ContextMenuSubTrigger
+            onClick={() => selectFolderRow(item)}
+            onKeyDown={(event: KeyboardEvent) => {
+              if (event.key === "Enter") selectFolderRow(item)
+            }}
+          >
+            <span class="flex w-full items-center">
+              <span class="min-w-0 flex-1 truncate">{item.label}</span>
+              {checkCell(item.checked)}
+            </span>
+          </ContextMenuSubTrigger>
+          <ContextMenuPortal>
+            <ContextMenuSubContent class="min-w-[200px] max-w-[320px]">
+              <For each={item.items}>{renderExtra}</For>
+            </ContextMenuSubContent>
+          </ContextMenuPortal>
+        </ContextMenuSub>
+      )
+    }
+
+    return (
+      <ContextMenuItem classList={{ "pr-0!": item.checked !== undefined }} onSelect={() => select(item)}>
+        <span class="min-w-0 flex-1 truncate">{item.label}</span>
+        <Show when={item.shortcut}>
+          <ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
+        </Show>
+        {checkCell(item.checked)}
+      </ContextMenuItem>
+    )
+  }
 
   return (
-    <ContextMenu>
+    <ContextMenu open={open()} onOpenChange={setOpen}>
       <ContextMenuTrigger class="contents" onContextMenu={(event: MouseEvent) => setExtras(takeContextMenuItems(event))}>
         {props.children}
       </ContextMenuTrigger>

@@ -19,7 +19,7 @@ import { offerContextMenuItems } from "@/components/context-menu-extras";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
 import type { JSX } from "solid-js";
-import { assetFolder } from "@diffusionstudio/assets";
+import { assetFolder, basename } from "@diffusionstudio/assets";
 import type { Asset, AssetLibrary } from "@diffusionstudio/assets";
 import type { ContextMenuExtra } from "@/components/context-menu-extras";
 
@@ -27,24 +27,30 @@ type CanvasProps = {
   style?: JSX.CSSProperties;
 }
 
-const byPath = (a: string, b: string): number => {
-  const left = a.split("/");
-  const right = b.split("/");
-  for (let index = 0; index < Math.min(left.length, right.length); index++) {
-    if (left[index] !== right[index]) return left[index]! < right[index]! ? -1 : 1;
-  }
-  return left.length - right.length;
-};
+let recentFolders: string[] = [];
 
 function moveToFolder(library: AssetLibrary, assets: Asset[]): ContextMenuExtra {
   const current = new Set(assets.map(assetFolder));
-  const target = (folder: string, label: string): ContextMenuExtra => ({
-    label,
-    checked: current.size === 1 && current.has(folder),
-    onSelect: () => library.move(assets, folder),
-  });
-  const folders = [...library.folders()].sort(byPath);
-  return { label: "Move to folder", items: [target("", "All assets"), ...folders.map((folder) => target(folder, folder.split("/").join(" / ")))] };
+  const checked = (folder: string) => current.size === 1 && current.has(folder);
+  const move = (folder: string) => () => {
+    library.move(assets, folder);
+    if (folder) recentFolders = [folder, ...recentFolders.filter((recent) => recent !== folder)].slice(0, 3);
+  };
+  const branch = (folder: string): ContextMenuExtra => {
+    const children = library.childrenOf(folder).folders;
+    return { label: basename(folder), checked: checked(folder), onSelect: move(folder), ...(children.length ? { items: children.map(branch) } : {}) };
+  };
+  const recents = recentFolders.filter((folder) => library.folders().has(folder));
+
+  return {
+    label: "Move to folder",
+    items: [
+      ...recents.map((folder) => ({ label: basename(folder), checked: checked(folder), onSelect: move(folder) })),
+      ...(recents.length ? [{ separator: true as const }] : []),
+      { label: "All assets", checked: checked(""), onSelect: move("") },
+      ...library.childrenOf("").folders.map(branch),
+    ],
+  };
 }
 
 export function Canvas(props: CanvasProps) {
