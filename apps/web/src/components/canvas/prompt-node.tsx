@@ -3,10 +3,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup, onMount } from "solid-js";
-import { useQuery, useWorld } from "@diffusionstudio/koota-solid";
+import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { authoredElement } from "@diffusionstudio/reconciler";
 import {
-  Computed, Culled, Hidden, PromptNode, RenderSurface, Selected, Tool, ToolType, entityWorldMat, getEntityBounds, store,
+  Background, Computed, Culled, DEFAULT_BACKGROUND, Hidden, PromptNode, RenderSurface, Root, Selected, Tool, ToolType,
+  colorToHex, entityWorldMat, getEntityBounds, store,
 } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 import { Button } from "@/components/ui/button";
@@ -137,6 +138,7 @@ function scrollableText(event: WheelEvent): HTMLTextAreaElement | null {
 export function PromptNodes() {
   const world = useWorld();
   const prompts = useQuery(PromptNode);
+  const background = useTrait(world.get(Root)!, Background);
 
   const canvas = () => {
     const target = world.get(RenderSurface)?.canvas;
@@ -173,6 +175,7 @@ export function PromptNodes() {
   return (
     <div
       class="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ "--canvas-background": colorToHex(background()?.value ?? DEFAULT_BACKGROUND) }}
       on:wheel={handleWheel}
       on:pointerdown={handlePointerDown}
     >
@@ -403,7 +406,7 @@ function PromptNodeBox(props: { entity: Entity }) {
     <div
       ref={box}
       data-prompt-node
-      class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border bg-input p-2"
+      class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
       classList={{ "border-primary": selected(), "border-border": !selected() }}
     >
       <Switch>
