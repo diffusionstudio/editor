@@ -18,6 +18,7 @@ import type { ContextMenuExtra } from "@/components/context-menu-extras"
 
 export function AppContextMenu(props: { children: JSX.Element }) {
   const [extras, setExtras] = createSignal<ContextMenuExtra[]>([])
+  let keepFocus = false
 
   const handleUndo = () => {
     document.execCommand("undo")
@@ -67,11 +68,22 @@ export function AppContextMenu(props: { children: JSX.Element }) {
         {props.children}
       </ContextMenuTrigger>
       <ContextMenuPortal>
-        <ContextMenuContent class="w-[200px]">
+        <ContextMenuContent
+          class="w-[200px]"
+          onCloseAutoFocus={(event: Event) => {
+            if (keepFocus) event.preventDefault()
+            keepFocus = false
+          }}
+        >
           <Show when={extras().length > 0}>
             <For each={extras()}>
               {(item) => (
-                <ContextMenuItem onSelect={item.onSelect}>
+                <ContextMenuItem
+                  onSelect={() => {
+                    keepFocus = true
+                    item.onSelect()
+                  }}
+                >
                   {item.label}
                   <Show when={item.shortcut}>
                     <ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>

@@ -14,6 +14,14 @@ import type { Entity, World } from 'koota';
 export const PROMPT_SIZE = { width: 576, height: 384 };
 export const PROMPT_MIN_SIZE = { width: 400, height: 200 };
 
+let focusRequest: Entity | null = null;
+
+export function takePromptFocus(entity: Entity): boolean {
+	if (focusRequest !== entity) return false;
+	focusRequest = null;
+	return true;
+}
+
 function pointerOrCenter(world: World): Point {
 	const pointer = world.get(Pointer);
 	const resolution = world.get(RenderSurface)?.resolution ?? 1;
@@ -41,6 +49,9 @@ export function insertPrompt(world: World, at: Point = pointerOrCenter(world)): 
 		/>
 	));
 
-	if (entity) editor.select([entity]);
+	if (entity) {
+		editor.select([entity]);
+		focusRequest = entity;
+	}
 	return entity;
 }

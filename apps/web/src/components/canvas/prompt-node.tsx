@@ -18,7 +18,7 @@ import { useEngineContext } from "@/engine";
 import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { useLibrary } from "@/engine/library";
-import { PROMPT_SIZE } from "@/engine/prompt";
+import { PROMPT_SIZE, takePromptFocus } from "@/engine/prompt";
 import {
   ALL_DURATION_OPTIONS,
   ALL_VIDEO_ASPECT_RATIO_OPTIONS,
@@ -173,6 +173,8 @@ function PromptNodeBox(props: { entity: Entity }) {
     box.style.height = `${computed.height[eid] ?? PROMPT_SIZE.height}px`;
     box.style.transform = `matrix(${matrix.a / resolution}, ${matrix.b / resolution}, ${matrix.c / resolution}, ${matrix.d / resolution}, ${matrix.e / resolution}, ${matrix.f / resolution})`;
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
+
+    if (takePromptFocus(props.entity)) textarea.focus({ preventScroll: true });
   });
 
   const write = (next: GenerationConfig) => {
