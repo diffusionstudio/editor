@@ -25,7 +25,7 @@ export function PromptPanel(props: PromptPanelProps) {
 
   return (
     <PanelSection title="Prompt">
-      <ControlRow label="Content" contentClass="flex flex-col">
+      <ControlRow label="Content" class="items-start" labelClass="pt-1 leading-[18px]" contentClass="flex flex-col">
         <GrowingTextArea
           value={prompt()}
           maxRows={8}

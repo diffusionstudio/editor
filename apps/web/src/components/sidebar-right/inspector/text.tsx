@@ -143,7 +143,7 @@ export function TextPanel(props: TextPanelProps) {
   return (
     <PanelSection title="Typography">
       <Show when={textSelected()}>
-        <ControlRow label="Content" contentClass="flex flex-col">
+        <ControlRow label="Content" class="items-start" labelClass="pt-1 leading-[18px]" contentClass="flex flex-col">
           <GrowingTextArea
             value={chars()?.value ?? ''}
             maxRows={8}
