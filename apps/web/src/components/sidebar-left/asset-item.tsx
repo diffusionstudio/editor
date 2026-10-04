@@ -172,6 +172,7 @@ export function LazyAssetItem(props: LazyAssetItemProps) {
           <Show when={assetFinderPath(world, props.asset)}>
             <ContextMenuItem onSelect={handleRevealInFinder}>
               Reveal in finder
+              <ContextMenuShortcut>⌥⌘O</ContextMenuShortcut>
             </ContextMenuItem>
           </Show>
           <ContextMenuSeparator />

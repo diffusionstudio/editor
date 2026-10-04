@@ -3,10 +3,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createSignal } from "solid-js";
+import { Library } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 import { setSidebarTab } from "@/agent-chat/store";
 import { selectionAssets } from "@/engine/asset-folders";
 import { assetFilePath } from "@/engine/library";
+import { AssetSelection } from "@/engine/traits";
 import { revealPath } from "@/lib/shell";
 
 import type { Asset } from "@diffusionstudio/assets";
@@ -46,5 +48,12 @@ export function finderPath(world: World): string | undefined {
 
 export function revealInFinder(world: World): void {
   const [asset] = selectionAssets(world);
+  if (asset) revealAssetInFinder(world, asset);
+}
+
+export function revealPickedInFinder(world: World): void {
+  const picked = world.get(AssetSelection)?.id;
+  if (!picked) return revealInFinder(world);
+  const asset = world.get(Library)?.get(picked);
   if (asset) revealAssetInFinder(world, asset);
 }
