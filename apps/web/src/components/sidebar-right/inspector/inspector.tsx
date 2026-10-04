@@ -134,11 +134,11 @@ export function Inspector() {
             <TimeSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment", "prompt")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "caption", "group", "clip-path", "adjustment")}>
             <TransformSettings selection={nodes()} />
           </Show>
 
-          <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path", "prompt")}>
+          <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path")}>
             <LayoutPanel selection={nodes()} />
           </Show>
 

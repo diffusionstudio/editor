@@ -14,6 +14,7 @@ import { RULER_HEIGHT } from "@/engine/timeline";
 import { createEffect, onCleanup, untrack } from 'solid-js';
 import { toast } from 'somoto';
 import { useWorld } from '@diffusionstudio/koota-solid';
+import { isPrompt } from '@diffusionstudio/runtime';
 import { mount } from '@diffusionstudio/reconciler';
 import { getDocumentEditor } from '@/engine/editor';
 import { getEditHistory } from '@/engine/history';
@@ -44,7 +45,7 @@ export function EditorPage() {
   const world = useWorld();
   const engine = useEngineContext();
   const { nodes } = useSelection();
-  const inspectorFloating = () => !uiVisible() && nodes().length > 0;
+  const inspectorFloating = () => !uiVisible() && nodes().some((node) => !isPrompt(node));
 
   // Keyed on the folder, not the project: a rename moves it, and everything
   // below holds a path — the watcher, the library, the writer — so all of it
