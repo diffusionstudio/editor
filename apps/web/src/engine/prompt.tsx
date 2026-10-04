@@ -4,10 +4,11 @@
 
 import { generate, getAssetSpec, isAssetRef, isSerializedAssetRef, isTransformSpec, mapAssetInputs, transform } from '@diffusionstudio/jsx';
 import { Prompt, authoredElement } from '@diffusionstudio/reconciler';
-import { RenderSurface, Root, getNextName, getViewport, screenToWorld } from '@diffusionstudio/runtime';
+import { Cache, RenderSurface, Root, getEntityBounds, getNextName, getSelection, getViewport, screenToWorld } from '@diffusionstudio/runtime';
 import { PROMPT_INPUT_IMAGE_MODEL_OPTIONS } from '@/components/genai/config';
 
 import { getDocumentEditor } from './editor';
+import { findEmptyPlacement } from './placement';
 import { Pointer } from './traits';
 
 import type {
@@ -21,6 +22,7 @@ import type { DocumentEditor } from './editor';
 export const PROMPT_SCALE = 2;
 export const PROMPT_SIZE = { width: 544 * PROMPT_SCALE, height: 248 * PROMPT_SCALE };
 export const PROMPT_MIN_SIZE = { width: 400 * PROMPT_SCALE, height: 200 * PROMPT_SCALE };
+const PROMPT_GAP = 40;
 
 let focusRequest: Entity | null = null;
 
@@ -106,7 +108,37 @@ function pointerOrCenter(world: World): Point {
 	return screenToWorld(world, (viewport?.width ?? 0) / 2, (viewport?.height ?? 0) / 2);
 }
 
-export function insertPrompt(world: World, at: Point = pointerOrCenter(world)): Entity | undefined {
+export function forkTemplate(entity: Entity): AssetRef | undefined {
+	const src = [entity, ...(entity.get(Cache)?.fills ?? [])]
+		.map((candidate) => templateOf(authoredElement(candidate)?.props.src))
+		.find((ref) => ref !== undefined);
+	const generation = src && generationOf(src);
+	if (!src || !generation) return undefined;
+
+	const spec = { ...(getAssetSpec(generation) as GenerateSpec) };
+	delete spec.seed;
+	return withGeneration(src, generateRef(spec));
+}
+
+export function forkPrompt(world: World, entity: Entity): Entity | undefined {
+	const template = forkTemplate(entity);
+	if (!template) return undefined;
+
+	const bounds = getEntityBounds(world, [entity]);
+	const near = bounds ? { minX: bounds.x, minY: bounds.y, maxX: bounds.x + bounds.width, maxY: bounds.y + bounds.height } : undefined;
+	return insertPrompt(world, findEmptyPlacement(world, PROMPT_SIZE.width, PROMPT_SIZE.height, PROMPT_GAP, near), template);
+}
+
+export function forkSelection(world: World): Entity | undefined {
+	const entity = getSelection(world).find((selected) => forkTemplate(selected));
+	return entity && forkPrompt(world, entity);
+}
+
+export function insertPrompt(
+	world: World,
+	at: Point = pointerOrCenter(world),
+	template: AssetRef = generate.image({ prompt: '', model: PROMPT_INPUT_IMAGE_MODEL_OPTIONS[0].id, aspectRatio: '16:9' }),
+): Entity | undefined {
 	const root = world.get(Root);
 	if (!root) return undefined;
 
@@ -119,7 +151,7 @@ export function insertPrompt(world: World, at: Point = pointerOrCenter(world)): 
 			width={PROMPT_SIZE.width}
 			height={PROMPT_SIZE.height}
 			count={1}
-			template={generate.image({ prompt: '', model: PROMPT_INPUT_IMAGE_MODEL_OPTIONS[0].id, aspectRatio: '16:9' })}
+			template={template}
 		/>
 	));
 

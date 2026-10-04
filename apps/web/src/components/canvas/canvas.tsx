@@ -3,9 +3,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { useWorld } from "@diffusionstudio/koota-solid";
-import { findSceneAt, screenToWorld, worldToLocal, Library, Root } from "@diffusionstudio/runtime";
+import { findSceneAt, getSelection, isPointerInEntity, screenToWorld, worldToLocal, Library, RenderSurface, Root } from "@diffusionstudio/runtime";
 import { CameraController, EngineCanvas } from "@/engine";
-import { insertPrompt } from "@/engine/prompt";
+import { forkPrompt, forkTemplate, insertPrompt } from "@/engine/prompt";
 import { insertAsset } from "@/engine/insert-asset";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { Toolbar } from "./toolbar";
@@ -80,8 +80,13 @@ export function Canvas(props: CanvasProps) {
     if (!(event.target instanceof HTMLCanvasElement)) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const point = screenToWorld(world, event.clientX - rect.left, event.clientY - rect.top);
+    const bounds = event.target.getBoundingClientRect();
+    const resolution = world.get(RenderSurface)?.resolution ?? 1;
+    const device = { x: (event.clientX - bounds.left) * resolution, y: (event.clientY - bounds.top) * resolution };
+    const forkable = getSelection(world).find((entity) => isPointerInEntity(world, entity, device) && forkTemplate(entity));
     offerContextMenuItems(event, [
       { label: "Add prompt", shortcut: "N", onSelect: () => insertPrompt(world, point) },
+      ...(forkable ? [{ label: "Fork", shortcut: "⇧N", onSelect: () => forkPrompt(world, forkable) }] : []),
     ]);
   };
 

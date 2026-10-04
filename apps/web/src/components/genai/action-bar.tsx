@@ -18,6 +18,7 @@ import { createMemo, Show } from "solid-js";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { useSelection } from "@/engine/hooks";
 import { tidySelection } from "@/engine/align";
+import { forkSelection } from "@/engine/prompt";
 import { useGenerationRecords } from "./use-generation-records";
 import { useGenerateImage } from "./use-generate-image";
 import { useGenerateVideo } from "./use-generate-video";
@@ -50,6 +51,7 @@ function TidyUpButton() {
 }
 
 export function ActionBar(props: ActionBarProps) {
+  const world = useWorld();
   const { imageNodes, videoNodes } = useMediaSelection();
   const { nodes } = useSelection();
   const { isOn, toggle } = useTransforms();
@@ -111,6 +113,11 @@ export function ActionBar(props: ActionBarProps) {
       return;
     }
     props.openPromptInput?.(config);
+  };
+
+  const handleFork = () => {
+    if (forkSelection(world)) return;
+    toast("No generation config found", { description: "This asset wasn't generated with a prompt." });
   };
 
   return (
@@ -183,6 +190,10 @@ export function ActionBar(props: ActionBarProps) {
                           <Icon name="reuse-settings" class="size-6 mr-2 text-foreground" />
                           Reuse
                         </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleFork}>
+                          <Icon name="vary" class="size-6 mr-2 text-foreground" />
+                          Fork
+                        </DropdownMenuItem>
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenuPortal>
@@ -232,6 +243,10 @@ export function ActionBar(props: ActionBarProps) {
                         <DropdownMenuItem onSelect={handleRerun}>
                           <Icon name="rerun" class="size-6 mr-2 text-foreground" />
                           Rerun
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={handleFork}>
+                          <Icon name="vary" class="size-6 mr-2 text-foreground" />
+                          Fork
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
