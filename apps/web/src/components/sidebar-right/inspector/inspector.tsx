@@ -32,6 +32,7 @@ import { LayoutPanel } from "./layout";
 import { TransformSettings } from "./transform";
 import { CaptionSettings } from "./caption-settings";
 import { TextPanel } from "./text";
+import { PromptPanel } from "./prompt";
 import { FillsSettings } from "./fills";
 import { StrokesSettings } from "./strokes";
 import { ShadowsSettings } from "./shadows";
@@ -140,6 +141,10 @@ export function Inspector() {
 
           <Show when={includesTarget("shape", "text", "audio", "scene", "clip-path", "prompt")}>
             <LayoutPanel selection={nodes()} />
+          </Show>
+
+          <Show when={includesTarget("prompt")}>
+            <PromptPanel selection={nodes()} />
           </Show>
 
           <Show when={includesTarget("shape", "text", "scene", "caption", "group", "audio", "clip-path")}>
