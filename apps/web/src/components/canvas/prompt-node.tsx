@@ -128,6 +128,12 @@ const sameValue = (a: unknown, b: unknown) =>
 
 const MIDDLE_BUTTON = 1;
 const GESTURE_GAP = 250;
+const DOUBLE_CLICK_WINDOW = 500;
+const CONTROLS = "textarea, input, button, select, a, [role='button'], [role='menuitem'], [role='option']";
+
+const isControl = (target: EventTarget | null) => target instanceof Element && target.closest(CONTROLS) !== null;
+
+const delayedPresses = new WeakSet<PointerEvent>();
 
 const zooming = (event: WheelEvent) => event.ctrlKey || event.metaKey;
 
@@ -152,11 +158,38 @@ export function PromptNodes() {
   );
   const background = useTrait(world.get(Root)!, Background);
   const pressed = useDerived(() => world.get(Pointer)?.phase === "pressed");
+  const { frame } = useEngineContext();
+
+  let layer!: HTMLDivElement;
+  let lastForwardedPress = -Infinity;
+  let pendingPress: PointerEvent | null = null;
 
   const canvas = () => {
     const target = world.get(RenderSurface)?.canvas;
     return target instanceof HTMLCanvasElement ? target : undefined;
   };
+
+  const flushPress = () => {
+    const target = canvas();
+    if (!pendingPress || !target) return;
+    target.dispatchEvent(new PointerEvent("pointerdown", pendingPress));
+    pendingPress = null;
+  };
+
+  createEffect(() => {
+    frame();
+    layer.style.cursor = canvas()?.style.cursor ?? "";
+    flushPress();
+  });
+
+  onMount(() => {
+    window.addEventListener("pointerup", flushPress, { capture: true });
+    window.addEventListener("pointercancel", flushPress, { capture: true });
+  });
+  onCleanup(() => {
+    window.removeEventListener("pointerup", flushPress, { capture: true });
+    window.removeEventListener("pointercancel", flushPress, { capture: true });
+  });
 
   let lastWheel = -Infinity;
   let textOwner: HTMLTextAreaElement | null = null;
@@ -180,10 +213,25 @@ export function PromptNodes() {
 
   const handlePointerDown = (event: PointerEvent) => {
     const target = canvas();
-    if (!target || (event.button !== MIDDLE_BUTTON && world.get(Tool)?.value !== ToolType.HAND)) return;
+    if (!target) return;
+    const pans = event.button === MIDDLE_BUTTON || world.get(Tool)?.value === ToolType.HAND;
+    if (!pans && (event.button !== 0 || isControl(event.target))) return;
     event.preventDefault();
-    target.dispatchEvent(new PointerEvent(event.type, event));
+    if (!pans && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    lastForwardedPress = event.timeStamp;
+    if (delayedPresses.has(event)) pendingPress = event;
+    else target.dispatchEvent(new PointerEvent(event.type, event));
   };
+
+  const forwardDoubleClick = (event: MouseEvent) => {
+    const target = canvas();
+    if (!target || !event.isTrusted || event.target === target) return;
+    if (event.timeStamp - lastForwardedPress > DOUBLE_CLICK_WINDOW) return;
+    target.dispatchEvent(new MouseEvent(event.type, event));
+  };
+
+  onMount(() => window.addEventListener("dblclick", forwardDoubleClick));
+  onCleanup(() => window.removeEventListener("dblclick", forwardDoubleClick));
 
   const handlePointerMove = (event: PointerEvent) => {
     canvas()?.dispatchEvent(new PointerEvent(event.type, event));
@@ -191,6 +239,7 @@ export function PromptNodes() {
 
   return (
     <div
+      ref={layer}
       class="pointer-events-none absolute inset-0 overflow-hidden"
       classList={{ "[&_*]:pointer-events-none!": pressed() }}
       style={{ "--canvas-background": colorToHex(background()?.value ?? DEFAULT_BACKGROUND) }}
@@ -227,6 +276,7 @@ function PromptNodeBox(props: { entity: Entity }) {
   );
   const selected = useDerived(() => props.entity.has(Selected));
   const hovered = useDerived(() => props.entity.has(Hovering));
+  const [pointerInside, setPointerInside] = createSignal(false);
   const name = useDerived(() => (getParentEntity(props.entity) === world.get(Root) ? props.entity.get(Name)?.value ?? "" : ""));
   const config = createMemo(() => toConfig(authored(), library()));
 
@@ -246,7 +296,7 @@ function PromptNodeBox(props: { entity: Entity }) {
     const resolution = world.get(RenderSurface)?.resolution ?? 1;
     const scale = PROMPT_SCALE / resolution;
     const screenScale = Math.hypot(matrix.a, matrix.b) * scale;
-    const ringWidth = (hovered() ? 2 : 2 / resolution) / screenScale;
+    const ringWidth = (hovered() || pointerInside() ? 2 : 2 / resolution) / screenScale;
     const layoutWidth = (computed.width[eid] ?? PROMPT_SIZE.width) / PROMPT_SCALE;
 
     box.style.width = `${layoutWidth}px`;
@@ -255,8 +305,8 @@ function PromptNodeBox(props: { entity: Entity }) {
     box.style.display = props.entity.has(Hidden) || props.entity.has(Culled) ? "none" : "";
     ring.style.inset = `${-1 - ringWidth / 2}px`;
     ring.style.borderWidth = `${ringWidth}px`;
-    label.style.transform = `scale(${1 / screenScale}) translateY(-19px)`;
-    label.style.maxWidth = `${layoutWidth * screenScale}px`;
+    label.style.transform = `scale(${1 / screenScale}) translateY(-22px)`;
+    label.style.maxWidth = `${layoutWidth * screenScale + 4}px`;
     label.style.visibility = getMountedNameInput()?.entity === props.entity ? "hidden" : "";
 
     if (takePromptFocus(props.entity)) textarea.focus({ preventScroll: true });
@@ -282,6 +332,13 @@ function PromptNodeBox(props: { entity: Entity }) {
 
   const select = () => {
     if (!props.entity.has(Selected)) editor.select([props.entity]);
+  };
+
+  const handlePress = (event: PointerEvent) => {
+    if (event.button !== 0 || isControl(event.target) || world.get(Tool)?.value === ToolType.HAND) return;
+    if (props.entity.has(Selected)) return;
+    editor.select(props.entity, { extend: event.shiftKey });
+    delayedPresses.add(event);
   };
 
   const imageConfig = () => {
@@ -437,11 +494,14 @@ function PromptNodeBox(props: { entity: Entity }) {
     <div
       ref={box}
       data-prompt-node
-      class="pointer-events-none absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border border-border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
+      class="pointer-events-auto absolute left-0 top-0 z-[1] flex origin-top-left flex-col gap-2 rounded-xl border border-border p-2 [background:linear-gradient(var(--input),var(--input)),var(--canvas-background)]"
+      on:pointerdown={handlePress}
+      on:pointerenter={() => setPointerInside(true)}
+      on:pointerleave={() => setPointerInside(false)}
     >
       <div
         ref={label}
-        class="absolute -left-px -top-px w-max origin-top-left truncate"
+        class="absolute -left-px -top-px h-[22px] w-max origin-top-left truncate pt-[3px] pr-1"
         classList={{ hidden: !name() }}
         style={{ font: "350 11px/11px Inter, sans-serif", color: selected() ? "#cce8ff" : "rgba(242, 242, 242, 0.64)" }}
       >
@@ -656,7 +716,7 @@ function PromptNodeBox(props: { entity: Entity }) {
       <div
         ref={ring}
         class="pointer-events-none absolute border-solid border-[#008CFF]"
-        classList={{ invisible: !selected() && !hovered() }}
+        classList={{ invisible: !selected() && !hovered() && !pointerInside() }}
       />
     </div>
   );
