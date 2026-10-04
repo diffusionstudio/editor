@@ -6,7 +6,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, o
 import { useQuery, useWorld } from "@diffusionstudio/koota-solid";
 import { authoredElement } from "@diffusionstudio/reconciler";
 import {
-  Computed, Culled, Hidden, PromptNode, RenderSurface, Selected, entityWorldMat, getEntityBounds, store,
+  Computed, Culled, Hidden, PromptNode, RenderSurface, Selected, Tool, ToolType, entityWorldMat, getEntityBounds, store,
 } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 import { Button } from "@/components/ui/button";
@@ -123,11 +123,43 @@ const unsetValue = (value: unknown) => value === undefined || value === false;
 const sameValue = (a: unknown, b: unknown) =>
   (unsetValue(a) && unsetValue(b)) || JSON.stringify(a) === JSON.stringify(b);
 
+const MIDDLE_BUTTON = 1;
+
+function scrollsItself(event: WheelEvent): boolean {
+  const target = event.target;
+  if (!(target instanceof HTMLTextAreaElement) || event.ctrlKey || event.metaKey) return false;
+  return Math.abs(event.deltaY) >= Math.abs(event.deltaX) && target.scrollHeight > target.clientHeight;
+}
+
 export function PromptNodes() {
+  const world = useWorld();
   const prompts = useQuery(PromptNode);
 
+  const canvas = () => {
+    const target = world.get(RenderSurface)?.canvas;
+    return target instanceof HTMLCanvasElement ? target : undefined;
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    const target = canvas();
+    if (!target || scrollsItself(event)) return;
+    event.preventDefault();
+    target.dispatchEvent(new WheelEvent(event.type, event));
+  };
+
+  const handlePointerDown = (event: PointerEvent) => {
+    const target = canvas();
+    if (!target || (event.button !== MIDDLE_BUTTON && world.get(Tool)?.value !== ToolType.HAND)) return;
+    event.preventDefault();
+    target.dispatchEvent(new PointerEvent(event.type, event));
+  };
+
   return (
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+    <div
+      class="pointer-events-none absolute inset-0 overflow-hidden"
+      on:wheel={handleWheel}
+      on:pointerdown={handlePointerDown}
+    >
       <For each={prompts()}>
         {(entity) => <PromptNodeBox entity={entity} />}
       </For>
@@ -415,7 +447,7 @@ function PromptNodeBox(props: { entity: Entity }) {
       <div class="flex min-h-14 w-full flex-1 p-1">
         <textarea
           ref={textarea}
-          class="pointer-events-auto min-h-8 size-full resize-none overflow-y-auto bg-transparent px-1 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none"
+          class="pointer-events-auto min-h-8 size-full resize-none overflow-y-auto overscroll-contain bg-transparent px-1 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none"
           placeholder="Describe what you want to create."
           value={draft()}
           onInput={handleInput}
