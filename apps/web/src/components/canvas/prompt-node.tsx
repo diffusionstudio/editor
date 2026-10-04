@@ -440,6 +440,10 @@ function PromptNodeBox(props: { entity: Entity }) {
     if (picking()?.entity === props.entity) setPicking(null);
   });
 
+  createEffect(on(picking, (current, previous) => {
+    if (!current && previous?.entity === props.entity) textarea.focus({ preventScroll: true });
+  }, { defer: true }));
+
   const select = () => {
     if (!props.entity.has(Selected)) editor.select([props.entity]);
   };
