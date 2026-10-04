@@ -4,7 +4,8 @@
 
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { findSceneAt, screenToWorld, worldToLocal, Library, Root } from "@diffusionstudio/runtime";
-import { CameraController, EngineCanvas, getDocumentEditor } from "@/engine";
+import { CameraController, EngineCanvas } from "@/engine";
+import { insertPrompt } from "@/engine/prompt";
 import { insertAsset } from "@/engine/insert-asset";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { Toolbar } from "./toolbar";
@@ -12,7 +13,7 @@ import { DrawOverlay } from "./draw-overlay";
 import { DesktopAppBanner } from "./desktop-app-banner";
 import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
-import { PromptNodes, insertPrompt } from "./prompt-node";
+import { PromptNodes } from "./prompt-node";
 import { offerContextMenuItems } from "@/components/context-menu-extras";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
@@ -80,7 +81,7 @@ export function Canvas(props: CanvasProps) {
     const rect = event.currentTarget.getBoundingClientRect();
     const point = screenToWorld(world, event.clientX - rect.left, event.clientY - rect.top);
     offerContextMenuItems(event, [
-      { label: "Add prompt", onSelect: () => insertPrompt(world, getDocumentEditor(world), point) },
+      { label: "Add prompt", shortcut: "N", onSelect: () => insertPrompt(world, point) },
     ]);
   };
 

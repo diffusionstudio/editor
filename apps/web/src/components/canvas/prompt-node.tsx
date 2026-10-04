@@ -4,9 +4,9 @@
 
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
 import { useQuery, useWorld } from "@diffusionstudio/koota-solid";
-import { Prompt, authoredElement } from "@diffusionstudio/reconciler";
+import { authoredElement } from "@diffusionstudio/reconciler";
 import {
-  Computed, Culled, Hidden, PromptNode, RenderSurface, Root, Selected, entityWorldMat, getEntityBounds, getNextName, store,
+  Computed, Culled, Hidden, PromptNode, RenderSurface, Selected, entityWorldMat, getEntityBounds, store,
 } from "@diffusionstudio/runtime";
 import { toast } from "somoto";
 import { Button } from "@/components/ui/button";
@@ -47,9 +47,8 @@ import { useGenerateAudio } from "@/components/genai/use-generate-audio";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
 import type { PropValue } from "@diffusionstudio/jsx";
-import type { AABB, Point } from "@diffusionstudio/runtime";
-import type { Entity, World } from "koota";
-import type { DocumentEditor } from "@/engine/editor";
+import type { AABB } from "@diffusionstudio/runtime";
+import type { Entity } from "koota";
 import type { PromptInputMode } from "@/components/genai/prompt-input";
 import type { AspectRatio, GenerationConfig } from "@/components/genai/schemas";
 
@@ -123,29 +122,6 @@ function toProps(config: GenerationConfig, library: AssetLibrary | undefined): R
 const unsetValue = (value: unknown) => value === undefined || value === false;
 const sameValue = (a: unknown, b: unknown) =>
   (unsetValue(a) && unsetValue(b)) || JSON.stringify(a) === JSON.stringify(b);
-
-export function insertPrompt(world: World, editor: DocumentEditor, at: Point): Entity | undefined {
-  const root = world.get(Root);
-  if (!root) return undefined;
-
-  const config = createDefaultConfig("IMAGE");
-  const [entity] = editor.insertElement(root, () => (
-    <Prompt
-      name={getNextName(world, "Prompt")}
-      x={Math.round(at.x - PROMPT_SIZE.width / 2)}
-      y={Math.round(at.y - PROMPT_SIZE.height / 2)}
-      width={PROMPT_SIZE.width}
-      height={PROMPT_SIZE.height}
-      mode="image"
-      model={config.model}
-      aspectRatio={config.aspectRatio}
-      count={config.count}
-    />
-  ));
-
-  if (entity) editor.select([entity]);
-  return entity;
-}
 
 export function PromptNodes() {
   const prompts = useQuery(PromptNode);

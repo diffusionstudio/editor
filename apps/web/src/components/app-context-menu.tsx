@@ -70,7 +70,14 @@ export function AppContextMenu(props: { children: JSX.Element }) {
         <ContextMenuContent class="w-[200px]">
           <Show when={extras().length > 0}>
             <For each={extras()}>
-              {(item) => <ContextMenuItem onSelect={item.onSelect}>{item.label}</ContextMenuItem>}
+              {(item) => (
+                <ContextMenuItem onSelect={item.onSelect}>
+                  {item.label}
+                  <Show when={item.shortcut}>
+                    <ContextMenuShortcut>{item.shortcut}</ContextMenuShortcut>
+                  </Show>
+                </ContextMenuItem>
+              )}
             </For>
             <ContextMenuSeparator />
           </Show>

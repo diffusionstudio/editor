@@ -40,6 +40,7 @@ import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
 import { cancelObjectMask, getObjectTrack, trackObjectMask, undoMaskStroke } from '../object-mask';
+import { insertPrompt } from '../prompt';
 import { splitAtPlayhead } from '../split';
 import { Keys, MODIFIER_KEYS, ObjectMaskTool, Pointer } from '../traits';
 import { editTransform } from './interactions';
@@ -490,6 +491,7 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['t', '!mod'], action: selectTool(ToolType.TEXT) },
 	{ keys: ['r', '!mod'], action: selectTool(ToolType.RECT) },
 	{ keys: ['m', '!mod'], action: selectTool(ToolType.OBJECT_MASK) },
+	{ keys: ['n', '!mod'], action: (world) => { insertPrompt(world); } },
 	{ keys: ['a', '!mod'], action: seekFrames(-1) },
 	{ keys: ['d', '!mod'], action: seekFrames(1) },
 	{ keys: ['w', '!mod'], action: seekSeconds(1) },
