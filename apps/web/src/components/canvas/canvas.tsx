@@ -8,6 +8,8 @@ import { CameraController, EngineCanvas } from "@/engine";
 import { forkPrompt, forkTemplate, insertPrompt } from "@/engine/prompt";
 import { insertAsset } from "@/engine/insert-asset";
 import { selectionAssets } from "@/engine/asset-folders";
+import { useObjectActions } from "@/components/genai/use-object-actions";
+import { usePromptInput } from "@/context/prompt-input";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { Toolbar } from "./toolbar";
 import { DrawOverlay } from "./draw-overlay";
@@ -56,6 +58,22 @@ function setFolder(library: AssetLibrary, assets: Asset[]): ContextMenuExtra {
 
 export function Canvas(props: CanvasProps) {
   const world = useWorld();
+  const actions = useObjectActions(usePromptInput().openPromptInput);
+
+  const objectActions = (): ContextMenuExtra[] => {
+    const media = actions.isImage() || actions.isVideo();
+    const generated = media && actions.isGenerated();
+    return [
+      ...(actions.hasScene() ? [{ label: "Auto-Captions", onSelect: actions.autoCaptions }] : []),
+      ...(actions.isImage() ? [{ label: "Remove background", checked: actions.isOn("removeBackground"), onSelect: () => actions.toggle("removeBackground") }] : []),
+      ...(actions.isVideo() ? [{ label: "Add audio", checked: actions.isOn("addAudio"), onSelect: () => actions.toggle("addAudio") }] : []),
+      ...(media ? [{ label: "Upscale", checked: actions.isOn("upscale"), onSelect: () => actions.toggle("upscale") }] : []),
+      ...(actions.isImage() ? [{ label: "Edit with prompt", onSelect: actions.editWithPrompt }] : []),
+      ...(generated && actions.isImage() ? [{ label: "Make video", onSelect: actions.makeVideo }] : []),
+      ...(generated ? [{ label: "Rerun", onSelect: actions.rerun }] : []),
+      ...(generated && actions.isImage() ? [{ label: "Reuse", onSelect: actions.reuse }] : []),
+    ];
+  };
 
   /**
    * Drops onto the canvas: library assets (dragged from the panel) land where
@@ -115,10 +133,14 @@ export function Canvas(props: CanvasProps) {
     const device = { x: (event.clientX - bounds.left) * resolution, y: (event.clientY - bounds.top) * resolution };
     const forkable = getSelection(world).find((entity) => isPointerInEntity(world, entity, device) && forkTemplate(entity));
     const library = world.get(Library);
-    const assets = getSelection(world).some((entity) => isPointerInEntity(world, entity, device)) ? selectionAssets(world) : [];
+    const onSelection = getSelection(world).some((entity) => isPointerInEntity(world, entity, device));
+    const assets = onSelection ? selectionAssets(world) : [];
+    const objectItems = onSelection ? objectActions() : [];
     offerContextMenuItems(event, [
+      ...(onSelection && actions.canTidy() ? [{ label: "Tidy up", shortcut: "⌃⌥T", onSelect: actions.tidy }] : []),
       { label: "Add prompt", shortcut: "N", onSelect: () => insertPrompt(world, point) },
       ...(forkable ? [{ label: "Fork", shortcut: "⇧N", onSelect: () => forkPrompt(world, forkable) }] : []),
+      ...(objectItems.length ? [{ separator: true as const }, { label: "Media actions", items: objectItems }] : []),
       ...(library && assets.length ? [
         { separator: true as const },
         setFolder(library, assets),
