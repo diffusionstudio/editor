@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createTRPCClient, httpBatchLink, httpSubscriptionLink, splitLink, TRPCClientError, type TRPCLink } from "@trpc/client";
+import { createTRPCClient, httpBatchLink, TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import { supabase } from "./supabase";
 import { showUpgradeDialog } from "@/components/upgrade-dialog";
@@ -25,39 +25,17 @@ const paymentRequiredLink: TRPCLink<AppRouter> = () => ({ next, op }) =>
     return () => sub.unsubscribe();
   });
 
-const url = `${import.meta.env.VITE_API_URL ?? ""}/api/v2/trpc`;
-
-/** The Supabase session as an Authorization header value, or undefined when signed out. */
-async function authorization(): Promise<string | undefined> {
-  const session = await supabase?.auth.getSession();
-  const token = session?.data.session?.access_token;
-  return token ? `Bearer ${token}` : undefined;
-}
-
-/**
- * The Diffusion Studio API (v2), authenticated with the Supabase session.
- * Subscriptions (`jobs.watch`) are server-sent events, which cannot carry
- * headers, so the token travels as a connection param there.
- */
+/** The Diffusion Studio API (v2), authenticated with the Supabase session. */
 export const api = createTRPCClient<AppRouter>({
   links: [
     paymentRequiredLink,
-    splitLink({
-      condition: (op) => op.type === "subscription",
-      true: httpSubscriptionLink({
-        url,
-        connectionParams: async () => {
-          const value = await authorization();
-          return value ? { authorization: value } : {};
-        },
-      }),
-      false: httpBatchLink({
-        url,
-        async headers() {
-          const value = await authorization();
-          return value ? { Authorization: value } : {};
-        },
-      }),
+    httpBatchLink({
+      url: `${import.meta.env.VITE_API_URL ?? ""}/api/v2/trpc`,
+      async headers() {
+        const session = await supabase?.auth.getSession();
+        const token = session?.data.session?.access_token;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      },
     }),
   ],
 });
