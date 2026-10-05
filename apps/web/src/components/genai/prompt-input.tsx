@@ -26,6 +26,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  onMount,
   type Accessor,
 } from "solid-js";
 
@@ -298,6 +299,11 @@ export function PromptInput(props: PromptInputProps) {
     textareaRef.style.height = "auto";
     textareaRef.style.height = `${textareaRef.scrollHeight}px`;
   };
+
+  onMount(() => {
+    textareaRef.focus();
+    textareaRef.setSelectionRange(textareaRef.value.length, textareaRef.value.length);
+  });
 
   const handleSelectRecentPrompt = (prompt: string) => {
     patch({ prompt });
