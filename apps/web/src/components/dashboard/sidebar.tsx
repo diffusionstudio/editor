@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/icon";
 import { useAuth } from "@/context/auth";
 import { useAvatar } from "@/hooks/use-avatar";
 import { cx } from "@/lib/cva";
+import { planName } from "@/lib/checkout";
 
 type DashboardSidebarItemProps = {
   icon: string;
@@ -160,7 +161,7 @@ export function DashboardSidebarUser(props: DashboardSidebarUserProps) {
     return user?.user_metadata?.full_name || user?.email || "User";
   };
 
-  const planLabel = () => (auth.isPro() ? "Pro Plan" : "Free Plan");
+  const planLabel = () => `${planName(auth.plan())} Plan`;
 
   const initial = () => displayName().charAt(0).toUpperCase();
   const avatarUrl = useAvatar();

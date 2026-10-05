@@ -3,15 +3,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { useSearchParams } from "@solidjs/router";
-import { Show, createSignal, onCleanup, onMount } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 
 import { Icon } from "@/components/ui/icon";
+import { useAuth } from "@/context/auth";
 import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
 
 export function PurchaseSuccess() {
+  const auth = useAuth();
   const [params, setParams] = useSearchParams();
   const [deepLinkSuccess, setDeepLinkSuccess] = createSignal(false);
+
+  const succeeded = () => params.checkout === "success" || deepLinkSuccess();
+
+  createEffect(() => {
+    if (succeeded()) {
+      auth.refreshAccount();
+    }
+  });
 
   onMount(() => {
     if (!window.desktop) return;
@@ -48,7 +58,7 @@ export function PurchaseSuccess() {
   };
 
   return (
-    <Show when={params.checkout === "success" || deepLinkSuccess()}>
+    <Show when={succeeded()}>
       <div
         class="pointer-events-auto fixed inset-0 z-[999] flex flex-col items-center justify-center gap-2 bg-overlay-strong"
         onClick={close}

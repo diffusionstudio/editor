@@ -24,7 +24,7 @@ export function AiCreditsMenu() {
   const auth = useAuth();
   const navigate = useNavigate();
 
-  const isPro = () => auth.isPro();
+  const isSubscribed = () => auth.isSubscribed();
   const total = () => auth.creditLimit();
   const remaining = () => auth.remainingCredits();
   const used = () => Math.max(0, total() - remaining());
@@ -32,7 +32,7 @@ export function AiCreditsMenu() {
   const usageLabel = () => `${formatCredits(used())} / ${formatCredits(total())}`;
 
   const footerLabel = () => {
-    if (!isPro()) return "One time only";
+    if (!isSubscribed()) return "One time only";
     const reset = auth.nextCreditReset();
     if (!reset) return "Resets monthly";
     const days = Math.max(0, Math.ceil((reset.getTime() - Date.now()) / 86_400_000));

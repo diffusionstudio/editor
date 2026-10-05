@@ -15,9 +15,11 @@ import {
 } from 'solid-js';
 import { toast } from 'somoto';
 import type { Session, User } from '@supabase/supabase-js';
+import type { Account, Plan } from '@diffusionstudio/api-contract';
 
 import { supabase } from '@/lib/supabase';
-import { backend, FREE_CREDITS_QUOTA, type UserData } from '@/lib/backend';
+import { api } from '@/lib/api';
+import { FREE_CREDITS } from '@/lib/checkout';
 import { identify, resetIdentity, track } from '@/lib/analytics';
 import { mainBridge } from '@/lib/ipc';
 import { MAIN_CHANNELS } from '@desktop/main-channels';
@@ -30,37 +32,29 @@ type AuthContextValue = {
   user: Accessor<User | null>;
   isAuthenticated: Accessor<boolean>;
   isLoading: Accessor<boolean>;
-  accessLevel: Accessor<number>;
+  plan: Accessor<Plan>;
   remainingCredits: Accessor<number>;
   creditLimit: Accessor<number>;
   nextCreditReset: Accessor<Date | null>;
-  isPro: Accessor<boolean>;
-  hasStripeCustomer: Accessor<boolean>;
+  /** On any paid plan, legacy per-credit subscriptions included. */
+  isSubscribed: Accessor<boolean>;
+  /** Has billing details and invoices to show (a Stripe customer). */
+  hasBillingAccount: Accessor<boolean>;
   productUpdatesEnabled: Accessor<boolean>;
   marketingAnnouncementsEnabled: Accessor<boolean>;
   signInWithOAuth: (provider: OAuthProvider) => Promise<void>;
   signInWithOtp: (email: string) => Promise<{ error: string | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error: string | null }>;
   refreshSession: () => Promise<void>;
+  /** Fetches the account again, after anything that changed it. */
+  refreshAccount: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue>();
 
-type UserDataSubset = Pick<
-  UserData,
-  | 'lifetime_credit_balance'
-  | 'monthly_credit_balance'
-  | 'monthly_credit_quota'
-  | 'access_level'
-  | 'stripe_customer_id'
-  | 'last_credit_reset_at'
-  | 'product_updates_enabled'
-  | 'marketing_announcements_enabled'
->;
-
 const ELECTRON_AUTH_REDIRECT = 'https://app.diffusion.studio/auth/electron-callback.html';
-const USER_DATA_QUERY = "lifetime_credit_balance,monthly_credit_balance,monthly_credit_quota,access_level,stripe_customer_id,last_credit_reset_at,product_updates_enabled,marketing_announcements_enabled" as const;
 
 export function AuthProvider(props: { children: JSX.Element }) {
   const [session, setSession] = createSignal<Session | null>(null);
@@ -95,25 +89,25 @@ export function AuthProvider(props: { children: JSX.Element }) {
 
 
 
-  const [userData, { mutate: mutateUserData }] = createResource<UserDataSubset | null, string>(
+  const [account, { refetch: refetchAccount }] = createResource<Account | null, string>(
     () => session()?.user.id,
-    async (userId) => {
-      if (!supabase) return null;
-
-      const { data, error } = await supabase
-        .from('user_data')
-        .select(USER_DATA_QUERY)
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('[auth] Failed to fetch user_data', error);
+    async () => {
+      try {
+        return await api.account.get.query();
+      } catch (err) {
+        console.error('[auth] Failed to fetch the account', err);
         return null;
       }
-
-      return data as UserDataSubset;
     },
   );
+
+  const accountData = () => (session() ? account.latest ?? null : null)
+
+  const refreshAccount = () => {
+    if (session()) {
+      refetchAccount();
+    }
+  }
 
   onMount(() => {
     if (!window.desktop) return;
@@ -164,17 +158,19 @@ export function AuthProvider(props: { children: JSX.Element }) {
           table: 'user_data',
           filter: `id=eq.${userId}`,
         },
-        (payload) => mutateUserData(payload.new as UserDataSubset),
+        refreshAccount,
       )
       .subscribe();
 
     onCleanup(() => client.removeChannel(channel));
   });
 
-  const accessLevel = () => userData()?.access_level ?? 1;
-  const lifetimeCreditBalance = () => userData()?.lifetime_credit_balance ?? 0;
-  const monthlyCreditBalance = () => userData()?.monthly_credit_balance ?? 0;
-  const monthlyCreditQuota = () => userData()?.monthly_credit_quota ?? 0;
+  onMount(() => {
+    window.addEventListener('focus', refreshAccount);
+    onCleanup(() => window.removeEventListener('focus', refreshAccount));
+  });
+
+  const plan = (): Plan => accountData()?.plan ?? 'free';
 
   const signInWithOAuth = async (provider: OAuthProvider) => {
     if (!supabase) return;
@@ -231,6 +227,15 @@ export function AuthProvider(props: { children: JSX.Element }) {
     return { error: null };
   };
 
+  const signInWithPassword = async (email: string, password: string): Promise<{ error: string | null }> => {
+    if (!supabase) return { error: 'Auth is not configured' };
+
+    track('sign_in_attempt', { method: 'password' });
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null };
+  };
+
   const signOut = async () => {
     if (!supabase) return;
 
@@ -247,7 +252,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
     }
 
     try {
-      await backend.deleteAccount();
+      await api.account.delete.mutate();
       track('account_deleted');
 
       // Sign out locally after successful server-side deletion
@@ -269,28 +274,28 @@ export function AuthProvider(props: { children: JSX.Element }) {
     }
   };
 
-  const isPro = () => accessLevel() > 1;
-  const hasStripeCustomer = () => !!userData()?.stripe_customer_id;
-  const productUpdatesEnabled = () => userData()?.product_updates_enabled ?? true;
-  const marketingAnnouncementsEnabled = () => userData()?.marketing_announcements_enabled ?? true;
-  const remainingCredits = () => monthlyCreditBalance() + lifetimeCreditBalance();
-  const creditLimit = () => (isPro() ? monthlyCreditQuota() : FREE_CREDITS_QUOTA);
+  const isSubscribed = () => plan() !== 'free';
+  const hasBillingAccount = () => accountData()?.hasBillingAccount ?? false;
+  const productUpdatesEnabled = () => accountData()?.emailPreferences.productUpdates ?? true;
+  const marketingAnnouncementsEnabled = () => accountData()?.emailPreferences.marketingAnnouncements ?? true;
+  const remainingCredits = () => {
+    const credits = accountData()?.credits;
+    return credits ? credits.monthly + credits.lifetime : 0;
+  };
+  const creditLimit = () => (isSubscribed() ? accountData()?.credits.quota ?? 0 : FREE_CREDITS);
   const nextCreditReset = (): Date | null => {
-    const last = userData()?.last_credit_reset_at;
-    if (!last) return null;
-    const next = new Date(last);
-    next.setMonth(next.getMonth() + 1);
-    return next;
+    const next = accountData()?.nextResetAt;
+    return next ? new Date(next) : null;
   };
 
   const ctx: AuthContextValue = {
     session,
-    isPro,
-    hasStripeCustomer,
+    isSubscribed,
+    hasBillingAccount,
     user: () => session()?.user ?? null,
     isAuthenticated: () => !!session(),
     isLoading,
-    accessLevel,
+    plan,
     remainingCredits,
     creditLimit,
     nextCreditReset,
@@ -298,9 +303,11 @@ export function AuthProvider(props: { children: JSX.Element }) {
     marketingAnnouncementsEnabled,
     signInWithOAuth,
     signInWithOtp,
+    signInWithPassword,
     signOut,
     deleteAccount,
     refreshSession,
+    refreshAccount,
   };
 
   return (

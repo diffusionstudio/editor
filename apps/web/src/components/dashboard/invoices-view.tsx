@@ -3,12 +3,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { For, Show, createResource } from "solid-js";
+import type { Invoice } from "@diffusionstudio/api-contract";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { backend } from "@/lib/backend";
+import { api } from "@/lib/api";
 
 import { DashboardDividedStack, DashboardSurfaceCard } from "./shared";
 
@@ -21,15 +22,6 @@ export type InvoiceItem = {
   amount: string;
   status: InvoiceStatus;
   url: string | null;
-};
-
-type RawInvoice = {
-  id: string;
-  status: string | null;
-  total: number;
-  currency: string;
-  dueDate: number;
-  hostedUrl: string | null;
 };
 
 function formatInvoiceDate(timestampMs: number): string {
@@ -48,7 +40,7 @@ function formatInvoiceAmount(totalMinor: number, currency: string): string {
 }
 
 function mapInvoiceStatus(
-  status: string | null,
+  status: Invoice["status"],
   dueDateMs: number,
 ): InvoiceStatus {
   if (status === "paid") return "Paid";
@@ -58,7 +50,7 @@ function mapInvoiceStatus(
   return "Open";
 }
 
-function toInvoiceItem(invoice: RawInvoice): InvoiceItem {
+function toInvoiceItem(invoice: Invoice): InvoiceItem {
   return {
     id: invoice.id,
     dueDate: formatInvoiceDate(invoice.dueDate),
@@ -145,7 +137,7 @@ function DashboardInvoicesList(props: { invoices: InvoiceItem[] }) {
 export function DashboardInvoicesView() {
   const [invoices] = createResource<InvoiceItem[]>(async () => {
     try {
-      const raw = await backend.listInvoices();
+      const raw = await api.billing.invoices.query();
       return raw.map(toInvoiceItem);
     } catch (err) {
       console.error("Failed to load invoices", err);

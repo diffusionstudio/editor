@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogPortal } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { useAuth } from "@/context/auth";
 import { cx } from "@/lib/cva";
-import { backend } from "@/lib/backend";
+import { api } from "@/lib/api";
+import { FREE_CREDITS, planName } from "@/lib/checkout";
 import {
   For,
   Show,
@@ -228,7 +229,7 @@ export function DashboardFreePlanDetails() {
     <DashboardPlanDetails
       details={[
         { label: "Free", value: "$0.00" },
-        { label: "AI credits", value: "50 trial credits \u00B7 One time only" },
+        { label: "AI credits", value: `${FREE_CREDITS} trial credits \u00B7 One time only` },
       ]}
     />
   );
@@ -247,9 +248,16 @@ function formatCurrency(amountCents: number, currency: string) {
   }).format(amountCents / 100);
 }
 
-export function DashboardProPlanDetails() {
+export function DashboardPaidPlanDetails() {
   const auth = useAuth();
-  const [summary] = createResource(() => backend.getSubscriptionSummary());
+  const [summary] = createResource(async () => {
+    try {
+      return await api.billing.subscription.query();
+    } catch (err) {
+      console.error("Failed to load the subscription", err);
+      return null;
+    }
+  });
 
   const priceLabel = () => {
     const s = summary();
@@ -270,7 +278,7 @@ export function DashboardProPlanDetails() {
   return (
     <DashboardPlanDetails
       details={[
-        { label: "Pro", value: priceLabel() },
+        { label: planName(auth.plan()), value: priceLabel() },
         { label: "AI credits", value: creditsLabel() },
         { label: "Renews", value: renewsLabel() },
       ]}
