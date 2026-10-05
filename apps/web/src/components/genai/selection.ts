@@ -3,75 +3,58 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createMemo } from "solid-js";
-import { AssetId, Cache, Paint, PaintType, getIntrinsicPaint } from "@diffusionstudio/runtime";
-import { useSelection } from "@/engine/hooks";
+import { AssetId, PaintType } from "@diffusionstudio/runtime";
+import { useDerived, useSelection } from "@/engine/hooks";
+import { topMedia } from "@/engine/generate";
 import { useLibrary } from "@/engine/library";
 
 import type { Asset } from "@diffusionstudio/assets";
-import type { Entity } from "koota";
+import type { NodeMedia } from "@/engine/generate";
 
-/** The kinds of paint the prompt box has anything to say about. */
-type MediaPaint = PaintType.IMAGE | PaintType.VIDEO;
-
-/** A selected node and the element its source props live on. */
-export interface SelectedNode {
-  entity: Entity;
-  source: Entity;
-  paint?: MediaPaint;
+/** A selected node's top media, and the library asset it shows once that has loaded. */
+export interface SelectedMedia extends NodeMedia {
+  asset?: Asset;
 }
 
-/** A selected node and the library asset its source element is bound to. */
-export interface BoundNode extends SelectedNode {
-  asset: Asset;
-}
+/** A node's top media with the id of the asset bound to it so far. */
+type Shown = NodeMedia & { assetId?: string };
 
-function isMediaPaint(paint: PaintType | undefined): paint is MediaPaint {
-  return paint === PaintType.IMAGE || paint === PaintType.VIDEO;
-}
+const sameMedia = (a: Shown[], b: Shown[]) =>
+  a.length === b.length && a.every((media, index) => {
+    const other = b[index]!;
+    return media.node === other.node && media.paint === other.paint && media.assetId === other.assetId;
+  });
 
 /**
- * Where `entity` keeps its source: itself when its own paint is the media,
- * else its first media fill. A node that paints no media at all is still its
- * own source element — an `<audio>` carries its `src` like any other.
+ * The media the selected nodes show on top (see `topMedia`) — what a prompt
+ * references and a transform is run over. Sampled every frame: which paint
+ * is on top is derived state, and changes without the selection changing (a
+ * transform lands, a fill is hidden).
  */
-function resolve(entity: Entity): SelectedNode {
-  const intrinsic = getIntrinsicPaint(entity);
-  if (isMediaPaint(intrinsic)) return { entity, source: entity, paint: intrinsic };
-
-  for (const fill of entity.get(Cache)?.fills ?? []) {
-    const paint = fill.get(Paint)?.value;
-    if (isMediaPaint(paint)) return { entity, source: fill, paint };
-  }
-
-  return { entity, source: entity };
-}
-
 export function useMediaSelection() {
   const library = useLibrary();
   const { nodes } = useSelection();
 
-  const selected = createMemo(() => nodes().map(resolve));
+  const shown = useDerived<Shown[]>(
+    () => nodes()
+      .map(topMedia)
+      .filter((media) => media !== undefined)
+      .map((media) => ({ ...media, assetId: media.paint.get(AssetId)?.value })),
+    sameMedia,
+  );
 
-  const painted = (paint: MediaPaint) =>
-    createMemo(() => selected().filter((node) => node.paint === paint).map((node) => node.source));
-
-  const imageNodes = painted(PaintType.IMAGE);
-  const videoNodes = painted(PaintType.VIDEO);
-
-  const bound = createMemo(() => {
+  const media = createMemo<SelectedMedia[]>(() => {
     const lib = library();
-    if (!lib) return [];
-
-    const entries: BoundNode[] = [];
-    for (const node of selected()) {
-      const id = node.source.get(AssetId)?.value;
-      const asset = id ? lib.get(id) : undefined;
-      if (asset) entries.push({ ...node, asset });
-    }
-    return entries;
+    return shown().map(({ assetId, ...entry }) => ({ ...entry, asset: assetId ? lib?.get(assetId) : undefined }));
   });
 
-  const images = createMemo(() => bound().filter((entry) => entry.asset.type === "IMAGE"));
+  const imageMedia = createMemo(() => media().filter((entry) => entry.type === PaintType.IMAGE));
+  const videoMedia = createMemo(() => media().filter((entry) => entry.type === PaintType.VIDEO));
 
-  return { bound, images, imageNodes, videoNodes };
+  /** Selected pictures whose asset is in the library: what a prompt can reference. */
+  const images = createMemo(() =>
+    imageMedia().filter((entry): entry is SelectedMedia & { asset: Asset } => entry.asset?.type === "IMAGE"),
+  );
+
+  return { media, imageMedia, videoMedia, images };
 }

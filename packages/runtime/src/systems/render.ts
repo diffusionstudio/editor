@@ -30,6 +30,7 @@ import { getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
 import { FAILED_COLOR, getSourceFailure } from '../utils/source-failure';
+import { getGeneratingColor, isGenerating } from '../utils/generating';
 import { applyStrokeStyle } from '../utils/stroke';
 import { renderText } from '../utils/text';
 import { getTransitionWindow } from '../utils/transition';
@@ -589,13 +590,15 @@ function renderStrokes(world: World, entity: Entity): void {
 }
 
 /**
- * The still fill a node whose source failed is left with
+ * What covers a node's fills while they cannot be shown: the pulse while a
+ * generation is filling it in, the still fill when its source failed.
  */
-function renderSourceFailure(world: World, entity: Entity): void {
-	if (getSourceFailure(entity) === undefined) return;
+function renderPendingFill(world: World, entity: Entity): void {
+	const generating = isGenerating(entity);
+	if (!generating && !getSourceFailure(entity)) return;
 
 	const ctx = getCtx(world);
-	ctx.fillStyle = FAILED_COLOR;
+	ctx.fillStyle = generating ? getGeneratingColor(world) : FAILED_COLOR;
 	ctx.fill();
 }
 
@@ -666,7 +669,7 @@ function renderShapeNode(world: World, entity: Entity): void {
 	renderShadows(world, entity);
 	renderIntrinsicFill(world, entity);
 	renderFills(world, entity);
-	renderSourceFailure(world, entity);
+	renderPendingFill(world, entity);
 	renderStrokes(world, entity);
 }
 

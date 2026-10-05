@@ -41,14 +41,11 @@ import {
   ALL_DURATION_OPTIONS,
   PROMPT_INPUT_AUDIO_MODEL_OPTIONS,
   // PROMPT_INPUT_RESOLUTION_OPTIONS
+  type PromptMode,
 } from "./config";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
-import { toast } from "somoto";
-import { useGenerateImage } from "./use-generate-image";
-import { useGenerateVideo } from "./use-generate-video";
-import { useGenerateVoice } from "./use-generate-voice";
-import { useGenerateAudio } from "./use-generate-audio";
+import { useGenerate } from "./use-generate";
 import { PromptInputActions } from "./prompt-input-actions";
 import type {
   AspectRatio,
@@ -68,9 +65,10 @@ import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 import type { AssetCache } from "@diffusionstudio/assets";
 import type { ThumbnailAsset } from "@/components/ui/asset-thumbnail";
 
-export type PromptInputMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";
+export type PromptInputMode = PromptMode;
 
 const DEFAULT_BUTTON_CLASS = "text-muted-foreground gap-0 pr-2 pl-0";
+/** As many references as the prompt box has room for; a model may take fewer. */
 const MAX_IMAGE_REFERENCES = 5;
 
 type GenerationConfgs = {
@@ -123,10 +121,7 @@ export function PromptInput(props: PromptInputProps) {
   const library = useLibrary();
   const editor = useEditor();
   const { images: selectedImages } = useMediaSelection();
-  const { generate: generateImage } = useGenerateImage();
-  const { generate: generateVideo } = useGenerateVideo();
-  const { generate: generateVoice } = useGenerateVoice();
-  const { generate: generateAudio } = useGenerateAudio();
+  const { generate } = useGenerate();
 
   let textareaRef!: HTMLTextAreaElement;
   let dragCounter = 0;
@@ -159,6 +154,11 @@ export function PromptInput(props: PromptInputProps) {
     return c.mode === "VOICE" ? c : undefined;
   };
 
+  const maxImageReferences = createMemo(() => Math.min(
+    MAX_IMAGE_REFERENCES,
+    PROMPT_INPUT_IMAGE_MODEL_OPTIONS.find((m) => m.id === config().model)?.maxReferences ?? MAX_IMAGE_REFERENCES,
+  ));
+
   const currentVideoModel = createMemo(() =>
     PROMPT_INPUT_VIDEO_MODEL_OPTIONS.find((m) => m.id === config().model),
   );
@@ -184,7 +184,7 @@ export function PromptInput(props: PromptInputProps) {
       .filter((id) => !local.includes(id));
     return [...local, ...selected]
       .filter((id) => lib.get(id))
-      .slice(0, MAX_IMAGE_REFERENCES);
+      .slice(0, maxImageReferences());
   });
 
   /** The library id a frame is set to, explicitly or by the selection. */
@@ -239,11 +239,11 @@ export function PromptInput(props: PromptInputProps) {
     // The reference is shown from a selected canvas entity, so removing it
     // means deselecting that entity.
     const entry = selectedImages().find((e) => e.asset.id === assetId);
-    if (entry) editor.deselect(entry.entity);
+    if (entry) editor.deselect(entry.node);
   };
 
   const openImageReferencesPicker = async () => {
-    if (effectiveImageRefIds().length >= MAX_IMAGE_REFERENCES) return;
+    if (effectiveImageRefIds().length >= maxImageReferences()) return;
     const lib = library();
     if (!lib) return;
 
@@ -255,7 +255,7 @@ export function PromptInput(props: PromptInputProps) {
     const imageAssets = imported.filter((a) => a.type === "IMAGE");
     const current = imageConfig()?.imageRefIds ?? [];
     patch({
-      imageRefIds: [...current, ...imageAssets.map((a) => a.id)].slice(0, MAX_IMAGE_REFERENCES),
+      imageRefIds: [...current, ...imageAssets.map((a) => a.id)].slice(0, maxImageReferences()),
     });
   };
 
@@ -291,7 +291,7 @@ export function PromptInput(props: PromptInputProps) {
     // The frame is being shown from a selected canvas entity, so clearing it
     // means deselecting that entity (mirrors removeImageReference).
     const entry = selectedImages()[frame === "start" ? 0 : 1];
-    if (entry) editor.deselect(entry.entity);
+    if (entry) editor.deselect(entry.node);
   };
 
   const resizeTextarea = () => {
@@ -321,31 +321,24 @@ export function PromptInput(props: PromptInputProps) {
     patch({ prompt: "" });
     resizeTextarea();
 
-    const promise = (() => {
-      switch (currentConfig.mode) {
-        case "IMAGE":
-          return generateImage({
-            ...currentConfig,
-            imageRefIds: effectiveImageRefIds(),
-          });
-        case "VIDEO":
-          return generateVideo({
-            ...currentConfig,
-            startFrameImageId: effectiveStartFrameId() || undefined,
-            endFrameImageId: effectiveEndFrameId() || undefined,
-          });
-        case "VOICE":
-          return generateVoice(currentConfig);
-        case "AUDIO":
-          return generateAudio(currentConfig);
-      }
-    })();
+    let submitted: GenerationConfig;
 
-    promise.catch((err) => {
-      toast("Generation failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    });
+    if (currentConfig.mode === "IMAGE") {
+      submitted = {
+        ...currentConfig,
+        imageRefIds: effectiveImageRefIds(),
+      };
+    } else if (currentConfig.mode === "VIDEO") {
+      submitted = {
+        ...currentConfig,
+        startFrameImageId: effectiveStartFrameId() || undefined,
+        endFrameImageId: effectiveEndFrameId() || undefined,
+      };
+    } else {
+      submitted = currentConfig;
+    }
+
+    generate(submitted);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -433,9 +426,7 @@ export function PromptInput(props: PromptInputProps) {
     }
 
     const current = imageConfig()?.imageRefIds ?? [];
-    patch({
-      imageRefIds: [...current, ...imageIds].slice(0, MAX_IMAGE_REFERENCES),
-    });
+    patch({ imageRefIds: [...current, ...imageIds].slice(0, maxImageReferences()) });
   };
 
   const handleVideoModelChange = (id: string) => {
@@ -451,7 +442,7 @@ export function PromptInput(props: PromptInputProps) {
       endFrameImageId: model.features.includes("end-frame") ? c.endFrameImageId : undefined,
       generateAudio: model.features.includes("audio") ? (c.generateAudio ?? true) : false,
       duration: model.durations.includes(durationStr) ? c.duration : parseInt(model.durations[0], 10),
-      aspectRatio: model.aspectRatios.includes(c.aspectRatio)
+      aspectRatio: model.aspectRatios.length === 0 || model.aspectRatios.includes(c.aspectRatio)
         ? c.aspectRatio
         : (model.aspectRatios[0] as AspectRatio),
     });
@@ -489,7 +480,7 @@ export function PromptInput(props: PromptInputProps) {
                 />
               )}
             </For>
-            <Show when={effectiveImageRefIds().length < MAX_IMAGE_REFERENCES}>
+            <Show when={effectiveImageRefIds().length < maxImageReferences()}>
               <PromptInputAttachButton
                 icon="attachment"
                 label="Image references"
@@ -664,14 +655,16 @@ export function PromptInput(props: PromptInputProps) {
                     value={modelAccessor}
                     onChange={handleVideoModelChange}
                   />
-                  <PromptInputCompactMenu
-                    aria-label="Select aspect ratio"
-                    menuLabel="Aspect ratio"
-                    value={aspectRatioAccessor}
-                    options={videoAspectRatioOptions()}
-                    onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
-                    triggerIcon="aspect-ratio-16-9"
-                  />
+                  <Show when={videoAspectRatioOptions().length > 0}>
+                    <PromptInputCompactMenu
+                      aria-label="Select aspect ratio"
+                      menuLabel="Aspect ratio"
+                      value={aspectRatioAccessor}
+                      options={videoAspectRatioOptions()}
+                      onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
+                      triggerIcon="aspect-ratio-16-9"
+                    />
+                  </Show>
                   {/* <PromptInputCompactMenu
                     aria-label="Select resolution"
                     menuLabel="Resolution"

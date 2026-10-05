@@ -15,10 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createMemo, Show } from "solid-js";
 import { useGenerationRecords } from "./use-generation-records";
-import { useGenerateImage } from "./use-generate-image";
-import { useGenerateVideo } from "./use-generate-video";
-import { useGenerateVoice } from "./use-generate-voice";
-import { useGenerateAudio } from "./use-generate-audio";
+import { useGenerate } from "./use-generate";
 import { useAutoCaptions } from "./use-auto-captions";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
@@ -32,48 +29,28 @@ interface ActionBarProps {
 }
 
 export function ActionBar(props: ActionBarProps) {
-  const { imageNodes, videoNodes } = useMediaSelection();
-  const { isOn, toggle } = useTransforms();
+  const { imageMedia, videoMedia } = useMediaSelection();
+  const { run: runTransform } = useTransforms();
 
-  const { generate: generateImage } = useGenerateImage();
-  const { generate: generateVideo } = useGenerateVideo();
-  const { generate: generateVoice } = useGenerateVoice();
-  const { generate: generateAudio } = useGenerateAudio();
+  const { rerun } = useGenerate();
   const { generate: autoCaptions, hasScene } = useAutoCaptions();
-  const { isGenerated, totalCredits, firstConfig } = useGenerationRecords();
+  const { isGenerated, totalCredits, firstJob, firstConfig } = useGenerationRecords();
 
-  const isImage = createMemo(() => imageNodes().length > 0);
-  const isVideo = createMemo(() => videoNodes().length > 0);
+  const isImage = createMemo(() => imageMedia().length > 0);
+  const isVideo = createMemo(() => videoMedia().length > 0);
 
   const visible = createMemo(() => {
     return isImage() || isVideo() || hasScene();
   })
 
   const handleRerun = () => {
-    const config = firstConfig();
-    if (!config) {
-      toast("No generation config found", { description: "This asset wasn't generated with a prompt." });
+    const job = firstJob();
+    if (!job) {
+      toast("No generation found", { description: "This asset wasn't generated with a prompt." });
       return;
     }
-
-    const promise = (() => {
-      switch (config.mode) {
-        case "IMAGE":
-          return generateImage(config);
-        case "VIDEO":
-          return generateVideo(config);
-        case "VOICE":
-          return generateVoice(config);
-        case "AUDIO":
-          return generateAudio(config);
-      }
-    })();
-
-    promise.catch((err) => {
-      toast("Rerun failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    });
+    
+    rerun(job.request);
   };
 
   const handleEditWithPrompt = () => {
@@ -108,8 +85,7 @@ export function ActionBar(props: ActionBarProps) {
               <Button
                 variant="ghost"
                 class="gap-0 pl-0.5 text-muted-foreground"
-                classList={{ "text-foreground": isOn("removeBackground") }}
-                onClick={() => toggle("removeBackground")}
+                onClick={() => runTransform("removeBackground")}
               >
                 <Icon name="ai-generate" />
                 Remove background
@@ -117,8 +93,7 @@ export function ActionBar(props: ActionBarProps) {
               <Button
                 variant="ghost"
                 class="gap-0 pl-0.5 text-muted-foreground"
-                classList={{ "text-foreground": isOn("upscale") }}
-                onClick={() => toggle("upscale")}
+                onClick={() => runTransform("upscale")}
               >
                 <Icon name="arrow-scale" />
                 Upscale
@@ -172,8 +147,7 @@ export function ActionBar(props: ActionBarProps) {
               <Button
                 variant="ghost"
                 class="gap-0 pl-0.5 text-muted-foreground"
-                classList={{ "text-foreground": isOn("addAudio") }}
-                onClick={() => toggle("addAudio")}
+                onClick={() => runTransform("addAudio")}
               >
                 <Icon name="generate-audio" />
                 Add audio
@@ -181,8 +155,7 @@ export function ActionBar(props: ActionBarProps) {
               <Button
                 variant="ghost"
                 class="gap-0 pl-0.5 text-muted-foreground"
-                classList={{ "text-foreground": isOn("upscale") }}
-                onClick={() => toggle("upscale")}
+                onClick={() => runTransform("upscale")}
               >
                 <Icon name="arrow-scale" />
                 Upscale

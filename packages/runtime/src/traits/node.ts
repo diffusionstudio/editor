@@ -47,6 +47,8 @@ export const Hidden = trait();
 
 export const ClipsContent = trait();
 
+export const Generating = trait({ label: '', progress: undefined as number | undefined });
+
 export const Name = trait({ value: '' });
 
 // Stable identity for entities.

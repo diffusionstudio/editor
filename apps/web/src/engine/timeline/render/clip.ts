@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Caption, CaptionType, Chars, ClipDragOrigin, Computed, Hidden, Name, Selected, TrimDragOrigin, fitsChildren, getSourceFailure, isCaption, isGroup, isText, store } from '@diffusionstudio/runtime';
+import { Caption, CaptionType, Chars, ClipDragOrigin, Computed, Hidden, Name, Selected, TrimDragOrigin, fitsChildren, getGeneratingColor, getGeneratingLabel, getSourceFailure, isCaption, isGroup, isText, store } from '@diffusionstudio/runtime';
 
 import { getDocumentEditor } from '../../editor';
 import {
@@ -57,6 +57,7 @@ export function renderClip(
 
 	const asset = getClipAsset(world, entity);
 	const error = getSourceFailure(entity);
+	const generating = getGeneratingLabel(world, entity);
 	const style = getClipStyle(entity, asset, !!error?.length);
 
 	handleBody(world, surface, entity, left, width, row, resolution);
@@ -70,11 +71,11 @@ export function renderClip(
 	ctx.save();
 	ctx.beginPath();
 	ctx.roundRect(left, 0, width, row.height, CLIP_CORNER_RADIUS);
-	ctx.fillStyle = style.background;
+	ctx.fillStyle = generating ? getGeneratingColor(world) : style.background;
 	ctx.fill();
 	ctx.restore();
 
-	if (!error) {
+	if (!error && !generating) {
 		renderContent(world, scene, surface, entity, asset, style, row);
 	}
 
@@ -86,6 +87,7 @@ export function renderClip(
 		if (isCaption(entity)) label = label || `${CAPTION_PRESETS[entity.get(Caption)?.type ?? CaptionType.CLASSIC]} Captions`;
 		else if (isText(entity)) label = entity.get(Chars)?.value ?? label ?? '';
 		if (!label) label = getClipFallbackName(world, entity);
+		if (generating) label = generating;
 		if (error) label = error;
 
 		const [viewportLeft] = getViewport(world, scene, surface.layout.width);

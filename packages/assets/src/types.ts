@@ -48,6 +48,11 @@ interface AssetBase {
 	mimeType: string;
 	stat?: AssetStat;
 	/**
+	 * The API job a model produced the file in, for a generated asset: what
+	 * it was asked (to run it again, or reuse its settings) and what it cost.
+	 */
+	job?: string;
+	/**
 	 * Resolved on the fly for a `src` that names a path or URL outside the
 	 * library; lives in memory only and is never written to the manifest.
 	 */

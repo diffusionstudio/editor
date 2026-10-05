@@ -3,15 +3,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { createMemo } from "solid-js";
+import { useWorld } from "@diffusionstudio/koota-solid";
 import { isScene } from "@diffusionstudio/runtime";
+import { useProject } from "@/context/project";
+import { generateCaptions } from "@/engine/generate";
 import { useSelection } from "@/engine/hooks";
-import { notAvailable } from "./placeholder";
 
 export function useAutoCaptions() {
+  const world = useWorld();
+  const project = useProject();
   const { nodes } = useSelection();
 
-  const hasScene = createMemo(() => nodes().some(isScene));
-  const generate = () => notAvailable("Auto captions");
+  const scenes = createMemo(() => nodes().filter(isScene));
+  const hasScene = createMemo(() => scenes().length > 0);
+
+  const generate = () => {
+    for (const scene of scenes()) {
+      generateCaptions(world, scene, project.dir());
+    }
+  };
 
   return { hasScene, generate };
 }

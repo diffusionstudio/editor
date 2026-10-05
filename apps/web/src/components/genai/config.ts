@@ -2,8 +2,42 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import type { ModelId } from "@diffusionstudio/api-contract";
+
+/**
+ * What each model of the API makes. Keyed by the contract's model ids, so a
+ * model added to (or dropped from) the API fails the type check here first.
+ * The modes are the prompt box's; the tools are run from the action bar, and
+ * the text models (transcripts, analysis) never land on the canvas.
+ */
+export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
+  "gpt-image-2": "IMAGE",
+  "nano-banana-2": "IMAGE",
+  "nano-banana-pro": "IMAGE",
+  "seedream-4.5": "IMAGE",
+  "flux-2-klein": "IMAGE",
+  "remove-background": "IMAGE",
+  "upscale-image": "IMAGE",
+  "kling-3-pro": "VIDEO",
+  "kling-o3-pro": "VIDEO",
+  "wan-2.6": "VIDEO",
+  "hailuo-3-max": "VIDEO",
+  "seedance-2.0": "VIDEO",
+  "veo-3.1": "VIDEO",
+  "veo-3.1-fast": "VIDEO",
+  "upscale-video": "VIDEO",
+  "add-audio": "VIDEO",
+  "elevenlabs-music": "AUDIO",
+  "elevenlabs-sfx": "AUDIO",
+  "elevenlabs-v3": "VOICE",
+  "transcribe": "TEXT",
+  "analyze": "TEXT",
+};
+
+export type PromptMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";
+
 /** The one model the voice mode speaks with; the UI picks the voice, not the model. */
-export const PROMPT_INPUT_VOICE_MODEL = "elevenlabs-v3";
+export const PROMPT_INPUT_VOICE_MODEL = "elevenlabs-v3" satisfies ModelId;
 
 /** What an aspect ratio is worth in pixels, at 1080p. */
 export const ASPECT_RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {
@@ -67,50 +101,71 @@ export const PROMPT_INPUT_RESOLUTION_OPTIONS = [
   { value: "720p", label: "720p" },
 ];
 
-export const PROMPT_INPUT_IMAGE_MODEL_OPTIONS = [
+export type ImageModelOption = {
+  name: string;
+  id: ModelId;
+  icon: string;
+  description: string;
+  maxReferences: number;
+};
+
+export const PROMPT_INPUT_IMAGE_MODEL_OPTIONS: ImageModelOption[] = [
   {
-    name: "FLUX.2 [DEV] Turbo",
-    id: "flux-2-turbo",
+    name: "FLUX.2 Klein",
+    id: "flux-2-klein",
     icon: "large-bfl",
-    description: "Low budget, high quality, fast turbo mode.",
+    description: "Low budget, high quality, fast.",
+    maxReferences: 4,
   },
   {
     name: "GPT Image 2",
     id: "gpt-image-2",
     icon: "large-openai",
     description: "Flexible sizes up to 4K, true aspect ratios.",
+    maxReferences: 16,
   },
   {
     name: "Nano Banana 2",
     id: "nano-banana-2",
     icon: "large-google",
     description: "Fast, high quality, flexible edits.",
+    maxReferences: 14,
   },
   {
     name: "Nano Banana Pro",
     id: "nano-banana-pro",
     icon: "large-google",
     description: "Pro control, readable text, ultra consistent.",
+    maxReferences: 14,
   },
   {
     name: "Seedream 4.5",
     id: "seedream-4.5",
     icon: "large-bytedance",
     description: "Up to 4K, multi image edits, strong text.",
+    maxReferences: 14,
   },
 ];
 
+/**
+ * What a video model takes besides the prompt: a first and a last frame, and
+ * a switch for the sound it makes (models without one score their video
+ * themselves, or not at all).
+ */
 export type VideoModelFeature = "start-frame" | "end-frame" | "audio";
 
 export type VideoModelOption = {
   name: string;
-  id: string;
+  id: ModelId;
   icon: string;
   description: string;
   features: VideoModelFeature[];
   durations: string[];
+  /** Empty for a model that takes its proportions from the start frame. */
   aspectRatios: string[];
 };
+
+const seconds = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => `${from + i}s`);
 
 export const PROMPT_INPUT_VIDEO_MODEL_OPTIONS: VideoModelOption[] = [
   {
@@ -119,7 +174,7 @@ export const PROMPT_INPUT_VIDEO_MODEL_OPTIONS: VideoModelOption[] = [
     icon: "large-kling",
     description: "Cinematic motion with built-in audio.",
     features: ["start-frame", "end-frame", "audio"],
-    durations: ["3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "11s", "12s", "13s", "14s", "15s"],
+    durations: seconds(3, 15),
     aspectRatios: ["16:9", "9:16", "1:1"],
   },
   {
@@ -127,26 +182,17 @@ export const PROMPT_INPUT_VIDEO_MODEL_OPTIONS: VideoModelOption[] = [
     id: "kling-o3-pro",
     icon: "large-kling",
     description: "Multi-modal reasoning, strong scenes.",
-    features: ["start-frame", "end-frame", "audio"],
-    durations: ["3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "11s", "12s", "13s", "14s", "15s"],
-    aspectRatios: ["16:9", "9:16", "1:1"],
-  },
-  {
-    name: "Kling 2.5 Turbo",
-    id: "kling-2.5-turbo",
-    icon: "large-kling",
-    description: "Fast and affordable for quick iterations.",
-    features: ["start-frame", "end-frame", "audio"],
-    durations: ["5s", "10s"],
-    aspectRatios: ["16:9", "9:16", "1:1"],
+    features: ["start-frame", "audio"],
+    durations: seconds(3, 15),
+    aspectRatios: [],
   },
   {
     name: "Seedance 2.0",
     id: "seedance-2.0",
     icon: "large-bytedance",
     description: "Rich motion, lip-synced audio and SFX.",
-    features: ["start-frame", "end-frame", "audio"],
-    durations: ["4s", "5s", "6s", "7s", "8s", "9s", "10s", "11s", "12s", "13s", "14s", "15s"],
+    features: ["start-frame", "end-frame"],
+    durations: seconds(4, 15),
     aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
   },
   {
@@ -173,17 +219,17 @@ export const PROMPT_INPUT_VIDEO_MODEL_OPTIONS: VideoModelOption[] = [
     icon: "large-wan",
     description: "Expressive motion, stylized aesthetics.",
     features: ["start-frame"],
-    durations: ["5s", "10s", "15s"],
-    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    durations: ["5s", "10s"],
+    aspectRatios: ["16:9", "9:16"],
   },
   {
-    name: "Hailuo 2.3",
-    id: "hailuo-2.3",
+    name: "Hailuo 3 Max",
+    id: "hailuo-3-max",
     icon: "large-hailuo",
     description: "Smooth motion, cinematic lighting.",
-    features: ["start-frame"],
-    durations: ["5s"],
-    aspectRatios: ["16:9"],
+    features: ["start-frame", "end-frame"],
+    durations: seconds(5, 15),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
   },
 ];
 
@@ -351,7 +397,7 @@ export const PROMPT_INPUT_VOICE_OPTIONS = [
   },
 ];
 
-export const PROMPT_INPUT_AUDIO_MODEL_OPTIONS = [
+export const PROMPT_INPUT_AUDIO_MODEL_OPTIONS: { name: string; id: ModelId; icon: string; description: string }[] = [
   {
     name: "ElevenLabs Music",
     id: "elevenlabs-music",
