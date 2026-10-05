@@ -1,0 +1,148 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/* The moment right after checkout. The poster settles into place and the
+   copy rises in behind it, one line after another. Afterwards the poster
+   leans toward the pointer. Anyone who asked the system for less motion
+   sees the settled state, and a poster that holds still. */
+
+.ps-dialog {
+  --ps-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ps-poster {
+  animation: ps-settle 1.2s var(--ps-ease-out) both;
+}
+
+/* Tilt: the frame clips, the image inside leans. The zoom keeps the receding
+   edges from pulling clear of the frame. Tracking eases a little so the
+   motion reads smooth; leaving eases back slower. */
+
+.ps-poster {
+  perspective: 800px;
+}
+
+.ps-poster-image {
+  transform: rotateX(var(--ps-tilt-x, 0deg)) rotateY(var(--ps-tilt-y, 0deg))
+    scale(1);
+  transition: transform 0.6s var(--ps-ease-out);
+}
+
+.ps-poster[data-tilting] .ps-poster-image {
+  transform: rotateX(var(--ps-tilt-x, 0deg)) rotateY(var(--ps-tilt-y, 0deg))
+    scale(1.08);
+  transition-duration: 0.15s;
+}
+
+.ps-poster-glare {
+  background: radial-gradient(
+    circle at var(--ps-glare-x, 50%) var(--ps-glare-y, 50%),
+    rgb(255 255 255 / 0.35),
+    transparent 55%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+}
+
+.ps-poster[data-tilting] .ps-poster-glare {
+  opacity: 1;
+}
+
+@keyframes ps-settle {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ps-rise {
+  animation: ps-rise 0.5s var(--ps-ease-out) both;
+  animation-delay: var(--ps-delay, 0s);
+}
+
+@keyframes ps-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button: a band of white light crosses it once it has risen in, and again
+   on every hover, echoing the light streak in the poster. Hover needs its
+   own keyframes, since only a new animation name restarts one. Hover lifts
+   the blue rather than darkening it. */
+
+.ps-cta {
+  transition:
+    transform 0.15s var(--ps-ease-out),
+    filter 0.15s;
+}
+
+.ps-cta:hover {
+  background-color: var(--primary);
+  filter: brightness(1.08);
+}
+
+.ps-cta:active {
+  transform: scale(0.98);
+}
+
+.ps-cta-sheen {
+  width: 45%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.4) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: ps-sheen 1s cubic-bezier(0.45, 0, 0.25, 1) 0.8s;
+}
+
+.ps-cta:hover .ps-cta-sheen {
+  animation: ps-sheen-hover 0.8s cubic-bezier(0.45, 0, 0.25, 1);
+}
+
+@keyframes ps-sheen {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(325%);
+  }
+}
+
+@keyframes ps-sheen-hover {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(325%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ps-poster,
+  .ps-rise {
+    animation: none;
+  }
+
+  .ps-poster-glare,
+  .ps-cta-sheen {
+    display: none;
+  }
+
+  .ps-cta:active {
+    transform: none;
+  }
+}

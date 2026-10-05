@@ -79,10 +79,19 @@ export function getTopupPrice(tier: TopupCredits): number {
 const ELECTRON_CHECKOUT_REDIRECT =
   "https://app.diffusion.studio/checkout/electron-callback.html";
 
-function successAndCancelUrls(): { successUrl: string; cancelUrl: string } {
+/**
+ * `purchase` rides along on the success URL so the success dialog can name what
+ * was bought before the Stripe webhook has updated the account.
+ */
+function successAndCancelUrls(
+  purchase: { plan: PaidPlan } | { credits: number },
+): { successUrl: string; cancelUrl: string } {
+  const purchaseParams = Object.entries(purchase).map(([key, value]) => [key, String(value)]);
+
   if (window.desktop) {
+    const success = new URLSearchParams([["status", "success"], ...purchaseParams]);
     return {
-      successUrl: `${ELECTRON_CHECKOUT_REDIRECT}?status=success`,
+      successUrl: `${ELECTRON_CHECKOUT_REDIRECT}?${success}`,
       cancelUrl: `${ELECTRON_CHECKOUT_REDIRECT}?status=cancel`,
     };
   }
@@ -90,6 +99,7 @@ function successAndCancelUrls(): { successUrl: string; cancelUrl: string } {
   const cancelUrl = window.location.href;
   const success = new URL(window.location.href);
   success.searchParams.set("checkout", "success");
+  for (const [key, value] of purchaseParams) success.searchParams.set(key, value);
   return { successUrl: success.toString(), cancelUrl };
 }
 
@@ -110,7 +120,7 @@ export async function startSubscriptionCheckout(input: {
   try {
     const { url } = await api.billing.subscribe.mutate({
       ...input,
-      ...successAndCancelUrls(),
+      ...successAndCancelUrls({ plan: input.plan }),
     });
     await openCheckoutUrl(url);
   } catch (err) {
@@ -124,7 +134,7 @@ export async function startTopupCheckout(
   try {
     const { url } = await api.billing.topup.mutate({
       creditQuantity,
-      ...successAndCancelUrls(),
+      ...successAndCancelUrls({ credits: topupCredits(creditQuantity) }),
     });
     await openCheckoutUrl(url);
   } catch (err) {
