@@ -25,7 +25,7 @@ export function RemoveButton(props: RemoveButtonProps) {
       type="button"
       aria-label={props.label}
       class={cx(
-        "relative size-5 shrink-0 overflow-clip rounded-full border border-border bg-canvas text-foreground transition-colors hover:border-border-input hover:bg-muted focus-ring",
+        "relative size-5 shrink-0 overflow-clip rounded-full border border-border bg-canvas text-foreground transition-colors hover:border-border-input hover:bg-muted",
         props.class,
       )}
       onClick={props.onClick}

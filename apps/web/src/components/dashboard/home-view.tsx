@@ -303,7 +303,7 @@ export function DashboardHomeView() {
                   as="button"
                   type="button"
                   aria-label="Choose the folder to work in"
-                  class="flex h-7 shrink-0 items-center rounded-md pl-0.5 pr-2 text-xs font-450 text-muted-foreground hover:bg-accent focus-ring"
+                  class="flex h-7 shrink-0 items-center rounded-md pl-0.5 pr-2 text-xs font-450 text-muted-foreground hover:bg-accent"
                 >
                   <span class="grid size-6 shrink-0 place-items-center overflow-clip">
                     <Icon name="navigation.folder" />
@@ -425,7 +425,7 @@ export function DashboardHomeView() {
                     onClick={handleSubmit}
                     disabled={!canSubmit()}
                     aria-label="Send to the coding agent"
-                    class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 focus-ring"
+                    class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40"
                   >
                     <Show when={busy()} fallback={<Icon name="arrow-top" />}>
                       <Icon name="spinner-loader" class="animate-spin" />

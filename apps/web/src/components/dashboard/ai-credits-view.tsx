@@ -124,7 +124,7 @@ function DashboardAiCreditsTopUpSection() {
                   }
                 }}
                 class={cx(
-                  "flex flex-col gap-0.5 rounded-md border p-3 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex flex-col gap-0.5 rounded-md border p-3 outline-none transition-colors hover:bg-accent",
                   isSelected() ? "border-primary" : "border-input",
                 )}
               >

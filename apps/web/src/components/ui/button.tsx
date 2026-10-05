@@ -17,7 +17,6 @@ export const buttonVariants = cva({
     tw`inline-flex items-center justify-center gap-0 whitespace-nowrap rounded-md font-450 text-xs transition-all shrink-0 outline-none`,
     tw`disabled:pointer-events-none disabled:opacity-50`,
     tw`[&_svg]:pointer-events-none [&_svg]:shrink-0`,
-    tw`focus-visible:border-ring focus-visible:ring-primary focus-visible:ring-[1px]`,
     tw`aria-[invalid]:ring-destructive/20 aria-[invalid]:dark:ring-destructive/40 aria-[invalid]:border-destructive`,
   ],
 
@@ -29,7 +28,7 @@ export const buttonVariants = cva({
       ghost: tw`hover:bg-accent active:bg-muted data-[expanded]:bg-accent`,
       link: tw`px-0 bg-transparent text-muted-foreground hover:text-foreground active:text-foreground data-[expanded]:text-foreground`,
       destructive:
-        tw`bg-destructive text-destructive-foreground focus-visible:ring-destructive/20 focus-visible:dark:ring-destructive/40 hover:bg-destructive-hover active:bg-destructive-pressing data-[expanded]:bg-destructive-hover`,
+        tw`bg-destructive text-destructive-foreground hover:bg-destructive-hover active:bg-destructive-pressing data-[expanded]:bg-destructive-hover`,
       outline: tw`bg-transparent border border-border-input text-foreground hover:bg-input`,
     },
     size: {

@@ -262,6 +262,11 @@
     /* overscroll-behavior: none; */
   }
 
+  /* Focus rings only on text inputs; everything else stays quiet. */
+  :focus-visible:not(input, textarea, [contenteditable]) {
+    outline: none;
+  }
+
   *::-webkit-scrollbar {
     width: 0;
     height: 0;

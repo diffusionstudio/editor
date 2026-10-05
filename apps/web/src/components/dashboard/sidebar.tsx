@@ -24,7 +24,7 @@ export function DashboardSidebarItem(props: DashboardSidebarItemProps) {
       type="button"
       onClick={props.onClick}
       class={cx(
-        "my-0.5 flex h-7 w-full shrink-0 items-center gap-1 rounded-md pl-0 pr-1 hover:bg-accent focus-ring",
+        "my-0.5 flex h-7 w-full shrink-0 items-center gap-1 rounded-md pl-0 pr-1 hover:bg-accent",
         props.class,
       )}
       classList={{ "bg-accent": props.active }}
@@ -171,7 +171,7 @@ export function DashboardSidebarUser(props: DashboardSidebarUserProps) {
       <button
         type="button"
         onClick={props.onClick}
-        class="flex w-full items-center gap-2 rounded-md p-2 text-left hover:bg-accent focus-ring"
+        class="flex w-full items-center gap-2 rounded-md p-2 text-left hover:bg-accent"
       >
         <Show
           when={avatarUrl()}

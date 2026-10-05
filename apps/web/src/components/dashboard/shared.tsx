@@ -496,7 +496,7 @@ export function DashboardCardButton(props: DashboardCardButtonProps) {
       onDblClick={props.onDoubleClick}
       onKeyDown={handleKeyDown}
       class={cx(
-        "flex min-w-0 flex-col gap-3 rounded-xl px-2 pt-2 pb-3 text-left outline-none transition-colors hover:bg-accent/50 focus-ring group",
+        "flex min-w-0 flex-col gap-3 rounded-xl px-2 pt-2 pb-3 text-left outline-none transition-colors hover:bg-accent/50 group",
         props.active && "bg-primary/15 hover:bg-primary/15 ring-1 ring-inset ring-primary",
         props.class,
       )}

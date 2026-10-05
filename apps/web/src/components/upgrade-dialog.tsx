@@ -110,7 +110,7 @@ function ProUpgradeContent() {
             <button
               role="radio"
               aria-checked={plan() === option}
-              class="rounded-md border border-input p-3 flex items-center gap-2 font-normal transition-colors hover:bg-accent focus-ring"
+              class="rounded-md border border-input p-3 flex items-center gap-2 font-normal transition-colors hover:bg-accent"
               classList={{ "border-primary": plan() === option }}
               onClick={() => setPlan(option)}
             >
@@ -180,7 +180,7 @@ function TopupContent() {
         <For each={TOPUP_CREDIT_TIERS}>
           {(tier) => (
             <button
-              class="rounded-md border border-input p-3 flex flex-col items-start gap-0.5 font-normal transition-colors hover:bg-accent data-checked:border-primary focus-ring"
+              class="rounded-md border border-input p-3 flex flex-col items-start gap-0.5 font-normal transition-colors hover:bg-accent data-checked:border-primary"
               classList={{ "border-primary": selected() === tier }}
               onClick={() => setSelected(tier)}
             >
