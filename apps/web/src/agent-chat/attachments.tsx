@@ -4,6 +4,7 @@
 
 
 import { Show, createSignal } from "solid-js";
+import { toast } from "somoto";
 
 import { pickFiles } from "@diffusionstudio/assets";
 
@@ -11,17 +12,21 @@ import { Icon } from "@/components/ui/icon";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { cx } from "@/lib/cva";
 
+import { client, hasHost } from "./connection";
+
 /**
  * A file or folder dropped onto a composer. Only what the tile and the
  * handoff need: the name to label it, the kind and extension to draw it, and
  * the path to send — null off the desktop, where the browser will not say
- * where a dropped file lives.
+ * where a dropped file lives. An image picked, dropped or pasted also carries
+ * an object URL for its thumbnail; one rebuilt from a path does not.
  */
 export type Attachment = {
   key: string;
   name: string;
   kind: "file" | "folder";
   path: string | null;
+  preview?: string;
 };
 
 /** The paths worth sending: attachments the shell could locate. */
@@ -57,9 +62,66 @@ export function droppedAttachments(event: DragEvent): Attachment[] {
 }
 
 /** A file picked or dropped without the entry API, which only a drop has. */
-function fileAttachment(file: File, kind: Attachment["kind"] = "file", name = file.name): Attachment {
-  const path = window.desktop?.getPathForFile(file) || null;
-  return { key: path ?? `${name}:${file.size}:${file.lastModified}`, name, kind, path };
+function fileAttachment(file: File, kind: Attachment["kind"] = "file", name = file.name, path = window.desktop?.getPathForFile(file) || null): Attachment {
+  const preview = kind === "file" && file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+  return { key: path ?? `${name}:${file.size}:${file.lastModified}`, name, kind, path, ...(preview ? { preview } : {}) };
+}
+
+/**
+ * The files on the clipboard. None when the paste is text: rich text from a
+ * document app carries a picture of itself alongside, and that is not what
+ * the user meant to paste.
+ */
+function pastedFiles(event: ClipboardEvent): File[] {
+  const data = event.clipboardData;
+  if (!data || data.types.includes("text/rtf")) return [];
+  return Array.from(data.files);
+}
+
+/**
+ * Pasted files as attachments. A file copied in the Finder has a path and is
+ * sent as it is; a screenshot or an image copied from a page is only bytes,
+ * so it is uploaded to the agent host, which may not share this disk, and
+ * the path it was written to is what gets sent.
+ */
+async function pastedAttachments(files: File[]): Promise<Attachment[]> {
+  return Promise.all(
+    files.map(async (file) => {
+      const path = window.desktop?.getPathForFile(file) || null;
+      if (path) return file.type.startsWith("image/") ? fileAttachment(file, "file", file.name, path) : attachmentFromPath(path);
+      if (!hasHost()) return fileAttachment(file);
+      const saved = await client.request("attachments.upload", { name: file.name, data: await base64(file) });
+      return fileAttachment(file, "file", file.name, saved.path);
+    }),
+  );
+}
+
+/** A file's bytes as base64, without the data URL's prefix. */
+function base64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = reader.result as string;
+      resolve(url.slice(url.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * A paste handler for a composer: files go to `onPaste`, text is left to the
+ * textarea. A paste that fails to save is a toast, not a lost image.
+ */
+export function createPasteHandler(onPaste: (pasted: Attachment[]) => void) {
+  return (event: ClipboardEvent) => {
+    const files = pastedFiles(event);
+    if (files.length === 0) return;
+    event.preventDefault();
+    pastedAttachments(files).then(onPaste, (error: Error) =>
+      toast.error("Could not paste the file", { description: error.message }),
+    );
+  };
 }
 
 /** Files chosen from the system picker, as attachments; folders can only be dropped. */
@@ -151,9 +213,9 @@ type AttachmentTileProps = {
 };
 
 /**
- * One dropped file or folder: a grey square with a folder mark, or the file's
- * type in the middle. There is no thumbnail to show — nothing is loaded — so
- * the name is in the tooltip and the remove button appears on hover, as it
+ * One attached file or folder: the image itself when there is one to show,
+ * else a grey square with a folder mark, or the file's type in the middle.
+ * The name is in the tooltip and the remove button appears on hover, as it
  * does on the generation composer's reference images.
  */
 export function AttachmentTile(props: AttachmentTileProps) {
@@ -164,14 +226,21 @@ export function AttachmentTile(props: AttachmentTileProps) {
     >
       <div class="grid size-full place-items-center overflow-hidden rounded-lg bg-input text-muted-foreground">
         <Show
-          when={props.attachment.kind === "folder"}
+          when={props.attachment.preview}
           fallback={
-            <span class="max-w-9 truncate px-0.5 text-[9px] font-450 uppercase tracking-wide">
-              {fileType(props.attachment.name)}
-            </span>
+            <Show
+              when={props.attachment.kind === "folder"}
+              fallback={
+                <span class="max-w-9 truncate px-0.5 text-[9px] font-450 uppercase tracking-wide">
+                  {fileType(props.attachment.name)}
+                </span>
+              }
+            >
+              <Icon name="navigation.folder" class="size-6" />
+            </Show>
           }
         >
-          <Icon name="navigation.folder" class="size-6" />
+          {(src) => <img src={src()} alt="" draggable={false} class="size-full object-cover" />}
         </Show>
       </div>
       <RemoveButton

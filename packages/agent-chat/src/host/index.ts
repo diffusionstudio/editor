@@ -32,6 +32,8 @@ export type AgentHostConfig = {
   /** appended to each harness's system/developer prompt */
   instructions?: string;
   version: string;
+  /** Where uploaded attachments are written; default a folder in the system temp dir. */
+  uploadDir?: string;
   /** For tests: replaces the real harnesses. */
   harnesses?: Harness[];
   log?: (message: string) => void;
@@ -56,6 +58,7 @@ export async function createAgentHost(config: AgentHostConfig): Promise<RunningA
     mcp: config.mcp,
     instructions: config.instructions,
     version: config.version,
+    uploadDir: config.uploadDir,
     log,
   });
   await agentHost.start();

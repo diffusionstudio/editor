@@ -118,6 +118,7 @@ export type MethodMap = {
     result: { chatId: string };
   };
   "turn.interrupt": { params: { chatId: string }; result: void };
+  "attachments.upload": { params: { name: string; data: string }; result: { path: string } };
   "request.respond": {
     params: { chatId: string; requestId: string; response: RequestResponse };
     result: void;

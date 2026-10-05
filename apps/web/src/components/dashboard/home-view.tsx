@@ -34,6 +34,7 @@ import {
   ModelPicker,
   attachmentPaths,
   createDropZone,
+  createPasteHandler,
   currentModel,
   mergeAttachments,
   pickAttachments,
@@ -112,6 +113,7 @@ export function DashboardHomeView() {
 
   const attach = (added: Attachment[]) => setAttachments((current) => mergeAttachments(current, added));
   const drop = createDropZone(attach);
+  const paste = createPasteHandler(attach);
 
 
   let textarea: HTMLTextAreaElement | undefined;
@@ -359,6 +361,7 @@ export function DashboardHomeView() {
               onDragEnter={drop.onDragEnter}
               onDragLeave={drop.onDragLeave}
               onDrop={drop.onDrop}
+              onPaste={paste}
             >
               <Show when={attachments().length > 0}>
                 {/* The remove buttons overhang the tiles' corners, and a
