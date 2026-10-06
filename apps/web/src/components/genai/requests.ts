@@ -10,7 +10,7 @@
 
 import { uploadAsset } from "@/engine/generate";
 import { AUDIO_SIZE } from "@/engine/insert-asset";
-import { ASPECT_RATIO_DIMENSIONS, DEFAULT_RESOLUTION, MODEL_MODES, durationsAt, modelOption, modelOptions } from "./config";
+import { ASPECT_RATIO_DIMENSIONS, DEFAULT_RESOLUTION, MODEL_MODES, defaultModelOption, durationsAt, modelOption } from "./config";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateRequest, GenerateRequestInput, ModelId, Resolution } from "@diffusionstudio/api-contract";
@@ -72,7 +72,7 @@ function pick<T>(value: T | undefined, allowed: readonly T[] | undefined, fallba
  * The resolution is fitted first: it may narrow the durations (Veo's 1080p).
  */
 export function fitToModel(config: GenerationConfig): GenerationConfig {
-  const option = modelOption(config.model) ?? modelOptions(config.mode)[0]!;
+  const option = modelOption(config.model) ?? defaultModelOption(config.mode);
   const frame = (frame: "start" | "end", id: string | undefined) => (option.frames?.includes(frame) ? id : undefined);
   const resolution = pick(config.resolution, option.resolutions, DEFAULT_RESOLUTION[option.mode]);
   return {
@@ -92,7 +92,7 @@ export function fitToModel(config: GenerationConfig): GenerationConfig {
 
 /** The prompt box in `mode`, set up for the mode's first model. */
 export function createDefaultConfig(mode: PromptMode, prompt = ""): GenerationConfig {
-  return fitToModel({ mode, model: modelOptions(mode)[0]!.id, prompt });
+  return fitToModel({ mode, model: defaultModelOption(mode).id, prompt });
 }
 
 /** The request `config` makes, its library inputs uploaded. Settings the config leaves unset are left out. */

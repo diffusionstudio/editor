@@ -283,24 +283,16 @@ const seconds = (from: number, to: number) => Array.from({ length: to - from + 1
 const image = { mode: "IMAGE", aspectRatios: ALL_ASPECT_RATIOS, counts: [1, 2, 3, 4] } satisfies Partial<ModelOption>;
 const video = { mode: "VIDEO" } satisfies Partial<ModelOption>;
 
+/** Most relevant first, per mode: the order the model menu lists them in. */
 export const MODEL_OPTIONS: ModelOption[] = [
   {
     ...image,
-    id: "flux-2-klein",
-    name: "FLUX.2 Klein",
-    icon: "large-bfl",
-    description: "Low budget, high quality, fast.",
-    references: 4,
-    resolutions: ["1K"],
-  },
-  {
-    ...image,
-    id: "flux-2-pro",
-    name: "FLUX.2 Pro",
-    icon: "large-bfl",
-    description: "Frontier quality, consistent references.",
-    references: 8,
-    resolutions: ["1K"],
+    id: "nano-banana-pro",
+    name: "Nano Banana Pro",
+    icon: "large-google",
+    description: "Pro control, readable text, ultra consistent.",
+    references: 14,
+    resolutions: ["1K", "2K", "4K"],
   },
   {
     ...image,
@@ -322,21 +314,21 @@ export const MODEL_OPTIONS: ModelOption[] = [
   },
   {
     ...image,
-    id: "nano-banana-pro",
-    name: "Nano Banana Pro",
-    icon: "large-google",
-    description: "Pro control, readable text, ultra consistent.",
-    references: 14,
-    resolutions: ["1K", "2K", "4K"],
-  },
-  {
-    ...image,
     id: "seedream-5.0-pro",
     name: "Seedream 5.0 Pro",
     icon: "large-bytedance",
     description: "Lifelike scenes, precise multi image edits.",
     references: 14,
     resolutions: ["1K", "2K"],
+  },
+  {
+    ...image,
+    id: "flux-2-pro",
+    name: "FLUX.2 Pro",
+    icon: "large-bfl",
+    description: "Frontier quality, consistent references.",
+    references: 8,
+    resolutions: ["1K"],
   },
   {
     ...image,
@@ -349,6 +341,15 @@ export const MODEL_OPTIONS: ModelOption[] = [
   },
   {
     ...image,
+    id: "flux-2-klein",
+    name: "FLUX.2 Klein",
+    icon: "large-bfl",
+    description: "Low budget, high quality, fast.",
+    references: 4,
+    resolutions: ["1K"],
+  },
+  {
+    ...image,
     id: "krea-2-large",
     name: "Krea 2 Large",
     icon: "ai-generate",
@@ -356,38 +357,6 @@ export const MODEL_OPTIONS: ModelOption[] = [
     references: 1,
     aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
     resolutions: ["1K"],
-  },
-  {
-    ...video,
-    id: "kling-3-pro",
-    name: "Kling 3.0",
-    icon: "large-kling",
-    description: "Cinematic motion with built-in audio.",
-    frames: ["start", "end"],
-    durations: seconds(3, 15),
-    aspectRatios: ["16:9", "9:16", "1:1"],
-    resolutions: ["720p"],
-  },
-  {
-    ...video,
-    id: "kling-o3-pro",
-    name: "Kling 3.0 Omni",
-    icon: "large-kling",
-    description: "Multi-modal reasoning, strong scenes.",
-    frames: ["start"],
-    durations: seconds(3, 15),
-    resolutions: ["1080p"],
-  },
-  {
-    ...video,
-    id: "seedance-2.5",
-    name: "Seedance 2.5",
-    icon: "large-bytedance",
-    description: "Rich motion, lip-synced audio, up to 30s.",
-    frames: ["start", "end"],
-    durations: seconds(4, 30),
-    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-    resolutions: ["480p", "720p"],
   },
   {
     ...video,
@@ -403,6 +372,28 @@ export const MODEL_OPTIONS: ModelOption[] = [
   },
   {
     ...video,
+    id: "kling-3-pro",
+    name: "Kling 3.0",
+    icon: "large-kling",
+    description: "Cinematic motion with built-in audio.",
+    frames: ["start", "end"],
+    durations: seconds(3, 15),
+    aspectRatios: ["16:9", "9:16", "1:1"],
+    resolutions: ["720p"],
+  },
+  {
+    ...video,
+    id: "seedance-2.5",
+    name: "Seedance 2.5",
+    icon: "large-bytedance",
+    description: "Rich motion, lip-synced audio, up to 30s.",
+    frames: ["start", "end"],
+    durations: seconds(4, 30),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["480p", "720p"],
+  },
+  {
+    ...video,
     id: "veo-3.1-fast",
     name: "Veo 3.1 Fast",
     icon: "large-google",
@@ -415,14 +406,13 @@ export const MODEL_OPTIONS: ModelOption[] = [
   },
   {
     ...video,
-    id: "flux-3-video",
-    name: "FLUX.3 Video",
-    icon: "large-bfl",
-    description: "Sharp detail with native audio.",
-    frames: ["start", "end"],
-    durations: seconds(5, 20),
-    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-    resolutions: ["720p", "1080p"],
+    id: "kling-o3-pro",
+    name: "Kling 3.0 Omni",
+    icon: "large-kling",
+    description: "Multi-modal reasoning, strong scenes.",
+    frames: ["start"],
+    durations: seconds(3, 15),
+    resolutions: ["1080p"],
   },
   {
     ...video,
@@ -445,6 +435,17 @@ export const MODEL_OPTIONS: ModelOption[] = [
     durations: seconds(5, 15),
     aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
     resolutions: ["2K"],
+  },
+  {
+    ...video,
+    id: "flux-3-video",
+    name: "FLUX.3 Video",
+    icon: "large-bfl",
+    description: "Sharp detail with native audio.",
+    frames: ["start", "end"],
+    durations: seconds(5, 20),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["720p", "1080p"],
   },
   {
     ...video,
@@ -481,8 +482,19 @@ export const MODEL_OPTIONS: ModelOption[] = [
   },
 ];
 
-/** The models the prompt box offers in `mode`, the first one by default. */
+/** The model each mode starts with: the cheap one, not the most relevant. */
+const DEFAULT_MODELS: Record<PromptMode, ModelId> = {
+  IMAGE: "flux-2-klein",
+  VIDEO: "kling-3-pro",
+  VOICE: "elevenlabs-v3",
+  AUDIO: "elevenlabs-music",
+};
+
+/** The models the prompt box offers in `mode`. */
 export const modelOptions = (mode: PromptMode) => MODEL_OPTIONS.filter((option) => option.mode === mode);
+
+/** The model the prompt box starts `mode` with. */
+export const defaultModelOption = (mode: PromptMode) => modelOption(DEFAULT_MODELS[mode])!;
 
 /** The prompt box's option for `id`; undefined for a model it doesn't make requests with (tools, text). */
 export const modelOption = (id: ModelId) => MODEL_OPTIONS.find((option) => option.id === id);
