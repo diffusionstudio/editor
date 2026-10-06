@@ -16,6 +16,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverPortal, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { Slider, SliderFill, SliderThumb, SliderTrack } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cx } from "@/lib/cva";
 import {
@@ -108,9 +109,7 @@ export function PromptInput(props: PromptInputProps) {
   const resolutionOptions = createMemo(() =>
     RESOLUTION_OPTIONS.filter((o) => option().resolutions?.includes(o.value)),
   );
-  const durationOptions = createMemo(() =>
-    (durationsAt(option(), config().resolution) ?? []).map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
-  );
+  const durations = createMemo(() => durationsAt(option(), config().resolution) ?? []);
 
   // Pictures on the canvas are offered as references and as video frames:
   // selecting one is another way of attaching it.
@@ -366,7 +365,7 @@ export function PromptInput(props: PromptInputProps) {
   // ── Accessors for UI menus (string ↔ config conversions) ────────────
   const aspectRatioAccessor: Accessor<string> = () => config().aspectRatio ?? "";
   const countAccessor: Accessor<string> = () => String(config().count ?? "");
-  const durationAccessor: Accessor<string> = () => String(config().duration ?? "");
+  const durationAccessor: Accessor<number | undefined> = () => config().duration;
   const resolutionAccessor: Accessor<string> = () => config().resolution ?? "";
   const modelAccessor: Accessor<string> = () => config().model;
   const voiceAccessor: Accessor<string> = () => config().voice ?? "";
@@ -572,14 +571,11 @@ export function PromptInput(props: PromptInputProps) {
                 triggerIcon="variants"
               />
             </Show>
-            <Show when={durationOptions().length > 0}>
-              <PromptInputCompactMenu
-                aria-label="Select duration"
-                menuLabel="Duration"
+            <Show when={durations().length > 0}>
+              <DurationMenu
+                durations={durations()}
                 value={durationAccessor}
-                options={durationOptions()}
-                onChange={(v) => patch({ duration: Number(v) })}
-                triggerIcon="duration"
+                onChange={(duration) => patch({ duration })}
               />
             </Show>
             <Show when={option().voices}>
@@ -687,6 +683,81 @@ function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenu>
+  );
+}
+
+/** The greatest common divisor of the gaps between `durations`: the slider's step. */
+const durationStep = (durations: number[]) => {
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+  return durations.slice(1).reduce((step, d, i) => gcd(step, d - durations[i]), 0) || 1;
+};
+
+/** The index of the duration nearest to `seconds`. */
+const nearestDurationIndex = (durations: number[], seconds: number) =>
+  durations.reduce((best, d, i) => (Math.abs(d - seconds) < Math.abs(durations[best] - seconds) ? i : best), 0);
+
+type DurationMenuProps = {
+  durations: number[];
+  value: Accessor<number | undefined>;
+  onChange(value: number): void;
+}
+
+/**
+ * The duration picker: a slider over the lengths the model takes, snapping to
+ * them where they have gaps.
+ */
+function DurationMenu(props: DurationMenuProps) {
+  const min = () => props.durations[0];
+  const max = () => props.durations[props.durations.length - 1];
+  const index = () => nearestDurationIndex(props.durations, props.value() ?? min());
+  const value = () => props.durations[index()];
+  const fixed = () => min() === max();
+
+  const select = (seconds: number) => {
+    const next = props.durations[nearestDurationIndex(props.durations, seconds)];
+    if (next !== props.value()) props.onChange(next);
+  };
+
+  return (
+    <Popover placement="top-start">
+      <PopoverTrigger<typeof Button>
+        aria-label="Select duration"
+        as={(triggerProps) => (
+          <Button
+            {...triggerProps}
+            variant="ghost"
+            class={DEFAULT_BUTTON_CLASS}
+          >
+            <Icon name="duration" class="size-6" />
+            {`${value()}s`}
+          </Button>
+        )}
+      />
+      <PopoverPortal>
+        <PopoverContent class="flex w-56 flex-col gap-1 px-3 pt-0 pb-3 rounded-xl">
+          <div class="flex h-8 items-center justify-between text-xs">
+            <span class="text-muted-foreground">Duration</span>
+            <span class="text-foreground">{`${value()}s`}</span>
+          </div>
+          <Slider
+            aria-label="Duration"
+            value={[value()]}
+            // A slider over no range divides by zero: one length shows full.
+            minValue={fixed() ? min() - 1 : min()}
+            maxValue={max()}
+            step={durationStep(props.durations)}
+            disabled={fixed()}
+            getValueLabel={({ values }) => `${values[0]} seconds`}
+            onChange={([seconds]) => select(seconds)}
+          >
+            <SliderTrack>
+              <SliderFill />
+              <SliderThumb />
+            </SliderTrack>
+          </Slider>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
   );
 }
 
