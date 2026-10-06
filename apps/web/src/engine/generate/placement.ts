@@ -6,7 +6,7 @@
  * Where generations go on the infinite canvas: beside the work rather than
  * over it. Of the nodes the user is looking at, the one with the most free
  * room to its left or right — inside the view — takes the block beside it,
- * level with it. When no side has room in view, the free side nearest the
+ * top-aligned with it. When no side has room in view, the free side nearest the
  * middle of the view does, wherever it is; the camera follows (`revealRect`).
  */
 
@@ -64,7 +64,7 @@ const center = (box: AABB) => ({ x: (box.minX + box.maxX) / 2, y: (box.minY + bo
 
 const toRect = (box: AABB): Rect => ({ x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY });
 
-/** A spot level with `box`, `gap` off its side (1 right, -1 left), and the room that side has. */
+/** A spot top-aligned with `box`, `gap` off its side (1 right, -1 left), and the room that side has. */
 interface Beside {
 	spot: AABB;
 	/** Free span off that side of `box` within the band the spot covers: to the nearest node, or the edge of the view. */
@@ -72,7 +72,7 @@ interface Beside {
 }
 
 function beside(box: AABB, side: 1 | -1, width: number, height: number, gap: number, boxes: AABB[], view: AABB): Beside {
-	const minY = (box.minY + box.maxY) / 2 - height / 2;
+	const minY = box.minY;
 	const minX = side > 0 ? box.maxX + gap : box.minX - gap - width;
 	const spot = { minX, minY, maxX: minX + width, maxY: minY + height };
 
