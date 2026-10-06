@@ -35,6 +35,7 @@ export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
   "elevenlabs-music": "AUDIO",
   "elevenlabs-sfx": "AUDIO",
   "elevenlabs-v3": "VOICE",
+  "gemini-3.8-flash-tts": "VOICE",
   "transcribe": "TEXT",
   "analyze": "TEXT",
 };
@@ -81,7 +82,12 @@ export const RESOLUTION_OPTIONS: { value: Resolution; label: string }[] = [
 /** The resolution a mode's models start at, when they offer it. */
 export const DEFAULT_RESOLUTION: Partial<Record<PromptMode, Resolution>> = { IMAGE: "1K", VIDEO: "720p" };
 
-export const PROMPT_INPUT_VOICE_OPTIONS = [
+/** A voice the prompt box offers, with a sample to preview it by. */
+export type VoiceOption = { value: string; label: string; thumbnail: string; description: string; previewUrl: string };
+
+const voiceThumbnail = (n: number) => new URL(`../../assets/images/voice-thumbnails/${n % 18}.png`, import.meta.url).href;
+
+export const ELEVENLABS_VOICE_OPTIONS: VoiceOption[] = [
   {
     value: "CwhRBWXzGAHq8TQ4Fs17",
     label: "Roger",
@@ -245,7 +251,47 @@ export const PROMPT_INPUT_VOICE_OPTIONS = [
   },
 ];
 
-export type VoiceOption = (typeof PROMPT_INPUT_VOICE_OPTIONS)[number];
+/** Gemini's prebuilt voices, with the samples Google AI Studio plays. */
+export const GEMINI_VOICE_OPTIONS: VoiceOption[] = (
+  [
+    ["Zephyr", "Bright, light, sunny."],
+    ["Puck", "Upbeat, cheeky, energetic."],
+    ["Charon", "Informative, measured newsreader."],
+    ["Kore", "Firm, confident, composed."],
+    ["Fenrir", "Excitable, animated, eager."],
+    ["Leda", "Youthful, fresh, expressive."],
+    ["Orus", "Firm, grounded, decisive."],
+    ["Aoede", "Breezy, airy, carefree."],
+    ["Callirrhoe", "Easy-going, relaxed, warm."],
+    ["Autonoe", "Bright, clear, upbeat narrator."],
+    ["Enceladus", "Breathy, hushed, intimate."],
+    ["Iapetus", "Clear, crisp, articulate."],
+    ["Umbriel", "Easy-going, friendly, laid-back."],
+    ["Algieba", "Smooth, deep, velvety."],
+    ["Despina", "Smooth, soft, polished."],
+    ["Erinome", "Clear, precise, poised."],
+    ["Algenib", "Gravelly, deep, rugged."],
+    ["Rasalgethi", "Informative, professional presenter."],
+    ["Laomedeia", "Upbeat, cheerful, animated."],
+    ["Achernar", "Soft, gentle, soothing."],
+    ["Alnilam", "Firm, strong, authoritative."],
+    ["Schedar", "Even, steady, balanced."],
+    ["Gacrux", "Mature, seasoned, assured."],
+    ["Pulcherrima", "Forward, bold, direct."],
+    ["Achird", "Friendly, approachable, kind."],
+    ["Zubenelgenubi", "Casual, conversational, chill."],
+    ["Vindemiatrix", "Gentle, calm, reassuring."],
+    ["Sadachbia", "Lively, spirited, dynamic."],
+    ["Sadaltager", "Knowledgeable, thoughtful educator."],
+    ["Sulafat", "Warm, caring, inviting."],
+  ] as const
+).map(([name, description], i) => ({
+  value: name,
+  label: name,
+  thumbnail: voiceThumbnail(i),
+  description,
+  previewUrl: `https://www.gstatic.com/aistudio/voices/samples/${name}.wav`,
+}));
 
 /**
  * A model the prompt box makes requests with, and the settings it takes: a
@@ -464,7 +510,15 @@ export const MODEL_OPTIONS: ModelOption[] = [
     name: "ElevenLabs v3",
     icon: "large-elevenlabs",
     description: "Expressive speech in many voices.",
-    voices: PROMPT_INPUT_VOICE_OPTIONS,
+    voices: ELEVENLABS_VOICE_OPTIONS,
+  },
+  {
+    id: "gemini-3.8-flash-tts",
+    mode: "VOICE",
+    name: "Gemini 3.8 Flash TTS",
+    icon: "large-google",
+    description: "Natural speech, style it in the prompt.",
+    voices: GEMINI_VOICE_OPTIONS,
   },
   {
     id: "elevenlabs-music",
@@ -486,7 +540,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
 const DEFAULT_MODELS: Record<PromptMode, ModelId> = {
   IMAGE: "flux-2-klein",
   VIDEO: "seedance-2.5",
-  VOICE: "elevenlabs-v3",
+  VOICE: "gemini-3.8-flash-tts",
   AUDIO: "elevenlabs-music",
 };
 
