@@ -157,11 +157,19 @@ export function createTimelineController(world: World) {
 				// up whatever the change in scale moved it by.
 				setResolution(world, scene, next);
 				setScrollX(world, scene, scrollX + anchor / resolution - anchor / next);
-			} else if (Math.abs(deltaX) > Math.abs(deltaY)) {
-				setScrollX(world, scene, scrollX + (deltaX * SCROLL_X_SENSITIVITY) / resolution);
 			} else {
-				setScrollY(world, scene, getScrollY(world, scene) + deltaY);
-				applyScroll();
+				// Shift is a sideways gesture, and a mouse wheel reports it on
+				// deltaY: Windows and Linux swap only the browser's default
+				// action, never the event's axes, so `deltaX` stays 0 and the
+				// axis has to be read out of the deltas instead.
+				const [wheelX, wheelY] = shiftScroll(event.shiftKey, deltaX, deltaY);
+
+				if (Math.abs(wheelX) > Math.abs(wheelY)) {
+					setScrollX(world, scene, scrollX + (wheelX * SCROLL_X_SENSITIVITY) / resolution);
+				} else {
+					setScrollY(world, scene, getScrollY(world, scene) + wheelY);
+					applyScroll();
+				}
 			}
 
 			updateTimelineTransform(world, scene);
@@ -175,11 +183,12 @@ export function createTimelineController(world: World) {
 
 		withScene((scene) => {
 			const { deltaX, deltaY } = normalizeWheel(event);
+			const [wheelX, wheelY] = shiftScroll(event.shiftKey, deltaX, deltaY);
 
-			if (Math.abs(deltaX) > Math.abs(deltaY)) {
-				layerScrollX += deltaX;
+			if (Math.abs(wheelX) > Math.abs(wheelY)) {
+				layerScrollX += wheelX;
 			} else {
-				setScrollY(world, scene, getScrollY(world, scene) + deltaY);
+				setScrollY(world, scene, getScrollY(world, scene) + wheelY);
 			}
 
 			applyScroll();
@@ -300,4 +309,16 @@ function normalizeWheel(event: WheelEvent): { deltaX: number; deltaY: number } {
 			: 1;
 
 	return { deltaX: event.deltaX * scale, deltaY: event.deltaY * scale };
+}
+
+/**
+ * The deltas as the gesture meant them. With Shift held the wheel is a
+ * sideways one, but only a trackpad and macOS say so in the event: on
+ * Windows and Linux a mouse keeps reporting it on `deltaY`, because the
+ * browser swaps its default action rather than the event's axes. A delta
+ * that arrived on its own axis wins over one that has to be borrowed.
+ */
+function shiftScroll(shift: boolean, deltaX: number, deltaY: number): [number, number] {
+	if (!shift) return [deltaX, deltaY];
+	return Math.abs(deltaY) > Math.abs(deltaX) ? [deltaY, 0] : [deltaX, 0];
 }
