@@ -21,6 +21,7 @@ import { useGenerationRecords } from "./use-generation-records";
 import { useGenerate } from "./use-generate";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
+import { formatCost } from "./use-estimate";
 
 import type { TransformType } from "./types";
 
@@ -59,7 +60,12 @@ export function PromptInputActions() {
             >
               <Icon name="rerun" />
             </TooltipTrigger>
-            <TooltipContent>Rerun</TooltipContent>
+            <TooltipContent class="flex-col items-stretch px-2 pt-0.5 pb-2">
+              <div class="flex h-7 items-center">Rerun</div>
+              <Show when={firstJob()}>
+                {(job) => <span class="font-normal text-muted-foreground">{formatCost(job().credits)}</span>}
+              </Show>
+            </TooltipContent>
           </Tooltip>
           <Separator orientation="vertical" class="min-h-5" />
         </Show>

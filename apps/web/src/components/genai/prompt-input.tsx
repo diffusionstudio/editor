@@ -50,7 +50,7 @@ import { loadConfig, saveConfig } from "./saved-config";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
 import { useGenerate } from "./use-generate";
-import { useEstimate } from "./use-estimate";
+import { formatCost, priceOf, useDebounced } from "./use-estimate";
 import { PromptInputActions } from "./prompt-input-actions";
 import type { GenerationConfig } from "./types";
 import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
@@ -66,6 +66,8 @@ import type { ThumbnailAsset } from "@/components/ui/asset-thumbnail";
 
 
 const DEFAULT_BUTTON_CLASS = "text-muted-foreground gap-0 pr-2 pl-0";
+/** The text voices are compared on in the model menu: 1,000 characters. */
+const SAMPLE_SPEECH = "x".repeat(1000);
 /** As many references as the prompt box has room for; a model may take fewer. */
 const MAX_IMAGE_REFERENCES = 5;
 
@@ -89,8 +91,6 @@ export function PromptInput(props: PromptInputProps) {
 
   createEffect(() => saveConfig(config()));
 
-  const credits = useEstimate(config);
-
   /** Shallow-merge updates into the current config. */
   const patch = (updates: Partial<GenerationConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));
@@ -102,6 +102,18 @@ export function PromptInput(props: PromptInputProps) {
   /** The model and the settings it takes: what the prompt box offers. */
   const option = createMemo(() => modelOption(config().model) ?? defaultModelOption(mode()));
   const options = createMemo(() => modelOptions(mode()));
+
+  /** What generating costs as set: the price on the generate button. */
+  const settledConfig = useDebounced(config);
+  const credits = () => priceOf(settledConfig());
+
+  /**
+   * What a model costs at its default settings: the price the model menu
+   * lists, to compare the models by. A voice is priced by its text, so voices
+   * are priced on a stand-in of 1,000 characters: their rate per 1k.
+   */
+  const defaultPrice = (model: ModelId) =>
+    priceOf(fitToModel({ mode: mode(), model, prompt: mode() === "VOICE" ? SAMPLE_SPEECH : "" }));
   const modeLabel = () => PROMPT_INPUT_MODE_OPTIONS.find((o) => o.value === mode())?.label.toLowerCase();
 
   const maxImageReferences = createMemo(() => Math.min(MAX_IMAGE_REFERENCES, option().references ?? 0));
@@ -541,6 +553,7 @@ export function PromptInput(props: PromptInputProps) {
               <ModelMenu
                 searchPlaceholder={`Search in ${modeLabel()} models`}
                 options={options()}
+                credits={defaultPrice}
                 value={modelAccessor}
                 onChange={handleModelChange}
               />
@@ -613,7 +626,7 @@ export function PromptInput(props: PromptInputProps) {
             </div>
             <Show when={credits() !== undefined}>
               <span class="font-normal text-muted-foreground">
-                This will cost {credits()!.toLocaleString()} {credits() === 1 ? "credit" : "credits"}
+                {formatCost(credits()!)}
               </span>
             </Show>
           </TooltipContent>
@@ -632,6 +645,22 @@ export function PromptInput(props: PromptInputProps) {
   );
 }
 
+/** A price after a label, in a row with a gap: · ⊕ 46. Nothing without one. */
+function CreditsTag(props: { credits: number | undefined }) {
+  return (
+    <Show when={props.credits}>
+      {(credits) => (
+        <>
+          <Icon name="dot" class="size-3 text-muted-foreground" />
+          <span class="flex shrink-0 items-center gap-1 font-450 text-muted-foreground">
+            <Icon name="ai-credits-small" class="-mx-1.5 -my-1" />
+            {credits().toLocaleString()}
+          </span>
+        </>
+      )}
+    </Show>
+  );
+}
 
 type PromptInputCompactMenuProps = {
   menuLabel: string;
@@ -919,7 +948,9 @@ function DurationRangeMenu(props: DurationRangeMenuProps) {
 
 type ModelMenuProps = {
   searchPlaceholder: string;
-  options: { id: string; name: string; description: string; icon: string }[];
+  options: { id: ModelId; name: string; description: string; icon: string }[];
+  /** A model's price at its default settings, when it has one. */
+  credits(model: ModelId): number | undefined;
   value: Accessor<string>;
   onChange(value: string): void;
 }
@@ -1074,7 +1105,10 @@ function ModelMenu(props: ModelMenuProps) {
                       <Icon name={option.icon!} class="size-6 text-muted-foreground" />
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
-                      <div class="truncate font-450" classList={{ "text-foreground": active() || selected() }}>{option.name}</div>
+                      <div class="flex items-center gap-0.5 font-450">
+                        <span class="truncate" classList={{ "text-foreground": active() || selected() }}>{option.name}</span>
+                        <CreditsTag credits={props.credits(option.id)} />
+                      </div>
                       <div class="truncate">{option.description}</div>
                     </div>
                     <span class="grid size-7 place-items-center">

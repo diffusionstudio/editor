@@ -5,6 +5,7 @@
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,12 +14,13 @@ import {
   DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { createMemo, Show } from "solid-js";
+import { createMemo, Show, type JSX } from "solid-js";
 import { useGenerationRecords } from "./use-generation-records";
 import { useGenerate } from "./use-generate";
 import { useAutoCaptions } from "./use-auto-captions";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
+import { formatCost } from "./use-estimate";
 import { restoreConfig } from "./saved-config";
 import { toast } from "somoto";
 
@@ -30,7 +32,7 @@ interface ActionBarProps {
 
 export function ActionBar(props: ActionBarProps) {
   const { imageMedia, videoMedia } = useMediaSelection();
-  const { run: runTransform } = useTransforms();
+  const { run: runTransform, price } = useTransforms();
 
   const { rerun } = useGenerate();
   const { generate: autoCaptions, hasScene } = useAutoCaptions();
@@ -82,22 +84,12 @@ export function ActionBar(props: ActionBarProps) {
           </Show>
           <Show when={isImage()}>
             <div class="flex gap-1 items-center">
-              <Button
-                variant="ghost"
-                class="gap-0 pl-0.5 text-muted-foreground"
-                onClick={() => runTransform("removeBackground")}
-              >
-                <Icon name="ai-generate" />
+              <TransformButton icon="ai-generate" credits={price("removeBackground")} onClick={() => runTransform("removeBackground")}>
                 Remove background
-              </Button>
-              <Button
-                variant="ghost"
-                class="gap-0 pl-0.5 text-muted-foreground"
-                onClick={() => runTransform("upscale")}
-              >
-                <Icon name="arrow-scale" />
+              </TransformButton>
+              <TransformButton icon="arrow-scale" credits={price("upscale")} onClick={() => runTransform("upscale")}>
                 Upscale
-              </Button>
+              </TransformButton>
             </div>
             <Separator orientation="vertical" class="min-h-5" />
             <div class="flex gap-1 items-center">
@@ -144,14 +136,9 @@ export function ActionBar(props: ActionBarProps) {
           </Show>
           <Show when={isVideo()}>
             <div class="flex gap-1 items-center">
-              <Button
-                variant="ghost"
-                class="gap-0 pl-0.5 text-muted-foreground"
-                onClick={() => runTransform("upscale")}
-              >
-                <Icon name="arrow-scale" />
+              <TransformButton icon="arrow-scale" credits={price("upscale")} onClick={() => runTransform("upscale")}>
                 Upscale
-              </Button>
+              </TransformButton>
               <Show when={isGenerated()}>
                 <Separator orientation="vertical" class="min-h-5" />
                 <DropdownMenu placement="right">
@@ -185,5 +172,30 @@ export function ActionBar(props: ActionBarProps) {
         </div>
       </Show>
     </>
+  );
+}
+
+type TransformButtonProps = {
+  icon: string;
+  /** What running it costs; a blurred stand-in while that isn't known. */
+  credits: number | undefined;
+  onClick(): void;
+  children: JSX.Element;
+};
+
+/** A paid action, its price on hover. */
+function TransformButton(props: TransformButtonProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger as={Button} variant="ghost" class="gap-0 pl-0.5 text-muted-foreground" onClick={props.onClick}>
+        <Icon name={props.icon} />
+        {props.children}
+      </TooltipTrigger>
+      <TooltipContent class="h-6 py-0">
+        <Show when={props.credits} fallback={<span class="blur-[3px] select-none">This will cost 000 credits</span>}>
+          {(credits) => formatCost(credits())}
+        </Show>
+      </TooltipContent>
+    </Tooltip>
   );
 }
