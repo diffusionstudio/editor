@@ -825,11 +825,16 @@ export async function duplicateProject(dir: string): Promise<ProjectInfo> {
   return project;
 }
 
-/** Moves the folder to the trash; resolves with the id it had ("" for none), for what is kept outside it. */
+/**
+ * Moves the folder to the trash; resolves with the id it had ("" for none), for what is kept outside it.
+ * A folder that is already gone counts as deleted, so the project can still come off the list.
+ */
 export async function deleteProject(dir: string): Promise<string> {
   const id = recordedId(await readPackage(dir));
   unwatchProject(dir);
-  await shell.trashItem(dir);
+  if (await exists(dir)) {
+    await shell.trashItem(dir);
+  }
   return id;
 }
 
