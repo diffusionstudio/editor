@@ -218,11 +218,6 @@ export function DashboardHomeView() {
       const project = await resolveTarget();
       if (!project) return;
 
-      track("home_prompt_sent", {
-        agent: `${ref.harness}/${ref.model}`,
-        target: target().kind,
-        attachments: paths.length,
-      });
       // The chat starts before the page switches: the host has the turn as
       // soon as it answers, and the editor lands with the reply streaming.
       // On failure the text survives as the project's draft (see startChat).

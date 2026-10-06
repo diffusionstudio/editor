@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { hideUpgradeDialog } from "@/components/upgrade-dialog";
 import { Dialog, DialogContent, DialogPortal } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth";
-import { track } from "@/lib/analytics";
 import { PLANS } from "@/lib/checkout";
 import { mainBridge } from "@/lib/ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
@@ -155,11 +154,6 @@ export function PurchaseSuccess() {
     hideUpgradeDialog();
     setOpen(true);
     auth.refreshAccount();
-    track("purchase_success_viewed", {
-      kind: next.kind,
-      ...(next.kind === "plan" && { plan: next.plan }),
-      ...(next.kind === "credits" && { credits: next.credits }),
-    });
   };
 
   createEffect(() => {

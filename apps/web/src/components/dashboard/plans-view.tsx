@@ -121,7 +121,7 @@ export function DashboardPlansView() {
   const handleChoose = async (plan: PaidPlan) => {
     if (checkoutPlan()) return;
     setCheckoutPlan(plan);
-    track("subscription_checkout_started", { plan, billing_period: billingPeriod() });
+    track("checkout_started", { kind: "subscription", plan, billing_period: billingPeriod() });
     try {
       await startSubscriptionCheckout({ plan, billingPeriod: billingPeriod() });
     } finally {

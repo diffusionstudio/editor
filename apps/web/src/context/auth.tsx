@@ -20,7 +20,7 @@ import type { Account, Plan } from '@diffusionstudio/api-contract';
 import { supabase } from '@/lib/supabase';
 import { api } from '@/lib/api';
 import { FREE_CREDITS } from '@/lib/checkout';
-import { identify, resetIdentity, track } from '@/lib/analytics';
+import { setAnalyticsSession, track } from '@/lib/analytics';
 import { mainBridge } from '@/lib/ipc';
 import { MAIN_CHANNELS } from '@desktop/main-channels';
 import { assert } from '@/utils';
@@ -61,24 +61,25 @@ export function AuthProvider(props: { children: JSX.Element }) {
   const [isLoading, setIsLoading] = createSignal(true);
   onMount(() => {
     if (!supabase) {
+      setAnalyticsSession(null);
       setIsLoading(false);
       return;
     }
 
     void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      setAnalyticsSession(data.session?.access_token ?? null);
       setIsLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      // Every change, token refreshes included: desktop main sends events with it.
+      setAnalyticsSession(newSession?.access_token ?? null);
       if (event === 'SIGNED_IN' && newSession?.user) {
-        const provider = newSession.user.app_metadata?.provider ?? 'unknown';
-        identify(newSession.user.id, { provider });
-        track('sign_in', { provider });
+        track('signed_in', { provider: newSession.user.app_metadata?.provider ?? 'unknown' });
       } else if (event === 'SIGNED_OUT') {
-        track('sign_out');
-        resetIdentity();
+        track('signed_out', {});
       }
     });
 
@@ -253,7 +254,6 @@ export function AuthProvider(props: { children: JSX.Element }) {
 
     try {
       await api.account.delete.mutate();
-      track('account_deleted');
 
       // Sign out locally after successful server-side deletion
       await supabase.auth.signOut();

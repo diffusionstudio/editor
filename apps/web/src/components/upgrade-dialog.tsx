@@ -68,7 +68,8 @@ function ProUpgradeContent() {
   const handleUpgrade = async () => {
     if (loading()) return;
     setLoading(true);
-    track('subscription_checkout_started', {
+    track('checkout_started', {
+      kind: 'subscription',
       plan: plan(),
       billing_period: billingPeriod(),
     });
@@ -83,7 +84,7 @@ function ProUpgradeContent() {
   };
 
   onMount(() => {
-    track('subscription_checkout_viewed');
+    track('checkout_viewed', { kind: 'subscription' });
   });
 
   return (
@@ -157,7 +158,7 @@ function TopupContent() {
     const tier = selected();
     if (!tier || loading()) return;
     setLoading(true);
-    track('topup_checkout_started', { credit_tier: tier });
+    track('checkout_started', { kind: 'topup', credits: tier });
     try {
       await startTopupCheckout(tier);
     } finally {
@@ -166,7 +167,7 @@ function TopupContent() {
   };
 
   onMount(() => {
-    track('topup_checkout_viewed');
+    track('checkout_viewed', { kind: 'topup' });
   });
 
   return (

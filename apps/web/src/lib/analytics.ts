@@ -2,89 +2,59 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/**
- * Umami analytics wrapper. Loads the Umami script lazily and exposes
- * type-safe `track` / `identify` helpers that no-op when Umami is
- * disabled (env vars unset) or has not finished loading yet.
- *
- * Inside the desktop app the Umami script is inert (its `data-domains` gate
- * does not match the `file://` origin), so `track` hands events to main,
- * which posts them to Umami itself.
- *
- * Pageviews and SPA route changes are auto-tracked by the Umami script
- * via the History API — call `track` only for custom product events.
- */
 
 import { MAIN_CHANNELS } from "@desktop/main-channels";
+import { api } from "@/lib/api";
 import { mainBridge } from "@/lib/ipc";
 
-type UmamiEventData = Record<string, string | number | boolean | undefined>;
+import type { ClientEventName, TrackedEvent, TrackProps } from "@diffusionstudio/api-contract";
 
-type UmamiClient = {
-  track: (event?: string | UmamiEventData, data?: UmamiEventData) => void;
-  identify: (data: UmamiEventData) => void;
-};
+const FLUSH_INTERVAL_MS = 5_000;
 
-declare global {
-  interface Window {
-    umami?: UmamiClient;
-  }
-}
+/** Events waiting for the next flush. */
+let queue: TrackedEvent[] = [];
 
-const websiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID ?? '';
-const scriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL ?? '';
-const domains = import.meta.env.VITE_UMAMI_DOMAINS ?? '';
-
-let initialized = false;
-
+/** Starts sending. Dev builds are not tracked. */
 export function initAnalytics(): void {
-  if (initialized) return;
-  initialized = true;
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.defer = true;
-  script.src = scriptUrl;
-  script.setAttribute("data-website-id", websiteId);
-  script.setAttribute("data-domains", domains);
-  script.setAttribute("data-tag", "web-app-v1");
-  script.setAttribute("data-performance", "true");
-  document.head.appendChild(script);
-}
-
-/** Drop undefined entries — Umami rejects payloads with `undefined` values. */
-function clean(data?: UmamiEventData): UmamiEventData | undefined {
-  if (!data) return undefined;
-  const out: UmamiEventData = {};
-  for (const k in data) {
-    const v = data[k];
-    if (v !== undefined) {
-      out[k] = v
-    };
+  if (import.meta.env.DEV) return;
+  // The desktop app's launch is recorded by main: once per launch, not per window.
+  if (!window.desktop) {
+    track("app_opened");
   }
-  return out;
+
+  setInterval(() => {
+    if (!queue.length) return;
+    const events = queue.splice(0, 100);
+    // Best effort: a failed batch is dropped rather than replayed under a different session.
+    api.events.track
+      .mutate({
+        source: window.desktop ? "desktop" : "web",
+        appVersion: APP_VERSION,
+        platform: window.desktop?.platform ?? "web",
+        events,
+      })
+      .catch(() => { });
+  }, FLUSH_INTERVAL_MS);
 }
 
-export function track(event: string, data?: UmamiEventData): void {
-  const payload = clean(data);
-  if (window.desktop) {
-    mainBridge
-      .call(MAIN_CHANNELS.ANALYTICS_TRACK, { event, data: payload as Record<string, string | number | boolean> | undefined })
-      .catch(() => {});
-    return;
-  }
-  if (payload) {
-    window.umami?.track(event, payload);
-  } else {
-    window.umami?.track(event);
-  }
+/**
+ * Desktop: tells main where events go and as whom. Call on launch and on
+ * every auth change, token refreshes included; `null` when signed out.
+ */
+export function setAnalyticsSession(token: string | null): void {
+  if (!window.desktop) return;
+  mainBridge
+    .call(MAIN_CHANNELS.ANALYTICS_CONFIGURE, { apiUrl: import.meta.env.VITE_API_URL ?? '', token })
+    .catch(() => { });
 }
 
-export function identify(userId: string, traits?: UmamiEventData): void {
-  const payload = clean(traits);
-  window.umami?.identify({ id: userId, ...(payload ?? {}) });
-}
-
-export function resetIdentity(): void {
-  window.umami?.identify({});
+export function track(name: ClientEventName, props: TrackProps = {}): void {
+  if (import.meta.env.DEV) return;
+  // Undefined values would fail validation; JSON leaves them out.
+  queue.push({
+    id: crypto.randomUUID(),
+    at: new Date().toISOString(),
+    name,
+    props: JSON.parse(JSON.stringify(props))
+  });
 }

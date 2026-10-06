@@ -14,7 +14,7 @@ import { DapiServer } from "./dapi/server";
 import { agentChatEndpoint, configureAgentChat, deleteProjectChats, stopAgentChat } from "./agent-chat";
 import { cliStatus, installCli, refreshCliShim, uninstallCli } from "./cli-install";
 import { applyMcp, healMcpRegistrations, mcpStatus } from "./mcp-install";
-import { trackEvent, trackInstall } from "./analytics";
+import { configureAnalytics, countCanvasEdits, startAnalytics, track } from "./analytics";
 import { setupAppMenu } from "./menu";
 import { AppTray } from "./tray";
 import { WindowHost } from "./window-host";
@@ -171,6 +171,7 @@ const dapi = new DapiServer({
     hold: () => windows.hold(),
     lastProject: () => lastProject,
   },
+  onToolCall: (props) => track("tool_called", props),
 });
 
 function pushLog(level: LogEntry["level"], message: string, source: string) {
@@ -355,7 +356,7 @@ if (squirrelLaunch) {
 
   mainBridge.handle(MAIN_CHANNELS.APP_OPEN_EXTERNAL, ({ url }) => shell.openExternal(url));
   mainBridge.handle(MAIN_CHANNELS.APP_SHOW_IN_FOLDER, ({ path }) => shell.showItemInFolder(path));
-  mainBridge.handle(MAIN_CHANNELS.ANALYTICS_TRACK, ({ event, data }) => trackEvent(event, data));
+  mainBridge.handle(MAIN_CHANNELS.ANALYTICS_CONFIGURE, (config) => configureAnalytics(config));
   mainBridge.handle(MAIN_CHANNELS.AUTH_GET_PENDING_CALLBACK, () =>
     takePendingDeepLink(MAIN_CHANNELS.AUTH_CALLBACK),
   );
@@ -395,7 +396,10 @@ if (squirrelLaunch) {
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_DUPLICATE, ({ dir }) => duplicateProject(dir));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_DELETE, ({ dir }) => deleteProject(dir).then(deleteProjectChats));
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_COMPILE, ({ dir }) => compileProject(dir));
-  mainBridge.handle(MAIN_CHANNELS.PROJECTS_WRITE, ({ dir, edits }) => writeProject(dir, edits));
+  mainBridge.handle(MAIN_CHANNELS.PROJECTS_WRITE, ({ dir, edits }) => {
+    countCanvasEdits(edits.map((edit) => edit.kind));
+    return writeProject(dir, edits);
+  });
   mainBridge.handle(MAIN_CHANNELS.PROJECTS_WATCH, ({ dir }, event) => {
     lastProject = dir;
     tray.refresh();
@@ -507,7 +511,7 @@ if (squirrelLaunch) {
     );
     refreshCliShim();
     healMcpRegistrations();
-    trackInstall();
+    startAnalytics();
     tray.start();
 
     // Opened by a person (Finder, Dock, Start menu): show the editor

@@ -16,6 +16,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { PluginItem, TransformOptions } from "@babel/core";
 import type { BuildOptions, Plugin } from "esbuild";
 
+import { countCodeChange } from "./analytics";
 import { isTempPath, TEMP_PREFIX, writeFileAtomic } from "./atomic";
 import { windowsCloudSyncKind } from "./cloud-sync-windows";
 import { mainBridge } from "./main-manager";
@@ -1244,6 +1245,9 @@ export async function noteRenamed(temp: string, as: string): Promise<void> {
   claim(as, await digestOf(temp));
 }
 
+/** The files a change to which counts as code being written, for analytics. */
+const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
+
 export function watchProject(window: BrowserWindow | null, dir: string): void {
   if (watchers.has(dir)) return;
 
@@ -1269,6 +1273,8 @@ export function watchProject(window: BrowserWindow | null, dir: string): void {
         const current = await digestOf(file);
         if (settleClaim(file, current) || known.get(file) === current) return;
         known.set(file, current);
+        if (SOURCE_FILE.test(path) && current !== ABSENT) countCodeChange(path);
+
         mainBridge.emit(window, MAIN_CHANNELS.PROJECTS_CHANGED, { dir, path });
       })
       .catch(() => { });

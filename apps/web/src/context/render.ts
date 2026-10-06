@@ -102,7 +102,10 @@ export async function renderScene(
     track("export_failed", {
       ...event,
       duration_ms: elapsed(),
-      error: (error as Error)?.message?.slice(0, 200) ?? "unknown",
+      // Ensure its not too long for the database.
+      error: String((error as Error)?.message ?? "unknown")
+        .replace(/(?:[A-Za-z]:)?[\\/][^\s'"`]+/g, "<path>")
+        .slice(0, 200),
     });
   track("export_started", {
     ...event,
@@ -128,13 +131,13 @@ export async function renderScene(
         setOverlay((prev) =>
           prev
             ? {
-                ...prev,
-                progress: percent,
-                remaining: {
-                  minutes: p.remaining.getUTCMinutes(),
-                  seconds: p.remaining.getUTCSeconds(),
-                },
-              }
+              ...prev,
+              progress: percent,
+              remaining: {
+                minutes: p.remaining.getUTCMinutes(),
+                seconds: p.remaining.getUTCSeconds(),
+              },
+            }
             : prev,
         );
       },
@@ -144,7 +147,9 @@ export async function renderScene(
     const result = await encoder.render();
 
     if (result.type === "success") {
-      track("export_completed", { ...event, duration_ms: elapsed() });
+      track("export_succeeded", { ...event, duration_ms: elapsed() });
+    } else if (result.type === "canceled") {
+      track("export_canceled", { ...event, duration_ms: elapsed() });
     } else if (result.type === "error") {
       failed(result.error);
     }

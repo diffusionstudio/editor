@@ -3,13 +3,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { MCP_HOST, MCP_PATH, MCP_PORT, tools } from "@diffusionstudio/dapi";
+import { MCP_HOST, MCP_PATH, MCP_PORT, isDapiError, tools } from "@diffusionstudio/dapi";
 import { mainHandlers } from "./handlers";
 import { DapiHttpServer } from "./http";
 import { instructions } from "./docs";
 import { RendererCalls } from "./renderer-calls";
 import { serveCatalog } from "./tools-session";
 
+import type { TrackProps } from "@diffusionstudio/api-contract";
 import type { LogEntry } from "@diffusionstudio/dapi";
 import type { AppWindow, MainContext, MainToolName } from "./handler";
 import type { RendererHost } from "./renderer-calls";
@@ -33,6 +34,8 @@ export type DapiServerDeps = {
   };
   /** The staged docs: INSTRUCTIONS.md, their path, and the skill headers, all for every session. Null when not staged. */
   docsDir: string | null;
+  /** Told about every finished call, as `tool_called` analytics props. */
+  onToolCall?(props: TrackProps): void;
 };
 
 /**
@@ -100,12 +103,27 @@ export class DapiServer {
     const session = new McpServer({ name: SERVER_NAME, title: "Diffusion Studio", version: this.deps.version }, { instructions: this.instructionsText });
     serveCatalog(session, async (tool, args, signal) => {
       const release = this.deps.window.hold();
+      const startedAt = performance.now();
+      // The failure's code (`not-found`, `busy`, …), never its message: messages name the user's files.
+      let error: string | undefined;
       try {
         return await (tool.environment === "main" ?
           this.runInMain(tool.name as MainToolName, args, signal)
           : this.renderer.call(tool.name, args, signal));
+      } catch (thrown) {
+        error = isDapiError(thrown) ? thrown.code : "error";
+        throw thrown;
       } finally {
         release();
+        const client = session.server.getClientVersion();
+        this.deps.onToolCall?.({
+          tool: tool.name,
+          client: client?.name,
+          client_version: client?.version,
+          ok: !error,
+          error,
+          duration_ms: Math.round(performance.now() - startedAt),
+        });
       }
     });
     return session;
