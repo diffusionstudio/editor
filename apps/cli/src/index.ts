@@ -5,7 +5,7 @@
 
 import { existsSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { Command } from "commander";
+import { Argument, Command } from "commander";
 import { z } from "zod";
 import { version } from "../../../package.json";
 import { MCP_URL, toolByName } from "@diffusionstudio/dapi";
@@ -66,6 +66,24 @@ function assetPath(ref: string): string {
   return ref;
 }
 
+/** Parsed JSON, or a failure naming what was being read. */
+function json(value: string, what: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    fail(`${what} is not valid JSON: ${(e as Error).message}`);
+  }
+}
+
+/** Every `{ "path": … }` file reference in a request, resolved as `assetPath` does; the rest untouched. */
+function resolveFileRefs(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(resolveFileRefs);
+  if (typeof value !== "object" || value === null) return value;
+  const entries = Object.entries(value);
+  if (entries.length === 1 && entries[0]![0] === "path" && typeof entries[0]![1] === "string") return { path: assetPath(entries[0]![1]) };
+  return Object.fromEntries(entries.map(([key, item]) => [key, resolveFileRefs(item)]));
+}
+
 /** `x,y` as a point, added to the ones given before; a malformed one becomes NaN for the schema to reject. */
 const point = (value: string, previous: Array<{ x: number; y: number }> = []): Array<{ x: number; y: number }> => {
   const [x = NaN, y = NaN, ...rest] = value.split(",").map(numeric);
@@ -79,11 +97,12 @@ const box = (value: string): [number, number, number, number] => {
 };
 
 /**
- * A mask's destination: a path spelled as one on disk (absolute, or starting
- * with `.`) resolves against the working directory; anything else is a
- * library path, passed through for the app to resolve in the open project.
+ * Where a mask or generated files go: a path spelled as one on disk
+ * (absolute, or starting with `.`) resolves against the working directory;
+ * anything else is a library path, passed through for the app to resolve in
+ * the open project.
  */
-function maskOutput(ref: string): string {
+function libraryOrDiskPath(ref: string): string {
   return isAbsolute(ref) || ref.startsWith(".") ? resolve(ref) : ref;
 }
 
@@ -249,7 +268,46 @@ media
   )
   .action((ref: string, opts: Omit<ToolInput<"media_segment">, "path"> & { point?: ToolInput<"media_segment">["points"] }) => {
     const { point: points, ...rest } = opts;
-    return run("media_segment", { path: assetPath(ref), ...rest, points, output: opts.output && maskOutput(opts.output) });
+    return run("media_segment", { path: assetPath(ref), ...rest, points, output: opts.output && libraryOrDiskPath(opts.output) });
+  });
+
+program
+  .command("generate")
+  .alias("gen")
+  .description(describe("generate"))
+  .addArgument(new Argument("<model>", field("generate", "model")).choices(toolByName("generate").input.shape.model.options))
+  .argument(
+    "[fields]",
+    `the model's other fields as one JSON object, e.g. '{"aspectRatio":"16:9","images":[{"path":"./ref.png"}]}'; a { "path" } that exists relative to the working directory is sent as its absolute path`,
+  )
+  .option("-p, --prompt <text>", "the request's `prompt`, without JSON quoting; wins over one in the fields")
+  .option(
+    "-o, --output <path>",
+    `${field("generate", "output")}; a path starting with . resolves against the working directory`,
+  )
+  .option("--max-credits <n>", field("generate", "maxCredits"), numeric)
+  .action((model: ToolInput<"generate">["model"], fields: string | undefined, opts: { prompt?: string; output?: string; maxCredits?: number }) => {
+    const parsed = fields === undefined ? {} : json(fields, "fields");
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) fail("fields must be a JSON object.");
+    const request = resolveFileRefs(parsed) as Record<string, unknown>;
+    return run("generate", {
+      ...request,
+      model,
+      ...(opts.prompt === undefined ? {} : { prompt: opts.prompt }),
+      output: opts.output && libraryOrDiskPath(opts.output),
+      maxCredits: opts.maxCredits,
+    });
+  });
+
+program
+  .command("job")
+  .description(`${describe("job")} Exits 1 when the job failed or was canceled.`)
+  .argument("<id>", field("job", "id"))
+  .option("--cancel", field("job", "cancel"))
+  .action(async (id: string, opts: { cancel?: boolean }) => {
+    const output = await call("job", { id, cancel: opts.cancel }).catch(appError);
+    console.log(JSON.stringify(output));
+    if (output.status === "failed" || output.status === "canceled") process.exitCode = 1;
   });
 
 program

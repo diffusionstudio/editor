@@ -27,6 +27,8 @@ A folder of pictures has a count, not a duration, so `frameRate` is what says ho
 
 A project's assets are recorded in `assets.yml` next to its entry file: for each asset, its library `path`, where its bytes are (`source`: the absolute path of a file imported from disk — imports never move or copy files — or a project-relative path under `assets/`, whether the app wrote the bytes there or a symlink points at them), and what it was found to be. Folders are listed too, so an empty one survives a reload. Renaming or moving an asset in the panel rewrites the `src` props that named it.
 
+A file a model generated — in the app's prompt box or with [`generate`](../tools/generate.md) — also records the `job` it came from. [`job`](../tools/job.md) with that id returns what was asked for in `request`: the model, the prompt and every other field (an input file appears there as the API's reference to its upload, not as a library path).
+
 ## Adding an asset
 
 Symlink the file into the project's `assets/` folder and it is in the library. The app is watching, so it lands while the project is open; a project that is closed takes it in on the next open. Its library path is where the link sits under `assets/` — folder and name, so `assets/b-roll/drone.mp4` is `"b-roll/drone.mp4"` and `assets/logo.png` is `"logo.png"`.

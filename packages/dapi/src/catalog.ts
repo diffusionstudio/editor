@@ -19,14 +19,15 @@ import { mediaFilmstrip } from "./tools/media-filmstrip";
 import { mediaWaveform } from "./tools/media-waveform";
 import { mediaListen } from "./tools/media-listen";
 import { mediaSegment } from "./tools/media-segment";
+import { generate, job } from "./tools/generate";
 import { fonts } from "./tools/fonts";
 import { report } from "./tools/report";
 import { appWindow } from "./tools/window";
 
 /**
  * Every tool, in the order a listing shows them: the project loop first
- * (open, look, capture, check, export), then media inspection, then the
- * app and machine utilities.
+ * (open, look, capture, check, export), then media inspection, then
+ * generation, then the app and machine utilities.
  */
 export const catalog = [
   open,
@@ -41,6 +42,8 @@ export const catalog = [
   mediaWaveform,
   mediaListen,
   mediaSegment,
+  generate,
+  job,
   logs,
   screenshot,
   appWindow,

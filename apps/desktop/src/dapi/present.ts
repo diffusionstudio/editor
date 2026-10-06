@@ -5,11 +5,13 @@
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { TimecodedImage, ToolArgs, ToolName, ToolOutput, ToolResult } from "@diffusionstudio/dapi";
+import { generatedPath } from "@diffusionstudio/dapi";
+
+import type { GenerationResult, TimecodedImage, ToolArgs, ToolName, ToolOutput, ToolResult } from "@diffusionstudio/dapi";
 
 /** A file the tool wrote, kept in memory only long enough to decide whether to inline it. */
 export type WrittenImage = { path: string; png: Uint8Array };
@@ -52,6 +54,9 @@ export async function present(name: ToolName, args: unknown, result: unknown): P
       return presentSegment(result as ToolResult<"media_segment">, (args as ToolArgs<"media_segment">).output);
     case "context":
       return presentContext(result as ToolResult<"context">);
+    case "generate":
+    case "job":
+      return presentJob(result as GenerationResult);
     default:
       return { output: result, images: [] };
   }
@@ -160,6 +165,45 @@ async function presentContext(result: ToolResult<"context">): Promise<Presented>
     masks.push(image === undefined ? row : { ...row, image });
   }
   return { output: { ...result, masks }, images };
+}
+
+/** Files of succeeded jobs saved to disk, by job id: the first poll that sees a job succeed downloads them, the rest reuse the paths. */
+const jobFiles = new Map<string, Promise<string[]>>();
+
+/**
+ * A job's files bound for disk are downloaded once it has succeeded, to
+ * `saveTo` (see `generatedPath`; a file already there is written over, as
+ * the other tools' outputs are) or under the API's names into a directory of
+ * the job's own under the temp dir, and their `url` is swapped for the
+ * `path`. Files the renderer saved into the library arrive with their paths.
+ */
+async function presentJob({ job, saveTo }: GenerationResult): Promise<Presented> {
+  const pending = job.assets.filter((file) => file.url !== undefined);
+  if (job.status !== "succeeded" || pending.length === 0) return { output: job, images: [] };
+
+  let paths = jobFiles.get(job.id);
+  if (!paths) {
+    const temp = join(tempDir(), `dapi-generate-${job.id}`);
+    const targets = job.assets.map((file, i) =>
+      saveTo === null ? join(temp, basename(file.filename)) : generatedPath(saveTo, file.filename, i, job.assets.length),
+    );
+    paths = downloadAll(job.assets, targets);
+    paths.catch(() => jobFiles.delete(job.id));
+    jobFiles.set(job.id, paths);
+  }
+  const written = await paths;
+  const assets = job.assets.map(({ url: _url, ...file }, i) => ({ ...file, path: written[i] }));
+  return { output: { ...job, assets }, images: [] };
+}
+
+async function downloadAll(files: GenerationResult["job"]["assets"], targets: string[]): Promise<string[]> {
+  for (const [i, file] of files.entries()) {
+    const response = await fetch(file.url!);
+    if (!response.ok) throw new Error(`Could not download ${file.filename} (${response.status})`);
+    await mkdir(dirname(targets[i]!), { recursive: true });
+    await writeFile(targets[i]!, new Uint8Array(await response.arrayBuffer()));
+  }
+  return targets;
 }
 
 function screenshotFilename(taken: Date, attempt: number): string {

@@ -12,6 +12,7 @@ import { mediaGrab } from "./media-grab";
 import { mediaListen } from "./media-listen";
 import { mediaSegment } from "./media-segment";
 import { mediaTranscribe } from "./media-transcribe";
+import { generate, generatedPath } from "./generate";
 
 /** The messages of a failed parse, keyed by the path they point at. */
 function issues(result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[]; message: string }> } }) {
@@ -189,5 +190,40 @@ describe("media_segment", () => {
   it("names only the models the app offers", () => {
     expect(input.safeParse({ ...at, box: [0, 0, 1, 1], model: "base-plus" }).success).toBe(true);
     expect(input.safeParse({ ...at, box: [0, 0, 1, 1], model: "huge" }).success).toBe(false);
+  });
+});
+
+describe("generate", () => {
+  const input = generate.input;
+
+  it("passes the model's fields through unchecked, for the API to validate", () => {
+    const fields = { prompt: "a fox", images: [{ path: "./ref.png" }, { kind: "url", url: "https://x.test/a.png" }], duration: 99, anything: { at: "all" } };
+    expect(input.parse({ model: "nano-banana-pro", ...fields })).toEqual({ model: "nano-banana-pro", ...fields });
+  });
+
+  it("knows the models", () => {
+    expect(issues(input.safeParse({ model: "dall-e-1", prompt: "a fox" }))).toHaveProperty("model");
+  });
+
+  it("lets a job's fields beyond the documented ones through to the caller", () => {
+    const job = { id: "j", model: "flux-2-klein", status: "succeeded", etaSeconds: 9, etaRemainingSeconds: null, credits: 2, error: null, createdAt: "2026-10-06T00:00:00Z", assets: [{ path: "/a.png", filename: "a.png", width: 1024 }] };
+    expect(generate.output.parse(job)).toEqual(job);
+  });
+});
+
+describe("generatedPath", () => {
+  it("saves a single file at the output, keeping an extension that matches", () => {
+    expect(generatedPath("b-roll/fox.png", "red-fox.png", 0, 1)).toBe("b-roll/fox.png");
+    expect(generatedPath("/out/fox.JPEG", "red-fox.jpg", 0, 1)).toBe("/out/fox.JPEG");
+  });
+
+  it("corrects or adds the extension to what the model made", () => {
+    expect(generatedPath("/out/fox.jpg", "red-fox.png", 0, 1)).toBe("/out/fox.png");
+    expect(generatedPath("clips/run", "fox-run.mp4", 0, 1)).toBe("clips/run.mp4");
+    expect(generatedPath("C:\\out\\v1.2\\fox", "a.webp", 0, 1)).toBe("C:\\out\\v1.2\\fox.webp");
+  });
+
+  it("numbers the files of a job that made several", () => {
+    expect([0, 1, 2].map((i) => generatedPath("fox.png", "a.png", i, 3))).toEqual(["fox-1.png", "fox-2.png", "fox-3.png"]);
   });
 });

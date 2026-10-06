@@ -2,10 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { present, toCallToolResult } from "./present";
 
 const dir = mkdtempSync(join(tmpdir(), "dapi-present-"));
@@ -132,5 +132,67 @@ describe("toCallToolResult", () => {
     expect(toCallToolResult({ output: {}, images: many }).content).toHaveLength(1);
     const large = [{ path: "/big.png", png: png(0, (1 << 20) + 1) }];
     expect(toCallToolResult({ output: {}, images: large }).content).toHaveLength(1);
+  });
+});
+
+describe("present a generation job", () => {
+  const job = (id: string, status: string, assets: Array<Record<string, unknown>>) => ({
+    job: { id, status, credits: 4, etaSeconds: 10, etaRemainingSeconds: null, error: null, assets },
+    saveTo: null as string | null,
+  });
+  const file = (filename: string) => ({ url: `https://files.test/${filename}`, filename, mimeType: "image/png", size: 8 });
+
+  it("passes a job still running through as the API has it", async () => {
+    const running = job("j-running", "running", []);
+    expect((await present("job", { id: "j-running" }, running)).output).toEqual(running.job);
+  });
+
+  it("downloads a succeeded job's files once, to the output numbered and with the made extension", async () => {
+    const fetch = vi.fn(async (url: string) => new Response(new Uint8Array([url.length])));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const out = join(dir, "generated", "fox.jpg");
+      const done = { ...job("j-done", "succeeded", [file("red-fox.png"), file("red-fox-2.png")]), saveTo: out };
+      const first = await present("job", { id: "j-done" }, done);
+      const again = await present("job", { id: "j-done" }, done);
+      const assets = (first.output as { assets: Array<Record<string, unknown>> }).assets;
+      expect(assets.map((asset) => asset.path)).toEqual([join(dir, "generated", "fox-1.png"), join(dir, "generated", "fox-2.png")]);
+      expect(assets[0]).not.toHaveProperty("url");
+      expect(assets[0]).toMatchObject({ filename: "red-fox.png", mimeType: "image/png" });
+      expect(again.output).toEqual(first.output);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("writes a single file at the output, over a file already there", async () => {
+    vi.stubGlobal("fetch", async () => new Response("new"));
+    try {
+      const out = join(dir, "single.png");
+      writeFileSync(out, "old");
+      const presented = await present("job", { id: "j-one" }, { ...job("j-one", "succeeded", [file("x.png")]), saveTo: out });
+      expect((presented.output as { assets: Array<{ path: string }> }).assets[0]!.path).toBe(out);
+      expect(readFileSync(out, "utf8")).toBe("new");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("saves into a directory of the job's own under the temp dir when no directory is given", async () => {
+    vi.stubGlobal("fetch", async () => new Response(new Uint8Array([1])));
+    try {
+      const presented = await present("generate", { model: "flux-2-klein" }, job("j-temp", "succeeded", [file("a.png")]));
+      const path = (presented.output as { assets: Array<{ path: string }> }).assets[0]!.path;
+      expect(path).toMatch(/dapi-generate-j-temp[\\/]a\.png$/);
+      rmSync(dirname(path), { recursive: true, force: true });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("leaves files the renderer saved into the library as they are", async () => {
+    const saved = job("j-lib", "succeeded", [{ filename: "a.png", path: "/p/assets/a.png", src: "a.png" }]);
+    expect((await present("job", { id: "j-lib" }, saved)).output).toEqual(saved.job);
   });
 });

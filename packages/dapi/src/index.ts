@@ -29,6 +29,7 @@ export { SEGMENT_MODELS, WEAK_IOU } from "./tools/media-segment";
 export { ISSUE_LOG_TAIL } from "./tools/report";
 export { LOG_TAIL, LOG_MESSAGE_MAX } from "./tools/logs";
 export { FONT_LIMIT } from "./tools/fonts";
+export { generatedPath } from "./tools/generate";
 
 // Named request and result types, for handlers that spell out their
 // signature. Each is the parsed (output) side of the tool's schema.
@@ -80,5 +81,9 @@ export type MediaListenRequest = ToolArgs<"media_listen">;
 export type MediaListenResult = ToolResult<"media_listen">;
 export type MediaSegmentRequest = ToolArgs<"media_segment">;
 export type MediaSegmentResult = ToolResult<"media_segment">;
+export type GenerateRequest = ToolArgs<"generate">;
+export type GenerationResult = ToolResult<"generate">;
+export type GenerationJob = ToolOutput<"generate">;
+export type JobRequest = ToolArgs<"job">;
 export type FontsRequest = ToolArgs<"fonts">;
 export type ReportRequest = ToolArgs<"report">;
