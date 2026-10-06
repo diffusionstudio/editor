@@ -73,10 +73,11 @@ export function AuthProvider(props: { children: JSX.Element }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      const isNewUser = newSession?.user.id !== session()?.user.id;
       setSession(newSession);
       // Every change, token refreshes included: desktop main sends events with it.
       setAnalyticsSession(newSession?.access_token ?? null);
-      if (event === 'SIGNED_IN' && newSession?.user) {
+      if (event === 'SIGNED_IN' && newSession?.user && isNewUser) {
         track('signed_in', { provider: newSession.user.app_metadata?.provider ?? 'unknown' });
       } else if (event === 'SIGNED_OUT') {
         track('signed_out', {});
