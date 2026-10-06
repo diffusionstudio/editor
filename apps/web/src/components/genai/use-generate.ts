@@ -8,7 +8,7 @@ import { generate } from "@/engine/generate";
 import { outputOf, toRequest } from "./requests";
 
 import type { GenerateRequest } from "@diffusionstudio/api-contract";
-import type { GenerationConfig } from "./schemas";
+import type { GenerationConfig } from "./types";
 
 /**
  * Generating onto the canvas: from the prompt box's settings (`generate`), or
@@ -20,11 +20,7 @@ export function useGenerate() {
 
   const run = (config: GenerationConfig): Promise<void> => {
     const library = world.get(Library);
-    const output = outputOf({
-      model: config.model as GenerateRequest["model"],
-      count: config.mode === "IMAGE" ? config.count : 1,
-      aspectRatio: "aspectRatio" in config ? config.aspectRatio : undefined,
-    });
+    const output = outputOf(config);
     if (!library || !output) return Promise.resolve();
     return generate(world, output, () => toRequest(library, config));
   };

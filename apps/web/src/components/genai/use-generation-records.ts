@@ -13,7 +13,7 @@ import { useMediaSelection } from "./selection";
 import { toConfig } from "./requests";
 
 import type { Job } from "@diffusionstudio/api-contract";
-import type { GenerationConfig } from "./schemas";
+import type { GenerationConfig } from "./types";
 
 export function useGenerationRecords() {
   const { media } = useMediaSelection();

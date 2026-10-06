@@ -18,7 +18,7 @@ import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import { LazyAssetItem } from "@/components/sidebar-left/asset-item";
 import { usePromptInput } from "@/context/prompt-input";
-import { createDefaultConfig } from "@/components/genai/prompt-input";
+import { createDefaultConfig } from "@/components/genai/requests";
 import { assetName } from "@diffusionstudio/assets";
 import { useTrait } from "@diffusionstudio/koota-solid";
 import { AssetId, isScene } from "@diffusionstudio/runtime";

@@ -4,7 +4,7 @@
 
 import { basename, dirname } from "@diffusionstudio/assets";
 import { usePromptInput } from "@/context/prompt-input";
-import { createDefaultConfig } from "@/components/genai/prompt-input";
+import { createDefaultConfig } from "@/components/genai/requests";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { SidebarTabs } from "@/agent-chat";
 import { Button } from "../ui/button";

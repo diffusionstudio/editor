@@ -22,7 +22,7 @@ import { useGenerate } from "./use-generate";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
 
-import type { TransformType } from "./schemas";
+import type { TransformType } from "./types";
 
 export function PromptInputActions() {
   const { isGenerated, totalCredits, firstJob } = useGenerationRecords();

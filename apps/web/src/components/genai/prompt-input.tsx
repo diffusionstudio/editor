@@ -31,31 +31,20 @@ import {
 } from "solid-js";
 
 import {
-  PROMPT_INPUT_IMAGE_MODEL_OPTIONS,
-  PROMPT_INPUT_VIDEO_MODEL_OPTIONS,
-  PROMPT_INPUT_VOICE_MODEL,
-  PROMPT_INPUT_VOICE_OPTIONS,
+  ASPECT_RATIO_OPTIONS,
   PROMPT_INPUT_MODE_OPTIONS,
-  PROMPT_INPUT_IMAGE_ASPECT_RATIO_OPTIONS,
-  PROMPT_INPUT_VARIANT_COUNT_OPTIONS,
-  ALL_VIDEO_ASPECT_RATIO_OPTIONS,
-  ALL_DURATION_OPTIONS,
-  PROMPT_INPUT_AUDIO_MODEL_OPTIONS,
+  modelOption,
+  modelOptions,
   // PROMPT_INPUT_RESOLUTION_OPTIONS
+  type AspectRatio,
   type PromptMode,
 } from "./config";
+import { createDefaultConfig, fitToModel } from "./requests";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
 import { useGenerate } from "./use-generate";
 import { PromptInputActions } from "./prompt-input-actions";
-import type {
-  AspectRatio,
-  GenerationConfig,
-  ImageGenerationConfig,
-  VideoGenerationConfig,
-  VoiceGenerationConfig,
-  AudioGenerationConfig,
-} from "./schemas";
+import type { GenerationConfig } from "./types";
 import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
 import { useLibrary } from "@/engine/library";
 import { useEditor } from "@/engine/hooks";
@@ -63,56 +52,14 @@ import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useMediaSelection } from "./selection";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
+import type { ModelId } from "@diffusionstudio/api-contract";
 import type { AssetCache } from "@diffusionstudio/assets";
 import type { ThumbnailAsset } from "@/components/ui/asset-thumbnail";
 
-export type PromptInputMode = PromptMode;
 
 const DEFAULT_BUTTON_CLASS = "text-muted-foreground gap-0 pr-2 pl-0";
 /** As many references as the prompt box has room for; a model may take fewer. */
 const MAX_IMAGE_REFERENCES = 5;
-
-type GenerationConfgs = {
-  IMAGE: ImageGenerationConfig;
-  VIDEO: VideoGenerationConfig;
-  VOICE: VoiceGenerationConfig;
-  AUDIO: AudioGenerationConfig;
-};
-
-export function createDefaultConfig<K extends keyof GenerationConfgs>(mode: K, prompt = ""): GenerationConfgs[K] {
-  switch (mode) {
-    case "IMAGE":
-      return {
-        mode: "IMAGE",
-        model: PROMPT_INPUT_IMAGE_MODEL_OPTIONS[0].id,
-        prompt,
-        aspectRatio: "16:9",
-        count: 1,
-      } as GenerationConfgs[K];
-    case "VIDEO":
-      return {
-        mode: "VIDEO",
-        model: PROMPT_INPUT_VIDEO_MODEL_OPTIONS[0].id,
-        prompt,
-        aspectRatio: "16:9",
-        duration: 6,
-        generateAudio: true,
-      } as GenerationConfgs[K];
-    case "VOICE":
-      return {
-        mode: "VOICE",
-        model: PROMPT_INPUT_VOICE_MODEL,
-        prompt,
-        voice: PROMPT_INPUT_VOICE_OPTIONS[0].value,
-      } as GenerationConfgs[K];
-    case "AUDIO":
-      return {
-        mode: "AUDIO",
-        model: PROMPT_INPUT_AUDIO_MODEL_OPTIONS[0].id,
-        prompt,
-      } as GenerationConfgs[K];
-  }
-}
 
 export interface PromptInputProps {
   initialConfig?: GenerationConfig;
@@ -134,52 +81,33 @@ export function PromptInput(props: PromptInputProps) {
 
   /** Shallow-merge updates into the current config. */
   const patch = (updates: Partial<GenerationConfig>) => {
-    setConfig((prev) => ({ ...prev, ...updates }) as GenerationConfig);
+    setConfig((prev) => ({ ...prev, ...updates }));
   };
 
   const mode = () => config().mode;
   const prompt = () => config().prompt;
 
-  // These are only read inside their matching <Match when={mode() === …}>
-  // blocks, so the narrowing is sound.
-  const imageConfig = () => {
-    const c = config();
-    return c.mode === "IMAGE" ? c : undefined;
-  };
-  const videoConfig = () => {
-    const c = config();
-    return c.mode === "VIDEO" ? c : undefined;
-  };
-  const voiceConfig = () => {
-    const c = config();
-    return c.mode === "VOICE" ? c : undefined;
-  };
+  /** The model and the settings it takes: what the prompt box offers. */
+  const option = createMemo(() => modelOption(config().model) ?? modelOptions(mode())[0]!);
+  const options = createMemo(() => modelOptions(mode()));
+  const modeLabel = () => PROMPT_INPUT_MODE_OPTIONS.find((o) => o.value === mode())?.label.toLowerCase();
 
-  const maxImageReferences = createMemo(() => Math.min(
-    MAX_IMAGE_REFERENCES,
-    PROMPT_INPUT_IMAGE_MODEL_OPTIONS.find((m) => m.id === config().model)?.maxReferences ?? MAX_IMAGE_REFERENCES,
-  ));
+  const maxImageReferences = createMemo(() => Math.min(MAX_IMAGE_REFERENCES, option().references ?? 0));
 
-  const currentVideoModel = createMemo(() =>
-    PROMPT_INPUT_VIDEO_MODEL_OPTIONS.find((m) => m.id === config().model),
+  const aspectRatioOptions = createMemo(() =>
+    ASPECT_RATIO_OPTIONS.filter((o) => option().aspectRatios?.includes(o.value)),
   );
-
-  const videoDurationOptions = createMemo(() => {
-    const model = currentVideoModel();
-    return model ? ALL_DURATION_OPTIONS.filter((o) => model.durations.includes(o.value)) : [];
-  });
-
-  const videoAspectRatioOptions = createMemo(() => {
-    const model = currentVideoModel();
-    return model ? ALL_VIDEO_ASPECT_RATIO_OPTIONS.filter((o) => model.aspectRatios.includes(o.value)) : [];
-  });
+  const countOptions = createMemo(() => (option().counts ?? []).map((n) => ({ value: String(n), label: String(n) })));
+  const durationOptions = createMemo(() =>
+    (option().durations ?? []).map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
+  );
 
   // Pictures on the canvas are offered as references and as video frames:
   // selecting one is another way of attaching it.
   const effectiveImageRefIds = createMemo(() => {
     const lib = library();
     if (!lib) return [];
-    const local = imageConfig()?.imageRefIds ?? [];
+    const local = config().imageRefIds ?? [];
     const selected = selectedImages()
       .map((entry) => entry.asset.id)
       .filter((id) => !local.includes(id));
@@ -193,11 +121,10 @@ export function PromptInput(props: PromptInputProps) {
     // A frame the model cannot take is not one the prompt box offers, and
     // not one a canvas selection quietly attaches either: the declaration is
     // checked against the model before it runs.
-    if (!currentVideoModel()?.features.includes(`${frame}-frame`)) return null;
+    if (!option().frames?.includes(frame)) return null;
 
     const lib = library();
-    const config = videoConfig();
-    const explicit = frame === "start" ? config?.startFrameImageId : config?.endFrameImageId;
+    const explicit = frame === "start" ? config().startFrameImageId : config().endFrameImageId;
     const id = explicit ?? selectedImages()[frame === "start" ? 0 : 1]?.asset.id ?? null;
     return id && lib?.get(id) ? id : null;
   };
@@ -226,13 +153,13 @@ export function PromptInput(props: PromptInputProps) {
   };
 
   const handleModeChange = (value: string) => {
-    const newMode = value as PromptInputMode;
+    const newMode = value as PromptMode;
     if (newMode === mode()) return;
     setConfig(createDefaultConfig(newMode, prompt()));
   };
 
   const removeImageReference = (assetId: string) => {
-    const refs = imageConfig()?.imageRefIds ?? [];
+    const refs = config().imageRefIds ?? [];
     if (refs.includes(assetId)) {
       patch({ imageRefIds: refs.filter((id) => id !== assetId) });
       return;
@@ -254,7 +181,7 @@ export function PromptInput(props: PromptInputProps) {
     // `importFiles` reports its own failures.
     const imported = await importFiles(lib, files, "");
     const imageAssets = imported.filter((a) => a.type === "IMAGE");
-    const current = imageConfig()?.imageRefIds ?? [];
+    const current = config().imageRefIds ?? [];
     patch({
       imageRefIds: [...current, ...imageAssets.map((a) => a.id)].slice(0, maxImageReferences()),
     });
@@ -275,16 +202,12 @@ export function PromptInput(props: PromptInputProps) {
   };
 
   const swapVideoFrameImages = () => {
-    const c = videoConfig();
-    patch({
-      startFrameImageId: c?.endFrameImageId,
-      endFrameImageId: c?.startFrameImageId,
-    });
+    const c = config();
+    patch({ startFrameImageId: c.endFrameImageId, endFrameImageId: c.startFrameImageId });
   };
 
   const clearVideoFrame = (frame: "start" | "end") => {
-    const explicitId =
-      frame === "start" ? videoConfig()?.startFrameImageId : videoConfig()?.endFrameImageId;
+    const explicitId = frame === "start" ? config().startFrameImageId : config().endFrameImageId;
     if (explicitId) {
       patch(frame === "start" ? { startFrameImageId: undefined } : { endFrameImageId: undefined });
       return;
@@ -327,24 +250,14 @@ export function PromptInput(props: PromptInputProps) {
     patch({ prompt: "" });
     resizeTextarea();
 
-    let submitted: GenerationConfig;
-
-    if (currentConfig.mode === "IMAGE") {
-      submitted = {
-        ...currentConfig,
-        imageRefIds: effectiveImageRefIds(),
-      };
-    } else if (currentConfig.mode === "VIDEO") {
-      submitted = {
-        ...currentConfig,
-        startFrameImageId: effectiveStartFrameId() || undefined,
-        endFrameImageId: effectiveEndFrameId() || undefined,
-      };
-    } else {
-      submitted = currentConfig;
-    }
-
-    generate(submitted);
+    // What the model takes of the selection: none of it for a model without
+    // references or frames (see `maxImageReferences`, `frameId`).
+    generate({
+      ...currentConfig,
+      imageRefIds: effectiveImageRefIds(),
+      startFrameImageId: effectiveStartFrameId() ?? undefined,
+      endFrameImageId: effectiveEndFrameId() ?? undefined,
+    });
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -399,7 +312,7 @@ export function PromptInput(props: PromptInputProps) {
     dragCounter = 0;
     setIsDragging(false);
 
-    if (mode() !== "IMAGE" && mode() !== "VIDEO") return;
+    if (maxImageReferences() === 0 && !option().frames) return;
 
     const lib = library();
     if (!lib) return;
@@ -420,48 +333,32 @@ export function PromptInput(props: PromptInputProps) {
     const imageIds = droppedIds.filter((id) => lib.get(id)?.type === "IMAGE");
     if (imageIds.length === 0) return;
 
-    if (mode() === "VIDEO") {
-      const c = videoConfig();
-      if (!c?.startFrameImageId && imageIds[0]) {
+    if (option().frames) {
+      const c = config();
+      if (!c.startFrameImageId && imageIds[0]) {
         patch({ startFrameImageId: imageIds[0] });
       }
-      if (!c?.endFrameImageId && imageIds[1]) {
+      if (!c.endFrameImageId && imageIds[1] && option().frames?.includes("end")) {
         patch({ endFrameImageId: imageIds[1] });
       }
       return;
     }
 
-    const current = imageConfig()?.imageRefIds ?? [];
+    const current = config().imageRefIds ?? [];
     patch({ imageRefIds: [...current, ...imageIds].slice(0, maxImageReferences()) });
   };
 
-  const handleVideoModelChange = (id: string) => {
-    const model = PROMPT_INPUT_VIDEO_MODEL_OPTIONS.find((m) => m.id === id);
-    if (!model) return;
-
-    const c = videoConfig() ?? createDefaultConfig("VIDEO");
-    const durationStr = `${c.duration}s`;
-
-    setConfig({
-      ...c,
-      model: id,
-      endFrameImageId: model.features.includes("end-frame") ? c.endFrameImageId : undefined,
-      generateAudio: model.features.includes("audio") ? (c.generateAudio ?? true) : false,
-      duration: model.durations.includes(durationStr) ? c.duration : parseInt(model.durations[0], 10),
-      aspectRatio: model.aspectRatios.length === 0 || model.aspectRatios.includes(c.aspectRatio)
-        ? c.aspectRatio
-        : (model.aspectRatios[0] as AspectRatio),
-    });
+  /** Another model of the mode, the settings carried over where it takes them. */
+  const handleModelChange = (id: string) => {
+    setConfig(fitToModel({ ...config(), model: id as ModelId }));
   };
 
   // ── Accessors for UI menus (string ↔ config conversions) ────────────
-  const aspectRatioAccessor: Accessor<string> = () =>
-    imageConfig()?.aspectRatio ?? videoConfig()?.aspectRatio ?? "16:9";
-  const variantCountAccessor: Accessor<string> = () => String(imageConfig()?.count ?? 1);
-  const durationAccessor: Accessor<string> = () => `${videoConfig()?.duration ?? 6}s`;
+  const aspectRatioAccessor: Accessor<string> = () => config().aspectRatio ?? "";
+  const countAccessor: Accessor<string> = () => String(config().count ?? "");
+  const durationAccessor: Accessor<string> = () => String(config().duration ?? "");
   const modelAccessor: Accessor<string> = () => config().model;
-  const voiceAccessor: Accessor<string> = () => voiceConfig()?.voice ?? PROMPT_INPUT_VOICE_OPTIONS[0].value;
-  const audioEnabledAccessor = () => videoConfig()?.generateAudio ?? true;
+  const voiceAccessor: Accessor<string> = () => config().voice ?? "";
 
   return (
     <div
@@ -473,7 +370,7 @@ export function PromptInput(props: PromptInputProps) {
     >
       <PromptInputActions />
       <Switch>
-        <Match when={mode() === "IMAGE"}>
+        <Match when={maxImageReferences() > 0}>
           <div class="flex w-full items-start gap-2 overflow-x-auto">
             <For each={effectiveImageRefIds()}>
               {(assetId) => (
@@ -497,9 +394,9 @@ export function PromptInput(props: PromptInputProps) {
           </div>
         </Match>
 
-        <Match when={mode() === "VIDEO"}>
+        <Match when={option().frames}>
           <div class="flex w-full items-center gap-2 overflow-x-auto">
-            <Show when={currentVideoModel()?.features.includes("start-frame")}>
+            <Show when={option().frames?.includes("start")}>
               <Show
                 when={effectiveStartFrameId()}
                 fallback={
@@ -522,7 +419,7 @@ export function PromptInput(props: PromptInputProps) {
                 )}
               </Show>
             </Show>
-            <Show when={currentVideoModel()?.features.includes("end-frame")}>
+            <Show when={option().frames?.includes("end")}>
               <Tooltip>
                 <TooltipTrigger
                   as={Button}
@@ -626,98 +523,55 @@ export function PromptInput(props: PromptInputProps) {
           </Tooltip>
           <Show when={settingsVisible()}>
             <Separator orientation="vertical" class="min-h-5" />
-            <Switch>
-              <Match when={mode() === "IMAGE"}>
-                <>
-                  <ModelMenu
-                    searchPlaceholder="Search in image models"
-                    options={PROMPT_INPUT_IMAGE_MODEL_OPTIONS}
-                    value={modelAccessor}
-                    onChange={(v) => patch({ model: v })}
-                  />
-                  <PromptInputCompactMenu
-                    aria-label="Select aspect ratio"
-                    menuLabel="Aspect ratio"
-                    value={aspectRatioAccessor}
-                    options={PROMPT_INPUT_IMAGE_ASPECT_RATIO_OPTIONS}
-                    onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
-                    triggerIcon="aspect-ratio-16-9"
-                  />
-                  <PromptInputCompactMenu
-                    aria-label="Select amount of variants"
-                    menuLabel="Amount of variants"
-                    value={variantCountAccessor}
-                    options={PROMPT_INPUT_VARIANT_COUNT_OPTIONS}
-                    onChange={(v) => patch({ count: Number(v) })}
-                    triggerIcon="variants"
-                  />
-                </>
-              </Match>
-              <Match when={mode() === "VIDEO"}>
-                <>
-                  <ModelMenu
-                    searchPlaceholder="Search in video models"
-                    options={PROMPT_INPUT_VIDEO_MODEL_OPTIONS}
-                    value={modelAccessor}
-                    onChange={handleVideoModelChange}
-                  />
-                  <Show when={videoAspectRatioOptions().length > 0}>
-                    <PromptInputCompactMenu
-                      aria-label="Select aspect ratio"
-                      menuLabel="Aspect ratio"
-                      value={aspectRatioAccessor}
-                      options={videoAspectRatioOptions()}
-                      onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
-                      triggerIcon="aspect-ratio-16-9"
-                    />
-                  </Show>
-                  {/* <PromptInputCompactMenu
-                    aria-label="Select resolution"
-                    menuLabel="Resolution"
-                    value={resolution}
-                    options={PROMPT_INPUT_RESOLUTION_OPTIONS}
-                    onChange={setResolution}
-                    triggerIcon="resolution"
-                  /> */}
-                  <PromptInputCompactMenu
-                    aria-label="Select duration"
-                    menuLabel="Duration"
-                    value={durationAccessor}
-                    options={videoDurationOptions()}
-                    onChange={(v) => patch({ duration: parseInt(v) })}
-                    triggerIcon="duration"
-                  />
-                  <Show when={currentVideoModel()?.features.includes("audio")}>
-                    <Button
-                      variant="ghost"
-                      onClick={() => patch({ generateAudio: !audioEnabledAccessor() })}
-                      class={DEFAULT_BUTTON_CLASS}
-                    >
-                      <Icon
-                        name={audioEnabledAccessor() ? "audio-on" : "audio-off"}
-                        class="size-6"
-                      />
-                      {audioEnabledAccessor() ? "On" : "Off"}
-                    </Button>
-                  </Show>
-                </>
-              </Match>
-              <Match when={mode() === "VOICE"}>
-                <VoiceMenu
-                  options={PROMPT_INPUT_VOICE_OPTIONS}
-                  value={voiceAccessor}
-                  onChange={(v) => patch({ voice: v })}
-                />
-              </Match>
-              <Match when={mode() === "AUDIO"}>
-                <ModelMenu
-                  searchPlaceholder="Search in audio models"
-                  options={PROMPT_INPUT_AUDIO_MODEL_OPTIONS}
-                  value={modelAccessor}
-                  onChange={(v) => patch({ model: v })}
-                />
-              </Match>
-            </Switch>
+            <Show when={options().length > 1}>
+              <ModelMenu
+                searchPlaceholder={`Search in ${modeLabel()} models`}
+                options={options()}
+                value={modelAccessor}
+                onChange={handleModelChange}
+              />
+            </Show>
+            <Show when={aspectRatioOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select aspect ratio"
+                menuLabel="Aspect ratio"
+                value={aspectRatioAccessor}
+                options={aspectRatioOptions()}
+                onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
+                triggerIcon="aspect-ratio-16-9"
+              />
+            </Show>
+            {/* <PromptInputCompactMenu
+              aria-label="Select resolution"
+              menuLabel="Resolution"
+              value={resolution}
+              options={PROMPT_INPUT_RESOLUTION_OPTIONS}
+              onChange={setResolution}
+              triggerIcon="resolution"
+            /> */}
+            <Show when={countOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select amount of variants"
+                menuLabel="Amount of variants"
+                value={countAccessor}
+                options={countOptions()}
+                onChange={(v) => patch({ count: Number(v) })}
+                triggerIcon="variants"
+              />
+            </Show>
+            <Show when={durationOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select duration"
+                menuLabel="Duration"
+                value={durationAccessor}
+                options={durationOptions()}
+                onChange={(v) => patch({ duration: Number(v) })}
+                triggerIcon="duration"
+              />
+            </Show>
+            <Show when={option().voices}>
+              {(voices) => <VoiceMenu options={voices()} value={voiceAccessor} onChange={(v) => patch({ voice: v })} />}
+            </Show>
           </Show>
         </div>
         <Tooltip>

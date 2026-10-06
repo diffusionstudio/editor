@@ -13,7 +13,7 @@ import { useMediaSelection } from "./selection";
 
 import type { AssetRef, GenerateRequestInput } from "@diffusionstudio/api-contract";
 import type { NodeMedia } from "@/engine/generate";
-import type { TransformType } from "./schemas";
+import type { TransformType } from "./types";
 
 interface Tool {
   /** What a failure is reported under. */

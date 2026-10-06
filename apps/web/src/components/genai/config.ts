@@ -36,9 +36,6 @@ export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
 
 export type PromptMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";
 
-/** The one model the voice mode speaks with; the UI picks the voice, not the model. */
-export const PROMPT_INPUT_VOICE_MODEL = "elevenlabs-v3" satisfies ModelId;
-
 /** What an aspect ratio is worth in pixels, at 1080p. */
 export const ASPECT_RATIO_DIMENSIONS: Record<string, { width: number; height: number }> = {
   "16:9": { width: 1920, height: 1080 },
@@ -48,50 +45,22 @@ export const ASPECT_RATIO_DIMENSIONS: Record<string, { width: number; height: nu
   "3:4": { width: 1080, height: 1440 },
 };
 
-export const PROMPT_INPUT_MODE_OPTIONS = [
+export const PROMPT_INPUT_MODE_OPTIONS: { value: PromptMode; label: string; icon: string }[] = [
   { value: "IMAGE", label: "Image", icon: "image" },
   { value: "VIDEO", label: "Video", icon: "film-video-export" },
   { value: "VOICE", label: "Voice", icon: "voice" },
   { value: "AUDIO", label: "Audio", icon: "audio" },
 ];
 
-export const PROMPT_INPUT_IMAGE_ASPECT_RATIO_OPTIONS = [
+/** The aspect ratios the prompt box offers; a model may take fewer. */
+export type AspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+
+export const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string; triggerLabel: string; icon: string }[] = [
   { value: "16:9", label: "16:9 \u00B7 Wide", triggerLabel: "16:9", icon: "aspect-ratio-16-9" },
   { value: "9:16", label: "9:16 \u00B7 Vertical", triggerLabel: "9:16", icon: "aspect-ratio-9-16" },
   { value: "1:1", label: "1:1 \u00B7 Square", triggerLabel: "1:1", icon: "aspect-ratio-1-1" },
   { value: "4:3", label: "4:3 \u00B7 Classic", triggerLabel: "4:3", icon: "aspect-ratio-4-3" },
   { value: "3:4", label: "3:4 \u00B7 Tall", triggerLabel: "3:4", icon: "aspect-ratio-3-4" },
-];
-
-export const ALL_VIDEO_ASPECT_RATIO_OPTIONS = [
-  { value: "16:9", label: "16:9 \u00B7 Wide", triggerLabel: "16:9", icon: "aspect-ratio-16-9" },
-  { value: "9:16", label: "9:16 \u00B7 Vertical", triggerLabel: "9:16", icon: "aspect-ratio-9-16" },
-  { value: "1:1", label: "1:1 \u00B7 Square", triggerLabel: "1:1", icon: "aspect-ratio-1-1" },
-  { value: "4:3", label: "4:3 \u00B7 Classic", triggerLabel: "4:3", icon: "aspect-ratio-4-3" },
-  { value: "3:4", label: "3:4 \u00B7 Tall", triggerLabel: "3:4", icon: "aspect-ratio-3-4" },
-];
-
-export const PROMPT_INPUT_VARIANT_COUNT_OPTIONS = [
-  { value: "1", label: "1" },
-  { value: "2", label: "2" },
-  { value: "3", label: "3" },
-  { value: "4", label: "4" },
-];
-
-export const ALL_DURATION_OPTIONS = [
-  { value: "3s", label: "3s" },
-  { value: "4s", label: "4s" },
-  { value: "5s", label: "5s" },
-  { value: "6s", label: "6s" },
-  { value: "7s", label: "7s" },
-  { value: "8s", label: "8s" },
-  { value: "9s", label: "9s" },
-  { value: "10s", label: "10s" },
-  { value: "11s", label: "11s" },
-  { value: "12s", label: "12s" },
-  { value: "13s", label: "13s" },
-  { value: "14s", label: "14s" },
-  { value: "15s", label: "15s" },
 ];
 
 export const PROMPT_INPUT_RESOLUTION_OPTIONS = [
@@ -99,138 +68,6 @@ export const PROMPT_INPUT_RESOLUTION_OPTIONS = [
   { value: "1440p", label: "1440p" },
   { value: "1080p", label: "1080p" },
   { value: "720p", label: "720p" },
-];
-
-export type ImageModelOption = {
-  name: string;
-  id: ModelId;
-  icon: string;
-  description: string;
-  maxReferences: number;
-};
-
-export const PROMPT_INPUT_IMAGE_MODEL_OPTIONS: ImageModelOption[] = [
-  {
-    name: "FLUX.2 Klein",
-    id: "flux-2-klein",
-    icon: "large-bfl",
-    description: "Low budget, high quality, fast.",
-    maxReferences: 4,
-  },
-  {
-    name: "GPT Image 2",
-    id: "gpt-image-2",
-    icon: "large-openai",
-    description: "Flexible sizes up to 4K, true aspect ratios.",
-    maxReferences: 16,
-  },
-  {
-    name: "Nano Banana 2",
-    id: "nano-banana-2",
-    icon: "large-google",
-    description: "Fast, high quality, flexible edits.",
-    maxReferences: 14,
-  },
-  {
-    name: "Nano Banana Pro",
-    id: "nano-banana-pro",
-    icon: "large-google",
-    description: "Pro control, readable text, ultra consistent.",
-    maxReferences: 14,
-  },
-  {
-    name: "Seedream 4.5",
-    id: "seedream-4.5",
-    icon: "large-bytedance",
-    description: "Up to 4K, multi image edits, strong text.",
-    maxReferences: 14,
-  },
-];
-
-/**
- * What a video model takes besides the prompt: a first and a last frame, and
- * a switch for the sound it makes (models without one score their video
- * themselves, or not at all).
- */
-export type VideoModelFeature = "start-frame" | "end-frame" | "audio";
-
-export type VideoModelOption = {
-  name: string;
-  id: ModelId;
-  icon: string;
-  description: string;
-  features: VideoModelFeature[];
-  durations: string[];
-  /** Empty for a model that takes its proportions from the start frame. */
-  aspectRatios: string[];
-};
-
-const seconds = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => `${from + i}s`);
-
-export const PROMPT_INPUT_VIDEO_MODEL_OPTIONS: VideoModelOption[] = [
-  {
-    name: "Kling 3.0",
-    id: "kling-3-pro",
-    icon: "large-kling",
-    description: "Cinematic motion with built-in audio.",
-    features: ["start-frame", "end-frame", "audio"],
-    durations: seconds(3, 15),
-    aspectRatios: ["16:9", "9:16", "1:1"],
-  },
-  {
-    name: "Kling 3.0 Omni",
-    id: "kling-o3-pro",
-    icon: "large-kling",
-    description: "Multi-modal reasoning, strong scenes.",
-    features: ["start-frame", "audio"],
-    durations: seconds(3, 15),
-    aspectRatios: [],
-  },
-  {
-    name: "Seedance 2.0",
-    id: "seedance-2.0",
-    icon: "large-bytedance",
-    description: "Rich motion, lip-synced audio and SFX.",
-    features: ["start-frame", "end-frame"],
-    durations: seconds(4, 15),
-    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-  },
-  {
-    name: "Veo 3.1",
-    id: "veo-3.1",
-    icon: "large-google",
-    description: "Realistic physics, complex scenes.",
-    features: ["start-frame", "end-frame"],
-    durations: ["4s", "6s", "8s"],
-    aspectRatios: ["16:9", "9:16"],
-  },
-  {
-    name: "Veo 3.1 Fast",
-    id: "veo-3.1-fast",
-    icon: "large-google",
-    description: "Same Veo engine, lower cost.",
-    features: ["start-frame", "end-frame"],
-    durations: ["4s", "6s", "8s"],
-    aspectRatios: ["16:9", "9:16"],
-  },
-  {
-    name: "Wan 2.6",
-    id: "wan-2.6",
-    icon: "large-wan",
-    description: "Expressive motion, stylized aesthetics.",
-    features: ["start-frame"],
-    durations: ["5s", "10s"],
-    aspectRatios: ["16:9", "9:16"],
-  },
-  {
-    name: "Hailuo 3 Max",
-    id: "hailuo-3-max",
-    icon: "large-hailuo",
-    description: "Smooth motion, cinematic lighting.",
-    features: ["start-frame", "end-frame"],
-    durations: seconds(5, 15),
-    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-  },
 ];
 
 export const PROMPT_INPUT_VOICE_OPTIONS = [
@@ -397,17 +234,176 @@ export const PROMPT_INPUT_VOICE_OPTIONS = [
   },
 ];
 
-export const PROMPT_INPUT_AUDIO_MODEL_OPTIONS: { name: string; id: ModelId; icon: string; description: string }[] = [
+export type VoiceOption = (typeof PROMPT_INPUT_VOICE_OPTIONS)[number];
+
+/**
+ * A model the prompt box makes requests with, and the settings it takes: a
+ * setting the model declares is offered (within the values given), one it
+ * leaves out is neither offered nor sent. The settings are the API's request
+ * fields, so a config becomes a request without knowing the model (see
+ * `requests.ts`).
+ */
+export interface ModelOption {
+  id: ModelId;
+  mode: PromptMode;
+  name: string;
+  icon: string;
+  description: string;
+  /** Empty for a model that takes its proportions from the start frame. */
+  aspectRatios?: AspectRatio[];
+  /** Images per generation. */
+  counts?: number[];
+  /** Seconds. */
+  durations?: number[];
+  voices?: VoiceOption[];
+  /** How many reference images the model takes. */
+  references?: number;
+  /** The frames a video can be made to start or end on. */
+  frames?: ("start" | "end")[];
+}
+
+const ALL_ASPECT_RATIOS = ASPECT_RATIO_OPTIONS.map((option) => option.value);
+const seconds = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+const image = { mode: "IMAGE", aspectRatios: ALL_ASPECT_RATIOS, counts: [1, 2, 3, 4] } satisfies Partial<ModelOption>;
+const video = { mode: "VIDEO" } satisfies Partial<ModelOption>;
+
+export const MODEL_OPTIONS: ModelOption[] = [
   {
-    name: "ElevenLabs Music",
+    ...image,
+    id: "flux-2-klein",
+    name: "FLUX.2 Klein",
+    icon: "large-bfl",
+    description: "Low budget, high quality, fast.",
+    references: 4,
+  },
+  {
+    ...image,
+    id: "gpt-image-2",
+    name: "GPT Image 2",
+    icon: "large-openai",
+    description: "Flexible sizes up to 4K, true aspect ratios.",
+    references: 16,
+  },
+  {
+    ...image,
+    id: "nano-banana-2",
+    name: "Nano Banana 2",
+    icon: "large-google",
+    description: "Fast, high quality, flexible edits.",
+    references: 14,
+  },
+  {
+    ...image,
+    id: "nano-banana-pro",
+    name: "Nano Banana Pro",
+    icon: "large-google",
+    description: "Pro control, readable text, ultra consistent.",
+    references: 14,
+  },
+  {
+    ...image,
+    id: "seedream-4.5",
+    name: "Seedream 4.5",
+    icon: "large-bytedance",
+    description: "Up to 4K, multi image edits, strong text.",
+    references: 14,
+  },
+  {
+    ...video,
+    id: "kling-3-pro",
+    name: "Kling 3.0",
+    icon: "large-kling",
+    description: "Cinematic motion with built-in audio.",
+    frames: ["start", "end"],
+    durations: seconds(3, 15),
+    aspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  {
+    ...video,
+    id: "kling-o3-pro",
+    name: "Kling 3.0 Omni",
+    icon: "large-kling",
+    description: "Multi-modal reasoning, strong scenes.",
+    frames: ["start"],
+    durations: seconds(3, 15),
+  },
+  {
+    ...video,
+    id: "seedance-2.0",
+    name: "Seedance 2.0",
+    icon: "large-bytedance",
+    description: "Rich motion, lip-synced audio and SFX.",
+    frames: ["start", "end"],
+    durations: seconds(4, 15),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+  },
+  {
+    ...video,
+    id: "veo-3.1",
+    name: "Veo 3.1",
+    icon: "large-google",
+    description: "Realistic physics, complex scenes.",
+    frames: ["start", "end"],
+    durations: [4, 6, 8],
+    aspectRatios: ["16:9", "9:16"],
+  },
+  {
+    ...video,
+    id: "veo-3.1-fast",
+    name: "Veo 3.1 Fast",
+    icon: "large-google",
+    description: "Same Veo engine, lower cost.",
+    frames: ["start", "end"],
+    durations: [4, 6, 8],
+    aspectRatios: ["16:9", "9:16"],
+  },
+  {
+    ...video,
+    id: "wan-2.6",
+    name: "Wan 2.6",
+    icon: "large-wan",
+    description: "Expressive motion, stylized aesthetics.",
+    frames: ["start"],
+    durations: [5, 10],
+    aspectRatios: ["16:9", "9:16"],
+  },
+  {
+    ...video,
+    id: "hailuo-3-max",
+    name: "Hailuo 3 Max",
+    icon: "large-hailuo",
+    description: "Smooth motion, cinematic lighting.",
+    frames: ["start", "end"],
+    durations: seconds(5, 15),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+  },
+  {
+    id: "elevenlabs-v3",
+    mode: "VOICE",
+    name: "ElevenLabs v3",
+    icon: "large-elevenlabs",
+    description: "Expressive speech in many voices.",
+    voices: PROMPT_INPUT_VOICE_OPTIONS,
+  },
+  {
     id: "elevenlabs-music",
+    mode: "AUDIO",
+    name: "ElevenLabs Music",
     icon: "large-elevenlabs",
     description: "Full compositions, stems, and lyrics.",
   },
   {
-    name: "ElevenLabs SFX",
     id: "elevenlabs-sfx",
+    mode: "AUDIO",
+    name: "ElevenLabs SFX",
     icon: "large-elevenlabs",
     description: "Sound effects up to 30s, seamless looping.",
   },
 ];
+
+/** The models the prompt box offers in `mode`, the first one by default. */
+export const modelOptions = (mode: PromptMode) => MODEL_OPTIONS.filter((option) => option.mode === mode);
+
+/** The prompt box's option for `id`; undefined for a model it doesn't make requests with (tools, text). */
+export const modelOption = (id: ModelId) => MODEL_OPTIONS.find((option) => option.id === id);

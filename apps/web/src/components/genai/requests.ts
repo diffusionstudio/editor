@@ -10,13 +10,13 @@
 
 import { uploadAsset } from "@/engine/generate";
 import { AUDIO_SIZE } from "@/engine/insert-asset";
-import { ASPECT_RATIO_DIMENSIONS, MODEL_MODES, PROMPT_INPUT_VIDEO_MODEL_OPTIONS, PROMPT_INPUT_VOICE_OPTIONS } from "./config";
-import { aspectRatioSchema } from "./schemas";
+import { ASPECT_RATIO_DIMENSIONS, MODEL_MODES, modelOption, modelOptions } from "./config";
 
 import type { AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateRequest, GenerateRequestInput, ModelId } from "@diffusionstudio/api-contract";
 import type { GenerationOutput } from "@/engine/generate";
-import type { GenerationConfig } from "./schemas";
+import type { AspectRatio, PromptMode } from "./config";
+import type { GenerationConfig } from "./types";
 
 const TITLES = {
   IMAGE: "Image generation failed",
@@ -55,42 +55,53 @@ function refs(library: AssetLibrary, ids: (string | undefined)[]): Promise<(Asse
   }));
 }
 
-/**
- * The request `config` makes, its library inputs uploaded. The API validates
- * the rest: a model that does not take a setting says so.
- */
-export async function toRequest(library: AssetLibrary, config: GenerationConfig): Promise<GenerateRequestInput> {
-  const model = config.model as ModelId;
+/** `value` when `allowed` has it, else `fallback` when it has that, else its first; undefined without `allowed`. */
+function pick<T>(value: T | undefined, allowed: readonly T[] | undefined, fallback?: T): T | undefined {
+  if (!allowed?.length) return undefined;
+  if (value !== undefined && allowed.includes(value)) return value;
+  if (fallback !== undefined && allowed.includes(fallback)) return fallback;
+  return allowed[0];
+}
 
-  switch (config.mode) {
-    case "IMAGE": {
-      const images = (await refs(library, config.imageRefIds ?? [])).filter((ref) => ref !== undefined);
-      return {
-        model,
-        prompt: config.prompt,
-        aspectRatio: config.aspectRatio,
-        count: config.count,
-        ...(images.length ? { images } : {}),
-      } as GenerateRequestInput;
-    }
-    case "VIDEO": {
-      const option = PROMPT_INPUT_VIDEO_MODEL_OPTIONS.find((candidate) => candidate.id === model);
-      const [startFrame, endFrame] = await refs(library, [config.startFrameImageId, config.endFrameImageId]);
-      return {
-        model,
-        prompt: config.prompt,
-        duration: config.duration,
-        ...(option?.aspectRatios.length ? { aspectRatio: config.aspectRatio } : {}),
-        ...(option?.features.includes("audio") ? { generateAudio: config.generateAudio ?? false } : {}),
-        ...(startFrame ? { startFrame } : {}),
-        ...(endFrame ? { endFrame } : {}),
-      } as GenerateRequestInput;
-    }
-    case "VOICE":
-      return { model: "elevenlabs-v3", prompt: config.prompt, voice: config.voice };
-    case "AUDIO":
-      return { model, prompt: config.prompt } as GenerateRequestInput;
-  }
+/**
+ * `config` within what its model takes (see `ModelOption`): a setting the
+ * model allows is kept, one it allows other values of falls back to a
+ * default, and one it doesn't take is dropped. Every config the prompt box
+ * holds has been through here, so its requests are within the model's bounds.
+ */
+export function fitToModel(config: GenerationConfig): GenerationConfig {
+  const option = modelOption(config.model) ?? modelOptions(config.mode)[0]!;
+  const frame = (frame: "start" | "end", id: string | undefined) => (option.frames?.includes(frame) ? id : undefined);
+  return {
+    mode: option.mode,
+    model: option.id,
+    prompt: config.prompt,
+    aspectRatio: pick(config.aspectRatio, option.aspectRatios, "16:9"),
+    count: pick(config.count, option.counts, 1),
+    duration: pick(config.duration, option.durations, 6),
+    voice: pick(config.voice, option.voices?.map((voice) => voice.value)),
+    imageRefIds: option.references ? config.imageRefIds?.slice(0, option.references) : undefined,
+    startFrameImageId: frame("start", config.startFrameImageId),
+    endFrameImageId: frame("end", config.endFrameImageId),
+  };
+}
+
+/** The prompt box in `mode`, set up for the mode's first model. */
+export function createDefaultConfig(mode: PromptMode, prompt = ""): GenerationConfig {
+  return fitToModel({ mode, model: modelOptions(mode)[0]!.id, prompt });
+}
+
+/** The request `config` makes, its library inputs uploaded. Settings the config leaves unset are left out. */
+export async function toRequest(library: AssetLibrary, config: GenerationConfig): Promise<GenerateRequestInput> {
+  const { model, prompt, aspectRatio, count, duration, voice } = config;
+  const [startFrame, endFrame, ...images] = await refs(library, [
+    config.startFrameImageId,
+    config.endFrameImageId,
+    ...(config.imageRefIds ?? []),
+  ]);
+  const uploaded = images.filter((ref) => ref !== undefined);
+  const request = { model, prompt, aspectRatio, count, duration, voice, startFrame, endFrame, images: uploaded.length ? uploaded : undefined };
+  return Object.fromEntries(Object.entries(request).filter(([, value]) => value !== undefined)) as GenerateRequestInput;
 }
 
 /**
@@ -99,49 +110,17 @@ export async function toRequest(library: AssetLibrary, config: GenerationConfig)
  * asset. Undefined for a request the prompt box does not make (a tool).
  */
 export function toConfig(request: GenerateRequest): GenerationConfig | undefined {
-  const aspectRatio = (value: unknown) => aspectRatioSchema.safeParse(value).data ?? "16:9";
-
-  switch (request.model) {
-    case "gpt-image-2":
-    case "nano-banana-2":
-    case "nano-banana-pro":
-    case "seedream-4.5":
-    case "flux-2-klein":
-      return {
-        mode: "IMAGE",
-        model: request.model,
-        prompt: request.prompt,
-        aspectRatio: aspectRatio(request.aspectRatio),
-        count: Math.min(request.count, 4),
-      };
-    case "kling-3-pro":
-    case "kling-o3-pro":
-    case "wan-2.6":
-    case "hailuo-3-max":
-    case "seedance-2.0":
-    case "veo-3.1":
-    case "veo-3.1-fast":
-      return {
-        mode: "VIDEO",
-        model: request.model,
-        prompt: request.prompt,
-        aspectRatio: aspectRatio("aspectRatio" in request ? request.aspectRatio : undefined),
-        duration: request.duration,
-        generateAudio: "generateAudio" in request ? request.generateAudio : undefined,
-      };
-    case "elevenlabs-v3":
-      return {
-        mode: "VOICE",
-        model: request.model,
-        prompt: request.prompt,
-        voice: PROMPT_INPUT_VOICE_OPTIONS.some((option) => option.value === request.voice)
-          ? request.voice
-          : PROMPT_INPUT_VOICE_OPTIONS[0]!.value,
-      };
-    case "elevenlabs-music":
-    case "elevenlabs-sfx":
-      return { mode: "AUDIO", model: request.model, prompt: request.prompt };
-    default:
-      return undefined;
-  }
+  const option = modelOption(request.model);
+  if (!option || !("prompt" in request) || request.prompt === undefined) return undefined;
+  // The settings a request of the prompt box's models may carry; `fitToModel` checks them.
+  const settings = request as { aspectRatio?: string; count?: number; duration?: number; voice?: string };
+  return fitToModel({
+    mode: option.mode,
+    model: option.id,
+    prompt: request.prompt,
+    aspectRatio: settings.aspectRatio as AspectRatio | undefined,
+    count: settings.count,
+    duration: settings.duration,
+    voice: settings.voice,
+  });
 }

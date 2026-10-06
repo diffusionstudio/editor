@@ -19,10 +19,10 @@ import { useGenerate } from "./use-generate";
 import { useAutoCaptions } from "./use-auto-captions";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
-import { createDefaultConfig } from "./prompt-input";
+import { createDefaultConfig } from "./requests";
 import { toast } from "somoto";
 
-import type { GenerationConfig } from "./schemas";
+import type { GenerationConfig } from "./types";
 
 interface ActionBarProps {
   openPromptInput?(config: GenerationConfig): void;
