@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { ModelId } from "@diffusionstudio/api-contract";
+import type { ModelId, Resolution } from "@diffusionstudio/api-contract";
 
 /**
  * What each model of the API makes. Keyed by the contract's model ids, so a
@@ -11,18 +11,23 @@ import type { ModelId } from "@diffusionstudio/api-contract";
  * the text models (transcripts, analysis) never land on the canvas.
  */
 export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
-  "gpt-image-2": "IMAGE",
+  "gpt-image-2.5-sunburst": "IMAGE",
   "nano-banana-2": "IMAGE",
   "nano-banana-pro": "IMAGE",
-  "seedream-4.5": "IMAGE",
+  "seedream-5.0-pro": "IMAGE",
+  "grok-imagine-image-2.0": "IMAGE",
+  "krea-2-large": "IMAGE",
+  "flux-2-pro": "IMAGE",
   "flux-2-klein": "IMAGE",
   "remove-background": "IMAGE",
   "upscale-image": "IMAGE",
   "kling-3-pro": "VIDEO",
   "kling-o3-pro": "VIDEO",
-  "wan-2.6": "VIDEO",
-  "hailuo-3-max": "VIDEO",
-  "seedance-2.0": "VIDEO",
+  "wan-3.0": "VIDEO",
+  "minimax-h3": "VIDEO",
+  "seedance-2.5": "VIDEO",
+  "flux-3-video": "VIDEO",
+  "grok-imagine-video-1.5": "VIDEO",
   "veo-3.1": "VIDEO",
   "veo-3.1-fast": "VIDEO",
   "upscale-video": "VIDEO",
@@ -63,12 +68,18 @@ export const ASPECT_RATIO_OPTIONS: { value: AspectRatio; label: string; triggerL
   { value: "3:4", label: "3:4 \u00B7 Tall", triggerLabel: "3:4", icon: "aspect-ratio-3-4" },
 ];
 
-export const PROMPT_INPUT_RESOLUTION_OPTIONS = [
+/** Output resolutions, highest first; a model offers some of them. */
+export const RESOLUTION_OPTIONS: { value: Resolution; label: string }[] = [
   { value: "4K", label: "4K" },
-  { value: "1440p", label: "1440p" },
+  { value: "2K", label: "2K" },
+  { value: "1K", label: "1K" },
   { value: "1080p", label: "1080p" },
   { value: "720p", label: "720p" },
+  { value: "480p", label: "480p" },
 ];
+
+/** The resolution a mode's models start at, when they offer it. */
+export const DEFAULT_RESOLUTION: Partial<Record<PromptMode, Resolution>> = { IMAGE: "1K", VIDEO: "720p" };
 
 export const PROMPT_INPUT_VOICE_OPTIONS = [
   {
@@ -255,6 +266,10 @@ export interface ModelOption {
   counts?: number[];
   /** Seconds. */
   durations?: number[];
+  /** Output resolutions; a single one when the model offers no choice. */
+  resolutions?: Resolution[];
+  /** Resolutions only some durations allow, with those durations. */
+  resolutionDurations?: Partial<Record<Resolution, number[]>>;
   voices?: VoiceOption[];
   /** How many reference images the model takes. */
   references?: number;
@@ -276,14 +291,25 @@ export const MODEL_OPTIONS: ModelOption[] = [
     icon: "large-bfl",
     description: "Low budget, high quality, fast.",
     references: 4,
+    resolutions: ["1K"],
   },
   {
     ...image,
-    id: "gpt-image-2",
-    name: "GPT Image 2",
+    id: "flux-2-pro",
+    name: "FLUX.2 Pro",
+    icon: "large-bfl",
+    description: "Frontier quality, consistent references.",
+    references: 8,
+    resolutions: ["1K"],
+  },
+  {
+    ...image,
+    id: "gpt-image-2.5-sunburst",
+    name: "GPT Image 2.5 Sunburst",
     icon: "large-openai",
-    description: "Flexible sizes up to 4K, true aspect ratios.",
+    description: "Precise detail, strong text, true edits.",
     references: 16,
+    resolutions: ["1K"],
   },
   {
     ...image,
@@ -292,6 +318,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
     icon: "large-google",
     description: "Fast, high quality, flexible edits.",
     references: 14,
+    resolutions: ["1K", "2K", "4K"],
   },
   {
     ...image,
@@ -300,14 +327,35 @@ export const MODEL_OPTIONS: ModelOption[] = [
     icon: "large-google",
     description: "Pro control, readable text, ultra consistent.",
     references: 14,
+    resolutions: ["1K", "2K", "4K"],
   },
   {
     ...image,
-    id: "seedream-4.5",
-    name: "Seedream 4.5",
+    id: "seedream-5.0-pro",
+    name: "Seedream 5.0 Pro",
     icon: "large-bytedance",
-    description: "Up to 4K, multi image edits, strong text.",
+    description: "Lifelike scenes, precise multi image edits.",
     references: 14,
+    resolutions: ["1K", "2K"],
+  },
+  {
+    ...image,
+    id: "grok-imagine-image-2.0",
+    name: "Grok Imagine 2.0",
+    icon: "ai-generate",
+    description: "Fast, vivid, photoreal images.",
+    references: 3,
+    resolutions: ["1K", "2K"],
+  },
+  {
+    ...image,
+    id: "krea-2-large",
+    name: "Krea 2 Large",
+    icon: "ai-generate",
+    description: "Raw, textured, artistic looks.",
+    references: 1,
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    resolutions: ["1K"],
   },
   {
     ...video,
@@ -318,6 +366,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
     frames: ["start", "end"],
     durations: seconds(3, 15),
     aspectRatios: ["16:9", "9:16", "1:1"],
+    resolutions: ["720p"],
   },
   {
     ...video,
@@ -327,16 +376,18 @@ export const MODEL_OPTIONS: ModelOption[] = [
     description: "Multi-modal reasoning, strong scenes.",
     frames: ["start"],
     durations: seconds(3, 15),
+    resolutions: ["1080p"],
   },
   {
     ...video,
-    id: "seedance-2.0",
-    name: "Seedance 2.0",
+    id: "seedance-2.5",
+    name: "Seedance 2.5",
     icon: "large-bytedance",
-    description: "Rich motion, lip-synced audio and SFX.",
+    description: "Rich motion, lip-synced audio, up to 30s.",
     frames: ["start", "end"],
-    durations: seconds(4, 15),
+    durations: seconds(4, 30),
     aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["480p", "720p"],
   },
   {
     ...video,
@@ -347,6 +398,8 @@ export const MODEL_OPTIONS: ModelOption[] = [
     frames: ["start", "end"],
     durations: [4, 6, 8],
     aspectRatios: ["16:9", "9:16"],
+    resolutions: ["720p", "1080p"],
+    resolutionDurations: { "1080p": [8] },
   },
   {
     ...video,
@@ -357,26 +410,52 @@ export const MODEL_OPTIONS: ModelOption[] = [
     frames: ["start", "end"],
     durations: [4, 6, 8],
     aspectRatios: ["16:9", "9:16"],
+    resolutions: ["720p", "1080p"],
+    resolutionDurations: { "1080p": [8] },
   },
   {
     ...video,
-    id: "wan-2.6",
-    name: "Wan 2.6",
+    id: "flux-3-video",
+    name: "FLUX.3 Video",
+    icon: "large-bfl",
+    description: "Sharp detail with native audio.",
+    frames: ["start", "end"],
+    durations: seconds(5, 20),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["720p", "1080p"],
+  },
+  {
+    ...video,
+    id: "wan-3.0",
+    name: "Wan 3.0",
     icon: "large-wan",
-    description: "Expressive motion, stylized aesthetics.",
+    description: "Expressive motion, clips up to 30s.",
     frames: ["start"],
-    durations: [5, 10],
-    aspectRatios: ["16:9", "9:16"],
+    durations: seconds(2, 30),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["480p", "720p", "1080p"],
   },
   {
     ...video,
-    id: "hailuo-3-max",
-    name: "Hailuo 3 Max",
+    id: "minimax-h3",
+    name: "MiniMax H3",
     icon: "large-hailuo",
-    description: "Smooth motion, cinematic lighting.",
+    description: "Native 2K with built-in audio.",
     frames: ["start", "end"],
     durations: seconds(5, 15),
     aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["2K"],
+  },
+  {
+    ...video,
+    id: "grok-imagine-video-1.5",
+    name: "Grok Imagine Video 1.5",
+    icon: "ai-generate",
+    description: "Quick clips from text or a frame.",
+    frames: ["start"],
+    durations: seconds(1, 15),
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    resolutions: ["480p", "720p", "1080p"],
   },
   {
     id: "elevenlabs-v3",
@@ -407,3 +486,7 @@ export const modelOptions = (mode: PromptMode) => MODEL_OPTIONS.filter((option) 
 
 /** The prompt box's option for `id`; undefined for a model it doesn't make requests with (tools, text). */
 export const modelOption = (id: ModelId) => MODEL_OPTIONS.find((option) => option.id === id);
+
+/** The durations `option` takes at `resolution`: fewer for a resolution only some durations allow. */
+export const durationsAt = (option: ModelOption, resolution: Resolution | undefined) =>
+  (resolution && option.resolutionDurations?.[resolution]) || option.durations;

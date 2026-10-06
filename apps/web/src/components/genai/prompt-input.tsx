@@ -33,9 +33,10 @@ import {
 import {
   ASPECT_RATIO_OPTIONS,
   PROMPT_INPUT_MODE_OPTIONS,
+  RESOLUTION_OPTIONS,
+  durationsAt,
   modelOption,
   modelOptions,
-  // PROMPT_INPUT_RESOLUTION_OPTIONS
   type AspectRatio,
   type PromptMode,
 } from "./config";
@@ -52,7 +53,7 @@ import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useMediaSelection } from "./selection";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
-import type { ModelId } from "@diffusionstudio/api-contract";
+import type { ModelId, Resolution } from "@diffusionstudio/api-contract";
 import type { AssetCache } from "@diffusionstudio/assets";
 import type { ThumbnailAsset } from "@/components/ui/asset-thumbnail";
 
@@ -98,8 +99,11 @@ export function PromptInput(props: PromptInputProps) {
     ASPECT_RATIO_OPTIONS.filter((o) => option().aspectRatios?.includes(o.value)),
   );
   const countOptions = createMemo(() => (option().counts ?? []).map((n) => ({ value: String(n), label: String(n) })));
+  const resolutionOptions = createMemo(() =>
+    RESOLUTION_OPTIONS.filter((o) => option().resolutions?.includes(o.value)),
+  );
   const durationOptions = createMemo(() =>
-    (option().durations ?? []).map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
+    (durationsAt(option(), config().resolution) ?? []).map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
   );
 
   // Pictures on the canvas are offered as references and as video frames:
@@ -357,6 +361,7 @@ export function PromptInput(props: PromptInputProps) {
   const aspectRatioAccessor: Accessor<string> = () => config().aspectRatio ?? "";
   const countAccessor: Accessor<string> = () => String(config().count ?? "");
   const durationAccessor: Accessor<string> = () => String(config().duration ?? "");
+  const resolutionAccessor: Accessor<string> = () => config().resolution ?? "";
   const modelAccessor: Accessor<string> = () => config().model;
   const voiceAccessor: Accessor<string> = () => config().voice ?? "";
 
@@ -541,14 +546,16 @@ export function PromptInput(props: PromptInputProps) {
                 triggerIcon="aspect-ratio-16-9"
               />
             </Show>
-            {/* <PromptInputCompactMenu
-              aria-label="Select resolution"
-              menuLabel="Resolution"
-              value={resolution}
-              options={PROMPT_INPUT_RESOLUTION_OPTIONS}
-              onChange={setResolution}
-              triggerIcon="resolution"
-            /> */}
+            <Show when={resolutionOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select resolution"
+                menuLabel="Resolution"
+                value={resolutionAccessor}
+                options={resolutionOptions()}
+                onChange={(v) => setConfig(fitToModel({ ...config(), resolution: v as Resolution }))}
+                triggerIcon="resolution"
+              />
+            </Show>
             <Show when={countOptions().length > 0}>
               <PromptInputCompactMenu
                 aria-label="Select amount of variants"

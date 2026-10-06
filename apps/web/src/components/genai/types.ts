@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import type { ModelId } from "@diffusionstudio/api-contract";
+import type { ModelId, Resolution } from "@diffusionstudio/api-contract";
 import type { AspectRatio, PromptMode } from "./config";
 
 /**
@@ -18,6 +18,7 @@ export interface GenerationConfig {
   count?: number;
   /** Seconds. */
   duration?: number;
+  resolution?: Resolution;
   voice?: string;
   imageRefIds?: string[];
   startFrameImageId?: string;
