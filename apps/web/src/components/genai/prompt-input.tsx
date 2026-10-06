@@ -50,6 +50,7 @@ import { loadConfig, saveConfig } from "./saved-config";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
 import { useGenerate } from "./use-generate";
+import { useEstimate } from "./use-estimate";
 import { PromptInputActions } from "./prompt-input-actions";
 import type { GenerationConfig } from "./types";
 import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
@@ -87,6 +88,8 @@ export function PromptInput(props: PromptInputProps) {
   );
 
   createEffect(() => saveConfig(config()));
+
+  const credits = useEstimate(config);
 
   /** Shallow-merge updates into the current config. */
   const patch = (updates: Partial<GenerationConfig>) => {
@@ -603,7 +606,17 @@ export function PromptInput(props: PromptInputProps) {
           >
             <Icon name="arrow-right" class="-rotate-90 size-6" />
           </TooltipTrigger>
-          <TooltipContent shortcut="↵">Generate</TooltipContent>
+          <TooltipContent class="flex-col items-stretch px-2 pt-0.5 pb-2">
+            <div class="flex h-7 items-center gap-2">
+              <span class="flex-1 truncate">Generate</span>
+              <span class="min-w-5 text-right text-xxs font-normal text-muted-foreground">↩︎</span>
+            </div>
+            <Show when={credits() !== undefined}>
+              <span class="font-normal text-muted-foreground">
+                This will cost {credits()!.toLocaleString()} {credits() === 1 ? "credit" : "credits"}
+              </span>
+            </Show>
+          </TooltipContent>
         </Tooltip>
       </div>
       <Show when={isDragging()}>
