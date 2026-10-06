@@ -27,6 +27,7 @@ import {
   createSignal,
   onCleanup,
   onMount,
+  untrack,
   type Accessor,
 } from "solid-js";
 
@@ -34,6 +35,7 @@ import {
   ASPECT_RATIO_OPTIONS,
   PROMPT_INPUT_MODE_OPTIONS,
   RESOLUTION_OPTIONS,
+  defaultModelOption,
   durationsAt,
   modelOption,
   modelOptions,
@@ -89,7 +91,7 @@ export function PromptInput(props: PromptInputProps) {
   const prompt = () => config().prompt;
 
   /** The model and the settings it takes: what the prompt box offers. */
-  const option = createMemo(() => modelOption(config().model) ?? modelOptions(mode())[0]!);
+  const option = createMemo(() => modelOption(config().model) ?? defaultModelOption(mode()));
   const options = createMemo(() => modelOptions(mode()));
   const modeLabel = () => PROMPT_INPUT_MODE_OPTIONS.find((o) => o.value === mode())?.label.toLowerCase();
 
@@ -691,19 +693,84 @@ type ModelMenuProps = {
   onChange(value: string): void;
 }
 
-function ModelMenu(props: ModelMenuProps) {
-  const [query, setQuery] = createSignal("");
+/**
+ * A list picked from with the keyboard while its search keeps focus: the
+ * arrow keys move the highlight, Enter picks the highlighted item, and the
+ * pointer highlights what it moves over.
+ */
+function createListNavigation<T>(items: Accessor<T[]>, pick: (item: T) => void) {
+  const [active, setActive] = createSignal(0);
+  let list: HTMLElement | undefined;
 
+  const highlight = (index: number) => {
+    setActive(index);
+    list?.querySelector(`[data-index="${index}"]`)?.scrollIntoView({ block: "nearest" });
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    const count = items().length;
+    if (!count) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      highlight((active() + (e.key === "ArrowDown" ? 1 : -1) + count) % count);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const item = items()[active()];
+      if (item) pick(item);
+    }
+  };
+
+  return {
+    active,
+    highlight,
+    onKeyDown,
+    listProps: {
+      ref: (el: HTMLElement) => (list = el),
+      // A click on a row keeps the focus in the search, so the keys keep working.
+      onMouseDown: (e: MouseEvent) => {
+        if (e.target !== e.currentTarget) e.preventDefault();
+      },
+    },
+    rowProps: (index: Accessor<number>) => ({
+      "data-index": index(),
+      onPointerMove: () => setActive(index()),
+    }),
+  };
+}
+
+function ModelMenu(props: ModelMenuProps) {
+  const [open, setOpen] = createSignal(false);
+  const [query, setQuery] = createSignal("");
+  let search: HTMLInputElement | undefined;
+
+  /** The options matching the query, in their order of relevance: a name starting with it first, then one containing it, then a description containing it. */
   const filteredOptions = createMemo(() => {
     const q = query().trim().toLowerCase();
     if (!q) return props.options;
-    return props.options.filter(
-      (o) => o.name.toLowerCase().includes(q) || o.description.toLowerCase().includes(q),
-    );
+    const rank = (o: ModelMenuProps["options"][number]) => {
+      const name = o.name.toLowerCase();
+      if (name.startsWith(q)) return 0;
+      if (name.includes(q)) return 1;
+      if (o.description.toLowerCase().includes(q)) return 2;
+      return -1;
+    };
+    return props.options
+      .map((option) => ({ option, rank: rank(option) }))
+      .filter((o) => o.rank >= 0)
+      .sort((a, b) => a.rank - b.rank)
+      .map((o) => o.option);
   });
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) setQuery("");
+  const selectModel = (id: string) => {
+    props.onChange(id);
+    setOpen(false);
+  };
+
+  const nav = createListNavigation(filteredOptions, (option) => selectModel(option.id));
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) setQuery("");
   };
 
   const icon = createMemo(() => {
@@ -716,9 +783,17 @@ function ModelMenu(props: ModelMenuProps) {
     return option?.name ?? props.options[0].name;
   });
 
+  const handleAutoFocus = (e: Event) => {
+    e.preventDefault();
+    search?.focus();
+    // Kobalte calls this inside its focus scope's effect: a signal read here
+    // would rerun the effect on every keystroke and hand focus to the trigger.
+    untrack(() => nav.highlight(Math.max(0, filteredOptions().findIndex((o) => o.id === props.value()))));
+  };
+
   return (
-    <DropdownMenu placement="top-start" onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger<typeof Button>
+    <Popover placement="top-start" open={open()} onOpenChange={handleOpenChange}>
+      <PopoverTrigger<typeof Button>
         as={(triggerProps) => (
           <Button
             {...triggerProps}
@@ -730,50 +805,62 @@ function ModelMenu(props: ModelMenuProps) {
           </Button>
         )}
       />
-      <DropdownMenuPortal>
-        <DropdownMenuContent class="w-[340px] p-0">
+      <PopoverPortal>
+        <PopoverContent
+          class="w-[340px] p-0 rounded-xl"
+          onOpenAutoFocus={handleAutoFocus}
+        >
           <SearchInput
+            ref={(el) => (search = el)}
             placeholder={props.searchPlaceholder}
             value={query()}
-            onValue={setQuery}
+            onValue={(value) => {
+              setQuery(value);
+              nav.highlight(0);
+            }}
+            onKeyDown={nav.onKeyDown}
           />
-          <div class="flex flex-col gap-2 px-2 py-1">
+          {/* Six rows tall: 6 × 42px rows, 5 × 8px gaps, 2 × 4px padding. */}
+          <div class="flex flex-col gap-2 px-2 py-1 max-h-[300px] overflow-y-auto" {...nav.listProps}>
             <For each={filteredOptions()}>
-              {(option) => {
-                const selected = props.value() === option.id;
+              {(option, index) => {
+                const selected = () => props.value() === option.id;
+                const active = () => nav.active() === index();
 
                 return (
-                  <DropdownMenuItem
-                    tone="neutral"
-                    class="h-[42px] gap-2 rounded-md px-1 py-1 group"
-                    onSelect={() => props.onChange(option.id)}
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    class="flex h-[42px] w-full shrink-0 items-center gap-2 rounded-md px-1 py-1 text-left text-xs"
                     classList={{
-                      "data-highlighted:bg-muted": selected,
+                      "bg-input": active() && !selected(),
+                      "bg-muted": active() && selected(),
                     }}
+                    onClick={() => selectModel(option.id)}
+                    {...nav.rowProps(index)}
                   >
                     <div class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm" >
                       <Icon name={option.icon!} class="size-6 text-muted-foreground" />
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
-                      <div class="truncate font-450 group-hover:text-foreground" classList={{ "text-foreground": selected }}>{option.name}</div>
+                      <div class="truncate font-450" classList={{ "text-foreground": active() || selected() }}>{option.name}</div>
                       <div class="truncate">{option.description}</div>
                     </div>
                     <span class="grid size-7 place-items-center">
-                      <Show when={selected}>
+                      <Show when={selected()}>
                         <Icon name="confirm-check" class="size-6 text-foreground" />
                       </Show>
                     </span>
-                  </DropdownMenuItem>
+                  </button>
                 )
               }}
             </For>
           </div>
-        </DropdownMenuContent>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
   );
 }
-
 
 type VoiceMenuProps = {
   options: { value: string; label: string; thumbnail: string; description: string; previewUrl: string }[];
@@ -787,6 +874,7 @@ function VoiceMenu(props: VoiceMenuProps) {
   const [playingVoice, setPlayingVoice] = createSignal<string | null>(null);
 
   let audioRef: HTMLAudioElement | undefined;
+  let search: HTMLInputElement | undefined;
 
   const selectedLabel = () =>
     props.options.find((o) => o.value === props.value())?.label ?? props.value();
@@ -829,6 +917,8 @@ function VoiceMenu(props: VoiceMenuProps) {
     setOpen(false);
   };
 
+  const nav = createListNavigation(filteredOptions, (option) => selectVoice(option.value));
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
@@ -838,6 +928,14 @@ function VoiceMenu(props: VoiceMenuProps) {
   };
 
   onCleanup(stopPlayback);
+
+  const handleAutoFocus = (e: Event) => {
+    e.preventDefault();
+    search?.focus();
+    // Kobalte calls this inside its focus scope's effect: a signal read here
+    // would rerun the effect on every keystroke and hand focus to the trigger.
+    untrack(() => nav.highlight(Math.max(0, filteredOptions().findIndex((o) => o.value === props.value()))));
+  };
 
   return (
     <Popover placement="top-start" open={open()} onOpenChange={handleOpenChange}>
@@ -854,24 +952,36 @@ function VoiceMenu(props: VoiceMenuProps) {
         )}
       />
       <PopoverPortal>
-        <PopoverContent class="w-[340px] p-0 rounded-xl">
+        <PopoverContent
+          class="w-[340px] p-0 rounded-xl"
+          onOpenAutoFocus={handleAutoFocus}
+        >
           <SearchInput
+            ref={(el) => (search = el)}
             placeholder="Search in voices"
             value={query()}
-            onValue={setQuery}
+            onValue={(value) => {
+              setQuery(value);
+              nav.highlight(0);
+            }}
+            onKeyDown={nav.onKeyDown}
           />
-          <div class="flex flex-col gap-2 p-2 max-h-[320px] overflow-y-auto">
+          {/* Six rows tall: 6 × 42px rows, 5 × 8px gaps, 2 × 8px padding. */}
+          <div class="flex flex-col gap-2 p-2 max-h-[308px] overflow-y-auto" {...nav.listProps}>
             <For each={filteredOptions()}>
-              {(option) => {
+              {(option, index) => {
                 const selected = () => props.value() === option.value;
+                const active = () => nav.active() === index();
                 const isPlaying = () => playingVoice() === option.value;
 
                 return (
                   <button
                     type="button"
-                    class="flex items-center gap-2 rounded-md px-1 py-1 h-[42px] w-full text-left group hover:bg-accent transition-colors"
-                    classList={{ "bg-muted": selected() }}
+                    tabIndex={-1}
+                    class="flex shrink-0 items-center gap-2 rounded-md px-1 py-1 h-[42px] w-full text-left transition-colors"
+                    classList={{ "bg-accent": active() && !selected(), "bg-muted": selected() }}
                     onClick={() => selectVoice(option.value)}
+                    {...nav.rowProps(index)}
                   >
                     <div
                       class="group/thumb relative grid size-8 rounded-full overflow-hidden shrink-0 place-items-center"
@@ -893,8 +1003,8 @@ function VoiceMenu(props: VoiceMenuProps) {
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
                       <div
-                        class="truncate text-base font-450 group-hover:text-foreground"
-                        classList={{ "text-foreground": selected() }}
+                        class="truncate text-base font-450"
+                        classList={{ "text-foreground": active() || selected() }}
                       >
                         {option.label}
                       </div>
