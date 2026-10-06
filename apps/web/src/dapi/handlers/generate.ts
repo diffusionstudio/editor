@@ -2,14 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/**
- * `generate` and `job`: the API's generation endpoints with a local layer
- * and nothing more. A request goes out as given, except that `{ path }` file
- * references are uploaded and swapped for the API's asset refs; the API
- * validates the rest. A job comes back as the API has it, except that once it
- * has succeeded its files are saved, here into the library, or by the server
- * to a directory on disk (see `present.ts` in the desktop app).
- */
 
 import { getAssetFile, getLibrary } from "@diffusionstudio/runtime";
 import { isAbsoluteSource, isProjectSource, isUrlSource } from "@diffusionstudio/assets";
@@ -19,7 +11,9 @@ import { TRPCClientError } from "@trpc/client";
 import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { uploadFile } from "@/lib/uploads";
+import { encodeSceneAudio, hasAudio } from "@/engine/scene-audio";
 import { resolveAsset } from "../lib/assets";
+import { requireScene } from "../lib/scene";
 
 import type { Asset, AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateRequestInput, Job } from "@diffusionstudio/api-contract";
@@ -75,6 +69,7 @@ export const job: ToolHandler<"job"> = async ({ id, cancel }, ctx) => {
 // ── Requests ─────────────────────────────────────────────────
 
 type FileRef = { path: string };
+type SceneRef = { scene: string };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -85,18 +80,52 @@ const isFileRef = (value: unknown): value is FileRef => {
   return isPlainObject(value) && typeof value.path === "string" && Object.keys(value).length === 1;
 }
 
-/** The request with every `{ path }` uploaded and replaced by the ref the API names it by; the rest untouched. */
-async function withUploads(value: unknown, ctx: ToolContext): Promise<unknown> {
+/** `{ scene }` and nothing else: a scene whose audio the caller means. */
+const isSceneRef = (value: unknown): value is SceneRef => {
+  return isPlainObject(value) && typeof value.scene === "string" && Object.keys(value).length === 1;
+}
+
+/**
+ * The request with every `{ path }` and `{ scene }` uploaded and replaced by
+ * the ref the API names it by; the rest untouched. `field` is the key the
+ * value sits under (an array's items sit under the array's).
+ */
+async function withUploads(value: unknown, ctx: ToolContext, field?: string): Promise<unknown> {
   if (isFileRef(value)) return upload(value.path, ctx);
-  if (Array.isArray(value)) return Promise.all(value.map((item) => withUploads(item, ctx)));
+  if (isSceneRef(value)) return uploadScene(value.scene, field, ctx);
+  if (Array.isArray(value)) return Promise.all(value.map((item) => withUploads(item, ctx, field)));
   if (!isPlainObject(value)) return value;
-  const entries = await Promise.all(Object.entries(value).map(async ([key, item]) => [key, await withUploads(item, ctx)] as const));
+  const entries = await Promise.all(Object.entries(value).map(async ([key, item]) => [key, await withUploads(item, ctx, key)] as const));
   return Object.fromEntries(entries);
 }
 
 async function upload(path: string, ctx: ToolContext): Promise<AssetRef> {
   const asset = await resolveAsset(ctx, path);
   return uploadFile(await getAssetFile(asset));
+}
+
+/**
+ * The scene's audible mix, rendered from its start to its end and uploaded,
+ * so the times of what comes back (a transcript's words) are scene times. Audio
+ * only: what a scene would be as a picture or a video is a frame to pick or a
+ * full export to run, which `capture` and `export` are for. Checked before
+ * anything renders, and the render runs before the job starts, so a scene
+ * with nothing to hear never costs credits.
+ */
+async function uploadScene(id: string, field: string | undefined, ctx: ToolContext): Promise<AssetRef> {
+  if (field !== "audio") {
+    throw new DapiError(
+      "invalid-input",
+      `A { "scene" } reference sends the scene's audio, so it goes in an \`audio\` field${field ? ` (got \`${field}\`)` : ""}.`,
+    );
+  }
+  const { world, project } = ctx.requireSession();
+  const scene = requireScene(world, id, "send", `{ "scene" } sends a scene's audio`);
+  if (!hasAudio(world, scene)) {
+    throw new DapiError("invalid-input", `Scene "${id}" has nothing to hear: no unmuted, visible audio or video clip in it.`);
+  }
+  const audio = await encodeSceneAudio(world, scene, project.dir());
+  return uploadFile(audio);
 }
 
 // ── Where the files go ───────────────────────────────────────

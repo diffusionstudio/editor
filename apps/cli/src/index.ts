@@ -278,7 +278,7 @@ program
   .addArgument(new Argument("<model>", field("generate", "model")).choices(toolByName("generate").input.shape.model.options))
   .argument(
     "[fields]",
-    `the model's other fields as one JSON object, e.g. '{"aspectRatio":"16:9","images":[{"path":"./ref.png"}]}'; a { "path" } that exists relative to the working directory is sent as its absolute path`,
+    `the model's other fields as one JSON object, e.g. '{"aspectRatio":"16:9","images":[{"path":"./ref.png"}]}'; a { "path" } that exists relative to the working directory is sent as its absolute path; an "audio" field also takes { "scene": "<id>" }, the scene's mix`,
   )
   .option("-p, --prompt <text>", "the request's `prompt`, without JSON quoting; wins over one in the fields")
   .option(

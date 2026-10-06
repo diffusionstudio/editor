@@ -91,5 +91,5 @@ Each takes one file and returns one.
 | `remove-background` | `image`: `{ path }`, required | a PNG of the image with a transparent background |
 | `upscale-image` | `image`: `{ path }`, required | a PNG of the image upscaled 2× |
 | `upscale-video` | `video`: `{ path }`, required | an MP4 of the video upscaled to 2K at 30 fps |
-| `transcribe` | `audio`: `{ path }`, required (audio or video); `languageCode`: e.g. `en`, `en_us`, `de` (detected when left out) | `transcript.json`: `[{ text, speaker?, words: [{ text, start, end }] }]`, times in seconds, speakers labelled `A`, `B`, … when told apart |
+| `transcribe` | `audio`: `{ path }` (audio or video) or `{ scene }` (the scene's mix, see [Scenes](./tools/generate.md#scenes)), required; `languageCode`: e.g. `en`, `en_us`, `de` (detected when left out) | `transcript.json`: `[{ text, speaker?, words: [{ text, start, end }] }]`, times in seconds, speakers labelled `A`, `B`, … when told apart |
 | `analyze` | `media`: `{ path }`, required (image, video or audio); `prompt`: what to look for, up to 10,000 characters (a general description when left out) | the analysis, as a file |

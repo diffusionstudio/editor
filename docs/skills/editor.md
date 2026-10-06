@@ -49,7 +49,6 @@ How to confirm a change actually produced what you intended. A clean save does n
 - To cut an object out of footage, or confine an effect to it, track it with `media_segment` (preview the prompt first) and name the mask file in a `<mask>` under the clip's `<effect>`. A track into the library runs in the background: keep working, and poll `context` until its row in `masks` is done before naming it.
 - For motion graphics, overlays and UI-heavy graphics, the `<html>` tag driven by a paused [anime.js](https://animejs.com) timeline
 - Before animating anything, read the [easings reference](../guides/motion/easings.md) and choose easings deliberately — default or linear easing is what makes motion read as a slideshow.
-- Add captions last, after everything else is assembled. `<captions>` mounts the transcript its `src` names; it does not transcribe the scene.
 - For tasks that don't need an editing UI, keep the app in the background: from a shell, `diffusion open -b <dir>` launches it that way. Over MCP the app is already running, and `open` only opens the folder.
 - Only render (export) the result when prompted.
 - Start with a fresh project.

@@ -15,9 +15,10 @@ import type { Entity, World } from "koota";
  * requested positions first, and that pre-roll runs the project's code ahead
  * of the frames being drawn, which is exactly what an export never does.
  *
- * `verb` names the caller in the error ("capture", "export").
+ * `verb` names the caller in the error ("capture", "export"), and `reason`
+ * says why it takes a scene.
  */
-export function requireScene(world: World, id: string, verb: string): Entity {
+export function requireScene(world: World, id: string, verb: string, reason = `${verb} renders what an export renders`): Entity {
   const node = resolveNode(world, id);
   if (isScene(node)) return node;
 
@@ -27,8 +28,8 @@ export function requireScene(world: World, id: string, verb: string): Entity {
   throw new DapiError(
     "wrong-kind",
     stamp
-      ? `"${id}" is not a scene — ${verb} renders what an export renders. ${capitalize(verb)} its scene "${stamp}" instead.`
-      : `"${id}" is not a scene — ${verb} renders what an export renders, so it takes a scene id.`,
+      ? `"${id}" is not a scene — ${reason}. ${capitalize(verb)} its scene "${stamp}" instead.`
+      : `"${id}" is not a scene — ${reason}, so it takes a scene id.`,
   );
 }
 

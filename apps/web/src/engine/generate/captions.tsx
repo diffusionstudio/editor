@@ -10,48 +10,21 @@
  */
 
 import { Captions } from '@diffusionstudio/reconciler';
-import { AssetId, Audio, Caption, getEntityTree, Hidden, Library, Muted, Paint, PaintType } from '@diffusionstudio/runtime';
+import { Caption, getEntityTree, Library } from '@diffusionstudio/runtime';
 import { assetName } from '@diffusionstudio/assets';
-import { createEncoder } from '@diffusionstudio/encoder';
 import { toast } from 'somoto';
 
 import { jobFailure, runJob } from '@/lib/jobs';
 import { uploadFile } from '@/lib/uploads';
 
-import { createCapture } from '../capture';
 import { getDocumentEditor } from '../editor';
+import { encodeSceneAudio, hasAudio } from '../scene-audio';
 
 import type { AssetLibrary } from '@diffusionstudio/assets';
 import type { Job } from '@diffusionstudio/api-contract';
 import type { Entity, World } from 'koota';
 
 const TITLE = 'Caption generation failed';
-
-/** Whether anything in the scene is heard: an unmuted, visible clip or video paint with its asset bound. */
-function hasAudio(world: World, scene: Entity): boolean {
-	return getEntityTree(world, scene).some((entity) =>
-		!entity.has(Hidden) && !entity.has(Muted) && entity.has(AssetId)
-		&& (entity.has(Audio) || entity.get(Paint)?.value === PaintType.VIDEO));
-}
-
-/** The scene's audible mix as an Ogg/Opus file; `dir` is the project's folder, compiled fresh. */
-async function encodeAudio(world: World, scene: Entity, dir?: string): Promise<File> {
-	const capture = await createCapture(world, scene, { mode: 'offline-audio', dir });
-	try {
-		const encoder = await createEncoder(capture.world, {
-			format: 'ogg',
-			video: { enabled: false },
-			audio: { enabled: true, codec: 'opus', sampleRate: 24000 },
-		});
-		const result = await encoder.render();
-		if (result.type !== 'success' || !result.data) {
-			throw new Error('Could not encode the scene audio.');
-		}
-		return new File([result.data], 'scene.ogg', { type: 'audio/ogg' });
-	} finally {
-		capture.dispose();
-	}
-}
 
 /** The next free `Captions N.json`. */
 function captionsName(library: AssetLibrary): string {
@@ -87,7 +60,7 @@ export async function generateCaptions(world: World, scene: Entity, dir?: string
 	toast.loading('Generating captions', { id, description: status(undefined) });
 
 	try {
-		const audio = await uploadFile(await encodeAudio(world, scene, dir));
+		const audio = await uploadFile(await encodeSceneAudio(world, scene, dir));
 		const job = await runJob({ model: 'transcribe', audio }, (update) => {
 			toast.loading('Generating captions', { id, description: status(update) });
 		});

@@ -9,7 +9,25 @@
 </scene>
 ```
 
-`src` is **required**: a transcript file — `.srt`, `.vtt`, or a transcript `.json` — or an audio or video asset that carries a transcript. It resolves like any other [`src`](./media.md) (library path, asset id, path, URL) and is mounted as it is; `<captions>` does not transcribe its scene. Loading is **asynchronous and non-blocking**: the caption node is on the canvas from the moment the project mounts and its transcript attaches once loaded. A source that fails to load leaves the node carrying the reason (see [errors.md](./errors.md#failed-sources)).
+`src` is **required**: a transcript file — `.srt`, `.vtt`, or a transcript `.json` — or an audio or video asset that carries a transcript. It resolves like any other [`src`](./media.md) (library path, asset id, path, URL) and is mounted as it is; `<captions>` does not transcribe its scene — make the transcript first (see [Captioning a scene](#captioning-a-scene)). Loading is **asynchronous and non-blocking**: the caption node is on the canvas from the moment the project mounts and its transcript attaches once loaded. A source that fails to load leaves the node carrying the reason (see [errors.md](./errors.md#failed-sources)).
+
+## Captioning a scene
+
+To caption what a scene plays — every voice in it, as mixed — transcribe the scene itself: pass `{ "scene": "<scene id>" }` as the `transcribe` model's `audio` to [`generate`](../tools/generate.md), save the transcript into the library, and mount it.
+
+```bash
+diffusion generate transcribe '{"audio":{"scene":"talk"}}' -o transcripts/talk.json
+diffusion job <id>    # until its status is succeeded
+```
+
+```tsx
+<scene id="talk" name="Talk" width={1920} height={1080}>
+  <video src="a-roll/take-3.mp4" width={1920} height={1080} />
+  <captions src="transcripts/talk.json" preset="whisper" />
+</scene>
+```
+
+The scene's audible mix is rendered from its start to its end (the workarea is ignored), so the transcript's times are scene times and the `<captions>` lines up untrimmed — no `start` or `sourceIn` needed. Transcribe again after the edit changes what is heard or when (a cut, a moved clip, a muted track): the transcript is a snapshot of the mix, not a live view of it. A single recording rather than the whole scene takes `{ "path": … }` instead, and a transcript of a clip that starts later in the scene needs the clip's timing (see [Trimming](#trimming)).
 
 ## Props
 
