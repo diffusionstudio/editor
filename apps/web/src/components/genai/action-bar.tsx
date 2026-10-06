@@ -19,7 +19,7 @@ import { useGenerate } from "./use-generate";
 import { useAutoCaptions } from "./use-auto-captions";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
-import { createDefaultConfig } from "./requests";
+import { restoreConfig } from "./saved-config";
 import { toast } from "somoto";
 
 import type { GenerationConfig } from "./types";
@@ -54,11 +54,11 @@ export function ActionBar(props: ActionBarProps) {
   };
 
   const handleEditWithPrompt = () => {
-    props.openPromptInput?.(createDefaultConfig("IMAGE"));
+    props.openPromptInput?.(restoreConfig("IMAGE"));
   };
 
   const handleMakeVideo = () => {
-    props.openPromptInput?.(createDefaultConfig("VIDEO"));
+    props.openPromptInput?.(restoreConfig("VIDEO"));
   };
 
   const handleReuse = () => {

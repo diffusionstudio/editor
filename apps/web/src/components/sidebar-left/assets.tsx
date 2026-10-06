@@ -4,7 +4,7 @@
 
 import { basename, dirname } from "@diffusionstudio/assets";
 import { usePromptInput } from "@/context/prompt-input";
-import { createDefaultConfig } from "@/components/genai/requests";
+import { restoreConfig } from "@/components/genai/saved-config";
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { SidebarTabs } from "@/agent-chat";
 import { Button } from "../ui/button";
@@ -494,7 +494,7 @@ export function Assets() {
                 </p>
               </div>
               <div class="flex flex-col gap-2 w-full">
-                <Button variant="secondary" class="w-full" onClick={() => openPromptInput(createDefaultConfig("IMAGE"))}>
+                <Button variant="secondary" class="w-full" onClick={() => openPromptInput(restoreConfig("IMAGE"))}>
                   Generate with AI
                 </Button>
                 <Button variant="default" class="w-full" onClick={handleImportAssets}>

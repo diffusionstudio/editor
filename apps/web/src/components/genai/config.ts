@@ -485,7 +485,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
 /** The model each mode starts with: the cheap one, not the most relevant. */
 const DEFAULT_MODELS: Record<PromptMode, ModelId> = {
   IMAGE: "flux-2-klein",
-  VIDEO: "kling-3-pro",
+  VIDEO: "seedance-2.5",
   VOICE: "elevenlabs-v3",
   AUDIO: "elevenlabs-music",
 };

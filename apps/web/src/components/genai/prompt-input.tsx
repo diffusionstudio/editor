@@ -23,6 +23,7 @@ import {
   Show,
   Match,
   Switch,
+  createEffect,
   createMemo,
   createSignal,
   onCleanup,
@@ -43,6 +44,7 @@ import {
   type PromptMode,
 } from "./config";
 import { createDefaultConfig, fitToModel } from "./requests";
+import { loadConfig, saveConfig } from "./saved-config";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
 import { useGenerate } from "./use-generate";
@@ -79,8 +81,10 @@ export function PromptInput(props: PromptInputProps) {
   const [isDragging, setIsDragging] = createSignal(false);
 
   const [config, setConfig] = createSignal<GenerationConfig>(
-    props.initialConfig ?? createDefaultConfig("IMAGE"),
+    props.initialConfig ?? loadConfig() ?? createDefaultConfig("IMAGE"),
   );
+
+  createEffect(() => saveConfig(config()));
 
   /** Shallow-merge updates into the current config. */
   const patch = (updates: Partial<GenerationConfig>) => {
