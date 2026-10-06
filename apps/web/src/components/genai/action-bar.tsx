@@ -147,14 +147,6 @@ export function ActionBar(props: ActionBarProps) {
               <Button
                 variant="ghost"
                 class="gap-0 pl-0.5 text-muted-foreground"
-                onClick={() => runTransform("addAudio")}
-              >
-                <Icon name="generate-audio" />
-                Add audio
-              </Button>
-              <Button
-                variant="ghost"
-                class="gap-0 pl-0.5 text-muted-foreground"
                 onClick={() => runTransform("upscale")}
               >
                 <Icon name="arrow-scale" />

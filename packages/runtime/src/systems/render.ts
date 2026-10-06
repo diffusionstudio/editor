@@ -206,9 +206,10 @@ function buildEffects(world: World, entity: Entity): string | null {
  * before the Paint sub-entities so it always sits at the bottom of the fill
  * stack. A shader paint first in the stack takes an intrinsic image/video as
  * its input instead (see `renderShaderFill`), in which case the media is not
- * drawn here. Media paints and the surface paint (a `<surface>`, whose host
- * lives on the geometry) are intrinsic; a waveform (an audio clip's) has no
- * picture on the canvas.
+ * drawn here. Media paints, the surface paint (a `<surface>`, whose host
+ * lives on the geometry) and the waveform (an `<audio>`'s, drawn from its own
+ * asset) are intrinsic. An `<audio>` is a sound, so its waveform is drawn in
+ * the editor only, never into an export.
  */
 export function renderIntrinsicFill(world: World, entity: Entity): void {
 	if (entity.has(Color)) {
@@ -235,6 +236,12 @@ export function renderIntrinsicFill(world: World, entity: Entity): void {
 	}
 	if (intrinsic === PaintType.HTML) {
 		renderHtmlFill(world, entity, entity);
+		return;
+	}
+	if (intrinsic === PaintType.WAVEFORM) {
+		if (world.get(Mode)?.value === 'realtime') {
+			renderWaveform(world, entity, entity);
+		}
 		return;
 	}
 

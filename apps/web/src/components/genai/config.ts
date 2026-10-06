@@ -31,7 +31,6 @@ export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
   "veo-3.1": "VIDEO",
   "veo-3.1-fast": "VIDEO",
   "upscale-video": "VIDEO",
-  "add-audio": "VIDEO",
   "elevenlabs-music": "AUDIO",
   "elevenlabs-sfx": "AUDIO",
   "elevenlabs-v3": "VOICE",

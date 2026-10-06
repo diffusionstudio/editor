@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Upscaling, taking a background out, scoring footage: tools run over the
+// Upscaling, taking a background out: tools run over the
 // media the selected nodes show on top. The result is laid over that paint,
 // which is hidden rather than removed (see `transform`).
 
@@ -35,11 +35,6 @@ const TOOLS: Record<TransformType, Tool> = {
     title: "Background removal failed",
     takes: (type) => type === PaintType.IMAGE,
     request: (_type, image) => ({ model: "remove-background", image }),
-  },
-  addAudio: {
-    title: "Adding audio failed",
-    takes: (type) => type === PaintType.VIDEO,
-    request: (_type, video) => ({ model: "add-audio", video }),
   },
 };
 

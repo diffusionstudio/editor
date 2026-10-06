@@ -26,4 +26,4 @@ export interface GenerationConfig {
 }
 
 /** What can be done to an asset the selection shows. */
-export type TransformType = "upscale" | "removeBackground" | "addAudio";
+export type TransformType = "upscale" | "removeBackground";

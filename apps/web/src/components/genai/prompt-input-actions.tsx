@@ -102,9 +102,6 @@ export function PromptInputActions() {
                 <Show when={hasImageSelection()}>
                   <TransformItem name="removeBackground" icon="ai-generate" label="Remove background" run={run} />
                 </Show>
-                <Show when={hasVideoSelection()}>
-                  <TransformItem name="addAudio" icon="audio-on" label="Add audio" run={run} />
-                </Show>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenuPortal>
