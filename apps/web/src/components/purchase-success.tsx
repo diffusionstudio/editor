@@ -9,6 +9,7 @@ import type { Accessor } from "solid-js";
 import type { PaidPlan } from "@diffusionstudio/api-contract";
 
 import { Button } from "@/components/ui/button";
+import { hideUpgradeDialog } from "@/components/upgrade-dialog";
 import { Dialog, DialogContent, DialogPortal } from "@/components/ui/dialog";
 import { useAuth } from "@/context/auth";
 import { track } from "@/lib/analytics";
@@ -151,6 +152,7 @@ export function PurchaseSuccess() {
 
   const show = (next: Purchase) => {
     setPurchase(next);
+    hideUpgradeDialog();
     setOpen(true);
     auth.refreshAccount();
     track("purchase_success_viewed", {

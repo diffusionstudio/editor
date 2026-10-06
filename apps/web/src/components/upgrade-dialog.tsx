@@ -39,6 +39,10 @@ export function showUpgradeDialog() {
   }
 }
 
+export function hideUpgradeDialog() {
+  setOpen(false);
+}
+
 function formatCredits(value: number): string {
   return value.toLocaleString();
 }
