@@ -64,6 +64,12 @@ function pick<T>(value: T | undefined, allowed: readonly T[] | undefined, fallba
   return allowed[0];
 }
 
+/** `seconds` as a whole second within `range`; its default when unset. */
+function fitToRange(seconds: number | undefined, range: { min: number; max: number; default: number }): number {
+  if (seconds === undefined) return range.default;
+  return Math.max(range.min, Math.min(range.max, Math.round(seconds)));
+}
+
 /**
  * `config` within what its model takes (see `ModelOption`): a setting the
  * model allows is kept, one it allows other values of falls back to a
@@ -81,7 +87,9 @@ export function fitToModel(config: GenerationConfig): GenerationConfig {
     prompt: config.prompt,
     aspectRatio: pick(config.aspectRatio, option.aspectRatios, "16:9"),
     count: pick(config.count, option.counts, 1),
-    duration: pick(config.duration, durationsAt(option, resolution), 6),
+    duration: option.durationRange
+      ? fitToRange(config.duration, option.durationRange)
+      : pick(config.duration, durationsAt(option, resolution), 6),
     resolution,
     voice: pick(config.voice, option.voices?.map((voice) => voice.value)),
     imageRefIds: option.references ? config.imageRefIds?.slice(0, option.references) : undefined,

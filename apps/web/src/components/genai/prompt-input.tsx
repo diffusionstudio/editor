@@ -31,6 +31,7 @@ import {
   onMount,
   untrack,
   type Accessor,
+  type JSX,
 } from "solid-js";
 
 import {
@@ -578,6 +579,15 @@ export function PromptInput(props: PromptInputProps) {
                 onChange={(duration) => patch({ duration })}
               />
             </Show>
+            <Show when={option().durationRange}>
+              {(range) => (
+                <DurationRangeMenu
+                  range={range()}
+                  value={durationAccessor}
+                  onChange={(duration) => patch({ duration })}
+                />
+              )}
+            </Show>
             <Show when={option().voices}>
               {(voices) => <VoiceMenu options={voices()} value={voiceAccessor} onChange={(v) => patch({ voice: v })} />}
             </Show>
@@ -616,16 +626,22 @@ type PromptInputCompactMenuProps = {
   options: { value: string; label: string; triggerLabel?: string; icon?: string }[];
   onChange: (value: string) => void;
   triggerIcon?: string;
+  /** The trigger's label, for a value none of the options has. */
+  label?: string;
+  open?: boolean;
+  onOpenChange?(open: boolean): void;
+  /** Below the options. */
+  children?: JSX.Element;
 }
 
 function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
   const selectedOption = () =>
     props.options.find((option) => option.value === props.value()) ?? props.options[0];
   const selectedIcon = () => selectedOption()?.icon ?? props.triggerIcon ?? "chevron-down";
-  const selectedLabel = () => selectedOption()?.triggerLabel ?? selectedOption()?.label ?? "";
+  const selectedLabel = () => props.label ?? selectedOption()?.triggerLabel ?? selectedOption()?.label ?? "";
 
   return (
-    <DropdownMenu placement="top-start">
+    <DropdownMenu placement="top-start" open={props.open} onOpenChange={props.onOpenChange}>
       <DropdownMenuTrigger<typeof Button>
         as={(triggerProps) => (
           <Button
@@ -680,6 +696,7 @@ function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
               }}
             </For>
           </DropdownMenuGroup>
+          {props.children}
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenu>
@@ -758,6 +775,132 @@ function DurationMenu(props: DurationMenuProps) {
         </PopoverContent>
       </PopoverPortal>
     </Popover>
+  );
+}
+
+/** `seconds` the way a menu lists it: 45s, 2m, 1m 30s. */
+const formatDuration = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (!minutes) return `${rest}s`;
+  return rest ? `${minutes}m ${rest}s` : `${minutes}m`;
+};
+
+/** `seconds` as a clock: 01:30. */
+const formatClock = (seconds: number) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+
+/** The seconds a typed duration names (1:30, 1m 30s, 90s, 90); undefined for anything else. */
+const parseDuration = (text: string) => {
+  const input = text.trim().toLowerCase();
+  const clock = /^(\d+):(\d{1,2})$/.exec(input);
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
+  const units = /^(?:(\d+)\s*m)?\s*(?:(\d+)\s*s?)?$/.exec(input);
+  if (!units || (units[1] === undefined && units[2] === undefined)) return undefined;
+  return Number(units[1] ?? 0) * 60 + Number(units[2] ?? 0);
+};
+
+type DurationRangeMenuProps = {
+  range: { min: number; max: number; default: number; presets: number[] };
+  value: Accessor<number | undefined>;
+  onChange(value: number): void;
+}
+
+/**
+ * The duration picker of a model taking any length within a range: a few
+ * presets, and a custom length typed as a clock.
+ */
+function DurationRangeMenu(props: DurationRangeMenuProps) {
+  const [open, setOpen] = createSignal(false);
+  const [focused, setFocused] = createSignal(false);
+  /** What is typed into the custom field; undefined while nothing is. */
+  const [draft, setDraft] = createSignal<string>();
+
+  const value = () => props.value() ?? props.range.default;
+  const isCustom = () => !props.range.presets.includes(value());
+  const options = () =>
+    props.range.presets.map((seconds) => ({ value: String(seconds), label: formatDuration(seconds) }));
+
+  /** Applies the typed length, within the range; false when nothing valid is typed. */
+  const commit = () => {
+    const seconds = parseDuration(draft() ?? "");
+    setDraft(undefined);
+    if (!seconds) return false;
+    const next = Math.max(props.range.min, Math.min(props.range.max, seconds));
+    if (next !== value()) props.onChange(next);
+    return true;
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    // Closing by a click outside keeps what was typed; Escape has dropped it already.
+    if (!next && draft() !== undefined) commit();
+    setOpen(next);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setDraft(undefined);
+      return;
+    }
+    // The menu would take the keys as typeahead and arrow navigation.
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (commit()) setOpen(false);
+    }
+  };
+
+  return (
+    <PromptInputCompactMenu
+      menuLabel="Duration"
+      // While a custom length is typed, it is the one being picked: no row is checked.
+      value={() => (isCustom() || focused() ? "" : String(value()))}
+      options={options()}
+      onChange={(v) => props.onChange(Number(v))}
+      triggerIcon="duration"
+      label={formatDuration(value())}
+      open={open()}
+      onOpenChange={handleOpenChange}
+    >
+      {/* The menu's rows sit flush; the design spaces the custom field off them. */}
+      <Separator class="my-2" />
+      <div
+        class={cx(
+          "flex h-7 items-center rounded-md pl-2 text-xs",
+          focused() ? "bg-input ring-1 ring-inset ring-ring" : isCustom() ? "bg-muted" : "bg-input",
+        )}
+      >
+        <input
+          type="text"
+          aria-label="Custom duration"
+          placeholder="Custom duration"
+          class="h-full min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+          value={draft() ?? (isCustom() ? formatClock(value()) : "")}
+          onFocus={(e) => {
+            setFocused(true);
+            setDraft(e.currentTarget.value);
+            e.currentTarget.select();
+          }}
+          onBlur={() => setFocused(false)}
+          onInput={(e) => setDraft(e.currentTarget.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <Show when={focused() || isCustom()}>
+          <button
+            type="button"
+            aria-label="Use custom duration"
+            class="grid h-7 w-6 shrink-0 place-items-center"
+            // Keeps the field focused, so its draft is still there to apply.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (draft() !== undefined && commit()) setOpen(false);
+            }}
+          >
+            <Icon name="confirm-check" class="size-6 text-foreground" />
+          </button>
+        </Show>
+      </div>
+    </PromptInputCompactMenu>
   );
 }
 

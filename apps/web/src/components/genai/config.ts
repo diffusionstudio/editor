@@ -315,6 +315,12 @@ export interface ModelOption {
   resolutions?: Resolution[];
   /** Resolutions only some durations allow, with those durations. */
   resolutionDurations?: Partial<Record<Resolution, number[]>>;
+  /**
+   * Seconds, for a model taking any whole second within a range instead of
+   * `durations`. The presets are the lengths offered before a custom one; the
+   * default is the API's when a request leaves the length out.
+   */
+  durationRange?: { min: number; max: number; default: number; presets: number[] };
   voices?: VoiceOption[];
   /** How many reference images the model takes. */
   references?: number;
@@ -525,6 +531,7 @@ export const MODEL_OPTIONS: ModelOption[] = [
     name: "ElevenLabs Music",
     icon: "large-elevenlabs",
     description: "Full compositions, stems, and lyrics.",
+    durationRange: { min: 3, max: 600, default: 30, presets: [30, 60, 120, 180] },
   },
   {
     id: "elevenlabs-sfx",
