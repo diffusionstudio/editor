@@ -1,6 +1,6 @@
 # generate
 
-Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking ([`sam-2.1`](./media/segment.md)) on this machine — and return the job at once, with its estimated run time and the credits it costs. Poll [`job`](./job.md) with its id until it has ended; the files it made are then saved and their paths returned. API models need a signed-in account and spend its credits; [local models](../models.md#local) run on the GPU, free, and need no account.
+Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking ([`sam-2.1`](./media/segment.md)) on this machine — and return the job at once, with its estimated run time and the credits it costs. Poll [`job`](./job.md) with its id until it has ended; the files it made are then saved and their paths returned. With [`estimate`](#estimating), nothing starts: the answer is only what the job would cost and how long it would run. API models need a signed-in account and spend its credits; [local models](../models.md#local) run on the GPU, free, and need no account.
 
 | | |
 | --- | --- |
@@ -18,6 +18,7 @@ The input is the model's request — `model` plus that model's fields — with t
 | *the model's fields* | | `[fields]`, `-p, --prompt <text>` | `prompt`, `images`, `aspectRatio`, `duration`, `voice`, … as the model takes them. On the CLI one JSON object; `--prompt` sets `prompt` without JSON quoting |
 | `output` | `string` | `-o, --output <path>` | file the result is saved as: a library path like `b-roll/fox.png` (needs an open project) or an absolute path; its extension is corrected to what the model made, several files are numbered (`fox-1.png`, `fox-2.png`), and a file already there is replaced (default: the library's root under the API's name with a project open, its files under `assets/`; else a fresh directory under the system temp dir). On the CLI a path starting with `.` resolves against the working directory. |
 | `maxCredits` | `number` | `--max-credits <n>` | refuse to start the job if it costs more credits than this |
+| `estimate` | `boolean` | `--estimate` | don't start the job: answer with only its `credits` and `etaSeconds`, spending nothing (see [Estimating](#estimating)) |
 
 An API model's fields are not checked here: they go to the API as given, and the API answers a request it cannot run with what to fix (`invalid-input`, e.g. an aspect ratio the model does not offer). Each model narrows its kind's bounds, so read its entry in [models.md](../models.md) rather than guessing. A [local model](../models.md#local)'s fields are checked by the app, the same way, before its job starts.
 
@@ -43,6 +44,17 @@ diffusion generate elevenlabs-v3 --prompt "Welcome back to the channel." '{"voic
 diffusion generate remove-background '{"image":{"path":"./fox.png"}}'
 ```
 
+## Estimating
+
+With `estimate`, the request is priced instead of run: no job starts, no credits are spent, and the answer is the job's price and run time alone. Ask before a job whose price matters — a long video, a large `count`, a tool priced by its input's length — or to compare models for the same request.
+
+```bash
+diffusion generate veo-3.1-fast --prompt "The fox turns and runs into the trees" '{"duration":8}' --estimate
+# prints { "credits": …, "etaSeconds": … }
+```
+
+Files (`{ "path": … }`) are uploaded first, as for a job, since a tool such as `transcribe` or `upscale-video` is priced by the length of its input; starting the job afterwards reuses the upload. `output` and `maxCredits` are ignored. A [local model](../models.md#local) costs `0`, its `etaSeconds` planned from the file as its job would be. An API model still needs a signed-in account.
+
 ## Where the files go
 
 `output` names the file the result is saved as, chosen when the job starts:
@@ -57,7 +69,7 @@ The files are saved by the first [`job`](./job.md) call that sees the job succee
 
 ## Output
 
-The API's job, as it is when the call returns — almost always `queued`; a local model's quick work, such as a `sam-2.1` preview, already ended — and the same shape [`job`](./job.md) returns. Every field is the API's, passed through unchanged, except that each file in `assets` has its download `url` replaced by where it was saved. The fields to act on:
+With `estimate`, `{ credits, etaSeconds }` and nothing else. Otherwise, the API's job, as it is when the call returns — almost always `queued`; a local model's quick work, such as a `sam-2.1` preview, already ended — and the same shape [`job`](./job.md) returns. Every field is the API's, passed through unchanged, except that each file in `assets` has its download `url` replaced by where it was saved. The fields to act on:
 
 ```ts
 {

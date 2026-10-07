@@ -252,7 +252,8 @@ program
     `${field("generate", "output")}; a path starting with . resolves against the working directory`,
   )
   .option("--max-credits <n>", field("generate", "maxCredits"), numeric)
-  .action((model: ToolInput<"generate">["model"], fields: string | undefined, opts: { prompt?: string; output?: string; maxCredits?: number }) => {
+  .option("--estimate", field("generate", "estimate"))
+  .action((model: ToolInput<"generate">["model"], fields: string | undefined, opts: { prompt?: string; output?: string; maxCredits?: number; estimate?: boolean }) => {
     const parsed = fields === undefined ? {} : json(fields, "fields");
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) fail("fields must be a JSON object.");
     const request = resolveFileRefs(parsed) as Record<string, unknown>;
@@ -262,6 +263,7 @@ program
       ...(opts.prompt === undefined ? {} : { prompt: opts.prompt }),
       output: opts.output && libraryOrDiskPath(opts.output),
       maxCredits: opts.maxCredits,
+      estimate: opts.estimate,
     });
   });
 

@@ -218,6 +218,13 @@ describe("generate", () => {
     expect(issues(input.safeParse({ model: "dall-e-1", prompt: "a fox" }))).toHaveProperty("model");
   });
 
+  it("answers an estimate with the job's price alone, as an object schema", () => {
+    expect(input.parse({ model: "veo-3.1-fast", prompt: "a fox", estimate: true })).toEqual({ model: "veo-3.1-fast", prompt: "a fox", estimate: true });
+    expect(generate.output.parse({ credits: 38, etaSeconds: 90 })).toEqual({ credits: 38, etaSeconds: 90 });
+    expect(toolJsonSchemas(generate).outputSchema).toHaveProperty("type", "object");
+    expect(job.output.safeParse({ credits: 38, etaSeconds: 90 }).success).toBe(false);
+  });
+
   it("lets a job's fields beyond the documented ones through to the caller", () => {
     const job = { id: "j", model: "flux-2-klein", status: "succeeded", etaSeconds: 9, etaRemainingSeconds: null, credits: 2, error: null, createdAt: "2026-10-06T00:00:00Z", assets: [{ path: "/a.png", filename: "a.png", width: 1024 }] };
     expect(generate.output.parse(job)).toEqual(job);

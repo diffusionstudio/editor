@@ -16,4 +16,5 @@ export const FileRef = z.strictObject({ path: AssetPath });
 export const requestFields = {
   output: z.string().optional(),
   maxCredits: z.number().optional(),
+  estimate: z.boolean().optional(),
 };

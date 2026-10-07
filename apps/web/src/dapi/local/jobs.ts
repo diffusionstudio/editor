@@ -12,7 +12,7 @@ import { localModels } from "./models";
 import type { World } from "koota";
 import type { Accessor } from "solid-js";
 import type { JobErrorCode } from "@diffusionstudio/api-contract";
-import type { GenerateRequest, GenerationResult, LocalModelId } from "@diffusionstudio/dapi";
+import type { GenerateRequest, GenerationEstimate, GenerationResult, LocalModelId } from "@diffusionstudio/dapi";
 import type { ToolContext } from "../handler";
 import type { Destination } from "../lib/outputs";
 import type { EditorSession } from "../session";
@@ -61,7 +61,17 @@ const jobs = new Map<string, Entry>();
  * Answers at once with the job queued, or, for work the model says is quick
  * (`inline`), once it has ended.
  */
-export async function startLocalJob(args: GenerateRequest, target: Destination, ctx: ToolContext): Promise<GenerationResult> {
+export async function startLocalJob(args: GenerateRequest, target: Destination, ctx: ToolContext): Promise<GenerationResult | GenerationEstimate> {
+  if (args.estimate) {
+    const model = args.model as LocalModelId;
+    const parsed = LOCAL_MODELS[model].safeParse(args);
+    if (!parsed.success) {
+      throw new DapiError("invalid-input", z.prettifyError(parsed.error));
+    }
+    const plan = await localModels[model].prepare(parsed.data, ctx);
+    return { credits: 0, etaSeconds: round(plan.etaSeconds) };
+  }
+
   const model = args.model as LocalModelId;
   const parsed = LOCAL_MODELS[model].safeParse(args);
   if (!parsed.success) {
@@ -204,7 +214,7 @@ async function save(entry: Entry, files: LocalFile[], current: Accessor<EditorSe
 }
 
 /** The request as the job reports it, as the API's jobs do: the model's fields, not the tool's. */
-function modelFields({ output: _output, maxCredits: _maxCredits, ...fields }: Record<string, unknown>): Record<string, unknown> {
+function modelFields({ output: _output, maxCredits: _maxCredits, estimate: _estimate, ...fields }: Record<string, unknown>): Record<string, unknown> {
   return fields;
 }
 

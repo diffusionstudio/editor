@@ -83,6 +83,9 @@ export const GenerationResult = z.object({
   image: Bytes.optional(),
 });
 
+/** What `generate` answers with `estimate`: the job's price and run time, and no job. */
+export const GenerationEstimate = z.object({ credits: z.number(), etaSeconds: z.number() });
+
 /**
  * Every field a model takes, by name only, from the API's request schemas and
  * the local models'. Declared for MCP clients that send only the properties a
@@ -100,7 +103,7 @@ export const generate = defineTool({
   name: "generate",
   title: "Generate media",
   description:
-    "Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking (`sam-2.1`) on this machine — and return the job at once, with its estimated run time and the credits it costs. The input is the model's request: `model` plus that model's fields (`prompt`, `images`, `aspectRatio`, `duration`, `voice`, …), listed per model in the docs at `reference/models.md`. An API model's fields are passed through as given and the API validates them, answering with what to fix; a local model's are checked here. Where a field takes a file, put `{ \"path\": \"…\" }` — an absolute path, a URL, or a library path — and it is uploaded first (a local model reads it in place). Poll `job` with the returned id until its status is succeeded, failed or canceled; the estimate says when to look. API models need a signed-in account and spend its credits; local models run on the GPU, free, and need no account.",
+    "Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking (`sam-2.1`) on this machine — and return the job at once, with its estimated run time and the credits it costs. The input is the model's request: `model` plus that model's fields (`prompt`, `images`, `aspectRatio`, `duration`, `voice`, …), listed per model in the docs at `reference/models.md`. An API model's fields are passed through as given and the API validates them, answering with what to fix; a local model's are checked here. Where a field takes a file, put `{ \"path\": \"…\" }` — an absolute path, a URL, or a library path — and it is uploaded first (a local model reads it in place). Poll `job` with the returned id until its status is succeeded, failed or canceled; the estimate says when to look. With `estimate`, nothing starts: the answer is only what the job would cost and how long it would run. API models need a signed-in account and spend its credits; local models run on the GPU, free, and need no account.",
   input: z.looseObject({
     model: z.enum([...MODEL_IDS, ...LOCAL_MODEL_IDS]).describe("the model to run; its fields are listed in `reference/models.md`"),
     ...modelFields,
@@ -111,9 +114,16 @@ export const generate = defineTool({
         "file the result is saved as: a library path like `b-roll/fox.png` (needs an open project) or an absolute path; its extension is corrected to what the model made, several files are numbered (`fox-1.png`, `fox-2.png`), and a file already there is replaced (default: with a project open, the library's root under the model's name for the file, its files under `assets/`, or the model's own folder where `reference/models.md` gives one; else a fresh directory under the system temp dir)",
       ),
     maxCredits: z.number().positive().optional().describe("refuse to start the job if it costs more credits than this"),
+    estimate: z
+      .boolean()
+      .optional()
+      .describe("don't start the job: answer with only its `credits` and `etaSeconds`, spending nothing"),
   }),
-  output: GenerationJob,
-  result: GenerationResult,
+  output: GenerationJob.partial({ id: true, status: true, assets: true }).extend({
+    credits: z.number().describe("credits the job costs: charged, and refunded if it fails or is canceled; with `estimate`, what it would cost"),
+    etaSeconds: z.number().describe("estimated seconds the job runs for"),
+  }),
+  result: z.union([GenerationResult, GenerationEstimate]),
   environment: "renderer",
 });
 

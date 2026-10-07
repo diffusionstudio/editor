@@ -51,6 +51,8 @@ export async function present(name: ToolName, args: unknown, result: unknown): P
     case "media_transcribe":
       return presentTranscript(result as ToolResult<"media_transcribe">, (args as ToolArgs<"media_transcribe">).output);
     case "generate":
+      if ((args as ToolArgs<"generate">).estimate) return { output: result, images: [] };
+      return presentJob(result as GenerationResult);
     case "job":
       return presentJob(result as GenerationResult);
     default:

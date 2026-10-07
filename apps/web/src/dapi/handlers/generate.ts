@@ -31,8 +31,18 @@ export const generate: ToolHandler<"generate"> = async (args, ctx) => {
     return startLocalJob(args, destination(args.output, ctx.session()), ctx);
   }
 
-  const { output, maxCredits, ...request } = args;
+  const { output, maxCredits, estimate, ...request } = args;
   await requireSignIn();
+
+  if (estimate) {
+    try {
+      const { credits, etaSeconds } = await api.estimate.query((await withUploads(request, ctx)) as GenerateRequestInput);
+      return { credits, etaSeconds };
+    } catch (error) {
+      throw apiError(error);
+    }
+  }
+
   const target = destination(output, ctx.session());
 
   try {
@@ -45,12 +55,7 @@ export const generate: ToolHandler<"generate"> = async (args, ctx) => {
     destinations.set(job.id, target);
     return present(job, ctx);
   } catch (error) {
-    if (!(error instanceof TRPCClientError)) throw error;
-    const code: string | undefined = error.data?.code;
-    const mapped = code && API_ERRORS[code];
-    if (mapped) throw new DapiError(mapped, error.message, { cause: error });
-    if (code === "PAYMENT_REQUIRED") throw new Error(`Not enough credits: ${error.message}`, { cause: error });
-    throw error;
+    throw apiError(error);
   }
 };
 
@@ -71,12 +76,7 @@ export const job: ToolHandler<"job"> = async ({ id, cancel }, ctx) => {
 
     return present(job, ctx);
   } catch (error) {
-    if (!(error instanceof TRPCClientError)) throw error;
-    const code: string | undefined = error.data?.code;
-    const mapped = code && API_ERRORS[code];
-    if (mapped) throw new DapiError(mapped, error.message, { cause: error });
-    if (code === "PAYMENT_REQUIRED") throw new Error(`Not enough credits: ${error.message}`, { cause: error });
-    throw error;
+    throw apiError(error);
   }
 };
 
@@ -217,4 +217,14 @@ const API_ERRORS: Record<string, DapiErrorCode> = {
   NOT_FOUND: "not-found",
   CONFLICT: "busy",
 };
+
+/** An API call's failure as the tools report it: a tool error where one fits, a sentence for credits, else as it came. */
+function apiError(error: unknown): unknown {
+  if (!(error instanceof TRPCClientError)) return error;
+  const code: string | undefined = error.data?.code;
+  const mapped = code && API_ERRORS[code];
+  if (mapped) return new DapiError(mapped, error.message, { cause: error });
+  if (code === "PAYMENT_REQUIRED") return new Error(`Not enough credits: ${error.message}`, { cause: error });
+  return error;
+}
 
