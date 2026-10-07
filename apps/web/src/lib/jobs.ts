@@ -27,15 +27,20 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  * Starts a job for `request` and follows it to its end. `onUpdate` hears
  * every state the job is seen in, the first one included. Resolves with the
  * job as it ended — failed and canceled jobs included, which say why in
- * `error`; rejects only when the job could not be started or followed.
+ * `error`; rejects only when the job could not be started or followed. When
+ * `signal` aborts, the job is canceled and the abort reason thrown.
  */
-export async function runJob(request: GenerateRequestInput, onUpdate: (job: Job) => void): Promise<Job> {
+export async function runJob(request: GenerateRequestInput, onUpdate: (job: Job) => void, signal?: AbortSignal): Promise<Job> {
   let job = await api.generate.mutate({ request, idempotencyKey: crypto.randomUUID() });
   onUpdate(job);
 
   let failures = 0;
   while (!isTerminal(job)) {
     await sleep(POLL_INTERVAL);
+    if (signal?.aborted) {
+      await api.jobs.cancel.mutate({ id: job.id }).catch(() => {});
+      signal.throwIfAborted();
+    }
     try {
       job = await api.jobs.get.query({ id: job.id });
       failures = 0;

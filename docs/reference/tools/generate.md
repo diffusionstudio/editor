@@ -24,7 +24,7 @@ An API model's fields are not checked here: they go to the API as given, and the
 
 ## Files
 
-Where a field takes a file (`images`, `startFrame`, `endFrame`, `image`, `video`, `audio`, `media`), put a `{ "path": … }` object: an absolute path or URL (with or without an open project), or a library path like `b-roll/clip.mp4` (needs an open project). The file is uploaded before the job starts — once per file, however many jobs name it — and the reference becomes the API's own; a local model reads it in place. The API's references (`{ "kind": "asset", "id" }`, `{ "kind": "url", "url" }`) pass through unchanged. On the CLI a `path` that exists relative to the working directory is sent as its absolute path.
+Where a field takes a file (`images`, `startFrame`, `endFrame`, `image`, `video`, `audio`, `media`), put a `{ "path": … }` object: an absolute path or URL (with or without an open project), or a library path like `b-roll/clip.mp4` (needs an open project). The file is uploaded before the job starts — once per file, however many jobs name it — and the reference becomes the API's own; in an `audio` field only its sound is sent, so a video's picture stays on the machine; a local model reads it in place. The API's references (`{ "kind": "asset", "id" }`, `{ "kind": "url", "url" }`) pass through unchanged. On the CLI a `path` that exists relative to the working directory is sent as its absolute path.
 
 ```json
 {

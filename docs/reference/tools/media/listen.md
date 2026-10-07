@@ -2,8 +2,6 @@
 
 Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; of a video only the audio track is analyzed.
 
-**Temporarily unavailable in this version:** every call fails with `unsupported`.
-
 | | |
 | --- | --- |
 | MCP tool | `media_listen` |
@@ -30,4 +28,4 @@ One JSON object, the model's answer. `start`/`end` echo the analyzed window (in 
 
 ## Errors
 
-Fails when the path can't be resolved, the asset isn't a video or audio asset, or `start`/`end` cross (`start` >= `end`). In this version every call fails with `unsupported`.
+Fails when the path can't be resolved, the asset isn't a video or audio asset, or `start`/`end` cross (`start` >= `end`).

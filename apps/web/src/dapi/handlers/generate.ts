@@ -5,20 +5,20 @@
 
 import { getAssetFile, getLibrary } from "@diffusionstudio/runtime";
 import { DapiError, generatedPath, isLocalJobId, isLocalModel } from "@diffusionstudio/dapi";
-import { TRPCClientError } from "@trpc/client";
 
 import { api } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 import { uploadFile } from "@/lib/uploads";
 import { encodeSceneAudio, hasAudio } from "@/engine/scene-audio";
 import { resolveAsset } from "../lib/assets";
+import { audioFile } from "../lib/audio";
 import { destination, storeAt } from "../lib/outputs";
+import { apiError, requireSignIn } from "../lib/remote";
 import { requireScene } from "../lib/scene";
 import { localJob, startLocalJob } from "../local/jobs";
 
 import type { Asset, AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateRequestInput, Job } from "@diffusionstudio/api-contract";
-import type { DapiErrorCode, GenerationResult } from "@diffusionstudio/dapi";
+import type { GenerationResult } from "@diffusionstudio/dapi";
 import type { ToolContext, ToolHandler } from "../handler";
 import type { Destination } from "../lib/outputs";
 
@@ -105,7 +105,7 @@ const isSceneRef = (value: unknown): value is SceneRef => {
  * value sits under (an array's items sit under the array's).
  */
 async function withUploads(value: unknown, ctx: ToolContext, field?: string): Promise<unknown> {
-  if (isFileRef(value)) return upload(value.path, ctx);
+  if (isFileRef(value)) return upload(value.path, field, ctx);
   if (isSceneRef(value)) return uploadScene(value.scene, field, ctx);
   if (Array.isArray(value)) return Promise.all(value.map((item) => withUploads(item, ctx, field)));
   if (!isPlainObject(value)) return value;
@@ -113,9 +113,10 @@ async function withUploads(value: unknown, ctx: ToolContext, field?: string): Pr
   return Object.fromEntries(entries);
 }
 
-async function upload(path: string, ctx: ToolContext): Promise<AssetRef> {
+/** A file uploaded; in an `audio` field only its sound, so a video's picture is not sent to be ignored. */
+async function upload(path: string, field: string | undefined, ctx: ToolContext): Promise<AssetRef> {
   const asset = await resolveAsset(ctx, path);
-  return uploadFile(await getAssetFile(asset));
+  return uploadFile(field === "audio" ? await audioFile(asset) : await getAssetFile(asset));
 }
 
 /**
@@ -201,30 +202,3 @@ async function saveToLibrary(library: AssetLibrary, job: Job, output: string | n
   }
   return assets;
 }
-
-// ── The API ──────────────────────────────────────────────────
-
-async function requireSignIn(): Promise<void> {
-  const session = await supabase?.auth.getSession();
-  if (!session?.data.session) {
-    throw new DapiError("sign-in-required", "Generating needs a Diffusion Studio account — sign in to the app first.");
-  }
-}
-
-const API_ERRORS: Record<string, DapiErrorCode> = {
-  BAD_REQUEST: "invalid-input",
-  UNAUTHORIZED: "sign-in-required",
-  NOT_FOUND: "not-found",
-  CONFLICT: "busy",
-};
-
-/** An API call's failure as the tools report it: a tool error where one fits, a sentence for credits, else as it came. */
-function apiError(error: unknown): unknown {
-  if (!(error instanceof TRPCClientError)) return error;
-  const code: string | undefined = error.data?.code;
-  const mapped = code && API_ERRORS[code];
-  if (mapped) return new DapiError(mapped, error.message, { cause: error });
-  if (code === "PAYMENT_REQUIRED") return new Error(`Not enough credits: ${error.message}`, { cause: error });
-  return error;
-}
-

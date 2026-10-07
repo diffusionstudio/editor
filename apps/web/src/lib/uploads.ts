@@ -14,7 +14,7 @@ import { api } from "./api";
 import type { AssetRef } from "@diffusionstudio/api-contract";
 
 /** Lowercase hex sha256 of `blob`'s bytes: what the API names an upload by. */
-async function sha256(blob: Blob): Promise<string> {
+export async function sha256(blob: Blob): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
