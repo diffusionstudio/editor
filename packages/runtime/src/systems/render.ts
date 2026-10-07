@@ -209,7 +209,8 @@ function buildEffects(world: World, entity: Entity): string | null {
  * drawn here. Media paints, the surface paint (a `<surface>`, whose host
  * lives on the geometry) and the waveform (an `<audio>`'s, drawn from its own
  * asset) are intrinsic. An `<audio>` is a sound, so its waveform is drawn in
- * the editor only, never into an export.
+ * the editor only, never into an export, and only for one on the stage: inside
+ * a scene it is part of a composition, where a waveform has no place.
  */
 export function renderIntrinsicFill(world: World, entity: Entity): void {
 	if (entity.has(Color)) {
@@ -239,7 +240,7 @@ export function renderIntrinsicFill(world: World, entity: Entity): void {
 		return;
 	}
 	if (intrinsic === PaintType.WAVEFORM) {
-		if (world.get(Mode)?.value === 'realtime') {
+		if (world.get(Mode)?.value === 'realtime' && getParentNode(entity) === null) {
 			renderWaveform(world, entity, entity);
 		}
 		return;
