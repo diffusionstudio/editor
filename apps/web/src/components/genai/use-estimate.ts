@@ -58,7 +58,7 @@ let catalogRequested = false;
 /**
  * What running `model` costs, in credits, from its rate on the price list:
  * for a model priced by the length of its input, over `seconds` of it. Rounded
- * up to at least 1, as the API charges. For the tools, whose price needs no
+ * up to at least the model's minimum, as the API charges. For the tools, whose price needs no
  * request: the request would need the media uploaded first. Undefined until
  * the price list is in, and for a model priced by something else.
  */
@@ -84,7 +84,7 @@ export function chargeOf(model: ModelId, seconds?: number): number | undefined {
   }[pricing.unit as string];
 
   if (quantity) {
-    return Math.max(1, Math.ceil(quantity * pricing.credits));
+    return Math.max(pricing.minimum ?? 1, Math.ceil(quantity * pricing.credits));
   }
 
   return undefined;
