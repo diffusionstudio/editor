@@ -10,10 +10,11 @@
 // shape.
 
 import { z } from "zod";
-import { MODEL_IDS } from "@diffusionstudio/api-contract";
+import { MODEL_IDS, generateRequest } from "@diffusionstudio/api-contract";
 import { defineTool } from "../tool";
 import { Bytes } from "../schemas";
-import { LOCAL_MODEL_IDS } from "../local";
+import { LOCAL_MODELS, LOCAL_MODEL_IDS } from "../local";
+import { requestFields } from "../local/fields";
 
 const JPEG = /^\.jpe?g$/i;
 
@@ -82,6 +83,19 @@ export const GenerationResult = z.object({
   image: Bytes.optional(),
 });
 
+/**
+ * Every field a model takes, by name only, from the API's request schemas and
+ * the local models'. Declared for MCP clients that send only the properties a
+ * schema lists; each is `unknown`, so the API (or a local model's own schema)
+ * still does all the checking.
+ */
+const modelFields = Object.fromEntries(
+  [...generateRequest.options, ...Object.values(LOCAL_MODELS)]
+    .flatMap((schema) => Object.keys(schema.shape))
+    .filter((key) => key !== "model" && !(key in requestFields))
+    .map((key) => [key, z.unknown().optional()]),
+);
+
 export const generate = defineTool({
   name: "generate",
   title: "Generate media",
@@ -89,6 +103,7 @@ export const generate = defineTool({
     "Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking (`sam-2.1`) on this machine — and return the job at once, with its estimated run time and the credits it costs. The input is the model's request: `model` plus that model's fields (`prompt`, `images`, `aspectRatio`, `duration`, `voice`, …), listed per model in the docs at `reference/models.md`. An API model's fields are passed through as given and the API validates them, answering with what to fix; a local model's are checked here. Where a field takes a file, put `{ \"path\": \"…\" }` — an absolute path, a URL, or a library path — and it is uploaded first (a local model reads it in place). Poll `job` with the returned id until its status is succeeded, failed or canceled; the estimate says when to look. API models need a signed-in account and spend its credits; local models run on the GPU, free, and need no account.",
   input: z.looseObject({
     model: z.enum([...MODEL_IDS, ...LOCAL_MODEL_IDS]).describe("the model to run; its fields are listed in `reference/models.md`"),
+    ...modelFields,
     output: z
       .string()
       .optional()

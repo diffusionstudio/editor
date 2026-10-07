@@ -14,6 +14,7 @@ import { mediaTranscribe } from "./media-transcribe";
 import { generate, generatedPath, job } from "./generate";
 import { MODEL_IDS } from "@diffusionstudio/api-contract";
 import { LOCAL_MODEL_IDS, isLocalJobId, isLocalModel, samRequest } from "../local";
+import { toolJsonSchemas } from "../json-schema";
 
 /** The messages of a failed parse, keyed by the path they point at. */
 function issues(result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[]; message: string }> } }) {
@@ -203,6 +204,14 @@ describe("generate", () => {
   it("passes the model's fields through unchecked, for the API to validate", () => {
     const fields = { prompt: "a fox", images: [{ path: "./ref.png" }, { kind: "url", url: "https://x.test/a.png" }], duration: 99, anything: { at: "all" } };
     expect(input.parse({ model: "nano-banana-pro", ...fields })).toEqual({ model: "nano-banana-pro", ...fields });
+  });
+
+  it("declares every model's fields by name, for clients that send only declared properties", () => {
+    const { properties } = toolJsonSchemas(generate).inputSchema as { properties: Record<string, object> };
+    for (const field of ["prompt", "images", "aspectRatio", "resolution", "count", "duration", "startFrame", "voice", "image", "audio", "languageCode", "time", "points"]) {
+      expect(properties[field]).toEqual({});
+    }
+    expect(input.parse({ model: "flux-2-klein", prompt: "a fox" })).toEqual({ model: "flux-2-klein", prompt: "a fox" });
   });
 
   it("knows the models", () => {
