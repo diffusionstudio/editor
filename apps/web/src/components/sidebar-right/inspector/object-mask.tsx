@@ -29,7 +29,7 @@ import { SliderInput } from "@/components/ui/slider-input";
 import { Switch, SwitchControl, SwitchInput, SwitchThumb } from "@/components/ui/switch";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { AssetId, Computed, Hidden, Library, Mask, VideoDecoderHandle } from "@diffusionstudio/runtime";
+import { AssetId, Computed, Hidden, Library, Mask, VideoDecoderHandle, getParentNode } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 import {
@@ -117,8 +117,8 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
 
   const name = useDerived(() => objectMaskName(world, props.mask));
 
-  // Every mask in the library, by folder: the header picks which of them this mask is.
-  const groups = useObjectMasks();
+  // Every mask in the library, the clip's own first: the header picks which of them this mask is.
+  const groups = useObjectMasks(() => getParentNode(getParentNode(props.mask)));
   const source = () =>
     groups()
       .flatMap((group) => group.masks)

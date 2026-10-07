@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { assetFolder, assetName, basename } from '@diffusionstudio/assets';
+import { assetName } from '@diffusionstudio/assets';
 import { Mask } from '@diffusionstudio/reconciler';
 import { AssetId, Blur, Cache, Library, Mask as MaskTrait, getParentNode } from '@diffusionstudio/runtime';
 
@@ -21,37 +21,36 @@ export type ObjectMaskSource = {
 	sourceIn: number;
 };
 
-/** The masks of one library folder, under the folder's name: a section of the mask menus. */
+/** A section of the mask menus: a heading and the masks under it. */
 export type ObjectMaskGroup = {
-	/** What to call the section: the folder's own name. */
+	/** What to call the section. */
 	name: string;
 	masks: ObjectMaskSource[];
 };
 
 /**
- * Every mask in `library`, grouped by the folder it is in — a mask is not
- * tied to the clip it was tracked on, so any effect can take any of them.
- * Folders keep the library's order. It reads the library's asset list, a
- * signal, so a memo over it runs again only when the library changes (see
- * `useObjectMasks`).
+ * Every mask in `library`, the ones tracked on the video `footage` (its asset
+ * id, the clip's own footage) first, under that video's name, and all the
+ * others after them as "Others" — any effect can take any mask, but the
+ * clip's own are the likely pick. Empty sections are left out. It reads the
+ * library's asset list, a signal, so a memo over it runs again only when the
+ * library changes (see `useObjectMasks`).
  */
-export function objectMaskGroups(library: AssetLibrary): ObjectMaskGroup[] {
-	const groups = new Map<string, ObjectMaskGroup>();
+export function objectMaskGroups(library: AssetLibrary, footage: string | null): ObjectMaskGroup[] {
+	const video = footage ? library.get(footage) : undefined;
+	const own: ObjectMaskGroup = { name: video ? assetName(video).replace(/\.[^.]+$/, '') : '', masks: [] };
+	const others: ObjectMaskGroup = { name: 'Others', masks: [] };
+
 	for (const asset of library.list()) {
 		if (asset.type !== 'MASK') continue;
-		const folder = assetFolder(asset);
-		let group = groups.get(folder);
-		if (!group) {
-			group = { name: basename(folder) || 'Library', masks: [] };
-			groups.set(folder, group);
-		}
+		const group = video && asset.recipe?.source === video.id ? own : others;
 		group.masks.push({
 			asset,
 			name: assetName(asset).replace(/\.[^.]+$/, ''),
 			sourceIn: asset.recipe ? asset.recipe.first / asset.frameRate : 0,
 		});
 	}
-	return [...groups.values()];
+	return [own, others].filter((group) => group.masks.length > 0);
 }
 
 /**

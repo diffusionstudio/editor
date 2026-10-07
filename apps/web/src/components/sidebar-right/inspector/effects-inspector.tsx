@@ -37,7 +37,7 @@ import {
 import { SliderInput } from "@/components/ui/slider-input";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { Cache, Computed, Effect, Hidden } from "@diffusionstudio/runtime";
+import { Cache, Computed, Effect, Hidden, getParentNode } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
 import { copyObjectMask, useObjectMasks } from "@/engine/object-mask";
@@ -81,7 +81,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   const value = useDerived(() => props.effect.get(Computed)?.value ?? 0);
   const masks = useDerived(() => props.effect.get(Cache)?.masks ?? NO_MASKS);
 
-  const groups = useObjectMasks();
+  const groups = useObjectMasks(() => getParentNode(props.effect));
 
   const editingMask = createMemo(() => {
     const mask = pickedMask();
