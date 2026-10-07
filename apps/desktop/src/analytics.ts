@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { stat, writeFile } from "node:fs/promises";
 
 import type { ClientEventName, TrackedEvent, TrackProps } from "@diffusionstudio/api-contract";
+import type { WindowHost } from "./window-host";
 
 const enabled = app.isPackaged || process.env.DIFFUSION_ANALYTICS === "1";
 
@@ -57,14 +58,15 @@ export function countCodeChange(path: string): void {
 }
 
 /**
- * Starts the flush timer and records the launch. The first launch of an
+ * Starts the flush and usage timers and records the launch. The first launch of an
  * install is recorded once, guarded by a marker file in `userData`; its age
  * goes on every `app_opened`, so install-to-sign-up time needs no device id.
  */
-export async function startAnalytics(): Promise<void> {
+export async function startAnalytics(windows: WindowHost): Promise<void> {
   if (!enabled) return;
 
   setInterval(flush, FLUSH_INTERVAL_MS);
+  setInterval(() => (windows.current() && track("app_used")), 60_000);
 
   const marker = join(app.getPath("userData"), "install-tracked");
   const installedAt = await stat(marker).then((info) => info.birthtimeMs, () => null);

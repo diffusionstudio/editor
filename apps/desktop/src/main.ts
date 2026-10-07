@@ -511,7 +511,7 @@ if (squirrelLaunch) {
     );
     refreshCliShim();
     healMcpRegistrations();
-    startAnalytics();
+    startAnalytics(windows);
     tray.start();
 
     // Opened by a person (Finder, Dock, Start menu): show the editor

@@ -20,6 +20,12 @@ export function initAnalytics(): void {
   // The desktop app's launch is recorded by main: once per launch, not per window.
   if (!window.desktop) {
     track("app_opened");
+
+    setInterval(() => {
+      if (document.visibilityState === "visible") {
+        track("app_used");
+      }
+    }, 60_000);
   }
 
   setInterval(() => {
