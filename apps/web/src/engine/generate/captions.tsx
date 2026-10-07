@@ -61,7 +61,7 @@ export async function generateCaptions(world: World, scene: Entity, dir?: string
 
 	try {
 		const audio = await uploadFile(await encodeSceneAudio(world, scene, dir));
-		const job = await runJob({ model: 'transcribe', audio }, (update) => {
+		const job = await runJob({ model: 'universal-3.5-pro', audio }, (update) => {
 			toast.loading('Generating captions', { id, description: status(update) });
 		});
 		if (job.status !== 'succeeded') throw new Error(jobFailure(job));

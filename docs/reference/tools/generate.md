@@ -41,7 +41,7 @@ diffusion generate flux-2-klein --prompt "A red fox at dawn, misty meadow, telep
 diffusion generate nano-banana-pro --prompt "The fox in the forest" '{"images":[{"path":"./fox.png"},{"path":"./forest.jpg"}],"aspectRatio":"16:9"}'
 diffusion generate veo-3.1-fast --prompt "The fox turns and runs into the trees" '{"startFrame":{"path":"./fox.png"},"duration":6}' -o ./fox-run.mp4
 diffusion generate elevenlabs-v3 --prompt "Welcome back to the channel." '{"voice":"JBFqnCBsd6RMkjVDRZzb"}'
-diffusion generate remove-background '{"image":{"path":"./fox.png"}}'
+diffusion generate bria-rmbg-2.0 '{"image":{"path":"./fox.png"}}'
 ```
 
 ## Estimating
@@ -53,7 +53,7 @@ diffusion generate veo-3.1-fast --prompt "The fox turns and runs into the trees"
 # prints { "credits": …, "etaSeconds": … }
 ```
 
-Files (`{ "path": … }`) are uploaded first, as for a job, since a tool such as `transcribe` or `upscale-video` is priced by the length of its input; starting the job afterwards reuses the upload. `output` and `maxCredits` are ignored. A [local model](../models.md#local) costs `0`, its `etaSeconds` planned from the file as its job would be. An API model still needs a signed-in account.
+Files (`{ "path": … }`) are uploaded first, as for a job, since a tool such as `universal-3.5-pro` or `bytedance-upscaler` is priced by the length of its input; starting the job afterwards reuses the upload. `output` and `maxCredits` are ignored. A [local model](../models.md#local) costs `0`, its `etaSeconds` planned from the file as its job would be. An API model still needs a signed-in account.
 
 ## Where the files go
 

@@ -13,10 +13,10 @@
 
 ## Captioning a scene
 
-To caption what a scene plays — every voice in it, as mixed — transcribe the scene itself: pass `{ "scene": "<scene id>" }` as the `transcribe` model's `audio` to [`generate`](../tools/generate.md), save the transcript into the library, and mount it.
+To caption what a scene plays — every voice in it, as mixed — transcribe the scene itself: pass `{ "scene": "<scene id>" }` as the `universal-3.5-pro` model's `audio` to [`generate`](../tools/generate.md), save the transcript into the library, and mount it.
 
 ```bash
-diffusion generate transcribe '{"audio":{"scene":"talk"}}' -o transcripts/talk.json
+diffusion generate universal-3.5-pro '{"audio":{"scene":"talk"}}' -o transcripts/talk.json
 diffusion job <id>    # until its status is succeeded
 ```
 

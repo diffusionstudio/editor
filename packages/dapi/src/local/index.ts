@@ -2,14 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Models the app runs on this machine, behind the same `generate` and `job`
-// as the API's: a request is `model` plus the model's fields, and a job is
-// shaped like the API's `Job`. Unlike the API's, a local model's request is
-// checked here, by its schema, since no server is there to say what to fix.
-//
-// A model is named for itself (`sam-2.1`), never for its task: task names
-// (`transcribe`, `remove-background`) are the API's, and the two lists must
-// not share an id.
 
 import { samRequest } from "./sam";
 

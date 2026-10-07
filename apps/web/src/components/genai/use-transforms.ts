@@ -33,17 +33,17 @@ const TOOLS: Record<TransformType, Tool> = {
     title: "Upscale failed",
     takes: () => true,
     request: (type, input) =>
-      type === PaintType.VIDEO ? { model: "upscale-video", video: input } : { model: "upscale-image", image: input },
+      type === PaintType.VIDEO ? { model: "bytedance-upscaler", video: input } : { model: "seedvr-2", image: input },
     price: ({ type, asset }) =>
       type === PaintType.VIDEO
-        ? asset?.type === "VIDEO" ? chargeOf("upscale-video", asset.duration) : undefined
-        : chargeOf("upscale-image"),
+        ? asset?.type === "VIDEO" ? chargeOf("bytedance-upscaler", asset.duration) : undefined
+        : chargeOf("seedvr-2"),
   },
   removeBackground: {
     title: "Background removal failed",
     takes: (type) => type === PaintType.IMAGE,
-    request: (_type, image) => ({ model: "remove-background", image }),
-    price: () => chargeOf("remove-background"),
+    request: (_type, image) => ({ model: "bria-rmbg-2.0", image }),
+    price: () => chargeOf("bria-rmbg-2.0"),
   },
 };
 

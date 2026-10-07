@@ -19,8 +19,8 @@ export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
   "krea-2-large": "IMAGE",
   "flux-2-pro": "IMAGE",
   "flux-2-klein": "IMAGE",
-  "remove-background": "IMAGE",
-  "upscale-image": "IMAGE",
+  "bria-rmbg-2.0": "IMAGE",
+  "seedvr-2": "IMAGE",
   "kling-3-pro": "VIDEO",
   "kling-o3-pro": "VIDEO",
   "wan-3.0": "VIDEO",
@@ -30,13 +30,13 @@ export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
   "grok-imagine-video-1.5": "VIDEO",
   "veo-3.1": "VIDEO",
   "veo-3.1-fast": "VIDEO",
-  "upscale-video": "VIDEO",
+  "bytedance-upscaler": "VIDEO",
   "elevenlabs-music": "AUDIO",
   "elevenlabs-sfx": "AUDIO",
   "elevenlabs-v3": "VOICE",
   "gemini-3.8-flash-tts": "VOICE",
-  "transcribe": "TEXT",
-  "analyze": "TEXT",
+  "universal-3.5-pro": "TEXT",
+  "gemini-3.5-flash": "TEXT",
 };
 
 export type PromptMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";
