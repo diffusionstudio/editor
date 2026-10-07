@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { Button } from "@/components/ui/button";
-import { For, Show, Match, Switch, createMemo, createSignal, type Accessor } from "solid-js";
+import { For, Show, Match, Switch, createMemo, createResource, createSignal, type Accessor } from "solid-js";
 import {
   formatAspectRatio,
   formatBytes,
@@ -18,6 +18,8 @@ import { assetName } from "@diffusionstudio/assets";
 import { useLibrary } from "@/engine/library";
 import { useAssetSelection } from "@/engine/hooks";
 import { insertAssetAtPlayhead, replaceAssetSource } from "@/engine/asset-actions";
+import { modelOption } from "@/components/genai/config";
+import { api } from "@/lib/api";
 
 import type { Asset } from "@diffusionstudio/assets";
 
@@ -111,6 +113,8 @@ export function AssetInfoPanel() {
 }
 
 export function useAssetMetadataRows(asset: Accessor<Asset | undefined>) {
+  const [job] = createResource(() => asset()?.job, (id) => api.jobs.get.query({ id }));
+
   return createMemo(() => {
     const a = asset();
     if (!a) return [];
@@ -134,9 +138,10 @@ export function useAssetMetadataRows(asset: Accessor<Asset | undefined>) {
         : null;
     const imported = formatAssetDate(a.createdAt);
     const modified = a.stat ? formatAssetDate(a.stat.mtime) : null;
-    // How the asset was generated: placeholders until generation is back.
-    const prompt: string | null = null;
-    const model: string | null = null;
+
+    const generation = a.job && job.latest?.id === a.job ? job.latest : undefined;
+    const prompt = generation && "prompt" in generation.request ? generation.request.prompt ?? null : null;
+    const model = generation ? modelOption(generation.model)?.name ?? generation.model : null;
 
     return [
       { label: "Dimensions", value: dimensions },
