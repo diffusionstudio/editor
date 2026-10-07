@@ -1,6 +1,6 @@
 # job
 
-The state of a job started with [`generate`](./generate.md): its status, progress estimate and cost, and, once it has succeeded, the files it made, saved where `generate` was told. `cancel` stops a job and refunds its credits.
+The state of a job started with [`generate`](./generate.md): its status, progress estimate and cost, and, once it has succeeded, the files it made, saved where `generate` was told, and, from a [local model](../models.md#local), its `details`. `cancel` stops a job and refunds its credits.
 
 | | |
 | --- | --- |
@@ -16,7 +16,7 @@ The state of a job started with [`generate`](./generate.md): its status, progres
 
 ## Polling
 
-A job is `queued`, then `running`, then ends `succeeded`, `failed` or `canceled`. Once it has ended, nothing about it changes again: stop polling. While it works, the job says how long to wait — `etaRemainingSeconds` while running, `etaSeconds` (the whole run) while queued — so look once around then rather than in a tight loop; a call made early simply returns the job still working. Images take seconds, video minutes.
+A job is `queued`, then `running`, then ends `succeeded`, `failed` or `canceled`. Once it has ended, nothing about it changes again: stop polling. While it works, the job says how long to wait — `etaRemainingSeconds` while running, `etaSeconds` (the whole run) while queued — so look once around then rather than in a tight loop; a call made early simply returns the job still working. Images take seconds, video minutes. A local model's job also reports its `phase` and `progress` (0..1 through it).
 
 The first call that sees the job succeed downloads its files to where [`generate`](./generate.md#where-the-files-go) was told and returns their paths in `assets`; later calls return the same paths without downloading again. A job whose files are in the open project's library already is never downloaded again: `assets` lists the files of it still there, so a lookup changes nothing. A job started with `generate` before the app restarted, with none of its files in the library, is saved to the default place: the open project's library, or the temp dir with none open.
 
@@ -27,6 +27,10 @@ id=$(diffusion generate flux-2-klein --prompt "A red fox at dawn" | jq -r .id)
 sleep 15
 diffusion job "$id" | jq '{status, etaRemainingSeconds, assets: [.assets[].path]}'
 ```
+
+## Local jobs
+
+A [local model](../models.md#local)'s job runs in the app, and its id starts with `local-`. It is polled and canceled like any other, costs nothing, and needs no account, but it lives only as long as the app: once the app restarts or reloads, `job` answers `not-found` for it. Its files are saved when it succeeds, and its `details` — what the model found, with a picture as `details.image` that over MCP also arrives inline, once — come with every poll from then on. Closing the project its files go into cancels it.
 
 ## Looking up a generated file
 
@@ -52,5 +56,5 @@ The API's job, with the files it made saved locally: each file's `url` is replac
 
 ## Errors
 
-- `not-found` — no job of this account has the id.
-- `sign-in-required` — the app is not signed in to a Diffusion Studio account.
+- `not-found` — no job of this account has the id, or a local job's id from before the app restarted.
+- `sign-in-required` — an API job, and the app is not signed in to a Diffusion Studio account.

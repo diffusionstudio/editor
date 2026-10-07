@@ -311,7 +311,7 @@ export function getMaskRestoreOf(asset: MaskAsset | null | undefined): MaskResto
 
 /**
  * An object to segment in footage on its own, rather than on a clip: what
- * the agent's `media_segment` asks. Frames are counted on a grid of `fps`,
+ * the agent's `sam-2.1` jobs ask. Frames are counted on a grid of `fps`,
  * the one the mask file will hold.
  */
 export type FootageSegmentRequest = {
@@ -327,6 +327,8 @@ export type FootageSegmentRequest = {
 	/** Segments the seed frame alone, without tracking: the frame stays encoded, so the next prompt on it is quick. */
 	preview: boolean;
 	signal: AbortSignal;
+	/** Its turn has come: the tool's own sessions and earlier requests are done with the model. */
+	onStart?: () => void;
 	/** The model's download, 0 to 1, while it is on its way. */
 	onDownload?: (progress: number | null) => void;
 	/** Frames masked so far, of `count`. */
@@ -356,6 +358,7 @@ export function segmentFootage(request: FootageSegmentRequest): Promise<FootageS
 			busy = true;
 			try {
 				signal.throwIfAborted();
+				request.onStart?.();
 				const session = await openSession(asset, fps, request.model, request.onDownload);
 				signal.throwIfAborted();
 				const model = session.model.model;

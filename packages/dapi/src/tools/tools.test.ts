@@ -10,9 +10,10 @@ import { logs } from "./logs";
 import { mediaFilmstrip } from "./media-filmstrip";
 import { mediaGrab } from "./media-grab";
 import { mediaListen } from "./media-listen";
-import { mediaSegment } from "./media-segment";
 import { mediaTranscribe } from "./media-transcribe";
-import { generate, generatedPath } from "./generate";
+import { generate, generatedPath, job } from "./generate";
+import { MODEL_IDS } from "@diffusionstudio/api-contract";
+import { LOCAL_MODEL_IDS, isLocalJobId, isLocalModel, samRequest } from "../local";
 
 /** The messages of a failed parse, keyed by the path they point at. */
 function issues(result: { success: boolean; error?: { issues: Array<{ path: PropertyKey[]; message: string }> } }) {
@@ -101,7 +102,7 @@ describe("logs and export", () => {
 describe("context", () => {
   it("reports the same shape with and without an open project", () => {
     expect(
-      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [], masks: [] }).success,
+      context.output.safeParse({ rootDir: "/p", projectDir: null, currentTime: null, fontFamilies: [] }).success,
     ).toBe(true);
     expect(
       context.output.safeParse({
@@ -109,21 +110,9 @@ describe("context", () => {
         projectDir: "/p/a",
         currentTime: null,
         fontFamilies: ["Inter"],
-        masks: [],
       }).success,
     ).toBe(true);
     expect(context.output.safeParse({ rootDir: "/p", projectDir: "/p/a" }).success).toBe(false);
-  });
-
-  it("reports background mask tracks, with a contact sheet as bytes in the result and a path in the output", () => {
-    const span = { model: "tiny", frameRate: 30, start: 0, end: 2, frames: 60 };
-    const running = { id: "t1", src: "masks/a/Tracking 1.mask", video: "a.mp4", state: "tracking", progress: 0.4, ...span };
-    const found = { bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [] };
-    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [] };
-    expect(context.output.safeParse({ ...base, masks: [running] }).success).toBe(true);
-    expect(context.result!.safeParse({ ...base, masks: [{ ...running, state: "done", progress: 1, png: new Uint8Array(3), ...found }] }).success).toBe(true);
-    expect(context.output.safeParse({ ...base, masks: [{ ...running, state: "done", progress: 1, image: "/tmp/s.png", ...found }] }).success).toBe(true);
-    expect(context.output.safeParse({ ...base, masks: [{ ...running, state: "paused" }] }).success).toBe(false);
   });
 });
 
@@ -144,52 +133,67 @@ describe("image tools", () => {
   });
 });
 
-describe("media_segment", () => {
-  const input = mediaSegment.input;
-  const at = { path: "/c.mp4", time: "1.5" };
+describe("sam-2.1", () => {
+  const at = { model: "sam-2.1", video: { path: "/c.mp4" }, time: "1.5" };
 
-  it("takes points, exclusions and a box, with the time in every form", () => {
-    const args = input.parse({ ...at, points: [{ x: 0.5, y: 0.4 }], exclude: [{ x: 0.5, y: 0.9 }], box: [0.2, 0.1, 0.8, 0.95] });
+  it("takes points, exclusions and a box, with the time in every form, and is tiny unless sized", () => {
+    const args = samRequest.parse({ ...at, points: [{ x: 0.5, y: 0.4 }], exclude: [{ x: 0.5, y: 0.9 }], box: [0.2, 0.1, 0.8, 0.95] });
     expect(args.time).toBe(1.5);
-    expect(input.parse({ path: "/c.mp4", time: "45f", box: [0, 0, 1, 1] }).time).toBe(1.5);
+    expect(args.size).toBe("tiny");
+    expect(samRequest.parse({ ...at, time: "45f", box: [0, 0, 1, 1] }).time).toBe(1.5);
   });
 
   it("needs the object prompted by points or a box", () => {
-    expect(issues(input.safeParse(at))).toHaveProperty("points");
-    expect(issues(input.safeParse({ ...at, exclude: [{ x: 0.1, y: 0.1 }] }))).toHaveProperty("points");
-    expect(input.safeParse({ ...at, points: [{ x: 0, y: 1 }] }).success).toBe(true);
+    expect(issues(samRequest.safeParse(at))).toHaveProperty("points");
+    expect(issues(samRequest.safeParse({ ...at, exclude: [{ x: 0.1, y: 0.1 }] }))).toHaveProperty("points");
+    expect(samRequest.safeParse({ ...at, points: [{ x: 0, y: 1 }] }).success).toBe(true);
   });
 
   it("keeps prompts inside the frame and boxes the right way round", () => {
-    expect(input.safeParse({ ...at, points: [{ x: 1.2, y: 0.5 }] }).success).toBe(false);
-    expect(issues(input.safeParse({ ...at, box: [0.8, 0.1, 0.2, 0.9] }))).toHaveProperty("box");
-    expect(issues(input.safeParse({ ...at, box: [-0.1, 0.1, 0.2, 0.9] }))).toHaveProperty("box");
+    expect(samRequest.safeParse({ ...at, points: [{ x: 1.2, y: 0.5 }] }).success).toBe(false);
+    expect(issues(samRequest.safeParse({ ...at, box: [0.8, 0.1, 0.2, 0.9] }))).toHaveProperty("box");
+    expect(issues(samRequest.safeParse({ ...at, box: [-0.1, 0.1, 0.2, 0.9] }))).toHaveProperty("box");
   });
 
   it("rejects a span or an output on a preview", () => {
     const preview = { ...at, points: [{ x: 0.5, y: 0.5 }], preview: true };
-    expect(input.safeParse(preview).success).toBe(true);
-    expect(issues(input.safeParse({ ...preview, start: 1 }))).toHaveProperty("start");
-    expect(issues(input.safeParse({ ...preview, output: "masks/a.mask" }))).toHaveProperty("output");
+    expect(samRequest.safeParse(preview).success).toBe(true);
+    expect(issues(samRequest.safeParse({ ...preview, start: 1 }))).toHaveProperty("start");
+    expect(issues(samRequest.safeParse({ ...preview, output: "masks/a.mask" }))).toHaveProperty("output");
   });
 
   it("tracks a span that holds the prompted frame", () => {
     const track = { ...at, points: [{ x: 0.5, y: 0.5 }] };
-    expect(input.safeParse({ ...track, start: 1, end: "0:03" }).success).toBe(true);
-    expect(issues(input.safeParse({ ...track, start: 2 }))).toHaveProperty("time");
-    expect(issues(input.safeParse({ ...track, end: 1.5 }))).toHaveProperty("time");
-    expect(issues(input.safeParse({ ...track, start: 3, end: 2 }))).toHaveProperty("end");
+    expect(samRequest.safeParse({ ...track, start: 1, end: "0:03", output: "masks/a.mask", maxCredits: 5 }).success).toBe(true);
+    expect(issues(samRequest.safeParse({ ...track, start: 2 }))).toHaveProperty("time");
+    expect(issues(samRequest.safeParse({ ...track, end: 1.5 }))).toHaveProperty("time");
+    expect(issues(samRequest.safeParse({ ...track, start: 3, end: 2 }))).toHaveProperty("end");
   });
 
-  it("answers a background track with its paths and span alone", () => {
-    const span = { model: "tiny", frameRate: 30, start: 0, end: 2, frames: 60 };
-    expect(mediaSegment.output.safeParse({ path: "/p/assets/masks/a.mask", src: "masks/a.mask", state: "tracking", ...span }).success).toBe(true);
-    expect(mediaSegment.output.safeParse({ path: "/p/assets/masks/a.mask", state: "queued", ...span }).success).toBe(false);
+  it("names only the sizes the app offers, and no field it does not take", () => {
+    const boxed = { ...at, box: [0, 0, 1, 1] };
+    expect(samRequest.safeParse({ ...boxed, size: "base-plus" }).success).toBe(true);
+    expect(samRequest.safeParse({ ...boxed, size: "huge" }).success).toBe(false);
+    expect(samRequest.safeParse({ ...boxed, boxes: [] }).success).toBe(false);
+    expect(samRequest.safeParse({ ...boxed, video: "/c.mp4" }).success).toBe(false);
+  });
+});
+
+describe("local models", () => {
+  it("share no id with the API's", () => {
+    expect(LOCAL_MODEL_IDS.filter((id) => (MODEL_IDS as string[]).includes(id))).toEqual([]);
+    expect(isLocalModel("sam-2.1")).toBe(true);
+    expect(isLocalModel("flux-2-klein")).toBe(false);
+    expect(isLocalModel("toString")).toBe(false);
   });
 
-  it("names only the models the app offers", () => {
-    expect(input.safeParse({ ...at, box: [0, 0, 1, 1], model: "base-plus" }).success).toBe(true);
-    expect(input.safeParse({ ...at, box: [0, 0, 1, 1], model: "huge" }).success).toBe(false);
+  it("run as jobs whose ids say so", () => {
+    expect(generate.input.safeParse({ model: "sam-2.1", video: { path: "/c.mp4" } }).success).toBe(true);
+    expect(isLocalJobId("local-3f2a")).toBe(true);
+    expect(isLocalJobId("b22bbf6f-4c94-4a5b-a4c7-98c696706906")).toBe(false);
+    const running = { id: "local-1", status: "running", phase: "tracking", progress: 0.4, assets: [], details: { frames: 60 } };
+    expect(job.output.parse(running)).toEqual(running);
+    expect(generate.result!.safeParse({ job: { id: "local-1", status: "succeeded", assets: [{ bytes: new Uint8Array(3), filename: "a.mask" }] }, saveTo: null, image: new Uint8Array(3) }).success).toBe(true);
   });
 });
 

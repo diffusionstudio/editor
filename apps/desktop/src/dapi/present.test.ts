@@ -69,51 +69,6 @@ describe("present", () => {
     expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ segments });
   });
 
-  it("writes a segment's mask where output says and its picture to the temp dir", async () => {
-    const found = {
-      model: "tiny" as const, frameRate: 30, start: 0, end: 1, frames: 30, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
-    };
-    const file = join(dir, "masks", "skater.mask");
-    const presented = await present("media_segment", { path: "/c.mp4", time: 0, output: file }, { png: png(8), mask: png(9, 4), ...found });
-    const output = presented.output as { image: string; path: string };
-    expect(output).toEqual({ image: output.image, path: file, ...found });
-    expect(output.image).toMatch(/dapi-segment-.*\.png$/);
-    expect(readFileSync(file)).toEqual(Buffer.from(png(9, 4)));
-    expect(presented.images).toEqual([{ path: output.image, png: png(8) }]);
-  });
-
-  it("keeps the path of a mask the app put into the library, and writes none for a preview", async () => {
-    const found = {
-      model: "tiny" as const, frameRate: 30, start: 1, end: 1.033, frames: 1, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
-    };
-    const stored = await present("media_segment", { path: "/c.mp4", time: 1 }, { png: png(8), path: "/p/assets/masks/a.mask", src: "masks/a.mask", ...found });
-    expect(stored.output).toMatchObject({ path: "/p/assets/masks/a.mask", src: "masks/a.mask" });
-    const preview = await present("media_segment", { path: "/c.mp4", time: 1, preview: true }, { png: png(8), ...found });
-    expect(preview.output).not.toHaveProperty("path");
-  });
-
-  it("has no picture for a track still running in the background", async () => {
-    const span = { model: "tiny" as const, frameRate: 30, start: 0, end: 2, frames: 60 };
-    const running = await present("media_segment", { path: "/c.mp4", time: 1 }, { path: "/p/assets/masks/a.mask", src: "masks/a.mask", state: "tracking" as const, ...span });
-    expect(running).toEqual({ output: { path: "/p/assets/masks/a.mask", src: "masks/a.mask", state: "tracking", ...span }, images: [] });
-  });
-
-  it("writes a done track's contact sheet once, inline only the first time context reports it", async () => {
-    const row = {
-      id: "track-1", src: "masks/a.mask", video: "a.mp4", state: "done" as const, progress: 1,
-      model: "tiny" as const, frameRate: 30, start: 0, end: 2, frames: 60, bbox: null, area: 0, score: 1, iou: 0.9, lost: [], weak: [],
-    };
-    const base = { rootDir: "/p", projectDir: "/p/a", currentTime: null, fontFamilies: [] };
-    const first = await present("context", {}, { ...base, masks: [{ ...row, png: png(8) }] });
-    const image = (first.output as { masks: { image: string }[] }).masks[0]!.image;
-    expect(image).toMatch(/dapi-segment-.*\.png$/);
-    expect(first.images).toEqual([{ path: image, png: png(8) }]);
-    expect(first.output).toEqual({ ...base, masks: [{ ...row, image }] });
-
-    const again = await present("context", {}, { ...base, masks: [{ ...row, png: png(8) }] });
-    expect(again).toEqual({ output: { ...base, masks: [{ ...row, image }] }, images: [] });
-  });
-
   it("passes other results through untouched", async () => {
     expect(await present("check", { id: "x" }, { stats: {}, issues: [] })).toEqual({ output: { stats: {}, issues: [] }, images: [] });
   });
@@ -194,5 +149,32 @@ describe("present a generation job", () => {
   it("leaves files the renderer saved into the library as they are", async () => {
     const saved = job("j-lib", "succeeded", [{ filename: "a.png", path: "/p/assets/a.png", src: "a.png" }]);
     expect((await present("job", { id: "j-lib" }, saved)).output).toEqual(saved.job);
+  });
+  it("writes a local job's files from their bytes, to the output, once", async () => {
+    const out = join(dir, "masks", "skater.mask");
+    const done = { ...job("local-mask", "succeeded", [{ filename: "Tracking 1.mask", mimeType: "", size: 4, bytes: png(9, 4) }]), saveTo: out };
+    const first = await present("job", { id: "local-mask" }, done);
+    writeFileSync(out, "edited since");
+    const again = await present("job", { id: "local-mask" }, done);
+    const assets = (first.output as { assets: Array<Record<string, unknown>> }).assets;
+    expect(assets).toEqual([{ filename: "Tracking 1.mask", mimeType: "", size: 4, path: out }]);
+    expect(again.output).toEqual(first.output);
+    expect(readFileSync(out, "utf8")).toBe("edited since");
+  });
+
+  it("writes a local job's picture to the temp dir, inline only the first time, and names it in its details", async () => {
+    const details = { frameRate: 30, start: 1, end: 1.033, frames: 1, bbox: null, lost: [] };
+    const preview = { ...job("local-preview", "succeeded", []), image: png(8) };
+    preview.job = { ...preview.job, details } as typeof preview.job;
+    const first = await present("generate", { model: "sam-2.1" }, preview);
+    const image = (first.output as { details: { image: string } }).details.image;
+    expect(image).toMatch(/dapi-local-preview\.png$/);
+    expect(first.output).toEqual({ ...preview.job, details: { ...details, image } });
+    expect(first.images).toEqual([{ path: image, png: png(8) }]);
+    expect(readFileSync(image)).toEqual(Buffer.from(png(8)));
+
+    const again = await present("job", { id: "local-preview" }, preview);
+    expect(again).toEqual({ output: first.output, images: [] });
+    rmSync(image, { force: true });
   });
 });

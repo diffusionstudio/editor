@@ -25,16 +25,26 @@ export type { ToolJsonSchemas } from "./json-schema";
 export { DAPI_WIRE } from "./ipc";
 export type { DapiCall, DapiCancel, DapiReply } from "./ipc";
 export { FRAME_CAP } from "./tools/media-grab";
-export { SEGMENT_MODELS, WEAK_IOU } from "./tools/media-segment";
 export { ISSUE_LOG_TAIL } from "./tools/report";
 export { LOG_TAIL, LOG_MESSAGE_MAX } from "./tools/logs";
 export { FONT_LIMIT } from "./tools/fonts";
 export { generatedPath } from "./tools/generate";
+export {
+  LOCAL_JOB_PREFIX,
+  LOCAL_MODELS,
+  LOCAL_MODEL_IDS,
+  SAM_SIZES,
+  WEAK_IOU,
+  isLocalJobId,
+  isLocalModel,
+  samDetails,
+  samRequest,
+} from "./local";
+export type { LocalModelId, LocalRequest, SamDetails, SamRequest } from "./local";
 
 // Named request and result types, for handlers that spell out their
 // signature. Each is the parsed (output) side of the tool's schema.
 import type { ImageRef as ImageRefSchema, LogEntry as LogEntrySchema, LogLevel as LogLevelSchema, TimecodedImage as TimecodedImageSchema } from "./schemas";
-import type { MaskRow as MaskRowType } from "./tools/context";
 import type { CheckIssue as CheckIssueSchema, CheckIssueCode as CheckIssueCodeSchema } from "./tools/check";
 import type { ExportFormat as ExportFormatSchema, ExportSettings as ExportSettingsSchema } from "./tools/export";
 import type { FrameQuality as FrameQualitySchema } from "./tools/media-grab";
@@ -46,7 +56,6 @@ export type LogLevel = z.output<typeof LogLevelSchema>;
 export type LogEntry = z.output<typeof LogEntrySchema>;
 export type TimecodedImage = z.output<typeof TimecodedImageSchema>;
 export type ImageRef = z.output<typeof ImageRefSchema>;
-export type MaskRow = MaskRowType;
 export type CheckIssueCode = z.output<typeof CheckIssueCodeSchema>;
 export type CheckIssue = z.output<typeof CheckIssueSchema>;
 export type ExportFormat = z.output<typeof ExportFormatSchema>;
@@ -79,8 +88,6 @@ export type MediaWaveformRequest = ToolArgs<"media_waveform">;
 export type MediaWaveformResult = ToolResult<"media_waveform">;
 export type MediaListenRequest = ToolArgs<"media_listen">;
 export type MediaListenResult = ToolResult<"media_listen">;
-export type MediaSegmentRequest = ToolArgs<"media_segment">;
-export type MediaSegmentResult = ToolResult<"media_segment">;
 export type GenerateRequest = ToolArgs<"generate">;
 export type GenerationResult = ToolResult<"generate">;
 export type GenerationJob = ToolOutput<"generate">;

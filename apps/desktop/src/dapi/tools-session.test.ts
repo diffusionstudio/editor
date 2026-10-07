@@ -9,7 +9,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { JSON_SCHEMA_DIALECT, tools } from "@diffusionstudio/dapi";
 import { serveCatalog } from "./tools-session";
 
-const CONTEXT = { rootDir: null, projectDir: null, currentTime: null, fontFamilies: [], masks: [] };
+const CONTEXT = { rootDir: null, projectDir: null, currentTime: null, fontFamilies: [] };
 
 let client: Client;
 const calls: Array<{ name: string; args: unknown }> = [];

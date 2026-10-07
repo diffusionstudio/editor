@@ -43,7 +43,6 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 | [`media_filmstrip`](./media/filmstrip.md) | `diffusion media filmstrip` | Filmstrip preview |
 | [`media_waveform`](./media/waveform.md) | `diffusion media waveform` | Waveform preview |
 | [`media_listen`](./media/listen.md) | `diffusion media listen` | Listen to audio |
-| [`media_segment`](./media/segment.md) | `diffusion media segment` | Segment object |
 | [`generate`](./generate.md) | `diffusion generate` | Generate media |
 | [`job`](./job.md) | `diffusion job` | Generation job |
 | [`logs`](./logs.md) | `diffusion logs` | App logs |
@@ -56,8 +55,7 @@ How the surface is divided:
 
 - **The project loop.** [`open`](./open.md) a folder, edit its JSX, [`context`](./context.md) for what the source cannot say, [`capture`](./capture.md) and [`check`](./check.md) to verify, [`export`](./export.md) when asked.
 - **Media inspection** (`media_*`): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
-- **Masks.** [`media_segment`](./media/segment.md) segments and tracks an object in footage and writes the mask file a `<mask src>` names.
-- **Generation.** [`generate`](./generate.md) runs a model of the Diffusion Studio API (images, video, music, speech, and tools such as upscaling) on the account's credits; poll [`job`](./job.md) until it has ended, and its files are saved into the library or a directory. The models and their fields are in [models.md](../models.md).
+- **Generation.** [`generate`](./generate.md) runs a model of the Diffusion Studio API (images, video, music, speech, and tools such as upscaling) on the account's credits, or a model on this machine for free — [`sam-2.1`](./media/segment.md) segments and tracks an object in footage, making the mask file a `<mask src>` names; poll [`job`](./job.md) until it has ended, and its files are saved into the library or a directory. The models and their fields are in [models.md](../models.md).
 - **What a declaration may name.** [`fonts`](./fonts.md).
 - **The app and the machine.** [`logs`](./logs.md), [`screenshot`](./screenshot.md), [`window`](./window.md), [`report`](./report.md).
 

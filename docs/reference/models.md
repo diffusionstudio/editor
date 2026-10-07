@@ -1,6 +1,6 @@
 # Models
 
-Every model [`generate`](./tools/generate.md) runs, and the fields each takes. A request is `model` plus these fields; the API validates it and answers a field it cannot take with what to fix. Models of a kind share one set of fields (every image model takes `prompt`, `images`, `aspectRatio`, …), and each model narrows them: the values it offers are in its row. Leave a field out for the model's default. Files are `{ "path": … }` (see [generate](./tools/generate.md#files)).
+Every model [`generate`](./tools/generate.md) runs, and the fields each takes. A request is `model` plus these fields; the API validates it and answers a field it cannot take with what to fix ([local models](#local) are checked by the app the same way). Models of a kind share one set of fields (every image model takes `prompt`, `images`, `aspectRatio`, …), and each model narrows them: the values it offers are in its row. Leave a field out for the model's default. Files are `{ "path": … }` (see [generate](./tools/generate.md#files)).
 
 | Kind | Models | Makes |
 | --- | --- | --- |
@@ -9,6 +9,7 @@ Every model [`generate`](./tools/generate.md) runs, and the fields each takes. A
 | [Audio](#audio) | `elevenlabs-music`, `elevenlabs-sfx` | music, sound effects |
 | [Voice](#voice) | `elevenlabs-v3`, `gemini-3.8-flash-tts` | speech |
 | [Tools](#tools) | `remove-background`, `upscale-image`, `upscale-video`, `transcribe`, `analyze` | one file in, one file out |
+| [Local](#local) | `sam-2.1` | runs on this machine, free: an object's mask, tracked through footage |
 
 ## Image
 
@@ -93,3 +94,11 @@ Each takes one file and returns one.
 | `upscale-video` | `video`: `{ path }`, required | an MP4 of the video upscaled to 2K at 30 fps |
 | `transcribe` | `audio`: `{ path }` (audio or video) or `{ scene }` (the scene's mix, see [Scenes](./tools/generate.md#scenes)), required; `languageCode`: e.g. `en`, `en_us`, `de` (detected when left out) | `transcript.json`: `[{ text, speaker?, words: [{ text, start, end }] }]`, times in seconds, speakers labelled `A`, `B`, … when told apart |
 | `analyze` | `media`: `{ path }`, required (image, video or audio); `prompt`: what to look for, up to 10,000 characters (a general description when left out) | the analysis, as a file |
+
+## Local
+
+These run in the app, on this machine's GPU: no account, no credits. A job is shaped like the API's and polled the same way with [`job`](./tools/job.md), with two fields of its own — `progress` (0..1 through its current `phase`) and `details` (what the model found) — and lasts only as long as the app: a job id is gone once the app restarts. The first use of a model downloads it.
+
+| Model | | Makes | Fields |
+| --- | --- | --- | --- |
+| `sam-2.1` | SAM 2.1 — segments an object in a video and tracks it through the footage; `size` tiny (default), small, base-plus or large | a mask file (`.mask`) for a [`<mask src>`](./jsx/styles.md#mask) | [segment.md](./tools/media/segment.md) |

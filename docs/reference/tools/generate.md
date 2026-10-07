@@ -1,6 +1,6 @@
 # generate
 
-Start a job on a generative model of the Diffusion Studio API — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis — and return the job at once, with its estimated run time and the credits it costs. Poll [`job`](./job.md) with its id until it has ended; the files it made are then saved and their paths returned. Generating needs a signed-in account and spends its credits.
+Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking ([`sam-2.1`](./media/segment.md)) on this machine — and return the job at once, with its estimated run time and the credits it costs. Poll [`job`](./job.md) with its id until it has ended; the files it made are then saved and their paths returned. API models need a signed-in account and spend its credits; [local models](../models.md#local) run on the GPU, free, and need no account.
 
 | | |
 | --- | --- |
@@ -10,7 +10,7 @@ Start a job on a generative model of the Diffusion Studio API — images, video,
 
 ## Input
 
-The input is the API's request — `model` plus that model's fields — with two fields of the tool's own. Every model and the fields it takes are listed in [models.md](../models.md).
+The input is the model's request — `model` plus that model's fields — with two fields of the tool's own. Every model and the fields it takes are listed in [models.md](../models.md).
 
 | Field | Type | CLI | Description |
 | --- | --- | --- | --- |
@@ -19,11 +19,11 @@ The input is the API's request — `model` plus that model's fields — with two
 | `output` | `string` | `-o, --output <path>` | file the result is saved as: a library path like `b-roll/fox.png` (needs an open project) or an absolute path; its extension is corrected to what the model made, several files are numbered (`fox-1.png`, `fox-2.png`), and a file already there is replaced (default: the library's root under the API's name with a project open, its files under `assets/`; else a fresh directory under the system temp dir). On the CLI a path starting with `.` resolves against the working directory. |
 | `maxCredits` | `number` | `--max-credits <n>` | refuse to start the job if it costs more credits than this |
 
-The model's fields are not checked here: they go to the API as given, and the API answers a request it cannot run with what to fix (`invalid-input`, e.g. an aspect ratio the model does not offer). Each model narrows its kind's bounds, so read its entry in [models.md](../models.md) rather than guessing.
+An API model's fields are not checked here: they go to the API as given, and the API answers a request it cannot run with what to fix (`invalid-input`, e.g. an aspect ratio the model does not offer). Each model narrows its kind's bounds, so read its entry in [models.md](../models.md) rather than guessing. A [local model](../models.md#local)'s fields are checked by the app, the same way, before its job starts.
 
 ## Files
 
-Where a field takes a file (`images`, `startFrame`, `endFrame`, `image`, `video`, `audio`, `media`), put a `{ "path": … }` object: an absolute path or URL (with or without an open project), or a library path like `b-roll/clip.mp4` (needs an open project). The file is uploaded before the job starts — once per file, however many jobs name it — and the reference becomes the API's own. The API's references (`{ "kind": "asset", "id" }`, `{ "kind": "url", "url" }`) pass through unchanged. On the CLI a `path` that exists relative to the working directory is sent as its absolute path.
+Where a field takes a file (`images`, `startFrame`, `endFrame`, `image`, `video`, `audio`, `media`), put a `{ "path": … }` object: an absolute path or URL (with or without an open project), or a library path like `b-roll/clip.mp4` (needs an open project). The file is uploaded before the job starts — once per file, however many jobs name it — and the reference becomes the API's own; a local model reads it in place. The API's references (`{ "kind": "asset", "id" }`, `{ "kind": "url", "url" }`) pass through unchanged. On the CLI a `path` that exists relative to the working directory is sent as its absolute path.
 
 ```json
 {
@@ -51,13 +51,13 @@ diffusion generate remove-background '{"image":{"path":"./fox.png"}}'
 - **Several files are numbered.** A job that makes more than one (an image `count` above 1) saves `fox-1.png`, `fox-2.png`, …; a single file is saved at the path itself.
 - **A library path** (`b-roll/fox.png`, needs an open project) puts the file into the project's library, under `assets/`, named by `src` like any other asset, and notes the job it came from, as the app's own generations do. A file the project made already at that path is replaced, and everything naming it shows the new one; a file linked from elsewhere on disk is never written over, and the result gets a free name next to it instead.
 - **An absolute path** saves the file there, replacing a file already there.
-- **Left out**, the file goes into the open project's library at its root under the API's name (`red-fox-at-dawn.png`, numbered if taken); with no project open, into a fresh directory of the job's own under the system temp dir, as [`media_transcribe`](./media/transcribe.md) and the other inspection tools do.
+- **Left out**, the file goes into the open project's library at its root under the API's name (`red-fox-at-dawn.png`, numbered if taken), or where a local model files its own (`sam-2.1`: `masks/<video>/Tracking <n>.mask`); with no project open, into a fresh directory of the job's own under the system temp dir, as [`media_transcribe`](./media/transcribe.md) and the other inspection tools do.
 
-The files are saved by the first [`job`](./job.md) call that sees the job succeed; later calls return the same paths. A file saved into the library records the job in `assets.yml` (its `job` field), so what made it can be looked up later.
+The files are saved by the first [`job`](./job.md) call that sees the job succeed (a local model's library files as soon as it does); later calls return the same paths. A file an API model made that went into the library records the job in `assets.yml` (its `job` field), so what made it can be looked up later.
 
 ## Output
 
-The API's job, as it is when the call returns — almost always `queued` — and the same shape [`job`](./job.md) returns. Every field is the API's, passed through unchanged, except that each file in `assets` has its download `url` replaced by where it was saved. The fields to act on:
+The API's job, as it is when the call returns — almost always `queued`; a local model's quick work, such as a `sam-2.1` preview, already ended — and the same shape [`job`](./job.md) returns. Every field is the API's, passed through unchanged, except that each file in `assets` has its download `url` replaced by where it was saved. The fields to act on:
 
 ```ts
 {
@@ -67,6 +67,8 @@ The API's job, as it is when the call returns — almost always `queued` — and
   etaRemainingSeconds: number | null; // estimated seconds left while running
   credits: number;                    // charged; refunded if the job fails or is canceled
   error: { code: string; message: string } | null;  // why it failed or was canceled
+  progress?: number | null;           // a local model's job: 0..1 through its current `phase`
+  details?: object;                   // a local model's job: what it found, model by model (see models.md)
   assets: Array<{                     // the files it made, empty until it succeeds
     path: string;                     // absolute path of the saved file
     src?: string;                     // its library path, for `src`, when it went into the library
@@ -77,8 +79,8 @@ The API's job, as it is when the call returns — almost always `queued` — and
 
 ## Errors
 
-- `sign-in-required` — the app is not signed in to a Diffusion Studio account.
-- `invalid-input` — the API rejected the request; the message names the field and what it takes.
+- `sign-in-required` — an API model, and the app is not signed in to a Diffusion Studio account.
+- `invalid-input` — the API (or, for a local model, the app) rejected the request; the message names the field and what it takes.
 - `no-project` — `output` or a file is a library path and no project is open.
 - `not-found` — a `{ path }` names no file.
 - Not enough credits for the job (or more than `maxCredits`): the message says so.

@@ -50,10 +50,6 @@ export async function present(name: ToolName, args: unknown, result: unknown): P
       return presentScreenshot(result as ToolResult<"screenshot">, (args as ToolArgs<"screenshot">).output);
     case "media_transcribe":
       return presentTranscript(result as ToolResult<"media_transcribe">, (args as ToolArgs<"media_transcribe">).output);
-    case "media_segment":
-      return presentSegment(result as ToolResult<"media_segment">, (args as ToolArgs<"media_segment">).output);
-    case "context":
-      return presentContext(result as ToolResult<"context">);
     case "generate":
     case "job":
       return presentJob(result as GenerationResult);
@@ -123,63 +119,37 @@ async function presentTranscript(transcript: ToolResult<"media_transcribe">, out
   return { output: presented, images: [] };
 }
 
-/**
- * The picture always goes to the temp dir; `output` is where the mask goes.
- * A mask the renderer put into the project's library comes with its path; one
- * that comes as bytes is written here, to `output` or the temp dir. A track
- * still running in the background has no picture yet (see `presentContext`).
- */
-async function presentSegment(result: ToolResult<"media_segment">, output: string | undefined): Promise<Presented> {
-  const { png, mask, ...found } = result;
-  let path = found.path;
-  if (mask) {
-    path = await singleFilePath(output, `dapi-mask-${randomUUID()}.mask`);
-    await writeFile(path, mask);
-  }
-  const images: WrittenImage[] = [];
-  let image: string | undefined;
-  if (png) {
-    image = join(tempDir(), `dapi-segment-${randomUUID()}.png`);
-    await writeFile(image, png);
-    images.push({ path: image, png });
-  }
-  const presented: ToolOutput<"media_segment"> = { ...found, ...(image === undefined ? {} : { image }), ...(path === undefined ? {} : { path }) };
-  return { output: presented, images };
-}
-
-/** Contact sheets of background tracks already written, by track id: each is written, and shown inline, once. */
-const trackSheets = new Map<string, string>();
-
-/** A done track's contact sheet goes to the temp dir the first poll it shows up in, and arrives inline with that poll. */
-async function presentContext(result: ToolResult<"context">): Promise<Presented> {
-  const images: WrittenImage[] = [];
-  const masks: ToolOutput<"context">["masks"] = [];
-  for (const { png, ...row } of result.masks) {
-    let image = trackSheets.get(row.id);
-    if (png && image === undefined) {
-      image = join(tempDir(), `dapi-segment-${randomUUID()}.png`);
-      await writeFile(image, png);
-      trackSheets.set(row.id, image);
-      images.push({ path: image, png });
-    }
-    masks.push(image === undefined ? row : { ...row, image });
-  }
-  return { output: { ...result, masks }, images };
-}
-
-/** Files of succeeded jobs saved to disk, by job id: the first poll that sees a job succeed downloads them, the rest reuse the paths. */
+/** Files of succeeded jobs saved to disk, by job id: the first poll that sees a job succeed saves them, the rest reuse the paths. */
 const jobFiles = new Map<string, Promise<string[]>>();
 
+/** Pictures of local jobs, by job id: each is written to the temp dir, and shown inline, the first poll it comes with. */
+const jobImages = new Map<string, string>();
+
 /**
- * A job's files bound for disk are downloaded once it has succeeded, to
- * `saveTo` (see `generatedPath`; a file already there is written over, as
- * the other tools' outputs are) or under the API's names into a directory of
- * the job's own under the temp dir, and their `url` is swapped for the
+ * A job's files bound for disk are saved once it has succeeded — downloaded
+ * from their `url`, or written from the `bytes` a local model made — to
+ * `saveTo` (see `generatedPath`; a file already there is written over, as the
+ * other tools' outputs are) or under their own names into a directory of the
+ * job's own under the temp dir, and their `url` or `bytes` is swapped for the
  * `path`. Files the renderer saved into the library arrive with their paths.
+ * A local job's picture goes to the temp dir, named in `details.image`.
  */
-async function presentJob({ job, saveTo }: GenerationResult): Promise<Presented> {
-  const pending = job.assets.filter((file) => file.url !== undefined);
-  if (job.status !== "succeeded" || pending.length === 0) return { output: job, images: [] };
+async function presentJob({ job, saveTo, image }: GenerationResult): Promise<Presented> {
+  const images: WrittenImage[] = [];
+  let shown = job;
+  if (image) {
+    let path = jobImages.get(job.id);
+    if (path === undefined) {
+      path = join(tempDir(), `dapi-${job.id}.png`);
+      await writeFile(path, image);
+      jobImages.set(job.id, path);
+      images.push({ path, png: image });
+    }
+    shown = { ...job, details: { ...job.details, image: path } };
+  }
+
+  const pending = job.assets.filter((file) => file.url !== undefined || file.bytes !== undefined);
+  if (job.status !== "succeeded" || pending.length === 0) return { output: shown, images };
 
   let paths = jobFiles.get(job.id);
   if (!paths) {
@@ -187,23 +157,27 @@ async function presentJob({ job, saveTo }: GenerationResult): Promise<Presented>
     const targets = job.assets.map((file, i) =>
       saveTo === null ? join(temp, basename(file.filename)) : generatedPath(saveTo, file.filename, i, job.assets.length),
     );
-    paths = downloadAll(job.assets, targets);
+    paths = saveAll(job.assets, targets);
     paths.catch(() => jobFiles.delete(job.id));
     jobFiles.set(job.id, paths);
   }
   const written = await paths;
-  const assets = job.assets.map(({ url: _url, ...file }, i) => ({ ...file, path: written[i] }));
-  return { output: { ...job, assets }, images: [] };
+  const assets = job.assets.map(({ url: _url, bytes: _bytes, ...file }, i) => ({ ...file, path: written[i] }));
+  return { output: { ...shown, assets }, images };
 }
 
-async function downloadAll(files: GenerationResult["job"]["assets"], targets: string[]): Promise<string[]> {
+async function saveAll(files: GenerationResult["job"]["assets"], targets: string[]): Promise<string[]> {
   for (const [i, file] of files.entries()) {
-    const response = await fetch(file.url!);
-    if (!response.ok) throw new Error(`Could not download ${file.filename} (${response.status})`);
     await mkdir(dirname(targets[i]!), { recursive: true });
-    await writeFile(targets[i]!, new Uint8Array(await response.arrayBuffer()));
+    await writeFile(targets[i]!, file.bytes ?? (await download(file.url!, file.filename)));
   }
   return targets;
+}
+
+async function download(url: string, filename: string): Promise<Uint8Array> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not download ${filename} (${response.status})`);
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 function screenshotFilename(taken: Date, attempt: number): string {

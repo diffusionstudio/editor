@@ -4,8 +4,7 @@
 
 
 import { getAssetFile, getLibrary } from "@diffusionstudio/runtime";
-import { isAbsoluteSource, isProjectSource, isUrlSource } from "@diffusionstudio/assets";
-import { DapiError, generatedPath } from "@diffusionstudio/dapi";
+import { DapiError, generatedPath, isLocalJobId, isLocalModel } from "@diffusionstudio/dapi";
 import { TRPCClientError } from "@trpc/client";
 
 import { api } from "@/lib/api";
@@ -13,15 +12,26 @@ import { supabase } from "@/lib/supabase";
 import { uploadFile } from "@/lib/uploads";
 import { encodeSceneAudio, hasAudio } from "@/engine/scene-audio";
 import { resolveAsset } from "../lib/assets";
+import { destination, storeAt } from "../lib/outputs";
 import { requireScene } from "../lib/scene";
+import { localJob, startLocalJob } from "../local/jobs";
 
 import type { Asset, AssetLibrary } from "@diffusionstudio/assets";
 import type { AssetRef, GenerateRequestInput, Job } from "@diffusionstudio/api-contract";
 import type { DapiErrorCode, GenerationResult } from "@diffusionstudio/dapi";
 import type { ToolContext, ToolHandler } from "../handler";
-import type { EditorSession } from "../session";
+import type { Destination } from "../lib/outputs";
 
-export const generate: ToolHandler<"generate"> = async ({ output, maxCredits, ...request }, ctx) => {
+/**
+ * Starts a job: on the API, or, for a model that runs on this machine, in the
+ * app (see ../local). Both answer with the API's `Job`, and `job` polls both.
+ */
+export const generate: ToolHandler<"generate"> = async (args, ctx) => {
+  if (isLocalModel(args.model)) {
+    return startLocalJob(args, destination(args.output, ctx.session()), ctx);
+  }
+
+  const { output, maxCredits, ...request } = args;
   await requireSignIn();
   const target = destination(output, ctx.session());
 
@@ -45,6 +55,10 @@ export const generate: ToolHandler<"generate"> = async ({ output, maxCredits, ..
 };
 
 export const job: ToolHandler<"job"> = async ({ id, cancel }, ctx) => {
+  if (isLocalJobId(id)) {
+    return localJob(id, cancel ?? false);
+  }
+
   await requireSignIn();
 
   try {
@@ -130,30 +144,8 @@ async function uploadScene(id: string, field: string | undefined, ctx: ToolConte
 
 // ── Where the files go ───────────────────────────────────────
 
-/**
- * Into the library, at `path` (see `generatedPath`) or at its root under the
- * API's names when that is null; or to a path on disk the server writes
- * (null: a fresh directory under the temp dir). Settled when the job starts,
- * so a bad `output` fails before any credits are spent.
- */
-type Destination = { kind: "library"; path: string | null } | { kind: "disk"; path: string | null };
-
 /** Where each job started here saves its files; a job started elsewhere (the prompt box, before a reload) gets the default. */
 const destinations = new Map<string, Destination>();
-
-function destination(output: string | undefined, session: EditorSession | null): Destination {
-  if (output === undefined) return { kind: session ? "library" : "disk", path: null };
-  if (isUrlSource(output)) throw new DapiError("invalid-input", `The result cannot be saved to a URL (${output}).`);
-  if (/[\\/]$/.test(output)) throw new DapiError("invalid-input", `The output is the file to save, not a folder (got "${output}").`);
-  if (isAbsoluteSource(output)) return { kind: "disk", path: output };
-  if (!session) {
-    throw new DapiError(
-      "no-project",
-      `"${output}" is a library path, which needs an open project — open one, or pass an absolute path to save the result elsewhere.`,
-    );
-  }
-  return { kind: "library", path: output.replace(/^\.\//, "") };
-}
 
 /** Library saves in flight or done, by job id: the first poll that sees a job succeed saves it, the rest wait for that. */
 const saves = new Map<string, Promise<Asset[]>>();
@@ -208,22 +200,6 @@ async function saveToLibrary(library: AssetLibrary, job: Job, output: string | n
     assets.push(library.update(asset, { job: job.id }));
   }
   return assets;
-}
-
-/**
- * Puts `blob` into the library at `path`. A file the project made already
- * there is written over and taken in again at the same path, so everything
- * naming it shows the new one; a linked file of the user's is never written
- * over, and the new one gets a free name next to it instead.
- */
-async function storeAt(library: AssetLibrary, path: string, blob: Blob): Promise<Asset> {
-  const existing = library.get(path);
-  if (existing && isProjectSource(existing.source)) {
-    await library.fs.write(existing.source, blob);
-    return library.relink(existing, existing.source);
-  }
-  const slash = path.lastIndexOf("/");
-  return library.store(blob, { folder: slash < 0 ? "" : path.slice(0, slash), name: path.slice(slash + 1) });
 }
 
 // ── The API ──────────────────────────────────────────────────

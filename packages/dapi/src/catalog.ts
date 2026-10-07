@@ -18,7 +18,6 @@ import { mediaTranscribe } from "./tools/media-transcribe";
 import { mediaFilmstrip } from "./tools/media-filmstrip";
 import { mediaWaveform } from "./tools/media-waveform";
 import { mediaListen } from "./tools/media-listen";
-import { mediaSegment } from "./tools/media-segment";
 import { generate, job } from "./tools/generate";
 import { fonts } from "./tools/fonts";
 import { report } from "./tools/report";
@@ -41,7 +40,6 @@ export const catalog = [
   mediaFilmstrip,
   mediaWaveform,
   mediaListen,
-  mediaSegment,
   generate,
   job,
   logs,
