@@ -32,7 +32,7 @@ SAM 2.1 segments an object in a video and tracks it through the footage, making 
 
 ## Prompting
 
-A prompt needs at least one point on the object or a box around it; `exclude` points only take things away. Coordinates are fractions of the frame as it displays (rotation applied, x right, y down), the same space [`media_grab`](./grab.md) frames are drawn in. A box is usually the most reliable first prompt: draw it around the object as seen in a grabbed frame. When the mask spills onto something next to the object, add an `exclude` point on that thing; when it misses part of the object, add a point on the missing part.
+A prompt needs at least one point on the object or a box around it; `exclude` points only take things away. Coordinates are fractions of the frame as it displays (rotation applied, x right, y down), the same space [`grab`](./grab.md) frames are drawn in. A box is usually the most reliable first prompt: draw it around the object as seen in a grabbed frame. When the mask spills onto something next to the object, add an `exclude` point on that thing; when it misses part of the object, add a point on the missing part.
 
 With `preview: true`, `generate` segments that frame alone and answers with the job already succeeded: no file, and as `details.image` the frame with everything outside the mask washed magenta, its edge outlined, the prompts drawn (`+n` on the object, `−n` off it, the box dashed) and a 0.1 grid to read coordinates off. The first preview of a frame encodes it, which takes a moment; further previews on the same frame, file and size run the mask decoder alone and return at once. A preview makes no mask, so it takes neither a span nor an `output`.
 
@@ -76,7 +76,7 @@ details: {
 }
 ```
 
-`lost` covers occlusion and the object leaving the frame as well as a track that slipped; look at those moments with [`media_grab`](./grab.md) before trusting or re-prompting them.
+`lost` covers occlusion and the object leaving the frame as well as a track that slipped; look at those moments with [`grab`](./grab.md) before trusting or re-prompting them.
 
 ## Errors
 

@@ -26,7 +26,7 @@ const FRAME_QUALITY_BUDGETS: Record<FrameQuality, number> = {
 // Default cap on frames returned by auto selection when `count` is not given.
 const AUTO_MAX_FRAMES = 30;
 
-export const mediaGrab: ToolHandler<"media_grab"> = async (args, ctx) => {
+export const grab: ToolHandler<"grab"> = async (args, ctx) => {
   const { times, count, start, end, quality, auto, separate, perSheet } = args;
   const asset = await resolveAsset(ctx, args.path);
   requireAssetType(asset, ["VIDEO"], "a video");

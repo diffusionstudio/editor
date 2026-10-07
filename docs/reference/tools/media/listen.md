@@ -1,11 +1,11 @@
-# media_listen
+# listen
 
 Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; of a video only the audio track is analyzed.
 
 | | |
 | --- | --- |
-| MCP tool | `media_listen` |
-| CLI | `diffusion media listen <path> [options]` |
+| MCP tool | `listen` |
+| CLI | `diffusion listen <path> [options]` |
 
 ## Input
 

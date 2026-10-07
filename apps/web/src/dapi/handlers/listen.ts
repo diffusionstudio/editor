@@ -13,7 +13,7 @@ import { apiError, requireSignIn } from "../lib/remote";
 import type { ToolHandler } from "../handler";
 
 /** The asset's audio, or a window of it, analyzed on the API; times in the answer count from `start`, echoed with `end` when a window was given. */
-export const mediaListen: ToolHandler<"media_listen"> = async ({ path, prompt, start, end }, ctx) => {
+export const listen: ToolHandler<"listen"> = async ({ path, prompt, start, end }, ctx) => {
   const asset = await resolveAsset(ctx, path);
   requireAssetType(asset, ["AUDIO", "VIDEO"], "a video or audio asset");
 

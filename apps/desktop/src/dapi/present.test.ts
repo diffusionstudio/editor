@@ -25,7 +25,7 @@ describe("present", () => {
   });
 
   it("picks a fresh temp directory when none is given", async () => {
-    const presented = await present("media_grab", { path: "/c.mp4" }, [{ timecode: "0f", png: png(3) }]);
+    const presented = await present("grab", { path: "/c.mp4" }, [{ timecode: "0f", png: png(3) }]);
     const { path } = (presented.output as { images: Array<{ path: string }> }).images[0]!;
     expect(path).toMatch(/dapi-grab-.*[\\/]0f\.png$/);
     rmSync(join(path, ".."), { recursive: true, force: true });
@@ -33,20 +33,20 @@ describe("present", () => {
 
   it("keeps a preview's other fields next to the path", async () => {
     const file = join(dir, "wave.png");
-    const presented = await present("media_waveform", { path: "/c.mp4", output: file }, { png: png(4), silences: [{ start: 0, end: 1 }] });
+    const presented = await present("waveform", { path: "/c.mp4", output: file }, { png: png(4), silences: [{ start: 0, end: 1 }] });
     expect(presented.output).toEqual({ path: file, silences: [{ start: 0, end: 1 }] });
   });
 
   it("writes a preview or transcript into an output that names an existing directory", async () => {
     const out = join(dir, "into");
     mkdirSync(out, { recursive: true });
-    const preview = await present("media_waveform", { path: "/c.mp4", output: out }, { png: png(7), silences: [] });
+    const preview = await present("waveform", { path: "/c.mp4", output: out }, { png: png(7), silences: [] });
     const previewPath = (preview.output as { path: string }).path;
     expect(dirname(previewPath)).toBe(out);
     expect(basename(previewPath)).toMatch(/^dapi-waveform-.*\.png$/);
     expect(readFileSync(previewPath)).toEqual(Buffer.from(png(7)));
 
-    const transcript = await present("media_transcribe", { path: "/c.mp4", output: out }, { segments: [] });
+    const transcript = await present("transcribe", { path: "/c.mp4", output: out }, { segments: [] });
     const transcriptPath = (transcript.output as { path: string }).path;
     expect(transcriptPath).toMatch(/dapi-transcript-.*\.json$/);
     expect(JSON.parse(readFileSync(transcriptPath, "utf8"))).toEqual({ segments: [] });
@@ -64,7 +64,7 @@ describe("present", () => {
   it("writes a transcript to a file, unchanged, and returns its path and size", async () => {
     const file = join(dir, "talk.json");
     const segments = [{ text: "Hi there", words: [{ text: "Hi", start: 0, end: 0.2 }, { text: "there", start: 0.3, end: 0.6 }] }];
-    const presented = await present("media_transcribe", { path: "/c.mp4", output: file }, { segments });
+    const presented = await present("transcribe", { path: "/c.mp4", output: file }, { segments });
     expect(presented).toEqual({ output: { path: file, segments: 1, words: 2 }, images: [] });
     expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ segments });
   });

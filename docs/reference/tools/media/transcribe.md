@@ -1,11 +1,11 @@
-# media_transcribe
+# transcribe
 
 Transcribe the speech in a video or audio file and write the timed transcript to a JSON file, with word-level start/end times in seconds and speaker labels; returns the file's path and its segment and word counts. Commonly useful for footage with speakers (talking head, interview), where the word times let you cut on a line. A transcript marks only speech; the gaps are not necessarily silent (music, score, applause).
 
 | | |
 | --- | --- |
-| MCP tool | `media_transcribe` |
-| CLI | `diffusion media transcribe <path>` |
+| MCP tool | `transcribe` |
+| CLI | `diffusion transcribe <path>` |
 
 ## Input
 

@@ -8,7 +8,7 @@ import { dataUrlToBytes } from "../lib/png";
 
 import type { ToolHandler } from "../handler";
 
-export const mediaFilmstrip: ToolHandler<"media_filmstrip"> = async ({ path, start, end, scale }, ctx) => {
+export const filmstrip: ToolHandler<"filmstrip"> = async ({ path, start, end, scale }, ctx) => {
   const asset = await resolveAsset(ctx, path);
   const { dataUrl, ...rest } = await filmstripAsset(asset, { start, end, scale });
   return { png: dataUrlToBytes(dataUrl), ...rest };

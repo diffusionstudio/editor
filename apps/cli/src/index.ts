@@ -107,7 +107,7 @@ Use for any media analysis or video editing task. No ffmpeg needed.`)
 program
   .command("open")
   .description(
-    `Launch ${APP_NAME} (or surface the running instance) and, given a path, open that folder as a project, creating the project files if the folder is not one yet. Prints the project's id, display name, and folder. Run this once before commands that need an open project (capture, check, export, context, and library paths in media commands).`,
+    `Launch ${APP_NAME} (or surface the running instance) and, given a path, open that folder as a project, creating the project files if the folder is not one yet. Prints the project's id, display name, and folder. Run this once before commands that need an open project.`,
   )
   .argument("[path]", `${field("open", "dir")} (default: none — just launch the app)`)
   .option("-b, --background", "launch or keep the app in the background, without raising a window")
@@ -161,81 +161,74 @@ program
     if (output.issues.some((issue) => issue.severity === "error")) process.exitCode = 1;
   });
 
-const media = program
-  .command("media")
-  .alias("m")
-  .description(
-    "Inspect a media file by path, without adding it to the project: probe metadata, transcribe speech, grab frames, render visual previews, and analyze with multimodal models. Local files work with or without an open project; library paths need one.",
-  );
-
-media
+program
   .command("probe")
-  .description(describe("media_probe"))
-  .argument("<path>", field("media_probe", "path"))
-  .action((ref: string) => run("media_probe", { path: assetPath(ref) }));
+  .description(describe("probe"))
+  .argument("<path>", field("probe", "path"))
+  .action((ref: string) => run("probe", { path: assetPath(ref) }));
 
-media
+program
   .command("transcribe")
-  .description(describe("media_transcribe"))
-  .argument("<path>", field("media_transcribe", "path"))
-  .option("-o, --output <path>", field("media_transcribe", "output"))
-  .action((ref: string, opts: Omit<ToolInput<"media_transcribe">, "path">) =>
-    run("media_transcribe", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
+  .description(describe("transcribe"))
+  .argument("<path>", field("transcribe", "path"))
+  .option("-o, --output <path>", field("transcribe", "output"))
+  .action((ref: string, opts: Omit<ToolInput<"transcribe">, "path">) =>
+    run("transcribe", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
   );
 
-media
+program
   .command("grab")
   .alias("sample")
-  .description(describe("media_grab"))
-  .argument("<path>", field("media_grab", "path"))
-  .option("-t, --times <time...>", field("media_grab", "times"))
-  .option("-c, --count <n>", field("media_grab", "count"), numeric)
-  .option("-a, --auto", field("media_grab", "auto"))
-  .option("-s, --start <time>", field("media_grab", "start"))
-  .option("-e, --end <time>", field("media_grab", "end"))
-  .option("-q, --quality <preset>", field("media_grab", "quality"))
-  .option("-S, --separate", field("media_grab", "separate"))
-  .option("--per-sheet <n>", field("media_grab", "perSheet"), numeric)
-  .option("--uncapped", field("media_grab", "uncapped"))
-  .option("-o, --output <dir>", field("media_grab", "output"))
-  .action((ref: string, opts: Omit<ToolInput<"media_grab">, "path">) =>
-    run("media_grab", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
+  .description(describe("grab"))
+  .argument("<path>", field("grab", "path"))
+  .option("-t, --times <time...>", field("grab", "times"))
+  .option("-c, --count <n>", field("grab", "count"), numeric)
+  .option("-a, --auto", field("grab", "auto"))
+  .option("-s, --start <time>", field("grab", "start"))
+  .option("-e, --end <time>", field("grab", "end"))
+  .option("-q, --quality <preset>", field("grab", "quality"))
+  .option("-S, --separate", field("grab", "separate"))
+  .option("--per-sheet <n>", field("grab", "perSheet"), numeric)
+  .option("--uncapped", field("grab", "uncapped"))
+  .option("-o, --output <dir>", field("grab", "output"))
+  .action((ref: string, opts: Omit<ToolInput<"grab">, "path">) =>
+    run("grab", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
   );
 
-media
+program
   .command("filmstrip")
   .alias("film")
-  .description(describe("media_filmstrip"))
-  .argument("<path>", field("media_filmstrip", "path"))
-  .option("-s, --start <time>", field("media_filmstrip", "start"))
-  .option("-e, --end <time>", field("media_filmstrip", "end"))
-  .option("-x, --scale <factor>", field("media_filmstrip", "scale"), numeric)
-  .option("-o, --output <path>", field("media_filmstrip", "output"))
-  .action((ref: string, opts: Omit<ToolInput<"media_filmstrip">, "path">) =>
-    run("media_filmstrip", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
+  .description(describe("filmstrip"))
+  .argument("<path>", field("filmstrip", "path"))
+  .option("-s, --start <time>", field("filmstrip", "start"))
+  .option("-e, --end <time>", field("filmstrip", "end"))
+  .option("-x, --scale <factor>", field("filmstrip", "scale"), numeric)
+  .option("-o, --output <path>", field("filmstrip", "output"))
+  .action((ref: string, opts: Omit<ToolInput<"filmstrip">, "path">) =>
+    run("filmstrip", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
   );
 
-media
+program
   .command("waveform")
   .alias("wave")
-  .description(describe("media_waveform"))
-  .argument("<path>", field("media_waveform", "path"))
-  .option("-s, --start <time>", field("media_waveform", "start"))
-  .option("-e, --end <time>", field("media_waveform", "end"))
-  .option("-x, --scale <factor>", field("media_waveform", "scale"), numeric)
-  .option("-o, --output <path>", field("media_waveform", "output"))
-  .action((ref: string, opts: Omit<ToolInput<"media_waveform">, "path">) =>
-    run("media_waveform", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
+  .description(describe("waveform"))
+  .argument("<path>", field("waveform", "path"))
+  .option("-s, --start <time>", field("waveform", "start"))
+  .option("-e, --end <time>", field("waveform", "end"))
+  .option("-x, --scale <factor>", field("waveform", "scale"), numeric)
+  .option("-o, --output <path>", field("waveform", "output"))
+  .action((ref: string, opts: Omit<ToolInput<"waveform">, "path">) =>
+    run("waveform", { path: assetPath(ref), ...opts, output: opts.output && resolve(opts.output) }),
   );
 
-media
+program
   .command("listen")
-  .description(describe("media_listen"))
-  .argument("<path>", field("media_listen", "path"))
-  .option("-p, --prompt <str>", field("media_listen", "prompt"))
-  .option("-s, --start <time>", field("media_listen", "start"))
-  .option("-e, --end <time>", field("media_listen", "end"))
-  .action((ref: string, opts: Omit<ToolInput<"media_listen">, "path">) => run("media_listen", { path: assetPath(ref), ...opts }));
+  .description(describe("listen"))
+  .argument("<path>", field("listen", "path"))
+  .option("-p, --prompt <str>", field("listen", "prompt"))
+  .option("-s, --start <time>", field("listen", "start"))
+  .option("-e, --end <time>", field("listen", "end"))
+  .action((ref: string, opts: Omit<ToolInput<"listen">, "path">) => run("listen", { path: assetPath(ref), ...opts }));
 
 program
   .command("generate")
@@ -326,4 +319,8 @@ program
 // Explicit argv convention: the packaged wrapper runs this bundle on
 // Electron in ELECTRON_RUN_AS_NODE mode, where commander would otherwise
 // detect Electron and drop the script path from argv.
-program.parse(process.argv, { from: "node" });
+// The media commands used to sit under a `media` (`m`) group; drop that word so
+// scripts written against it (older projects' npm scripts) keep working.
+const argv = ["media", "m"].includes(process.argv[2] ?? "") ? process.argv.toSpliced(2, 1) : process.argv;
+
+program.parse(argv, { from: "node" });

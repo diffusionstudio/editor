@@ -16,15 +16,15 @@ yt-dlp -x --audio-format m4a -o podcast.m4a <url>
 
 ## 3. Segment the audio
 
-A three-hour track is too long for one analysis pass, so split it into segments and analyze each. Segments are **windows**, not files: `media_listen` takes the range as `start`/`end`, and the timestamps it returns are relative to `start`. Pick one of three ways to choose the boundaries:
+A three-hour track is too long for one analysis pass, so split it into segments and analyze each. Segments are **windows**, not files: `listen` takes the range as `start`/`end`, and the timestamps it returns are relative to `start`. Pick one of three ways to choose the boundaries:
 
-1. **Waveform.** `media_waveform` renders loudness over the whole track and returns the silent spans as second ranges. Cut segments at those spans — the boundaries land between thoughts instead of inside them.
+1. **Waveform.** `waveform` renders loudness over the whole track and returns the silent spans as second ranges. Cut segments at those spans — the boundaries land between thoughts instead of inside them.
 2. **Naive.** Fixed 15–30 minute segments. Nothing to parse, and good enough because the analysis reports its own timestamps; a moment straddling a boundary is the only loss.
 3. **Source transcript.** Many platforms publish one (YouTube captions, show notes with chapter markers). Parse its timestamps and use chapters or topic shifts as boundaries — the cheapest option when it exists, since it needs no decoding at all.
 
 ## 4. Find the clip-worthy moments
 
-Run `media_listen` on each segment (`start` 15:00, `end` 45:00, and so on) with a prompt that spells out the criteria and demands timestamps:
+Run `listen` on each segment (`start` 15:00, `end` 45:00, and so on) with a prompt that spells out the criteria and demands timestamps:
 
 ```text
 This is a podcast. Find the 3 most clip-worthy self-contained moments in this segment for a vertical social short. Criteria: a complete thought, punchline, or surprising revelation that works with NO prior context; roughly 25-35 seconds long; opens on a strong hook line and lands on a clean button. For each give: exact start and end timestamp (MM:SS, relative to this segment), who is speaking, a one-line summary of what is said, and a hook-strength rating 1-10. Be strict about self-containment.
@@ -36,8 +36,8 @@ Asking for a rating and a one-line summary is what makes the candidates comparab
 
 The analysis gives you seconds; a clip needs the frame. Tighten both ends against the real audio:
 
-- `media_transcribe` writes word-level start/end times to a JSON file (use ffmpeg to shorten); search it for the hook line. Put the in-point on the first word of the hook line and the out-point after the last word of the button.
-- `media_waveform` with `start`/`end` around the cut shows the breaths around those words, so you can open the in-point a beat early and let the out-point land on the silence after the line instead of clipping its tail.
+- `transcribe` writes word-level start/end times to a JSON file (use ffmpeg to shorten); search it for the hook line. Put the in-point on the first word of the hook line and the out-point after the last word of the button.
+- `waveform` with `start`/`end` around the cut shows the breaths around those words, so you can open the in-point a beat early and let the out-point land on the silence after the line instead of clipping its tail.
 
 ## 6. Download the segment and lay it out
 
@@ -48,7 +48,7 @@ yt-dlp -f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b" --merge-output-format m
   --download-sections "*41:08-41:48" -o assets/a-roll/clip-raw.mp4 <url>
 ```
 
-`media_probe` on the download gives the source dimensions (a podcast is almost always 1920×1080) and confirms where the padded range actually starts, since a keyframe-aligned download can begin slightly early.
+`probe` on the download gives the source dimensions (a podcast is almost always 1920×1080) and confirms where the padded range actually starts, since a keyframe-aligned download can begin slightly early.
 
 Give the node the **source's own aspect ratio**, scaled to the scene height, rather than the scene's box: the node is then wider than the scene, and the scene crops it. That geometry is what makes the framing in the next step possible.
 

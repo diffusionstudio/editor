@@ -40,16 +40,16 @@ export async function present(name: ToolName, args: unknown, result: unknown): P
   switch (name) {
     case "capture":
       return presentImages(result as ToolResult<"capture">, (args as ToolArgs<"capture">).output, "capture");
-    case "media_grab":
-      return presentImages(result as ToolResult<"media_grab">, (args as ToolArgs<"media_grab">).output, "grab");
-    case "media_filmstrip":
-      return presentPreview(result as ToolResult<"media_filmstrip">, (args as ToolArgs<"media_filmstrip">).output, "filmstrip");
-    case "media_waveform":
-      return presentPreview(result as ToolResult<"media_waveform">, (args as ToolArgs<"media_waveform">).output, "waveform");
+    case "grab":
+      return presentImages(result as ToolResult<"grab">, (args as ToolArgs<"grab">).output, "grab");
+    case "filmstrip":
+      return presentPreview(result as ToolResult<"filmstrip">, (args as ToolArgs<"filmstrip">).output, "filmstrip");
+    case "waveform":
+      return presentPreview(result as ToolResult<"waveform">, (args as ToolArgs<"waveform">).output, "waveform");
     case "screenshot":
       return presentScreenshot(result as ToolResult<"screenshot">, (args as ToolArgs<"screenshot">).output);
-    case "media_transcribe":
-      return presentTranscript(result as ToolResult<"media_transcribe">, (args as ToolArgs<"media_transcribe">).output);
+    case "transcribe":
+      return presentTranscript(result as ToolResult<"transcribe">, (args as ToolArgs<"transcribe">).output);
     case "generate":
       if ((args as ToolArgs<"generate">).estimate) return { output: result, images: [] };
       return presentJob(result as GenerationResult);
@@ -113,11 +113,11 @@ async function presentScreenshot(result: ToolResult<"screenshot">, output: strin
   return { output: presented, images: [{ path, png: result.png }] };
 }
 
-async function presentTranscript(transcript: ToolResult<"media_transcribe">, output: string | undefined): Promise<Presented> {
+async function presentTranscript(transcript: ToolResult<"transcribe">, output: string | undefined): Promise<Presented> {
   const path = await singleFilePath(output, `dapi-transcript-${randomUUID()}.json`);
   await writeFile(path, JSON.stringify(transcript, null, 2));
   const words = transcript.segments.reduce((sum, segment) => sum + segment.words.length, 0);
-  const presented: ToolOutput<"media_transcribe"> = { path, segments: transcript.segments.length, words };
+  const presented: ToolOutput<"transcribe"> = { path, segments: transcript.segments.length, words };
   return { output: presented, images: [] };
 }
 

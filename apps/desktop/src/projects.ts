@@ -452,20 +452,19 @@ const SOLID_VERSION = "^1.9.10";
 /**
  * The diffusion surface as npm scripts: the CLI is how a project is inspected and
  * cut, so its commands belong in the record of the project they act on —
- * `npm run` prints the menu, `npm run <name> -- <args>` runs one. Named after
- * the command rather than its path (`grab`, not `media:grab`): the `media`
- * subcommands have no top-level namesakes to collide with.
+ * `npm run` prints the menu, `npm run <name> -- <args>` runs one, named after
+ * the command.
  */
 const SCRIPTS: Record<string, string> = {
   open: "diffusion open .",
   context: "diffusion context",
   capture: "diffusion capture",
-  probe: "diffusion media probe",
-  transcribe: "diffusion media transcribe",
-  grab: "diffusion media grab",
-  filmstrip: "diffusion media filmstrip",
-  waveform: "diffusion media waveform",
-  listen: "diffusion media listen",
+  probe: "diffusion probe",
+  transcribe: "diffusion transcribe",
+  grab: "diffusion grab",
+  filmstrip: "diffusion filmstrip",
+  waveform: "diffusion waveform",
+  listen: "diffusion listen",
   fonts: "diffusion fonts",
   logs: "diffusion logs",
   screenshot: "diffusion screenshot",
@@ -620,12 +619,12 @@ All of them talk to the running app, except \`fonts\`.
 | \`open\` | \`diffusion open .\` | Launch the app with this project open. |
 | \`context\` | \`diffusion context\` | Which project the app has open, where its playhead sits, its fonts, its background mask tracks. |
 | \`capture\` | \`diffusion capture <id>\` | Render frames of a scene, as an export would, to labelled PNG contact sheets. |
-| \`probe\` | \`diffusion media probe <id\\|path>\` | Container and per-track metadata, without decoding. |
-| \`transcribe\` | \`diffusion media transcribe <id\\|path>\` | Timed speech transcript, word by word. |
-| \`grab\` | \`diffusion media grab <id\\|path>\` | Decode frames of a video to labelled PNG contact sheets. |
-| \`filmstrip\` | \`diffusion media filmstrip <id\\|path>\` | Thumbnail grid across a window of a video. |
-| \`waveform\` | \`diffusion media waveform <id\\|path>\` | Loudness over time, with the silences marked. |
-| \`listen\` | \`diffusion media listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
+| \`probe\` | \`diffusion probe <id\\|path>\` | Container and per-track metadata, without decoding. |
+| \`transcribe\` | \`diffusion transcribe <id\\|path>\` | Timed speech transcript, word by word. |
+| \`grab\` | \`diffusion grab <id\\|path>\` | Decode frames of a video to labelled PNG contact sheets. |
+| \`filmstrip\` | \`diffusion filmstrip <id\\|path>\` | Thumbnail grid across a window of a video. |
+| \`waveform\` | \`diffusion waveform <id\\|path>\` | Loudness over time, with the silences marked. |
+| \`listen\` | \`diffusion listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
 | \`fonts\` | \`diffusion fonts\` | Google Fonts and local font families, valid as \`fontFamily\`. |
 | \`logs\` | \`diffusion logs\` | Recent console output from the app. |
 | \`screenshot\` | \`diffusion screenshot\` | The whole app window as a PNG. |

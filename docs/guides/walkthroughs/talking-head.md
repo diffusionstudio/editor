@@ -10,9 +10,9 @@ Write the brief first. It records the source files, the target duration (or "kee
 
 The transcript is the spine, so transcribe everything with speech.
 
-- **Transcribe every video and any external audio.** `media_transcribe` writes word-level start/end times to a JSON file — the times you cut on. Run it on each camera take and on any separate recording (a lav or interface track you will sync to).
-- **Render the waveform to read the gaps.** `media_waveform` marks silence in red and returns it as second ranges. A transcript marks only speech, so a gap in it can be silence *or* something to keep — a laugh, a breath. The waveform tells them apart: red is dead air to cut; a gap that still shows signal is performance to keep.
-- **Resolve double takes visually.** The transcript shows repeated lines; usually the **last** take is the keeper. When takes read equally well, `media_grab` the first word of each and keep the sharpest — motion blur means a bad take.
+- **Transcribe every video and any external audio.** `transcribe` writes word-level start/end times to a JSON file — the times you cut on. Run it on each camera take and on any separate recording (a lav or interface track you will sync to).
+- **Render the waveform to read the gaps.** `waveform` marks silence in red and returns it as second ranges. A transcript marks only speech, so a gap in it can be silence *or* something to keep — a laugh, a breath. The waveform tells them apart: red is dead air to cut; a gap that still shows signal is performance to keep.
+- **Resolve double takes visually.** The transcript shows repeated lines; usually the **last** take is the keeper. When takes read equally well, `grab` the first word of each and keep the sharpest — motion blur means a bad take.
 
 ## 3. Lay out the A-roll
 

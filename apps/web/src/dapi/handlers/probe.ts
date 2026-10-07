@@ -11,7 +11,7 @@ import type { ToolHandler } from "../handler";
 
 const PROBE_SAMPLE_PACKETS = 200;
 
-export const mediaProbe: ToolHandler<"media_probe"> = async ({ path }, ctx) => {
+export const probe: ToolHandler<"probe"> = async ({ path }, ctx) => {
   const asset = await resolveAsset(ctx, path);
   const blob = await getAssetFile(asset);
   const base = {

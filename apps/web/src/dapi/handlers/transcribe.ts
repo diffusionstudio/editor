@@ -15,7 +15,7 @@ import type { ToolHandler } from "../handler";
 const transcripts = new Map<string, Promise<Transcript>>();
 
 /** The asset's audio, transcribed on the API; the main process writes the transcript to its file. */
-export const mediaTranscribe: ToolHandler<"media_transcribe"> = async ({ path }, ctx) => {
+export const transcribe: ToolHandler<"transcribe"> = async ({ path }, ctx) => {
   const asset = await resolveAsset(ctx, path);
   requireAssetType(asset, ["AUDIO", "VIDEO"], "a video or audio asset");
   await requireSignIn();
@@ -24,7 +24,7 @@ export const mediaTranscribe: ToolHandler<"media_transcribe"> = async ({ path },
   const key = await sha256(audio);
   let transcript = transcripts.get(key);
   if (!transcript) {
-    transcript = transcribe(audio, ctx.signal);
+    transcript = transcribeOnApi(audio, ctx.signal);
     transcripts.set(key, transcript);
     transcript.catch(() => transcripts.delete(key));
   }
@@ -37,7 +37,7 @@ export const mediaTranscribe: ToolHandler<"media_transcribe"> = async ({ path },
 };
 
 /** `audio` uploaded and transcribed; aborting `signal` cancels the job. */
-async function transcribe(audio: Blob, signal: AbortSignal): Promise<Transcript> {
+async function transcribeOnApi(audio: Blob, signal: AbortSignal): Promise<Transcript> {
   try {
     const job = await runJob({ model: "universal-3.5-pro", audio: await uploadFile(audio) }, () => {}, signal);
     if (job.status !== "succeeded") throw new Error(jobFailure(job));

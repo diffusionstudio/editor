@@ -1,12 +1,12 @@
-# media_waveform
+# waveform
 
 Render the audio track of a video or audio file as a waveform PNG (local render, no credits) with a timestamp ruler: loudness over time, with silent stretches highlighted in red. A fast, token-efficient audio track preview; the silent spans are also returned as second ranges.
 
 | | |
 | --- | --- |
-| MCP tool | `media_waveform` |
-| CLI | `diffusion media waveform <path> [options]` |
-| CLI aliases | `diffusion media wave` |
+| MCP tool | `waveform` |
+| CLI | `diffusion waveform <path> [options]` |
+| CLI aliases | `diffusion wave` |
 
 ## Input
 

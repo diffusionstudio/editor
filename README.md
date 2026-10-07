@@ -180,16 +180,16 @@ Everything a mount produces stays a first-class editor node, so a person can pic
 Cutting footage requires understanding it. The app exposes the inspection tools an agent needs to work with media it cannot watch — as MCP tools, and as the same commands in a shell:
 
 ```sh
-diffusion media probe clip.mp4                                # container + codec metadata, like ffprobe
-diffusion media grab clip.mp4 -t 0 12 45                      # decode frames to PNGs
-diffusion media filmstrip clip.mp4                            # grid of video frames
-diffusion media waveform track.mp3                            # audio waveform, silence flagged
-diffusion media transcribe interview.wav                      # timed, word-level transcript
-diffusion media listen interview.mp4 -p "what is said in the intro?"   # ask a multimodal model
-diffusion capture intro -t 0 2 4                              # the frames a render would produce, by scene id
+diffusion probe clip.mp4                                # container + codec metadata, like ffprobe
+diffusion grab clip.mp4 -t 0 12 45                      # decode frames to PNGs
+diffusion filmstrip clip.mp4                            # grid of video frames
+diffusion waveform track.mp3                            # audio waveform, silence flagged
+diffusion transcribe interview.wav                      # timed, word-level transcript
+diffusion listen interview.mp4 -p "what is said in the intro?"   # ask a multimodal model
+diffusion capture intro -t 0 2 4                        # the frames a render would produce, by scene id
 ```
 
-Each command is the MCP tool of the same name: `diffusion media grab` is `media_grab`, `--per-sheet` is `perSheet`.
+Each command is the MCP tool of the same name: `diffusion grab` is `grab`, `--per-sheet` is `perSheet`.
 
 | Command | Purpose |
 | --- | --- |
@@ -197,7 +197,7 @@ Each command is the MCP tool of the same name: `diffusion media grab` is `media_
 | `diffusion context` | Summary of app state |
 | `diffusion capture` | Render frames of a scene, as an export would, to a labelled contact sheet or one PNG per position |
 | `diffusion check` | Check a node's subtree for structural mistakes (black-frame gaps, never-visible nodes, failed sources) and report subtree stats |
-| `diffusion media …` | Inspect a file by id or path: `probe`, `grab`, `filmstrip`, `waveform`, `transcribe`, `listen` |
+| `diffusion probe` / `grab` / `filmstrip` / `waveform` / `transcribe` / `listen` | Inspect a file by id or path |
 | `diffusion fonts` | Discover Google Fonts and local font families |
 | `diffusion screenshot` / `diffusion logs` | The app itself: capture the window, read recent console output |
 | `diffusion report` | Report a bug in the tools or the app: diagnostics bundled, filed as a GitHub issue via `gh` |
