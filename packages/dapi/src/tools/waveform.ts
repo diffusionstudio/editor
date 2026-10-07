@@ -5,12 +5,12 @@
 import { z } from "zod";
 import { defineTool } from "../tool";
 import { AssetPath, Bytes, checkWindow } from "../schemas";
-import { previewFields } from "./media-filmstrip";
+import { previewFields } from "./filmstrip";
 
 const Silences = z.array(z.object({ start: z.number(), end: z.number() })).describe("seconds");
 
-export const mediaWaveform = defineTool({
-  name: "media_waveform",
+export const waveform = defineTool({
+  name: "waveform",
   title: "Waveform preview",
   description:
     "Render the audio track of a video or audio file as a waveform PNG (local render, no credits) with a timestamp ruler: loudness over time, with silent stretches highlighted in red. A fast, token-efficient audio track preview; the silent spans are also returned as second ranges.",

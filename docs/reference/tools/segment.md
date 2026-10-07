@@ -1,15 +1,15 @@
 # sam-2.1
 
-SAM 2.1 segments an object in a video and tracks it through the footage, making the mask file (`.mask`) a [`<mask src>`](../../jsx/styles.md#mask) names — the file the editor's object mask tool makes. It runs in the app, on this machine's GPU: no account, no credits. Like every [local model](../../models.md#local), its job is polled with [`job`](../job.md) and lasts only as long as the app.
+SAM 2.1 segments an object in a video and tracks it through the footage, making the mask file (`.mask`) a [`<mask src>`](../jsx/styles.md#mask) names — the file the editor's object mask tool makes. It runs in the app, on this machine's GPU: no account, no credits. Like every [local model](../models.md#local), its job is polled with [`job`](./job.md) and lasts only as long as the app.
 
 | | |
 | --- | --- |
-| Model | `sam-2.1`, run with [`generate`](../generate.md) |
+| Model | `sam-2.1`, run with [`generate`](./generate.md) |
 | CLI | `diffusion generate sam-2.1 '<fields>' [-o <path>]` |
 
 ## Input
 
-`model: "sam-2.1"` plus these fields; `output` is [`generate`](../generate.md#where-the-files-go)'s.
+`model: "sam-2.1"` plus these fields; `output` is [`generate`](./generate.md#where-the-files-go)'s.
 
 | Field | Type | Description |
 | --- | --- | --- |

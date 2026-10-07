@@ -6,8 +6,8 @@ import { z } from "zod";
 import { defineTool } from "../tool";
 import { AssetPath, checkWindow, windowFields } from "../schemas";
 
-export const mediaListen = defineTool({
-  name: "media_listen",
+export const listen = defineTool({
+  name: "listen",
   title: "Listen to audio",
   description:
     "Prompt a multimodal model for a semantic analysis of an audio track and return its answer. Shines on audio semantics (the name of the music playing, who is speaking, the spoken content with second-granularity timestamps). Accepts an audio file or a video; of a video only the audio track is analyzed.",

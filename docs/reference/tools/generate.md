@@ -1,6 +1,6 @@
 # generate
 
-Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking ([`sam-2.1`](./media/segment.md)) on this machine — and return the job at once, with its estimated run time and the credits it costs. Poll [`job`](./job.md) with its id until it has ended; the files it made are then saved and their paths returned. With [`estimate`](#estimating), nothing starts: the answer is only what the job would cost and how long it would run. API models need a signed-in account and spend its credits; [local models](../models.md#local) run on the GPU, free, and need no account.
+Start a job on a generative model — images, video, music, sound effects, speech, and tools such as background removal, upscaling, transcription and analysis on the Diffusion Studio API, and object segmentation and tracking ([`sam-2.1`](./segment.md)) on this machine — and return the job at once, with its estimated run time and the credits it costs. Poll [`job`](./job.md) with its id until it has ended; the files it made are then saved and their paths returned. With [`estimate`](#estimating), nothing starts: the answer is only what the job would cost and how long it would run. API models need a signed-in account and spend its credits; [local models](../models.md#local) run on the GPU, free, and need no account.
 
 | | |
 | --- | --- |
@@ -63,7 +63,7 @@ Files (`{ "path": … }`) are uploaded first, as for a job, since a tool such as
 - **Several files are numbered.** A job that makes more than one (an image `count` above 1) saves `fox-1.png`, `fox-2.png`, …; a single file is saved at the path itself.
 - **A library path** (`b-roll/fox.png`, needs an open project) puts the file into the project's library, under `assets/`, named by `src` like any other asset, and notes the job it came from, as the app's own generations do. A file the project made already at that path is replaced, and everything naming it shows the new one; a file linked from elsewhere on disk is never written over, and the result gets a free name next to it instead.
 - **An absolute path** saves the file there, replacing a file already there.
-- **Left out**, the file goes into the open project's library at its root under the API's name (`red-fox-at-dawn.png`, numbered if taken), or where a local model files its own (`sam-2.1`: `masks/<video>/Tracking <n>.mask`); with no project open, into a fresh directory of the job's own under the system temp dir, as [`transcribe`](./media/transcribe.md) and the other inspection tools do.
+- **Left out**, the file goes into the open project's library at its root under the API's name (`red-fox-at-dawn.png`, numbered if taken), or where a local model files its own (`sam-2.1`: `masks/<video>/Tracking <n>.mask`); with no project open, into a fresh directory of the job's own under the system temp dir, as [`transcribe`](./transcribe.md) and the other inspection tools do.
 
 The files are saved by the first [`job`](./job.md) call that sees the job succeed (a local model's library files as soon as it does); later calls return the same paths. A file an API model made that went into the library records the job in `assets.yml` (its `job` field), so what made it can be looked up later.
 

@@ -101,4 +101,4 @@ These run in the app, on this machine's GPU: no account, no credits. A job is sh
 
 | Model | | Makes | Fields |
 | --- | --- | --- | --- |
-| `sam-2.1` | SAM 2.1 — segments an object in a video and tracks it through the footage; `size` tiny (default), small, base-plus or large | a mask file (`.mask`) for a [`<mask src>`](./jsx/styles.md#mask) | [segment.md](./tools/media/segment.md) |
+| `sam-2.1` | SAM 2.1 — segments an object in a video and tracks it through the footage; `size` tiny (default), small, base-plus or large | a mask file (`.mask`) for a [`<mask src>`](./jsx/styles.md#mask) | [segment.md](./tools/segment.md) |

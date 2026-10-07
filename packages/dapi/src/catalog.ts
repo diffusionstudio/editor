@@ -12,12 +12,12 @@ import { check } from "./tools/check";
 import { exportScene } from "./tools/export";
 import { logs } from "./tools/logs";
 import { screenshot } from "./tools/screenshot";
-import { mediaProbe } from "./tools/media-probe";
-import { mediaGrab } from "./tools/media-grab";
-import { mediaTranscribe } from "./tools/media-transcribe";
-import { mediaFilmstrip } from "./tools/media-filmstrip";
-import { mediaWaveform } from "./tools/media-waveform";
-import { mediaListen } from "./tools/media-listen";
+import { probe } from "./tools/probe";
+import { grab } from "./tools/grab";
+import { transcribe } from "./tools/transcribe";
+import { filmstrip } from "./tools/filmstrip";
+import { waveform } from "./tools/waveform";
+import { listen } from "./tools/listen";
 import { generate, job } from "./tools/generate";
 import { fonts } from "./tools/fonts";
 import { report } from "./tools/report";
@@ -34,12 +34,12 @@ export const catalog = [
   capture,
   check,
   exportScene,
-  mediaProbe,
-  mediaGrab,
-  mediaTranscribe,
-  mediaFilmstrip,
-  mediaWaveform,
-  mediaListen,
+  probe,
+  grab,
+  transcribe,
+  filmstrip,
+  waveform,
+  listen,
   generate,
   job,
   logs,

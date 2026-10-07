@@ -7,10 +7,10 @@ import { capture } from "./capture";
 import { context } from "./context";
 import { exportScene } from "./export";
 import { logs } from "./logs";
-import { mediaFilmstrip } from "./media-filmstrip";
-import { mediaGrab } from "./media-grab";
-import { mediaListen } from "./media-listen";
-import { mediaTranscribe } from "./media-transcribe";
+import { filmstrip } from "./filmstrip";
+import { grab } from "./grab";
+import { listen } from "./listen";
+import { transcribe } from "./transcribe";
 import { generate, generatedPath, job } from "./generate";
 import { MODEL_IDS } from "@diffusionstudio/api-contract";
 import { LOCAL_MODEL_IDS, isLocalJobId, isLocalModel, samRequest } from "../local";
@@ -22,8 +22,8 @@ function issues(result: { success: boolean; error?: { issues: Array<{ path: Prop
   return Object.fromEntries((result.error?.issues ?? []).map((issue) => [issue.path.join("."), issue.message]));
 }
 
-describe("media_grab", () => {
-  const input = mediaGrab.input;
+describe("grab", () => {
+  const input = grab.input;
 
   it("parses times in every form and applies the sheet default", () => {
     const args = input.parse({ path: "/clip.mp4", times: ["45f", "1:10", -1, "-2f"] });
@@ -76,16 +76,16 @@ describe("capture", () => {
     expect(capture.input.safeParse({ id: "intro", times: ["-2f"] }).success).toBe(false);
   });
 
-  it("shares the sheet rule with media_grab", () => {
+  it("shares the sheet rule with grab", () => {
     expect(issues(capture.input.safeParse({ id: "intro", separate: true, perSheet: 2 }))).toHaveProperty("perSheet");
   });
 });
 
-describe("media_filmstrip and media_listen", () => {
+describe("filmstrip and listen", () => {
   it("apply the window rule", () => {
-    expect(issues(mediaFilmstrip.input.safeParse({ path: "/c.mp4", start: 3, end: 3 }))).toHaveProperty("end");
-    expect(issues(mediaListen.input.safeParse({ path: "/c.mp4", start: "0:05", end: 4 }))).toHaveProperty("end");
-    expect(mediaFilmstrip.input.safeParse({ path: "/c.mp4", scale: 0 }).success).toBe(false);
+    expect(issues(filmstrip.input.safeParse({ path: "/c.mp4", start: 3, end: 3 }))).toHaveProperty("end");
+    expect(issues(listen.input.safeParse({ path: "/c.mp4", start: "0:05", end: 4 }))).toHaveProperty("end");
+    expect(filmstrip.input.safeParse({ path: "/c.mp4", scale: 0 }).success).toBe(false);
   });
 });
 
@@ -117,12 +117,12 @@ describe("context", () => {
   });
 });
 
-describe("media_transcribe", () => {
+describe("transcribe", () => {
   it("presents the transcript as a file: the result carries segments, the output a path", () => {
     const segments = [{ text: "Hi", words: [{ text: "Hi", start: 0, end: 0.2 }] }];
-    expect(mediaTranscribe.result!.safeParse({ segments }).success).toBe(true);
-    expect(mediaTranscribe.output.safeParse({ path: "/tmp/t.json", segments: 1, words: 1 }).success).toBe(true);
-    expect(mediaTranscribe.output.safeParse({ segments }).success).toBe(false);
+    expect(transcribe.result!.safeParse({ segments }).success).toBe(true);
+    expect(transcribe.output.safeParse({ path: "/tmp/t.json", segments: 1, words: 1 }).success).toBe(true);
+    expect(transcribe.output.safeParse({ segments }).success).toBe(false);
   });
 });
 

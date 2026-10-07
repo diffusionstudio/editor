@@ -21,7 +21,7 @@ Render single frames of a scene to PNGs — each frame is the frame an export of
 
 Each frame is **the frame an export of that scene would encode**: the scene is re-rendered from a fresh mount at its own size, position `0` is the workarea's first frame, and the requested positions are evaluated in timeline order, forward only — the way an export advances — so a composition whose look depends on having played (an `<html>` node's own animation state, for instance) captures exactly as it exports. A position past the workarea's end is not an error: the scene keeps playing past it, and the frame is what plays there — just not one an export would include.
 
-Scenes only: a single element renders inside its scene, so capture the scene at the times the element plays. To grab a video asset's own pixels instead of a composited frame, use [`grab`](./media/grab.md).
+Scenes only: a single element renders inside its scene, so capture the scene at the times the element plays. To grab a video asset's own pixels instead of a composited frame, use [`grab`](./grab.md).
 
 With `separate`, each position is rendered at 720p height and named after its timecode (e.g. `01s12f.png`). Without an `output` directory the images land in a fresh `dapi-capture-*` directory under the system temp directory, so runs never overwrite each other. Writing into the same directory twice overwrites images whose name matches; with `separate`, requested times that land on the same frame share one file.
 

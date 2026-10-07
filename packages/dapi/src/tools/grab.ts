@@ -12,11 +12,11 @@ export const FrameQuality = z.enum(["small", "medium", "large", "fullres"]);
 /** Guardrail against accidentally decoding a huge number of frames; `uncapped` lifts it. */
 export const FRAME_CAP = 100;
 
-export const mediaGrab = defineTool({
-  name: "media_grab",
+export const grab = defineTool({
+  name: "grab",
   title: "Grab frames",
   description:
-    "Decode frames of a video file and write them as PNGs (local render, no credits). By default the frames are merged into contact sheets: up to 12 per image, each cell labelled with its timecode (`08s10f`, zero segments dropped) and drawn as large as fits, so a handful of frames arrives as one high-resolution picture instead of a directory to open one by one (separate: true writes a PNG per frame). Grabs the asset's own pixels, unlike capture which renders the composited node. The recommended tool for understanding a video at the frame level; past ~12 frames prefer media_filmstrip.",
+    "Decode frames of a video file and write them as PNGs (local render, no credits). By default the frames are merged into contact sheets: up to 12 per image, each cell labelled with its timecode (`08s10f`, zero segments dropped) and drawn as large as fits, so a handful of frames arrives as one high-resolution picture instead of a directory to open one by one (separate: true writes a PNG per frame). Grabs the asset's own pixels, unlike capture which renders the composited node. The recommended tool for understanding a video at the frame level; past ~12 frames prefer filmstrip.",
   input: z
     .object({
       path: AssetPath,

@@ -32,7 +32,7 @@ Three ways to say which frames, mutually exclusive:
 - `count`: that many frames evenly spaced across the clip, or across the `start`/`end` window, at a fixed interval of `window / count`, starting at the window start.
 - `auto`: a scan at 2 fps that keeps a frame each time the picture settles into a new visual state, dropping near-duplicates and waiting out transitions so picks stay sharp. Returns at most `count` frames (default cap 30); static footage such as a screen recording returns far fewer. Needs WebGPU.
 
-`start` and `end` only apply with `count` or `auto`. An `end` past the asset's duration is clamped to it; a `start` at or past the end is an error, since the window would be empty. Like [`capture`](../capture.md), but this grabs the asset's own pixels; `capture` renders the composited node. Renders locally; no credits. Past ~12 frames, [`filmstrip`](./filmstrip.md) is the cheaper way to scan a clip.
+`start` and `end` only apply with `count` or `auto`. An `end` past the asset's duration is clamped to it; a `start` at or past the end is an error, since the window would be empty. Like [`capture`](./capture.md), but this grabs the asset's own pixels; `capture` renders the composited node. Renders locally; no credits. Past ~12 frames, [`filmstrip`](./filmstrip.md) is the cheaper way to scan a clip.
 
 `quality` is a pixel budget rather than a box: a frame is scaled down, aspect ratio kept, until it holds no more pixels than the preset's square (`small` is 384², so a 16:9 frame becomes 512x288; `medium` 768² gives 1024x576; `large` 1536² gives 2048x1152), and never enlarged, so `large` on 1080p footage is the native 1920x1080.
 

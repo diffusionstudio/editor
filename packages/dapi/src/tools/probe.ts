@@ -15,8 +15,8 @@ const Track = z.looseObject({
   duration: z.number(),
 });
 
-export const mediaProbe = defineTool({
-  name: "media_probe",
+export const probe = defineTool({
+  name: "probe",
   title: "Probe media",
   description:
     "Read the container and per-track technical metadata of a media file (local read, no credits): container format, duration, tags, and each track's codec params, without decoding. Commonly useful for a quick technical read, e.g. checking codec compatibility or duration before cutting. Packet stats (fps, bitrate) are estimated from a leading sample; images and transcripts report file-level info only.",

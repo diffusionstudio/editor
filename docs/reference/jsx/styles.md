@@ -68,7 +68,7 @@ A filter over the parent's **rendered pixels** — its fills, strokes and childr
 
 ## `<mask>`
 
-A matte limiting the `<effect>` holding it: a **picture** whose alpha says where the effect applies, fitted into the node's box the way the node fits its footage. It is what the editor's object mask tool makes — pick an object in a video clip, track it, and the frames it found are written to the library and named by `src` — and what [`generate`](../tools/generate.md)'s [`sam-2.1`](../tools/media/segment.md) makes from a tool call. Several under one effect intersect. Without a `src` a `<mask>` does nothing.
+A matte limiting the `<effect>` holding it: a **picture** whose alpha says where the effect applies, fitted into the node's box the way the node fits its footage. It is what the editor's object mask tool makes — pick an object in a video clip, track it, and the frames it found are written to the library and named by `src` — and what [`generate`](../tools/generate.md)'s [`sam-2.1`](../tools/segment.md) makes from a tool call. Several under one effect intersect. Without a `src` a `<mask>` does nothing.
 
 Under an `"opacity"` effect the mask is the cut-out: the clip shows inside the mask and goes transparent outside, as a mask on Premiere's Opacity does. Under any other effect the effect shows through inside the mask and the picture is untouched outside: an inverted mask on a `"blur"` blurs the background behind a person.
 

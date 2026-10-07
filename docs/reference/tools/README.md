@@ -37,12 +37,12 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 | [`capture`](./capture.md) | `diffusion capture` | Capture frames |
 | [`check`](./check.md) | `diffusion check` | Check structure |
 | [`export`](./export.md) | `diffusion export` | Export scene |
-| [`probe`](./media/probe.md) | `diffusion probe` | Probe media |
-| [`grab`](./media/grab.md) | `diffusion grab` | Grab frames |
-| [`transcribe`](./media/transcribe.md) | `diffusion transcribe` | Transcribe speech |
-| [`filmstrip`](./media/filmstrip.md) | `diffusion filmstrip` | Filmstrip preview |
-| [`waveform`](./media/waveform.md) | `diffusion waveform` | Waveform preview |
-| [`listen`](./media/listen.md) | `diffusion listen` | Listen to audio |
+| [`probe`](./probe.md) | `diffusion probe` | Probe media |
+| [`grab`](./grab.md) | `diffusion grab` | Grab frames |
+| [`transcribe`](./transcribe.md) | `diffusion transcribe` | Transcribe speech |
+| [`filmstrip`](./filmstrip.md) | `diffusion filmstrip` | Filmstrip preview |
+| [`waveform`](./waveform.md) | `diffusion waveform` | Waveform preview |
+| [`listen`](./listen.md) | `diffusion listen` | Listen to audio |
 | [`generate`](./generate.md) | `diffusion generate` | Generate media |
 | [`job`](./job.md) | `diffusion job` | Generation job |
 | [`logs`](./logs.md) | `diffusion logs` | App logs |
@@ -54,8 +54,8 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 How the surface is divided:
 
 - **The project loop.** [`open`](./open.md) a folder, edit its JSX, [`context`](./context.md) for what the source cannot say, [`capture`](./capture.md) and [`check`](./check.md) to verify, [`export`](./export.md) when asked.
-- **Media inspection** ([`probe`](./media/probe.md), [`grab`](./media/grab.md), [`transcribe`](./media/transcribe.md), [`filmstrip`](./media/filmstrip.md), [`waveform`](./media/waveform.md), [`listen`](./media/listen.md)): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
-- **Generation.** [`generate`](./generate.md) runs a model of the Diffusion Studio API (images, video, music, speech, and tools such as upscaling) on the account's credits, or a model on this machine for free (with `estimate`, it only prices the request) — [`sam-2.1`](./media/segment.md) segments and tracks an object in footage, making the mask file a `<mask src>` names; poll [`job`](./job.md) until it has ended, and its files are saved into the library or a directory. The models and their fields are in [models.md](../models.md).
+- **Media inspection** ([`probe`](./probe.md), [`grab`](./grab.md), [`transcribe`](./transcribe.md), [`filmstrip`](./filmstrip.md), [`waveform`](./waveform.md), [`listen`](./listen.md)): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
+- **Generation.** [`generate`](./generate.md) runs a model of the Diffusion Studio API (images, video, music, speech, and tools such as upscaling) on the account's credits, or a model on this machine for free (with `estimate`, it only prices the request) — [`sam-2.1`](./segment.md) segments and tracks an object in footage, making the mask file a `<mask src>` names; poll [`job`](./job.md) until it has ended, and its files are saved into the library or a directory. The models and their fields are in [models.md](../models.md).
 - **What a declaration may name.** [`fonts`](./fonts.md).
 - **The app and the machine.** [`logs`](./logs.md), [`screenshot`](./screenshot.md), [`window`](./window.md), [`report`](./report.md).
 

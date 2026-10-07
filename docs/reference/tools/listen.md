@@ -16,7 +16,7 @@ Prompt a multimodal model for a semantic analysis of an audio track and return i
 | `start` | `Time` | `-s, --start <time>` | start of the segment to analyze (default: 0); timestamps in the analysis are relative to this point |
 | `end` | `Time` | `-e, --end <time>` | end of the segment to analyze (default: media duration) |
 
-With no `prompt` it returns a general description of what is heard; with one it answers that question about the audio (e.g. "who is speaking?", "what music is playing?", "summarize what is said"). See [the prompt guide](../../../guides/prompts/media-listen.md) for prompts that work.
+With no `prompt` it returns a general description of what is heard; with one it answers that question about the audio (e.g. "who is speaking?", "what music is playing?", "summarize what is said"). See [the prompt guide](../../guides/prompts/media-listen.md) for prompts that work.
 
 ## Output
 
