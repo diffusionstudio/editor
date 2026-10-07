@@ -27,7 +27,7 @@ export const listen: ToolHandler<"listen"> = async ({ path, prompt, start, end }
 
   try {
     const media = await uploadFile(windowed ? await audioFile(asset, from, to) : await audioFile(asset));
-    const job = await runJob({ model: "gemini-3.5-flash", media, prompt }, () => {}, ctx.signal);
+    const job = await runJob({ model: "qwen3.8-omni-flash", media, prompt }, () => {}, ctx.signal);
     if (job.status !== "succeeded") throw new Error(jobFailure(job));
 
     const [file] = job.assets;

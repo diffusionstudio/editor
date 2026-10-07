@@ -36,7 +36,7 @@ export const MODEL_MODES: Record<ModelId, PromptMode | "TEXT"> = {
   "elevenlabs-v3": "VOICE",
   "gemini-3.8-flash-tts": "VOICE",
   "universal-3.5-pro": "TEXT",
-  "gemini-3.5-flash": "TEXT",
+  "qwen3.8-omni-flash": "TEXT",
 };
 
 export type PromptMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";

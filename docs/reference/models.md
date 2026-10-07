@@ -8,7 +8,7 @@ Every model [`generate`](./tools/generate.md) runs, and the fields each takes. A
 | [Video](#video) | `veo-3.1`, `veo-3.1-fast`, `kling-3-pro`, `kling-o3-pro`, `seedance-2.5`, `wan-3.0`, `minimax-h3`, `flux-3-video`, `grok-imagine-video-1.5` | a clip from a prompt, optionally from a start (and end) frame |
 | [Audio](#audio) | `elevenlabs-music`, `elevenlabs-sfx` | music, sound effects |
 | [Voice](#voice) | `elevenlabs-v3`, `gemini-3.8-flash-tts` | speech |
-| [Tools](#tools) | `bria-rmbg-2.0`, `seedvr-2`, `bytedance-upscaler`, `universal-3.5-pro`, `gemini-3.5-flash` | one file in, one file out |
+| [Tools](#tools) | `bria-rmbg-2.0`, `seedvr-2`, `bytedance-upscaler`, `universal-3.5-pro`, `qwen3.8-omni-flash` | one file in, one file out |
 | [Local](#local) | `sam-2.1` | runs on this machine, free: an object's mask, tracked through footage |
 
 ## Image
@@ -93,7 +93,7 @@ Each takes one file and returns one.
 | `seedvr-2` | SeedVR2 — image upscaling | `image`: `{ path }`, required | a PNG of the image upscaled 2× |
 | `bytedance-upscaler` | ByteDance Upscaler — video upscaling | `video`: `{ path }`, required | an MP4 of the video upscaled to 2K at 30 fps |
 | `universal-3.5-pro` | AssemblyAI Universal-3.5 Pro — transcription with speaker labels (Universal-2 for languages it lacks) | `audio`: `{ path }` (audio or video) or `{ scene }` (the scene's mix, see [Scenes](./tools/generate.md#scenes)), required; `languageCode`: e.g. `en`, `en_us`, `de` (detected when left out) | `transcript.json`: `[{ text, speaker?, words: [{ text, start, end }] }]`, times in seconds, speakers labelled `A`, `B`, … when told apart |
-| `gemini-3.5-flash` | Gemini 3.5 Flash — describes or answers questions about media | `media`: `{ path }`, required (image, video or audio); `prompt`: what to look for, up to 10,000 characters (a general description when left out) | the analysis, as a file |
+| `qwen3.8-omni-flash` | Qwen3.8 Omni Flash — describes or answers questions about audio: speech, speakers, music, sounds | `media`: `{ path }`, required: an audio file (wav, mp3, ogg, flac, aac, m4a or aiff) up to 20 MB; `prompt`: what to listen for, up to 10,000 characters (a general description when left out) | `analysis.md`, the answer as Markdown |
 
 ## Local
 

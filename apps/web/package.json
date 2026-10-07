@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@diffusionstudio/agent-chat": "*",
-    "@diffusionstudio/api-contract": "^0.2.0",
+    "@diffusionstudio/api-contract": "^0.4.0",
     "@diffusionstudio/assets": "*",
     "@diffusionstudio/dapi": "*",
     "@diffusionstudio/encoder": "*",

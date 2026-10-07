@@ -52,6 +52,7 @@ How to confirm a change actually produced what you intended. A clean save does n
 - For tasks that don't need an editing UI, keep the app in the background: from a shell, `diffusion open -b <dir>` launches it that way. Over MCP the app is already running, and `open` only opens the folder.
 - Only render (export) the result when prompted.
 - Start with a fresh project.
+- Don't open a project in a cloud-synced folder (iCloud Drive, including a synced Desktop or Documents, Dropbox, OneDrive, Google Drive). Sync clients evict media to placeholders, upload half-written renders and leave conflict copies. Use a local folder outside the synced tree.
 
 # Docs
 
