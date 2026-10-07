@@ -13,7 +13,7 @@ export default function Project() {
 }
 ```
 
-A node at root level is material rather than composition: a generated clip that has not been cut into a scene yet, a reference still lying about. It draws on the canvas and can be dragged, selected and inspected, but it has no scene's clock to be placed against, so it plays nothing and exports nowhere — that is what moving it into a scene is for. It is where the editor puts what it generates.
+A node at root level is material rather than composition: a clip that has not been cut into a scene yet, a reference still lying about. It draws on the canvas and can be dragged, selected and inspected, but it has no scene's clock to be placed against, so it plays nothing and exports nowhere — that is what moving it into a scene is for.
 
 The stage is a **singleton**: it is the canvas already on screen rather than something the project creates, so a project spelling `<stage>` addresses the one that is there. One mount per world — a save disposes the running mount before the new one takes the stage, and the scenes it owned go with it.
 

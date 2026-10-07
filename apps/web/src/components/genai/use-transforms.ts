@@ -2,85 +2,73 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Upscaling, taking a background out, scoring footage: the editor's side of
-// `transform.*` (see reference/jsx/generate.md). A toggle wraps the
-// element's `src` in the transform — `transform.upscale(<what it was>)` —
-// or takes that layer out again, and stops there: the asset system is what
-// notices the new declaration, runs it and binds the result. Turning one
-// off gives the inner declaration back rather than running anything.
+// Upscaling, taking a background out: tools run over the
+// media the selected nodes show on top. The result is laid over that paint,
+// which is hidden rather than removed (see `transform`).
 
-import { getAssetSpec, isAssetRef, isTransformSpec, mapAssetInputs, transform } from "@diffusionstudio/jsx";
-import { authoredElement } from "@diffusionstudio/reconciler";
-import { useEditor } from "@/engine/hooks";
+import { useWorld } from "@diffusionstudio/koota-solid";
+import { Generating, PaintType } from "@diffusionstudio/runtime";
+import { transform } from "@/engine/generate";
 import { useMediaSelection } from "./selection";
+import { chargeOf } from "./use-estimate";
 
-import type { AssetInput, TransformType } from "@diffusionstudio/jsx";
-import type { Entity } from "koota";
+import type { AssetRef, GenerateRequestInput } from "@diffusionstudio/api-contract";
+import type { NodeMedia } from "@/engine/generate";
+import type { SelectedMedia } from "./selection";
+import type { TransformType } from "./types";
 
-/** Whether `input` is, somewhere down its chain of transforms, put through `type`. */
-function hasTransform(input: AssetInput, type: TransformType): boolean {
-  if (!isAssetRef(input)) return false;
-  const spec = getAssetSpec(input);
-  if (!isTransformSpec(spec)) return false;
-  return spec.type === type || hasTransform(spec.input, type);
+interface Tool {
+  /** What a failure is reported under. */
+  title: string;
+  /** Whether the tool can be run over media of `type`. */
+  takes(type: NodeMedia["type"]): boolean;
+  /** The request over `input`, an upload of media of `type`. */
+  request(type: NodeMedia["type"], input: AssetRef): GenerateRequestInput;
+  /** What running it over `media` costs, in credits; undefined while that isn't known. */
+  price(media: SelectedMedia): number | undefined;
 }
 
-/**
- * `input` with every `type` layer taken out of its chain of transforms. A
- * generation under the chain is left as it is: its own inputs are its
- * business, not the element's.
- */
-function withoutTransform(input: AssetInput, type: TransformType): AssetInput {
-  if (!isAssetRef(input)) return input;
-  const spec = getAssetSpec(input);
-  if (!isTransformSpec(spec)) return input;
-  if (spec.type === type) return withoutTransform(spec.input, type);
-  return mapAssetInputs(input, (inner) => withoutTransform(inner, type));
-}
-
-/** The element's `src` as authored, when it is something a transform can be put over. */
-function sourceOf(entity: Entity): AssetInput | undefined {
-  const src = authoredElement(entity)?.props.src;
-  return typeof src === "string" && src !== "" ? src : isAssetRef(src) ? src : undefined;
-}
+const TOOLS: Record<TransformType, Tool> = {
+  upscale: {
+    title: "Upscale failed",
+    takes: () => true,
+    request: (type, input) =>
+      type === PaintType.VIDEO ? { model: "bytedance-upscaler", video: input } : { model: "seedvr-2", image: input },
+    price: ({ type, asset }) =>
+      type === PaintType.VIDEO
+        ? asset?.type === "VIDEO" ? chargeOf("bytedance-upscaler", asset.duration) : undefined
+        : chargeOf("seedvr-2"),
+  },
+  removeBackground: {
+    title: "Background removal failed",
+    takes: (type) => type === PaintType.IMAGE,
+    request: (_type, image) => ({ model: "bria-rmbg-2.0", image }),
+    price: () => chargeOf("bria-rmbg-2.0"),
+  },
+};
 
 export function useTransforms() {
-  const editor = useEditor();
-  const { imageNodes, videoNodes } = useMediaSelection();
+  const world = useWorld();
+  const { media } = useMediaSelection();
 
-  /** The selected elements a transform can be asked of. */
-  const targets = (type: TransformType): Entity[] => {
-    if (type === "removeBackground") return imageNodes();
-    if (type === "addAudio") return videoNodes();
-    return [...imageNodes(), ...videoNodes()];
-  };
+  /** The selected media `type` is run over: what it applies to and is not generating already. */
+  const targets = (type: TransformType) =>
+    media().filter((entry) => TOOLS[type].takes(entry.type) && !entry.node.has(Generating));
 
-  /** On when every element it applies to asks for it, so the toggle turns the odd one on. */
-  const isOn = (type: TransformType): boolean => {
-    const selected = targets(type);
-    return selected.length > 0 && selected.every((entity) => {
-      const src = sourceOf(entity);
-      return src !== undefined && hasTransform(src, type);
-    });
-  };
-
-  /**
-   * Puts `type` over the selection's sources, or takes it off when they all
-   * have it. On goes outermost — the last thing done to the source — and off
-   * takes every layer of it out, wherever it sits in the chain.
-   */
-  const toggle = (type: TransformType): void => {
-    const next = !isOn(type);
-
-    for (const entity of targets(type)) {
-      const src = sourceOf(entity);
-      if (src === undefined) continue;
-      const declared = next
-        ? (hasTransform(src, type) ? src : transform[type](src))
-        : withoutTransform(src, type);
-      if (declared !== src) editor.editProperty(entity, "src", declared);
+  /** Runs `type` over every selected node it applies to that is not generating already. */
+  const run = (type: TransformType): void => {
+    const tool = TOOLS[type];
+    for (const entry of targets(type)) {
+      transform(world, entry, tool.title, (input) => tool.request(entry.type, input));
     }
   };
 
-  return { isOn, toggle };
+  /** What `run(type)` costs, in credits, a job per node; undefined while any of it isn't known. */
+  const price = (type: TransformType): number | undefined => {
+    const prices = targets(type).map((entry) => TOOLS[type].price(entry));
+    if (!prices.length || prices.some((credits) => credits === undefined)) return undefined;
+    return prices.reduce<number>((sum, credits) => sum + credits!, 0);
+  };
+
+  return { run, price };
 }

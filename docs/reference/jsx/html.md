@@ -61,7 +61,7 @@ setInterval(() => setCount((c) => c + 1), 1000);
 
 ## Images
 
-`<img>` takes the same sources as a composition [`src`](./media.md): a path, an asset id, a URL, or a [`generate.*`](./generate.md) ref. The host resolves them exactly as it does for [`<image>`](./image.md)
+`<img>` takes the same sources as a composition [`src`](./media.md): a path, an asset id, or a URL. The host resolves them exactly as it does for [`<image>`](./image.md)
 
 ## Props
 

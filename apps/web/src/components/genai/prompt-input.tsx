@@ -16,6 +16,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverPortal, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
+import { Slider, SliderFill, SliderThumb, SliderTrack } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cx } from "@/lib/cva";
 import {
@@ -23,41 +24,35 @@ import {
   Show,
   Match,
   Switch,
+  createEffect,
   createMemo,
   createSignal,
   onCleanup,
+  onMount,
+  untrack,
   type Accessor,
+  type JSX,
 } from "solid-js";
 
 import {
-  PROMPT_INPUT_IMAGE_MODEL_OPTIONS,
-  PROMPT_INPUT_VIDEO_MODEL_OPTIONS,
-  PROMPT_INPUT_VOICE_MODEL,
-  PROMPT_INPUT_VOICE_OPTIONS,
+  ASPECT_RATIO_OPTIONS,
   PROMPT_INPUT_MODE_OPTIONS,
-  PROMPT_INPUT_IMAGE_ASPECT_RATIO_OPTIONS,
-  PROMPT_INPUT_VARIANT_COUNT_OPTIONS,
-  ALL_VIDEO_ASPECT_RATIO_OPTIONS,
-  ALL_DURATION_OPTIONS,
-  PROMPT_INPUT_AUDIO_MODEL_OPTIONS,
-  // PROMPT_INPUT_RESOLUTION_OPTIONS
+  RESOLUTION_OPTIONS,
+  defaultModelOption,
+  durationsAt,
+  modelOption,
+  modelOptions,
+  type AspectRatio,
+  type PromptMode,
 } from "./config";
+import { createDefaultConfig, fitToModel } from "./requests";
+import { loadConfig, saveConfig } from "./saved-config";
 import { createStoredSignal } from "@/lib/store";
 import { store } from "@/init";
-import { toast } from "somoto";
-import { useGenerateImage } from "./use-generate-image";
-import { useGenerateVideo } from "./use-generate-video";
-import { useGenerateVoice } from "./use-generate-voice";
-import { useGenerateAudio } from "./use-generate-audio";
+import { useGenerate } from "./use-generate";
+import { formatCost, priceOf, useDebounced } from "./use-estimate";
 import { PromptInputActions } from "./prompt-input-actions";
-import type {
-  AspectRatio,
-  GenerationConfig,
-  ImageGenerationConfig,
-  VideoGenerationConfig,
-  VoiceGenerationConfig,
-  AudioGenerationConfig,
-} from "./schemas";
+import type { GenerationConfig } from "./types";
 import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
 import { useLibrary } from "@/engine/library";
 import { useEditor } from "@/engine/hooks";
@@ -65,55 +60,16 @@ import { droppedFiles, importFiles, pickFiles } from "@/engine/asset-actions";
 import { useMediaSelection } from "./selection";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
+import type { ModelId, Resolution } from "@diffusionstudio/api-contract";
 import type { AssetCache } from "@diffusionstudio/assets";
 import type { ThumbnailAsset } from "@/components/ui/asset-thumbnail";
 
-export type PromptInputMode = "IMAGE" | "VIDEO" | "VOICE" | "AUDIO";
 
 const DEFAULT_BUTTON_CLASS = "text-muted-foreground gap-0 pr-2 pl-0";
+/** The text voices are compared on in the model menu: 1,000 characters. */
+const SAMPLE_SPEECH = "x".repeat(1000);
+/** As many references as the prompt box has room for; a model may take fewer. */
 const MAX_IMAGE_REFERENCES = 5;
-
-type GenerationConfgs = {
-  IMAGE: ImageGenerationConfig;
-  VIDEO: VideoGenerationConfig;
-  VOICE: VoiceGenerationConfig;
-  AUDIO: AudioGenerationConfig;
-};
-
-export function createDefaultConfig<K extends keyof GenerationConfgs>(mode: K, prompt = ""): GenerationConfgs[K] {
-  switch (mode) {
-    case "IMAGE":
-      return {
-        mode: "IMAGE",
-        model: PROMPT_INPUT_IMAGE_MODEL_OPTIONS[0].id,
-        prompt,
-        aspectRatio: "16:9",
-        count: 1,
-      } as GenerationConfgs[K];
-    case "VIDEO":
-      return {
-        mode: "VIDEO",
-        model: PROMPT_INPUT_VIDEO_MODEL_OPTIONS[0].id,
-        prompt,
-        aspectRatio: "16:9",
-        duration: 6,
-        generateAudio: true,
-      } as GenerationConfgs[K];
-    case "VOICE":
-      return {
-        mode: "VOICE",
-        model: PROMPT_INPUT_VOICE_MODEL,
-        prompt,
-        voice: PROMPT_INPUT_VOICE_OPTIONS[0].value,
-      } as GenerationConfgs[K];
-    case "AUDIO":
-      return {
-        mode: "AUDIO",
-        model: PROMPT_INPUT_AUDIO_MODEL_OPTIONS[0].id,
-        prompt,
-      } as GenerationConfgs[K];
-  }
-}
 
 export interface PromptInputProps {
   initialConfig?: GenerationConfig;
@@ -123,68 +79,66 @@ export function PromptInput(props: PromptInputProps) {
   const library = useLibrary();
   const editor = useEditor();
   const { images: selectedImages } = useMediaSelection();
-  const { generate: generateImage } = useGenerateImage();
-  const { generate: generateVideo } = useGenerateVideo();
-  const { generate: generateVoice } = useGenerateVoice();
-  const { generate: generateAudio } = useGenerateAudio();
+  const { generate } = useGenerate();
 
   let textareaRef!: HTMLTextAreaElement;
   let dragCounter = 0;
   const [isDragging, setIsDragging] = createSignal(false);
 
   const [config, setConfig] = createSignal<GenerationConfig>(
-    props.initialConfig ?? createDefaultConfig("IMAGE"),
+    props.initialConfig ?? loadConfig() ?? createDefaultConfig("IMAGE"),
   );
+
+  createEffect(() => saveConfig(config()));
 
   /** Shallow-merge updates into the current config. */
   const patch = (updates: Partial<GenerationConfig>) => {
-    setConfig((prev) => ({ ...prev, ...updates }) as GenerationConfig);
+    setConfig((prev) => ({ ...prev, ...updates }));
   };
 
   const mode = () => config().mode;
   const prompt = () => config().prompt;
 
-  // These are only read inside their matching <Match when={mode() === …}>
-  // blocks, so the narrowing is sound.
-  const imageConfig = () => {
-    const c = config();
-    return c.mode === "IMAGE" ? c : undefined;
-  };
-  const videoConfig = () => {
-    const c = config();
-    return c.mode === "VIDEO" ? c : undefined;
-  };
-  const voiceConfig = () => {
-    const c = config();
-    return c.mode === "VOICE" ? c : undefined;
-  };
+  /** The model and the settings it takes: what the prompt box offers. */
+  const option = createMemo(() => modelOption(config().model) ?? defaultModelOption(mode()));
+  const options = createMemo(() => modelOptions(mode()));
 
-  const currentVideoModel = createMemo(() =>
-    PROMPT_INPUT_VIDEO_MODEL_OPTIONS.find((m) => m.id === config().model),
+  /** What generating costs as set: the price on the generate button. */
+  const settledConfig = useDebounced(config);
+  const credits = () => priceOf(settledConfig());
+
+  /**
+   * What a model costs at its default settings: the price the model menu
+   * lists, to compare the models by. A voice is priced by its text, so voices
+   * are priced on a stand-in of 1,000 characters: their rate per 1k.
+   */
+  const defaultPrice = (model: ModelId) =>
+    priceOf(fitToModel({ mode: mode(), model, prompt: mode() === "VOICE" ? SAMPLE_SPEECH : "" }));
+  const modeLabel = () => PROMPT_INPUT_MODE_OPTIONS.find((o) => o.value === mode())?.label.toLowerCase();
+
+  const maxImageReferences = createMemo(() => Math.min(MAX_IMAGE_REFERENCES, option().references ?? 0));
+
+  const aspectRatioOptions = createMemo(() =>
+    ASPECT_RATIO_OPTIONS.filter((o) => option().aspectRatios?.includes(o.value)),
   );
-
-  const videoDurationOptions = createMemo(() => {
-    const model = currentVideoModel();
-    return model ? ALL_DURATION_OPTIONS.filter((o) => model.durations.includes(o.value)) : [];
-  });
-
-  const videoAspectRatioOptions = createMemo(() => {
-    const model = currentVideoModel();
-    return model ? ALL_VIDEO_ASPECT_RATIO_OPTIONS.filter((o) => model.aspectRatios.includes(o.value)) : [];
-  });
+  const countOptions = createMemo(() => (option().counts ?? []).map((n) => ({ value: String(n), label: String(n) })));
+  const resolutionOptions = createMemo(() =>
+    RESOLUTION_OPTIONS.filter((o) => option().resolutions?.includes(o.value)),
+  );
+  const durations = createMemo(() => durationsAt(option(), config().resolution) ?? []);
 
   // Pictures on the canvas are offered as references and as video frames:
   // selecting one is another way of attaching it.
   const effectiveImageRefIds = createMemo(() => {
     const lib = library();
     if (!lib) return [];
-    const local = imageConfig()?.imageRefIds ?? [];
+    const local = config().imageRefIds ?? [];
     const selected = selectedImages()
       .map((entry) => entry.asset.id)
       .filter((id) => !local.includes(id));
     return [...local, ...selected]
       .filter((id) => lib.get(id))
-      .slice(0, MAX_IMAGE_REFERENCES);
+      .slice(0, maxImageReferences());
   });
 
   /** The library id a frame is set to, explicitly or by the selection. */
@@ -192,11 +146,10 @@ export function PromptInput(props: PromptInputProps) {
     // A frame the model cannot take is not one the prompt box offers, and
     // not one a canvas selection quietly attaches either: the declaration is
     // checked against the model before it runs.
-    if (!currentVideoModel()?.features.includes(`${frame}-frame`)) return null;
+    if (!option().frames?.includes(frame)) return null;
 
     const lib = library();
-    const config = videoConfig();
-    const explicit = frame === "start" ? config?.startFrameImageId : config?.endFrameImageId;
+    const explicit = frame === "start" ? config().startFrameImageId : config().endFrameImageId;
     const id = explicit ?? selectedImages()[frame === "start" ? 0 : 1]?.asset.id ?? null;
     return id && lib?.get(id) ? id : null;
   };
@@ -225,13 +178,13 @@ export function PromptInput(props: PromptInputProps) {
   };
 
   const handleModeChange = (value: string) => {
-    const newMode = value as PromptInputMode;
+    const newMode = value as PromptMode;
     if (newMode === mode()) return;
     setConfig(createDefaultConfig(newMode, prompt()));
   };
 
   const removeImageReference = (assetId: string) => {
-    const refs = imageConfig()?.imageRefIds ?? [];
+    const refs = config().imageRefIds ?? [];
     if (refs.includes(assetId)) {
       patch({ imageRefIds: refs.filter((id) => id !== assetId) });
       return;
@@ -239,11 +192,11 @@ export function PromptInput(props: PromptInputProps) {
     // The reference is shown from a selected canvas entity, so removing it
     // means deselecting that entity.
     const entry = selectedImages().find((e) => e.asset.id === assetId);
-    if (entry) editor.deselect(entry.entity);
+    if (entry) editor.deselect(entry.node);
   };
 
   const openImageReferencesPicker = async () => {
-    if (effectiveImageRefIds().length >= MAX_IMAGE_REFERENCES) return;
+    if (effectiveImageRefIds().length >= maxImageReferences()) return;
     const lib = library();
     if (!lib) return;
 
@@ -253,9 +206,9 @@ export function PromptInput(props: PromptInputProps) {
     // `importFiles` reports its own failures.
     const imported = await importFiles(lib, files, "");
     const imageAssets = imported.filter((a) => a.type === "IMAGE");
-    const current = imageConfig()?.imageRefIds ?? [];
+    const current = config().imageRefIds ?? [];
     patch({
-      imageRefIds: [...current, ...imageAssets.map((a) => a.id)].slice(0, MAX_IMAGE_REFERENCES),
+      imageRefIds: [...current, ...imageAssets.map((a) => a.id)].slice(0, maxImageReferences()),
     });
   };
 
@@ -274,16 +227,12 @@ export function PromptInput(props: PromptInputProps) {
   };
 
   const swapVideoFrameImages = () => {
-    const c = videoConfig();
-    patch({
-      startFrameImageId: c?.endFrameImageId,
-      endFrameImageId: c?.startFrameImageId,
-    });
+    const c = config();
+    patch({ startFrameImageId: c.endFrameImageId, endFrameImageId: c.startFrameImageId });
   };
 
   const clearVideoFrame = (frame: "start" | "end") => {
-    const explicitId =
-      frame === "start" ? videoConfig()?.startFrameImageId : videoConfig()?.endFrameImageId;
+    const explicitId = frame === "start" ? config().startFrameImageId : config().endFrameImageId;
     if (explicitId) {
       patch(frame === "start" ? { startFrameImageId: undefined } : { endFrameImageId: undefined });
       return;
@@ -291,13 +240,18 @@ export function PromptInput(props: PromptInputProps) {
     // The frame is being shown from a selected canvas entity, so clearing it
     // means deselecting that entity (mirrors removeImageReference).
     const entry = selectedImages()[frame === "start" ? 0 : 1];
-    if (entry) editor.deselect(entry.entity);
+    if (entry) editor.deselect(entry.node);
   };
 
   const resizeTextarea = () => {
     textareaRef.style.height = "auto";
     textareaRef.style.height = `${textareaRef.scrollHeight}px`;
   };
+
+  onMount(() => {
+    textareaRef.focus();
+    textareaRef.setSelectionRange(textareaRef.value.length, textareaRef.value.length);
+  });
 
   const handleSelectRecentPrompt = (prompt: string) => {
     patch({ prompt });
@@ -321,30 +275,13 @@ export function PromptInput(props: PromptInputProps) {
     patch({ prompt: "" });
     resizeTextarea();
 
-    const promise = (() => {
-      switch (currentConfig.mode) {
-        case "IMAGE":
-          return generateImage({
-            ...currentConfig,
-            imageRefIds: effectiveImageRefIds(),
-          });
-        case "VIDEO":
-          return generateVideo({
-            ...currentConfig,
-            startFrameImageId: effectiveStartFrameId() || undefined,
-            endFrameImageId: effectiveEndFrameId() || undefined,
-          });
-        case "VOICE":
-          return generateVoice(currentConfig);
-        case "AUDIO":
-          return generateAudio(currentConfig);
-      }
-    })();
-
-    promise.catch((err) => {
-      toast("Generation failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
+    // What the model takes of the selection: none of it for a model without
+    // references or frames (see `maxImageReferences`, `frameId`).
+    generate({
+      ...currentConfig,
+      imageRefIds: effectiveImageRefIds(),
+      startFrameImageId: effectiveStartFrameId() ?? undefined,
+      endFrameImageId: effectiveEndFrameId() ?? undefined,
     });
   };
 
@@ -400,7 +337,7 @@ export function PromptInput(props: PromptInputProps) {
     dragCounter = 0;
     setIsDragging(false);
 
-    if (mode() !== "IMAGE" && mode() !== "VIDEO") return;
+    if (maxImageReferences() === 0 && !option().frames) return;
 
     const lib = library();
     if (!lib) return;
@@ -421,50 +358,33 @@ export function PromptInput(props: PromptInputProps) {
     const imageIds = droppedIds.filter((id) => lib.get(id)?.type === "IMAGE");
     if (imageIds.length === 0) return;
 
-    if (mode() === "VIDEO") {
-      const c = videoConfig();
-      if (!c?.startFrameImageId && imageIds[0]) {
+    if (option().frames) {
+      const c = config();
+      if (!c.startFrameImageId && imageIds[0]) {
         patch({ startFrameImageId: imageIds[0] });
       }
-      if (!c?.endFrameImageId && imageIds[1]) {
+      if (!c.endFrameImageId && imageIds[1] && option().frames?.includes("end")) {
         patch({ endFrameImageId: imageIds[1] });
       }
       return;
     }
 
-    const current = imageConfig()?.imageRefIds ?? [];
-    patch({
-      imageRefIds: [...current, ...imageIds].slice(0, MAX_IMAGE_REFERENCES),
-    });
+    const current = config().imageRefIds ?? [];
+    patch({ imageRefIds: [...current, ...imageIds].slice(0, maxImageReferences()) });
   };
 
-  const handleVideoModelChange = (id: string) => {
-    const model = PROMPT_INPUT_VIDEO_MODEL_OPTIONS.find((m) => m.id === id);
-    if (!model) return;
-
-    const c = videoConfig() ?? createDefaultConfig("VIDEO");
-    const durationStr = `${c.duration}s`;
-
-    setConfig({
-      ...c,
-      model: id,
-      endFrameImageId: model.features.includes("end-frame") ? c.endFrameImageId : undefined,
-      generateAudio: model.features.includes("audio") ? (c.generateAudio ?? true) : false,
-      duration: model.durations.includes(durationStr) ? c.duration : parseInt(model.durations[0], 10),
-      aspectRatio: model.aspectRatios.includes(c.aspectRatio)
-        ? c.aspectRatio
-        : (model.aspectRatios[0] as AspectRatio),
-    });
+  /** Another model of the mode, the settings carried over where it takes them. */
+  const handleModelChange = (id: string) => {
+    setConfig(fitToModel({ ...config(), model: id as ModelId }));
   };
 
   // ── Accessors for UI menus (string ↔ config conversions) ────────────
-  const aspectRatioAccessor: Accessor<string> = () =>
-    imageConfig()?.aspectRatio ?? videoConfig()?.aspectRatio ?? "16:9";
-  const variantCountAccessor: Accessor<string> = () => String(imageConfig()?.count ?? 1);
-  const durationAccessor: Accessor<string> = () => `${videoConfig()?.duration ?? 6}s`;
+  const aspectRatioAccessor: Accessor<string> = () => config().aspectRatio ?? "";
+  const countAccessor: Accessor<string> = () => String(config().count ?? "");
+  const durationAccessor: Accessor<number | undefined> = () => config().duration;
+  const resolutionAccessor: Accessor<string> = () => config().resolution ?? "";
   const modelAccessor: Accessor<string> = () => config().model;
-  const voiceAccessor: Accessor<string> = () => voiceConfig()?.voice ?? PROMPT_INPUT_VOICE_OPTIONS[0].value;
-  const audioEnabledAccessor = () => videoConfig()?.generateAudio ?? true;
+  const voiceAccessor: Accessor<string> = () => config().voice ?? "";
 
   return (
     <div
@@ -476,7 +396,7 @@ export function PromptInput(props: PromptInputProps) {
     >
       <PromptInputActions />
       <Switch>
-        <Match when={mode() === "IMAGE"}>
+        <Match when={maxImageReferences() > 0}>
           <div class="flex w-full items-start gap-2 overflow-x-auto">
             <For each={effectiveImageRefIds()}>
               {(assetId) => (
@@ -489,7 +409,7 @@ export function PromptInput(props: PromptInputProps) {
                 />
               )}
             </For>
-            <Show when={effectiveImageRefIds().length < MAX_IMAGE_REFERENCES}>
+            <Show when={effectiveImageRefIds().length < maxImageReferences()}>
               <PromptInputAttachButton
                 icon="attachment"
                 label="Image references"
@@ -500,9 +420,9 @@ export function PromptInput(props: PromptInputProps) {
           </div>
         </Match>
 
-        <Match when={mode() === "VIDEO"}>
+        <Match when={option().frames}>
           <div class="flex w-full items-center gap-2 overflow-x-auto">
-            <Show when={currentVideoModel()?.features.includes("start-frame")}>
+            <Show when={option().frames?.includes("start")}>
               <Show
                 when={effectiveStartFrameId()}
                 fallback={
@@ -525,7 +445,7 @@ export function PromptInput(props: PromptInputProps) {
                 )}
               </Show>
             </Show>
-            <Show when={currentVideoModel()?.features.includes("end-frame")}>
+            <Show when={option().frames?.includes("end")}>
               <Tooltip>
                 <TooltipTrigger
                   as={Button}
@@ -629,96 +549,64 @@ export function PromptInput(props: PromptInputProps) {
           </Tooltip>
           <Show when={settingsVisible()}>
             <Separator orientation="vertical" class="min-h-5" />
-            <Switch>
-              <Match when={mode() === "IMAGE"}>
-                <>
-                  <ModelMenu
-                    searchPlaceholder="Search in image models"
-                    options={PROMPT_INPUT_IMAGE_MODEL_OPTIONS}
-                    value={modelAccessor}
-                    onChange={(v) => patch({ model: v })}
-                  />
-                  <PromptInputCompactMenu
-                    aria-label="Select aspect ratio"
-                    menuLabel="Aspect ratio"
-                    value={aspectRatioAccessor}
-                    options={PROMPT_INPUT_IMAGE_ASPECT_RATIO_OPTIONS}
-                    onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
-                    triggerIcon="aspect-ratio-16-9"
-                  />
-                  <PromptInputCompactMenu
-                    aria-label="Select amount of variants"
-                    menuLabel="Amount of variants"
-                    value={variantCountAccessor}
-                    options={PROMPT_INPUT_VARIANT_COUNT_OPTIONS}
-                    onChange={(v) => patch({ count: Number(v) })}
-                    triggerIcon="variants"
-                  />
-                </>
-              </Match>
-              <Match when={mode() === "VIDEO"}>
-                <>
-                  <ModelMenu
-                    searchPlaceholder="Search in video models"
-                    options={PROMPT_INPUT_VIDEO_MODEL_OPTIONS}
-                    value={modelAccessor}
-                    onChange={handleVideoModelChange}
-                  />
-                  <PromptInputCompactMenu
-                    aria-label="Select aspect ratio"
-                    menuLabel="Aspect ratio"
-                    value={aspectRatioAccessor}
-                    options={videoAspectRatioOptions()}
-                    onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
-                    triggerIcon="aspect-ratio-16-9"
-                  />
-                  {/* <PromptInputCompactMenu
-                    aria-label="Select resolution"
-                    menuLabel="Resolution"
-                    value={resolution}
-                    options={PROMPT_INPUT_RESOLUTION_OPTIONS}
-                    onChange={setResolution}
-                    triggerIcon="resolution"
-                  /> */}
-                  <PromptInputCompactMenu
-                    aria-label="Select duration"
-                    menuLabel="Duration"
-                    value={durationAccessor}
-                    options={videoDurationOptions()}
-                    onChange={(v) => patch({ duration: parseInt(v) })}
-                    triggerIcon="duration"
-                  />
-                  <Show when={currentVideoModel()?.features.includes("audio")}>
-                    <Button
-                      variant="ghost"
-                      onClick={() => patch({ generateAudio: !audioEnabledAccessor() })}
-                      class={DEFAULT_BUTTON_CLASS}
-                    >
-                      <Icon
-                        name={audioEnabledAccessor() ? "audio-on" : "audio-off"}
-                        class="size-6"
-                      />
-                      {audioEnabledAccessor() ? "On" : "Off"}
-                    </Button>
-                  </Show>
-                </>
-              </Match>
-              <Match when={mode() === "VOICE"}>
-                <VoiceMenu
-                  options={PROMPT_INPUT_VOICE_OPTIONS}
-                  value={voiceAccessor}
-                  onChange={(v) => patch({ voice: v })}
+            <Show when={options().length > 1}>
+              <ModelMenu
+                searchPlaceholder={`Search in ${modeLabel()} models`}
+                options={options()}
+                credits={defaultPrice}
+                value={modelAccessor}
+                onChange={handleModelChange}
+              />
+            </Show>
+            <Show when={aspectRatioOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select aspect ratio"
+                menuLabel="Aspect ratio"
+                value={aspectRatioAccessor}
+                options={aspectRatioOptions()}
+                onChange={(v) => patch({ aspectRatio: v as AspectRatio })}
+                triggerIcon="aspect-ratio-16-9"
+              />
+            </Show>
+            <Show when={resolutionOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select resolution"
+                menuLabel="Resolution"
+                value={resolutionAccessor}
+                options={resolutionOptions()}
+                onChange={(v) => setConfig(fitToModel({ ...config(), resolution: v as Resolution }))}
+                triggerIcon="resolution"
+              />
+            </Show>
+            <Show when={countOptions().length > 0}>
+              <PromptInputCompactMenu
+                aria-label="Select amount of variants"
+                menuLabel="Amount of variants"
+                value={countAccessor}
+                options={countOptions()}
+                onChange={(v) => patch({ count: Number(v) })}
+                triggerIcon="variants"
+              />
+            </Show>
+            <Show when={durations().length > 0}>
+              <DurationMenu
+                durations={durations()}
+                value={durationAccessor}
+                onChange={(duration) => patch({ duration })}
+              />
+            </Show>
+            <Show when={option().durationRange}>
+              {(range) => (
+                <DurationRangeMenu
+                  range={range()}
+                  value={durationAccessor}
+                  onChange={(duration) => patch({ duration })}
                 />
-              </Match>
-              <Match when={mode() === "AUDIO"}>
-                <ModelMenu
-                  searchPlaceholder="Search in audio models"
-                  options={PROMPT_INPUT_AUDIO_MODEL_OPTIONS}
-                  value={modelAccessor}
-                  onChange={(v) => patch({ model: v })}
-                />
-              </Match>
-            </Switch>
+              )}
+            </Show>
+            <Show when={option().voices}>
+              {(voices) => <VoiceMenu options={voices()} value={voiceAccessor} onChange={(v) => patch({ voice: v })} />}
+            </Show>
           </Show>
         </div>
         <Tooltip>
@@ -731,7 +619,17 @@ export function PromptInput(props: PromptInputProps) {
           >
             <Icon name="arrow-right" class="-rotate-90 size-6" />
           </TooltipTrigger>
-          <TooltipContent shortcut="↵">Generate</TooltipContent>
+          <TooltipContent class="flex-col items-stretch px-2 pt-0.5 pb-2">
+            <div class="flex h-7 items-center gap-2">
+              <span class="flex-1 truncate">Generate</span>
+              <span class="min-w-5 text-right text-xxs font-normal text-muted-foreground">↩︎</span>
+            </div>
+            <Show when={credits() !== undefined}>
+              <span class="font-normal text-muted-foreground">
+                {formatCost(credits()!)}
+              </span>
+            </Show>
+          </TooltipContent>
         </Tooltip>
       </div>
       <Show when={isDragging()}>
@@ -747,6 +645,22 @@ export function PromptInput(props: PromptInputProps) {
   );
 }
 
+/** A price after a label, in a row with a gap: · ⊕ 46. Nothing without one. */
+function CreditsTag(props: { credits: number | undefined }) {
+  return (
+    <Show when={props.credits}>
+      {(credits) => (
+        <>
+          <Icon name="dot" class="size-3 text-muted-foreground" />
+          <span class="flex shrink-0 items-center gap-1 font-450 text-muted-foreground">
+            <Icon name="ai-credits-small" class="-mx-1.5 -my-1" />
+            {credits().toLocaleString()}
+          </span>
+        </>
+      )}
+    </Show>
+  );
+}
 
 type PromptInputCompactMenuProps = {
   menuLabel: string;
@@ -754,16 +668,22 @@ type PromptInputCompactMenuProps = {
   options: { value: string; label: string; triggerLabel?: string; icon?: string }[];
   onChange: (value: string) => void;
   triggerIcon?: string;
+  /** The trigger's label, for a value none of the options has. */
+  label?: string;
+  open?: boolean;
+  onOpenChange?(open: boolean): void;
+  /** Below the options. */
+  children?: JSX.Element;
 }
 
 function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
   const selectedOption = () =>
     props.options.find((option) => option.value === props.value()) ?? props.options[0];
   const selectedIcon = () => selectedOption()?.icon ?? props.triggerIcon ?? "chevron-down";
-  const selectedLabel = () => selectedOption()?.triggerLabel ?? selectedOption()?.label ?? "";
+  const selectedLabel = () => props.label ?? selectedOption()?.triggerLabel ?? selectedOption()?.label ?? "";
 
   return (
-    <DropdownMenu placement="top-start">
+    <DropdownMenu placement="top-start" open={props.open} onOpenChange={props.onOpenChange}>
       <DropdownMenuTrigger<typeof Button>
         as={(triggerProps) => (
           <Button
@@ -818,32 +738,301 @@ function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
               }}
             </For>
           </DropdownMenuGroup>
+          {props.children}
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenu>
   );
 }
 
+/** The greatest common divisor of the gaps between `durations`: the slider's step. */
+const durationStep = (durations: number[]) => {
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+  return durations.slice(1).reduce((step, d, i) => gcd(step, d - durations[i]), 0) || 1;
+};
+
+/** The index of the duration nearest to `seconds`. */
+const nearestDurationIndex = (durations: number[], seconds: number) =>
+  durations.reduce((best, d, i) => (Math.abs(d - seconds) < Math.abs(durations[best] - seconds) ? i : best), 0);
+
+type DurationMenuProps = {
+  durations: number[];
+  value: Accessor<number | undefined>;
+  onChange(value: number): void;
+}
+
+/**
+ * The duration picker: a slider over the lengths the model takes, snapping to
+ * them where they have gaps.
+ */
+function DurationMenu(props: DurationMenuProps) {
+  const min = () => props.durations[0];
+  const max = () => props.durations[props.durations.length - 1];
+  const index = () => nearestDurationIndex(props.durations, props.value() ?? min());
+  const value = () => props.durations[index()];
+  const fixed = () => min() === max();
+
+  const select = (seconds: number) => {
+    const next = props.durations[nearestDurationIndex(props.durations, seconds)];
+    if (next !== props.value()) props.onChange(next);
+  };
+
+  return (
+    <Popover placement="top-start">
+      <PopoverTrigger<typeof Button>
+        aria-label="Select duration"
+        as={(triggerProps) => (
+          <Button
+            {...triggerProps}
+            variant="ghost"
+            class={DEFAULT_BUTTON_CLASS}
+          >
+            <Icon name="duration" class="size-6" />
+            {`${value()}s`}
+          </Button>
+        )}
+      />
+      <PopoverPortal>
+        <PopoverContent class="flex w-56 flex-col gap-1 px-3 pt-0 pb-3 rounded-xl">
+          <div class="flex h-8 items-center justify-between text-xs">
+            <span class="text-muted-foreground">Duration</span>
+            <span class="text-foreground">{`${value()}s`}</span>
+          </div>
+          <Slider
+            aria-label="Duration"
+            value={[value()]}
+            // A slider over no range divides by zero: one length shows full.
+            minValue={fixed() ? min() - 1 : min()}
+            maxValue={max()}
+            step={durationStep(props.durations)}
+            disabled={fixed()}
+            getValueLabel={({ values }) => `${values[0]} seconds`}
+            onChange={([seconds]) => select(seconds)}
+          >
+            <SliderTrack>
+              <SliderFill />
+              <SliderThumb />
+            </SliderTrack>
+          </Slider>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
+  );
+}
+
+/** `seconds` the way a menu lists it: 45s, 2m, 1m 30s. */
+const formatDuration = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (!minutes) return `${rest}s`;
+  return rest ? `${minutes}m ${rest}s` : `${minutes}m`;
+};
+
+/** `seconds` as a clock: 01:30. */
+const formatClock = (seconds: number) =>
+  `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+
+/** The seconds a typed duration names (1:30, 1m 30s, 90s, 90); undefined for anything else. */
+const parseDuration = (text: string) => {
+  const input = text.trim().toLowerCase();
+  const clock = /^(\d+):(\d{1,2})$/.exec(input);
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
+  const units = /^(?:(\d+)\s*m)?\s*(?:(\d+)\s*s?)?$/.exec(input);
+  if (!units || (units[1] === undefined && units[2] === undefined)) return undefined;
+  return Number(units[1] ?? 0) * 60 + Number(units[2] ?? 0);
+};
+
+type DurationRangeMenuProps = {
+  range: { min: number; max: number; default: number; presets: number[] };
+  value: Accessor<number | undefined>;
+  onChange(value: number): void;
+}
+
+/**
+ * The duration picker of a model taking any length within a range: a few
+ * presets, and a custom length typed as a clock.
+ */
+function DurationRangeMenu(props: DurationRangeMenuProps) {
+  const [open, setOpen] = createSignal(false);
+  const [focused, setFocused] = createSignal(false);
+  /** What is typed into the custom field; undefined while nothing is. */
+  const [draft, setDraft] = createSignal<string>();
+
+  const value = () => props.value() ?? props.range.default;
+  const isCustom = () => !props.range.presets.includes(value());
+  const options = () =>
+    props.range.presets.map((seconds) => ({ value: String(seconds), label: formatDuration(seconds) }));
+
+  /** Applies the typed length, within the range; false when nothing valid is typed. */
+  const commit = () => {
+    const seconds = parseDuration(draft() ?? "");
+    setDraft(undefined);
+    if (!seconds) return false;
+    const next = Math.max(props.range.min, Math.min(props.range.max, seconds));
+    if (next !== value()) props.onChange(next);
+    return true;
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    // Closing by a click outside keeps what was typed; Escape has dropped it already.
+    if (!next && draft() !== undefined) commit();
+    setOpen(next);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setDraft(undefined);
+      return;
+    }
+    // The menu would take the keys as typeahead and arrow navigation.
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (commit()) setOpen(false);
+    }
+  };
+
+  return (
+    <PromptInputCompactMenu
+      menuLabel="Duration"
+      // While a custom length is typed, it is the one being picked: no row is checked.
+      value={() => (isCustom() || focused() ? "" : String(value()))}
+      options={options()}
+      onChange={(v) => props.onChange(Number(v))}
+      triggerIcon="duration"
+      label={formatDuration(value())}
+      open={open()}
+      onOpenChange={handleOpenChange}
+    >
+      {/* The menu's rows sit flush; the design spaces the custom field off them. */}
+      <Separator class="my-2" />
+      <div
+        class={cx(
+          "flex h-7 items-center rounded-md pl-2 text-xs",
+          focused() ? "bg-input ring-1 ring-inset ring-ring" : isCustom() ? "bg-muted" : "bg-input",
+        )}
+      >
+        <input
+          type="text"
+          aria-label="Custom duration"
+          placeholder="Custom duration"
+          class="h-full min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+          value={draft() ?? (isCustom() ? formatClock(value()) : "")}
+          onFocus={(e) => {
+            setFocused(true);
+            setDraft(e.currentTarget.value);
+            e.currentTarget.select();
+          }}
+          onBlur={() => setFocused(false)}
+          onInput={(e) => setDraft(e.currentTarget.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <Show when={focused() || isCustom()}>
+          <button
+            type="button"
+            aria-label="Use custom duration"
+            class="grid h-7 w-6 shrink-0 place-items-center"
+            // Keeps the field focused, so its draft is still there to apply.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (draft() !== undefined && commit()) setOpen(false);
+            }}
+          >
+            <Icon name="confirm-check" class="size-6 text-foreground" />
+          </button>
+        </Show>
+      </div>
+    </PromptInputCompactMenu>
+  );
+}
+
 type ModelMenuProps = {
   searchPlaceholder: string;
-  options: { id: string; name: string; description: string; icon: string }[];
+  options: { id: ModelId; name: string; description: string; icon: string }[];
+  /** A model's price at its default settings, when it has one. */
+  credits(model: ModelId): number | undefined;
   value: Accessor<string>;
   onChange(value: string): void;
 }
 
-function ModelMenu(props: ModelMenuProps) {
-  const [query, setQuery] = createSignal("");
+/**
+ * A list picked from with the keyboard while its search keeps focus: the
+ * arrow keys move the highlight, Enter picks the highlighted item, and the
+ * pointer highlights what it moves over.
+ */
+function createListNavigation<T>(items: Accessor<T[]>, pick: (item: T) => void) {
+  const [active, setActive] = createSignal(0);
+  let list: HTMLElement | undefined;
 
+  const highlight = (index: number) => {
+    setActive(index);
+    list?.querySelector(`[data-index="${index}"]`)?.scrollIntoView({ block: "nearest" });
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    const count = items().length;
+    if (!count) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      highlight((active() + (e.key === "ArrowDown" ? 1 : -1) + count) % count);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const item = items()[active()];
+      if (item) pick(item);
+    }
+  };
+
+  return {
+    active,
+    highlight,
+    onKeyDown,
+    listProps: {
+      ref: (el: HTMLElement) => (list = el),
+      // A click on a row keeps the focus in the search, so the keys keep working.
+      onMouseDown: (e: MouseEvent) => {
+        if (e.target !== e.currentTarget) e.preventDefault();
+      },
+    },
+    rowProps: (index: Accessor<number>) => ({
+      "data-index": index(),
+      onPointerMove: () => setActive(index()),
+    }),
+  };
+}
+
+function ModelMenu(props: ModelMenuProps) {
+  const [open, setOpen] = createSignal(false);
+  const [query, setQuery] = createSignal("");
+  let search: HTMLInputElement | undefined;
+
+  /** The options matching the query, in their order of relevance: a name starting with it first, then one containing it, then a description containing it. */
   const filteredOptions = createMemo(() => {
     const q = query().trim().toLowerCase();
     if (!q) return props.options;
-    return props.options.filter(
-      (o) => o.name.toLowerCase().includes(q) || o.description.toLowerCase().includes(q),
-    );
+    const rank = (o: ModelMenuProps["options"][number]) => {
+      const name = o.name.toLowerCase();
+      if (name.startsWith(q)) return 0;
+      if (name.includes(q)) return 1;
+      if (o.description.toLowerCase().includes(q)) return 2;
+      return -1;
+    };
+    return props.options
+      .map((option) => ({ option, rank: rank(option) }))
+      .filter((o) => o.rank >= 0)
+      .sort((a, b) => a.rank - b.rank)
+      .map((o) => o.option);
   });
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) setQuery("");
+  const selectModel = (id: string) => {
+    props.onChange(id);
+    setOpen(false);
+  };
+
+  const nav = createListNavigation(filteredOptions, (option) => selectModel(option.id));
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) setQuery("");
   };
 
   const icon = createMemo(() => {
@@ -856,9 +1045,17 @@ function ModelMenu(props: ModelMenuProps) {
     return option?.name ?? props.options[0].name;
   });
 
+  const handleAutoFocus = (e: Event) => {
+    e.preventDefault();
+    search?.focus();
+    // Kobalte calls this inside its focus scope's effect: a signal read here
+    // would rerun the effect on every keystroke and hand focus to the trigger.
+    untrack(() => nav.highlight(Math.max(0, filteredOptions().findIndex((o) => o.id === props.value()))));
+  };
+
   return (
-    <DropdownMenu placement="top-start" onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger<typeof Button>
+    <Popover placement="top-start" open={open()} onOpenChange={handleOpenChange}>
+      <PopoverTrigger<typeof Button>
         as={(triggerProps) => (
           <Button
             {...triggerProps}
@@ -870,50 +1067,65 @@ function ModelMenu(props: ModelMenuProps) {
           </Button>
         )}
       />
-      <DropdownMenuPortal>
-        <DropdownMenuContent class="w-[340px] p-0">
+      <PopoverPortal>
+        <PopoverContent
+          class="w-[340px] p-0 rounded-xl"
+          onOpenAutoFocus={handleAutoFocus}
+        >
           <SearchInput
+            ref={(el) => (search = el)}
             placeholder={props.searchPlaceholder}
             value={query()}
-            onValue={setQuery}
+            onValue={(value) => {
+              setQuery(value);
+              nav.highlight(0);
+            }}
+            onKeyDown={nav.onKeyDown}
           />
-          <div class="flex flex-col gap-2 px-2 py-1">
+          {/* Six rows tall: 6 × 42px rows, 5 × 8px gaps, 2 × 4px padding. */}
+          <div class="flex flex-col gap-2 px-2 py-1 max-h-[300px] overflow-y-auto" {...nav.listProps}>
             <For each={filteredOptions()}>
-              {(option) => {
-                const selected = props.value() === option.id;
+              {(option, index) => {
+                const selected = () => props.value() === option.id;
+                const active = () => nav.active() === index();
 
                 return (
-                  <DropdownMenuItem
-                    tone="neutral"
-                    class="h-[42px] gap-2 rounded-md px-1 py-1 group"
-                    onSelect={() => props.onChange(option.id)}
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    class="flex h-[42px] w-full shrink-0 items-center gap-2 rounded-md px-1 py-1 text-left text-xs"
                     classList={{
-                      "data-highlighted:bg-muted": selected,
+                      "bg-input": active() && !selected(),
+                      "bg-muted": active() && selected(),
                     }}
+                    onClick={() => selectModel(option.id)}
+                    {...nav.rowProps(index)}
                   >
                     <div class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm" >
                       <Icon name={option.icon!} class="size-6 text-muted-foreground" />
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
-                      <div class="truncate font-450 group-hover:text-foreground" classList={{ "text-foreground": selected }}>{option.name}</div>
+                      <div class="flex items-center gap-0.5 font-450">
+                        <span class="truncate" classList={{ "text-foreground": active() || selected() }}>{option.name}</span>
+                        <CreditsTag credits={props.credits(option.id)} />
+                      </div>
                       <div class="truncate">{option.description}</div>
                     </div>
                     <span class="grid size-7 place-items-center">
-                      <Show when={selected}>
+                      <Show when={selected()}>
                         <Icon name="confirm-check" class="size-6 text-foreground" />
                       </Show>
                     </span>
-                  </DropdownMenuItem>
+                  </button>
                 )
               }}
             </For>
           </div>
-        </DropdownMenuContent>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+        </PopoverContent>
+      </PopoverPortal>
+    </Popover>
   );
 }
-
 
 type VoiceMenuProps = {
   options: { value: string; label: string; thumbnail: string; description: string; previewUrl: string }[];
@@ -927,6 +1139,7 @@ function VoiceMenu(props: VoiceMenuProps) {
   const [playingVoice, setPlayingVoice] = createSignal<string | null>(null);
 
   let audioRef: HTMLAudioElement | undefined;
+  let search: HTMLInputElement | undefined;
 
   const selectedLabel = () =>
     props.options.find((o) => o.value === props.value())?.label ?? props.value();
@@ -969,6 +1182,8 @@ function VoiceMenu(props: VoiceMenuProps) {
     setOpen(false);
   };
 
+  const nav = createListNavigation(filteredOptions, (option) => selectVoice(option.value));
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
@@ -978,6 +1193,14 @@ function VoiceMenu(props: VoiceMenuProps) {
   };
 
   onCleanup(stopPlayback);
+
+  const handleAutoFocus = (e: Event) => {
+    e.preventDefault();
+    search?.focus();
+    // Kobalte calls this inside its focus scope's effect: a signal read here
+    // would rerun the effect on every keystroke and hand focus to the trigger.
+    untrack(() => nav.highlight(Math.max(0, filteredOptions().findIndex((o) => o.value === props.value()))));
+  };
 
   return (
     <Popover placement="top-start" open={open()} onOpenChange={handleOpenChange}>
@@ -994,24 +1217,36 @@ function VoiceMenu(props: VoiceMenuProps) {
         )}
       />
       <PopoverPortal>
-        <PopoverContent class="w-[340px] p-0 rounded-xl">
+        <PopoverContent
+          class="w-[340px] p-0 rounded-xl"
+          onOpenAutoFocus={handleAutoFocus}
+        >
           <SearchInput
+            ref={(el) => (search = el)}
             placeholder="Search in voices"
             value={query()}
-            onValue={setQuery}
+            onValue={(value) => {
+              setQuery(value);
+              nav.highlight(0);
+            }}
+            onKeyDown={nav.onKeyDown}
           />
-          <div class="flex flex-col gap-2 p-2 max-h-[320px] overflow-y-auto">
+          {/* Six rows tall: 6 × 42px rows, 5 × 8px gaps, 2 × 8px padding. */}
+          <div class="flex flex-col gap-2 p-2 max-h-[308px] overflow-y-auto" {...nav.listProps}>
             <For each={filteredOptions()}>
-              {(option) => {
+              {(option, index) => {
                 const selected = () => props.value() === option.value;
+                const active = () => nav.active() === index();
                 const isPlaying = () => playingVoice() === option.value;
 
                 return (
                   <button
                     type="button"
-                    class="flex items-center gap-2 rounded-md px-1 py-1 h-[42px] w-full text-left group hover:bg-accent transition-colors"
-                    classList={{ "bg-muted": selected() }}
+                    tabIndex={-1}
+                    class="flex shrink-0 items-center gap-2 rounded-md px-1 py-1 h-[42px] w-full text-left transition-colors"
+                    classList={{ "bg-accent": active() && !selected(), "bg-muted": selected() }}
                     onClick={() => selectVoice(option.value)}
+                    {...nav.rowProps(index)}
                   >
                     <div
                       class="group/thumb relative grid size-8 rounded-full overflow-hidden shrink-0 place-items-center"
@@ -1033,8 +1268,8 @@ function VoiceMenu(props: VoiceMenuProps) {
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
                       <div
-                        class="truncate text-base font-450 group-hover:text-foreground"
-                        classList={{ "text-foreground": selected() }}
+                        class="truncate text-base font-450"
+                        classList={{ "text-foreground": active() || selected() }}
                       >
                         {option.label}
                       </div>

@@ -2,11 +2,11 @@
 
 How to understand source material before editing it. Inspect only the modalities the decision turns on — speech, action, music, graphics, or atmosphere may lead, so there is no fixed priority. Sample the picture against what the audio tells you.
 
-- **Always probe first.** `media_probe` reports the container and its tracks, telling you up front whether the file has a video track, an audio track, or both. Everything after branches on that.
-- **Get the lay of the land.** Render a `media_waveform` (audio) and a `media_filmstrip` (video) for a fast, cheap overview of where the loud and quiet stretches fall, and where the visual scene changes are. A filmstrip shows coarse structure and scene state, not crop, framing, readability, or an exact cut frame.
-- **Listen to the audio.** Run `media_listen` with a prompt tailored to the context (what you actually need to know), and explicitly ask the model to include timestamps in its answer. See [media-listen.md](../guides/prompts/media-listen.md) for prompt patterns.
-- **Transcribe speech.** For speech, `media_transcribe` writes the full transcript with word-level start/end times to a JSON file and returns its path — search the file for the line you need and read its times from there, rather than loading it whole.
-- **Sample the video against the audio.** Use `media_grab` to pull frames. When the audio has already pointed you at specific moments, feed those timestamps straight in from the transcript or listen output as `times` (e.g. `00:32`, `00:45`). When you need a visual pass without such cues, reach for `auto`: it scans the footage and keeps only the frames where the picture settles into a new visual state, dropping near-duplicates.
+- **Always probe first.** `probe` reports the container and its tracks, telling you up front whether the file has a video track, an audio track, or both. Everything after branches on that.
+- **Get the lay of the land.** Render a `waveform` (audio) and a `filmstrip` (video) for a fast, cheap overview of where the loud and quiet stretches fall, and where the visual scene changes are. A filmstrip shows coarse structure and scene state, not crop, framing, readability, or an exact cut frame.
+- **Listen to the audio.** Run `listen` with a prompt tailored to the context (what you actually need to know), and explicitly ask the model to include timestamps in its answer. See [media-listen.md](../guides/prompts/media-listen.md) for prompt patterns.
+- **Transcribe speech.** For speech, `transcribe` writes the full transcript with word-level start/end times to a JSON file and returns its path — search the file for the line you need and read its times from there, rather than loading it whole.
+- **Sample the video against the audio.** Use `grab` to pull frames. When the audio has already pointed you at specific moments, feed those timestamps straight in from the transcript or listen output as `times` (e.g. `00:32`, `00:45`). When you need a visual pass without such cues, reach for `auto`: it scans the footage and keeps only the frames where the picture settles into a new visual state, dropping near-duplicates.
 
 # The editing loop
 
@@ -14,7 +14,7 @@ How to understand source material before editing it. Inspect only the modalities
 - Lay down the A-roll. Assemble the primary footage as JSX and save. Get the spine of the edit right before anything else.
 - Layer the rest on top. Once the A-roll holds, add B-roll and secondary assets (sound effects, captions, overlays) in the same source.
 - Symlink media the project uses into its `assets/` folder and name it by library path (`assets/b-roll/drone.mp4` is `"b-roll/drone.mp4"`); local and remote paths work too but stay outside the library.
-- `context` reports which folder the app actually has open, where the playhead sits, and where every `generate.*` declaration stands — poll it to wait for generations without blocking.
+- `context` reports which folder the app actually has open and where the playhead sits.
 
 **The source is the document.** A project is a folder of JSX; `open` a folder once, then write the files and save. Saving recompiles and re-renders the canvas.
 
@@ -31,7 +31,7 @@ How to understand source material before editing it. Inspect only the modalities
 
 How to confirm a change actually produced what you intended. A clean save does not guarantee a correct-looking composition.
 
-- Run `check` on the scene first. It catches black frames, clips that never become visible, zero-duration or fully transparent nodes, and assets that failed to load or generate.
+- Run `check` on the scene first. It catches black frames, clips that never become visible, zero-duration or fully transparent nodes, and assets that failed to load.
 - Use `capture` on the scene to see what the viewer actually gets.
 - Reconcile captured frames with the brief, and the brief with these guidelines.
 - Verify after every stage, not only at the end — build the composition incrementally so a problem is caught next to the change that caused it.
@@ -46,19 +46,19 @@ How to confirm a change actually produced what you intended. A clean save does n
 - Use the built-in tags for the media a composition is made of (audio, video, images, captions).
 - Hoist the properties that define the composition's look — title copy, font family and size, accent colors, key padding — into top-level consts annotated with `@inspect`, so they become live controls in the app's inspector.
 - For anything 3D, use Three.js drawn into a `<surface>` tag.
-- To cut an object out of footage, or confine an effect to it, track it with `media_segment` (preview the prompt first) and name the mask file in a `<mask>` under the clip's `<effect>`. A track into the library runs in the background: keep working, and poll `context` until its row in `masks` is done before naming it.
+- To cut an object out of footage, or confine an effect to it, track it with `generate`'s local `sam-2.1` model (preview the prompt first, see [sam-2.1](../reference/tools/segment.md)) and name the mask file in a `<mask>` under the clip's `<effect>`. The track runs as a job: keep working, and poll `job` until it has succeeded before naming the mask.
 - For motion graphics, overlays and UI-heavy graphics, the `<html>` tag driven by a paused [anime.js](https://animejs.com) timeline
 - Before animating anything, read the [easings reference](../guides/motion/easings.md) and choose easings deliberately — default or linear easing is what makes motion read as a slideshow.
-- Add auto captions last, after everything else is assembled, so they transcribe the finished audio at its final placement.
 - For tasks that don't need an editing UI, keep the app in the background: from a shell, `diffusion open -b <dir>` launches it that way. Over MCP the app is already running, and `open` only opens the folder.
 - Only render (export) the result when prompted.
 - Start with a fresh project.
+- Don't open a project in a cloud-synced folder (iCloud Drive, including a synced Desktop or Documents, Dropbox, OneDrive, Google Drive). Sync clients evict media to placeholders, upload half-written renders and leave conflict copies. Use a local folder outside the synced tree.
 
 # Docs
 
 The authoring reference is served by the app for the installed version: read it there and trust it over memory.
 
-- [JSX reference — elements, timing, paints, generation, captions](../reference/jsx/README.md)
+- [JSX reference — elements, timing, paints, captions](../reference/jsx/README.md)
 - [Tool reference — every tool, its fields, its CLI spelling and its output](../reference/tools/README.md)
 - [Examples — complete compositions, basics through shaders](../examples/README.md)
 - [Easings: which cubic-bezier to use and when](../guides/motion/easings.md)
@@ -75,4 +75,4 @@ Read worked example(s) that match your context.
 
 ## Prompts
 
-- [Writing prompts for `media_listen`](../guides/prompts/media-listen.md)
+- [Writing prompts for `listen`](../guides/prompts/media-listen.md)

@@ -18,55 +18,32 @@ import { createMemo, Show } from "solid-js";
 import { toast } from "somoto";
 
 import { useGenerationRecords } from "./use-generation-records";
-import { useGenerateImage } from "./use-generate-image";
-import { useGenerateVideo } from "./use-generate-video";
-import { useGenerateVoice } from "./use-generate-voice";
-import { useGenerateAudio } from "./use-generate-audio";
+import { useGenerate } from "./use-generate";
 import { useMediaSelection } from "./selection";
 import { useTransforms } from "./use-transforms";
+import { formatCost } from "./use-estimate";
 
-import type { TransformType } from "@diffusionstudio/jsx";
+import type { TransformType } from "./types";
 
 export function PromptInputActions() {
-  const { isGenerated, totalCredits, firstConfig } = useGenerationRecords();
-  const { imageNodes, videoNodes } = useMediaSelection();
-  const { isOn, toggle } = useTransforms();
+  const { isGenerated, totalCredits, firstJob } = useGenerationRecords();
+  const { imageMedia, videoMedia } = useMediaSelection();
+  const { run } = useTransforms();
+  const { rerun } = useGenerate();
 
-  const { generate: generateImage } = useGenerateImage();
-  const { generate: generateVideo } = useGenerateVideo();
-  const { generate: generateVoice } = useGenerateVoice();
-  const { generate: generateAudio } = useGenerateAudio();
-
-  const hasImageSelection = createMemo(() => imageNodes().length > 0);
-  const hasVideoSelection = createMemo(() => videoNodes().length > 0);
+  const hasImageSelection = createMemo(() => imageMedia().length > 0);
+  const hasVideoSelection = createMemo(() => videoMedia().length > 0);
 
   const handleRerun = () => {
-    const config = firstConfig();
-    if (!config) {
-      toast("No generation config found", {
+    const job = firstJob();
+    if (!job) {
+      toast("No generation found", {
         description: "This asset wasn't generated with a prompt.",
       });
       return;
     }
-
-    const promise = (() => {
-      switch (config.mode) {
-        case "IMAGE":
-          return generateImage(config);
-        case "VIDEO":
-          return generateVideo(config);
-        case "VOICE":
-          return generateVoice(config);
-        case "AUDIO":
-          return generateAudio(config);
-      }
-    })();
-
-    promise.catch((err) => {
-      toast("Rerun failed", {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    });
+    
+    rerun(job.request);
   };
 
   return (
@@ -83,7 +60,12 @@ export function PromptInputActions() {
             >
               <Icon name="rerun" />
             </TooltipTrigger>
-            <TooltipContent>Rerun</TooltipContent>
+            <TooltipContent class="flex-col items-stretch px-2 pt-0.5 pb-2">
+              <div class="flex h-7 items-center">Rerun</div>
+              <Show when={firstJob()}>
+                {(job) => <span class="font-normal text-muted-foreground">{formatCost(job().credits)}</span>}
+              </Show>
+            </TooltipContent>
           </Tooltip>
           <Separator orientation="vertical" class="min-h-5" />
         </Show>
@@ -121,13 +103,10 @@ export function PromptInputActions() {
               </Show>
               <DropdownMenuGroup>
                 <Show when={hasImageSelection() || hasVideoSelection()}>
-                  <TransformItem name="upscale" icon="arrow-scale" label="Upscale" isOn={isOn} toggle={toggle} />
+                  <TransformItem name="upscale" icon="arrow-scale" label="Upscale" run={run} />
                 </Show>
                 <Show when={hasImageSelection()}>
-                  <TransformItem name="removeBackground" icon="ai-generate" label="Remove background" isOn={isOn} toggle={toggle} />
-                </Show>
-                <Show when={hasVideoSelection()}>
-                  <TransformItem name="addAudio" icon="audio-on" label="Add audio" isOn={isOn} toggle={toggle} />
+                  <TransformItem name="removeBackground" icon="ai-generate" label="Remove background" run={run} />
                 </Show>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -142,19 +121,15 @@ type TransformItemProps = {
   name: TransformType;
   icon: string;
   label: string;
-  isOn(name: TransformType): boolean;
-  toggle(name: TransformType): void;
+  run(name: TransformType): void;
 };
 
-/** A transform as a menu row: a check when the selection is asking for it. */
+/** A transform as a menu row. */
 function TransformItem(props: TransformItemProps) {
   return (
-    <DropdownMenuItem onSelect={() => props.toggle(props.name)}>
+    <DropdownMenuItem onSelect={() => props.run(props.name)}>
       <Icon name={props.icon} class="mr-2 text-foreground" />
       <span class="flex-1">{props.label}</span>
-      <Show when={props.isOn(props.name)}>
-        <Icon name="confirm-check" class="ml-2 text-foreground" />
-      </Show>
     </DropdownMenuItem>
   );
 }

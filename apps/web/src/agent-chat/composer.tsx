@@ -13,7 +13,7 @@ import { Icon } from "@/components/ui/icon";
 
 import type { ModelRef } from "@diffusionstudio/agent-chat";
 
-import { AttachmentTile, DropOverlay, createDropZone, mergeAttachments, pickAttachments, type Attachment } from "./attachments";
+import { AttachmentTile, DropOverlay, createDropZone, createPasteHandler, mergeAttachments, pickAttachments, type Attachment } from "./attachments";
 import { ModelPicker } from "./model-picker";
 
 const MAX_HEIGHT_PX = 160;
@@ -40,6 +40,7 @@ export function Composer(props: ComposerProps) {
 
   const attach = (added: Attachment[]) => props.onAttachments(mergeAttachments(props.attachments, added));
   const drop = createDropZone(attach);
+  const paste = createPasteHandler(attach);
 
   const canSend = () => !props.running && !props.blocked && props.model !== null && (props.text.trim().length > 0 || props.attachments.length > 0);
 
@@ -73,6 +74,7 @@ export function Composer(props: ComposerProps) {
       onDragEnter={drop.onDragEnter}
       onDragLeave={drop.onDragLeave}
       onDrop={drop.onDrop}
+      onPaste={paste}
     >
       <Show when={props.attachments.length > 0}>
         {/* The remove buttons overhang the tiles' corners, and a scrolling

@@ -3,47 +3,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { For, Show, createResource, type Accessor, type JSX } from "solid-js";
+import type { BillingInfo } from "@diffusionstudio/api-contract";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { openBillingPortal } from "@/lib/checkout";
 import { useAuth } from "@/context/auth";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
 
 import {
   DashboardDividedStack,
   DashboardFreePlanDetails,
   DashboardInfoActionRow,
-  DashboardProPlanDetails,
+  DashboardPaidPlanDetails,
   DashboardPlanSummaryCard,
   DashboardSurfaceCard,
   DashboardSurfaceSection,
 } from "./shared";
 
-type BillingAddress = {
-  legalName: string;
-  line1: string;
-  line2: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-};
-
-type PaymentMethod = {
-  brand: string;
-  last4: string;
-  expMonth: number;
-  expYear: number;
-};
-
-type BillingInfo = {
-  email: string;
-  address: BillingAddress | null;
-  taxId: string | null;
-  paymentMethod: PaymentMethod | null;
-  billingPeriod: "month" | "year" | null;
-};
+type BillingAddress = NonNullable<BillingInfo["address"]>;
 
 function capitalizeBrand(brand: string): string {
   if (!brand) return "Card";
@@ -69,7 +47,7 @@ function DashboardBillingFreePlanCard(props: DashboardBillingFreePlanCardProps) 
         <span class="grid h-7 w-6 place-items-center overflow-clip">
           <Icon name="upgrade" class="size-6" />
         </span>
-        Upgrade to Pro
+        Upgrade
       </Button>
     </DashboardSurfaceCard>
   );
@@ -91,7 +69,7 @@ function DashboardBillingCurrentPlan(props: DashboardBillingCurrentPlanProps) {
       </div>
 
       <Show
-        when={auth.isPro()}
+        when={auth.isSubscribed()}
         fallback={<DashboardBillingFreePlanCard onUpgrade={props.onUpgrade} />}
       >
         <DashboardPlanSummaryCard
@@ -101,7 +79,7 @@ function DashboardBillingCurrentPlan(props: DashboardBillingCurrentPlanProps) {
             </Button>
           }
         >
-          <DashboardProPlanDetails />
+          <DashboardPaidPlanDetails />
         </DashboardPlanSummaryCard>
       </Show>
 
@@ -217,17 +195,22 @@ export function DashboardBillingInfoView(props: DashboardBillingInfoViewProps) {
   const auth = useAuth();
 
   const [info] = createResource<BillingInfo | undefined, boolean>(
-    () => auth.isPro(),
-    async (isPro) => {
-      if (!isPro) return undefined;
-      return (await trpc.getBillingInfo.query()) as BillingInfo;
+    () => auth.hasBillingAccount(),
+    async (hasBillingAccount) => {
+      if (!hasBillingAccount) return undefined;
+      try {
+        return await api.billing.info.query();
+      } catch (err) {
+        console.error("Failed to load billing information", err);
+        return undefined;
+      }
     },
   );
 
   return (
     <div class="flex flex-col gap-6">
       <DashboardBillingCurrentPlan onUpgrade={props.onUpgrade} />
-      <Show when={auth.isPro()}>
+      <Show when={auth.hasBillingAccount()}>
         <DashboardBillingInformation info={info} />
       </Show>
     </div>

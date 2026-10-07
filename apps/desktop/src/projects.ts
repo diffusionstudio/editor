@@ -16,11 +16,13 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { PluginItem, TransformOptions } from "@babel/core";
 import type { BuildOptions, Plugin } from "esbuild";
 
+import { countCodeChange } from "./analytics";
 import { isTempPath, TEMP_PREFIX, writeFileAtomic } from "./atomic";
 import { windowsCloudSyncKind } from "./cloud-sync-windows";
 import { mainBridge } from "./main-manager";
 import { MAIN_CHANNELS } from "./main-channels";
 import { applyEdits, editLabel, stampProject } from "./edit";
+import { migrateGenerations } from "./legacy-generations";
 import { canonicalizeTagsPlugin, inspectPlugin, sourcePlugin } from "./source";
 import type { CompileResult, FsEntry, FsStat, ProjectInfo, SourceEdit, WriteResult } from "./main-channels";
 import type { SourceContext } from "./edit";
@@ -450,22 +452,19 @@ const SOLID_VERSION = "^1.9.10";
 /**
  * The diffusion surface as npm scripts: the CLI is how a project is inspected and
  * cut, so its commands belong in the record of the project they act on —
- * `npm run` prints the menu, `npm run <name> -- <args>` runs one. Named after
- * the command rather than its path (`grab`, not `media:grab`): the `media`
- * subcommands have no top-level namesakes to collide with.
+ * `npm run` prints the menu, `npm run <name> -- <args>` runs one, named after
+ * the command.
  */
 const SCRIPTS: Record<string, string> = {
   open: "diffusion open .",
   context: "diffusion context",
   capture: "diffusion capture",
-  probe: "diffusion media probe",
-  transcribe: "diffusion media transcribe",
-  grab: "diffusion media grab",
-  filmstrip: "diffusion media filmstrip",
-  waveform: "diffusion media waveform",
-  listen: "diffusion media listen",
-  models: "diffusion models",
-  voices: "diffusion voices",
+  probe: "diffusion probe",
+  transcribe: "diffusion transcribe",
+  grab: "diffusion grab",
+  filmstrip: "diffusion filmstrip",
+  waveform: "diffusion waveform",
+  listen: "diffusion listen",
   fonts: "diffusion fonts",
   logs: "diffusion logs",
   screenshot: "diffusion screenshot",
@@ -552,8 +551,8 @@ a new session.
 | \`index.tsx\` | The entry. Its default export renders the composition. |
 | \`package.json\` | The project record: \`projectId\` (its identity, kept across renames), \`displayName\` (the name shown in the app), \`main\` (the entry), \`diffusion\` (how each scene is exported), and the diffusion commands as scripts. |
 | \`tsconfig.json\` | Types for the composition tags, through \`jsxImportSource\`. |
-| \`assets.yml\` | The asset library: for every asset its library path, where its bytes are, and what it was found to be; for a generation without bytes, where it stands. Written by the app; hand edits are read on the next load. |
-| \`assets/\` | The library's files: put one here and it is taken in while the app watches, and the app writes its own here too — generations under \`assets/generated/\`. Media imported through the app is linked where it lies instead, never copied. |
+| \`assets.yml\` | The asset library: for every asset its library path, where its bytes are, and what it was found to be. Written by the app; hand edits are read on the next load. |
+| \`assets/\` | The library's files: put one here and it is taken in while the app watches, and the app writes its own here too. Media imported through the app is linked where it lies instead, never copied. |
 | \`cache/\` | Derived data (thumbnails, waveforms). Disposable, and not checked in. |
 
 ## Authoring
@@ -599,10 +598,6 @@ export default function Project() {
   and the gradient paints, \`<stroke>\`, \`<shadow>\`, \`<effect>\`.
 - \`src\` takes a library path (\`"b-roll/drone.mp4"\` — the portable form, it
   survives the file being relinked), an asset id, a URL, or an absolute path.
-- Generated assets are declared rather than fetched: \`src={generate.image({ prompt })}\`,
-  and \`generate.video\`, \`generate.voice\`, \`generate.audio\`. They are produced on
-  mount, in dependency order. \`diffusion context\` reports where each stands:
-  generating, failed with the reason, or done with the asset path it landed as.
 - Solid is fully available while mounting: \`<For>\`, \`<Show>\`, \`createMemo\`, and
   \`useTicker()\` for values that follow the playhead.
 - npm packages work as they normally do. The folder is a real npm package, so
@@ -622,16 +617,14 @@ All of them talk to the running app, except \`fonts\`.
 | Script | Command | What it does |
 | ------ | ------- | ------------ |
 | \`open\` | \`diffusion open .\` | Launch the app with this project open. |
-| \`context\` | \`diffusion context\` | Which project the app has open, where its playhead sits, its fonts, where its generations stand. |
+| \`context\` | \`diffusion context\` | Which project the app has open, where its playhead sits, its fonts, its background mask tracks. |
 | \`capture\` | \`diffusion capture <id>\` | Render frames of a scene, as an export would, to labelled PNG contact sheets. |
-| \`probe\` | \`diffusion media probe <id\\|path>\` | Container and per-track metadata, without decoding. |
-| \`transcribe\` | \`diffusion media transcribe <id\\|path>\` | Timed speech transcript, word by word. |
-| \`grab\` | \`diffusion media grab <id\\|path>\` | Decode frames of a video to labelled PNG contact sheets. |
-| \`filmstrip\` | \`diffusion media filmstrip <id\\|path>\` | Thumbnail grid across a window of a video. |
-| \`waveform\` | \`diffusion media waveform <id\\|path>\` | Loudness over time, with the silences marked. |
-| \`listen\` | \`diffusion media listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
-| \`models\` | \`diffusion models [type]\` | Generation models and their per-model constraints. |
-| \`voices\` | \`diffusion voices\` | Speech voices for \`generate.voice\`. |
+| \`probe\` | \`diffusion probe <id\\|path>\` | Container and per-track metadata, without decoding. |
+| \`transcribe\` | \`diffusion transcribe <id\\|path>\` | Timed speech transcript, word by word. |
+| \`grab\` | \`diffusion grab <id\\|path>\` | Decode frames of a video to labelled PNG contact sheets. |
+| \`filmstrip\` | \`diffusion filmstrip <id\\|path>\` | Thumbnail grid across a window of a video. |
+| \`waveform\` | \`diffusion waveform <id\\|path>\` | Loudness over time, with the silences marked. |
+| \`listen\` | \`diffusion listen <id\\|path>\` | Ask a multimodal model what is in an audio track. |
 | \`fonts\` | \`diffusion fonts\` | Google Fonts and local font families, valid as \`fontFamily\`. |
 | \`logs\` | \`diffusion logs\` | Recent console output from the app. |
 | \`screenshot\` | \`diffusion screenshot\` | The whole app window as a PNG. |
@@ -639,7 +632,7 @@ All of them talk to the running app, except \`fonts\`.
 
 ## Reference
 
-- [JSX reference](https://github.com/diffusionstudio/editor/blob/main/docs/reference/jsx/README.md): elements, timing, paints, generation, captions
+- [JSX reference](https://github.com/diffusionstudio/editor/blob/main/docs/reference/jsx/README.md): elements, timing, paints, captions
 - [Tool reference](https://github.com/diffusionstudio/editor/blob/main/docs/reference/tools/README.md): every tool and command, its options and its output
 - [Examples](https://github.com/diffusionstudio/editor/tree/main/docs/examples): runnable compositions to read
 `;
@@ -832,11 +825,16 @@ export async function duplicateProject(dir: string): Promise<ProjectInfo> {
   return project;
 }
 
-/** Moves the folder to the trash; resolves with the id it had ("" for none), for what is kept outside it. */
+/**
+ * Moves the folder to the trash; resolves with the id it had ("" for none), for what is kept outside it.
+ * A folder that is already gone counts as deleted, so the project can still come off the list.
+ */
 export async function deleteProject(dir: string): Promise<string> {
   const id = recordedId(await readPackage(dir));
   unwatchProject(dir);
-  await shell.trashItem(dir);
+  if (await exists(dir)) {
+    await shell.trashItem(dir);
+  }
   return id;
 }
 
@@ -910,6 +908,11 @@ export async function compileProject(dir: string): Promise<CompileResult> {
   // Fills in the package.json record for folders that predate it; the rest
   // of the scaffold is the dashboard's (see `initProject`).
   await ensureRecord(dir);
+
+  // Projects from before generation was removed declare assets the JSX can
+  // no longer load; they are pointed at what those declarations produced.
+  // Writes nothing to a project with nothing left to migrate.
+  await migrateGenerations(sourceContext(dir), await readManifest(dir).catch(() => null));
 
   // Names every element before it is numbered, so the ids this compile hands
   // the canvas are durable ones. A fully keyed project is not written to.
@@ -1241,6 +1244,9 @@ export async function noteRenamed(temp: string, as: string): Promise<void> {
   claim(as, await digestOf(temp));
 }
 
+/** The files a change to which counts as code being written, for analytics. */
+const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
+
 export function watchProject(window: BrowserWindow | null, dir: string): void {
   if (watchers.has(dir)) return;
 
@@ -1266,6 +1272,8 @@ export function watchProject(window: BrowserWindow | null, dir: string): void {
         const current = await digestOf(file);
         if (settleClaim(file, current) || known.get(file) === current) return;
         known.set(file, current);
+        if (SOURCE_FILE.test(path) && current !== ABSENT) countCodeChange(path);
+
         mainBridge.emit(window, MAIN_CHANNELS.PROJECTS_CHANGED, { dir, path });
       })
       .catch(() => { });

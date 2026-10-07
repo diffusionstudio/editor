@@ -37,7 +37,7 @@ function DashboardBillingTabButton(props: DashboardBillingTabButtonProps) {
 export function DashboardBillingView() {
   const auth = useAuth();
   const [tab, setTab] = createSignal<BillingTab>("plans");
-  const activeTab = (): BillingTab => (auth.hasStripeCustomer() ? tab() : "plans");
+  const activeTab = (): BillingTab => (auth.hasBillingAccount() ? tab() : "plans");
 
   return (
     <div class="min-h-0 flex-1 overflow-y-auto">
@@ -50,7 +50,7 @@ export function DashboardBillingView() {
               active={activeTab() === "plans"}
               onClick={() => setTab("plans")}
             />
-            <Show when={auth.hasStripeCustomer()}>
+            <Show when={auth.hasBillingAccount()}>
               <DashboardBillingTabButton
                 label="Billing"
                 active={activeTab() === "billing"}

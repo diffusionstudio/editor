@@ -13,14 +13,14 @@ The JSX code syntax specified in [jsx/](../jsx/README.md) is **pseudo-SVG**, mir
 
 A tool is named as MCP lists it, and the CLI spelling follows from the name:
 
-- `_` in a tool name is a space on the command line: `media_grab` is `diffusion media grab`. The `media` group is also `m`.
+- The tool name is the command: `grab` is `diffusion grab`.
 - A tool's first field is the positional argument: `capture`'s `id` is `diffusion capture <id>`.
 - Every other field is an option in kebab-case: `perSheet` is `--per-sheet`, `separate` is `--separate`. Short forms are listed on each page.
 - Times are written the same way everywhere: seconds (`1.5`), frames at the project's rate (`45f`), or a clock string (`1:30`, `00:01:30`). Times in **results** are plain seconds.
 
 ## Results
 
-Every tool returns one JSON object, its *structured content*. Over MCP that is the result's `structuredContent`, repeated as a text block for clients that ignore structured content; the CLI prints it to stdout, unchanged. Tools that render images (`capture`, `media_grab`, `media_filmstrip`, `media_waveform`, `screenshot`) write PNGs to disk and return their paths; over MCP a result of at most four images, none over a megabyte, also carries them inline as image content, so a contact sheet arrives in context without opening anything.
+Every tool returns one JSON object, its *structured content*. Over MCP that is the result's `structuredContent`, repeated as a text block for clients that ignore structured content; the CLI prints it to stdout, unchanged. Tools that render images (`capture`, `grab`, `filmstrip`, `waveform`, `screenshot`) write PNGs to disk and return their paths; over MCP a result of at most four images, none over a megabyte, also carries them inline as image content, so a contact sheet arrives in context without opening anything.
 
 ## Errors
 
@@ -37,15 +37,14 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 | [`capture`](./capture.md) | `diffusion capture` | Capture frames |
 | [`check`](./check.md) | `diffusion check` | Check structure |
 | [`export`](./export.md) | `diffusion export` | Export scene |
-| [`media_probe`](./media/probe.md) | `diffusion media probe` | Probe media |
-| [`media_grab`](./media/grab.md) | `diffusion media grab` | Grab frames |
-| [`media_transcribe`](./media/transcribe.md) | `diffusion media transcribe` | Transcribe speech |
-| [`media_filmstrip`](./media/filmstrip.md) | `diffusion media filmstrip` | Filmstrip preview |
-| [`media_waveform`](./media/waveform.md) | `diffusion media waveform` | Waveform preview |
-| [`media_listen`](./media/listen.md) | `diffusion media listen` | Listen to audio |
-| [`media_segment`](./media/segment.md) | `diffusion media segment` | Segment object |
-| [`models`](./models.md) | `diffusion models` | Generation models |
-| [`voices`](./voices.md) | `diffusion voices` | Speech voices |
+| [`probe`](./probe.md) | `diffusion probe` | Probe media |
+| [`grab`](./grab.md) | `diffusion grab` | Grab frames |
+| [`transcribe`](./transcribe.md) | `diffusion transcribe` | Transcribe speech |
+| [`filmstrip`](./filmstrip.md) | `diffusion filmstrip` | Filmstrip preview |
+| [`waveform`](./waveform.md) | `diffusion waveform` | Waveform preview |
+| [`listen`](./listen.md) | `diffusion listen` | Listen to audio |
+| [`generate`](./generate.md) | `diffusion generate` | Generate media |
+| [`job`](./job.md) | `diffusion job` | Generation job |
 | [`logs`](./logs.md) | `diffusion logs` | App logs |
 | [`screenshot`](./screenshot.md) | `diffusion screenshot` | Window screenshot |
 | [`window`](./window.md) | `diffusion window` | App window |
@@ -55,9 +54,9 @@ Every tool runs inside the app, so the app has to be running. Over MCP that is a
 How the surface is divided:
 
 - **The project loop.** [`open`](./open.md) a folder, edit its JSX, [`context`](./context.md) for what the source cannot say, [`capture`](./capture.md) and [`check`](./check.md) to verify, [`export`](./export.md) when asked.
-- **Media inspection** (`media_*`): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
-- **Masks.** [`media_segment`](./media/segment.md) segments and tracks an object in footage and writes the mask file a `<mask src>` names.
-- **What a declaration may name.** [`models`](./models.md), [`voices`](./voices.md), [`fonts`](./fonts.md). Generation itself is declared in the project module (`generate.*`, see [jsx/generate.md](../jsx/generate.md)); no tool generates.
+- **Media inspection** ([`probe`](./probe.md), [`grab`](./grab.md), [`transcribe`](./transcribe.md), [`filmstrip`](./filmstrip.md), [`waveform`](./waveform.md), [`listen`](./listen.md)): a file by path, without adding it to the project. Absolute paths and URLs work with or without an open project; library paths (`b-roll/clip.mp4`) need one.
+- **Generation.** [`generate`](./generate.md) runs a model of the Diffusion Studio API (images, video, music, speech, and tools such as upscaling) on the account's credits, or a model on this machine for free (with `estimate`, it only prices the request) — [`sam-2.1`](./segment.md) segments and tracks an object in footage, making the mask file a `<mask src>` names; poll [`job`](./job.md) until it has ended, and its files are saved into the library or a directory. The models and their fields are in [models.md](../models.md).
+- **What a declaration may name.** [`fonts`](./fonts.md).
 - **The app and the machine.** [`logs`](./logs.md), [`screenshot`](./screenshot.md), [`window`](./window.md), [`report`](./report.md).
 
 ## Downloading footage

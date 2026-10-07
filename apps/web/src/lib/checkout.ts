@@ -2,39 +2,62 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { TRPCClientError } from "@trpc/client";
 import { toast } from "somoto";
-import type {
-  BillingPeriod,
-  SubscriptionCredits,
-  TopupCredits,
-} from "@diffusionstudio/api-contract";
 
-import { trpc } from "./trpc";
+import { api } from "./api";
 import { mainBridge } from "./ipc";
 import { MAIN_CHANNELS } from "@desktop/main-channels";
 
+import type { BillingPeriod, PaidPlan, Plan, TopupCredits } from "@diffusionstudio/api-contract";
+
 function toastMessage(err: unknown, fallback: string): string {
-  // Empty / non-JSON 500 bodies (e.g. upstream crashed before tRPC could
-  // serialize the error) surface as a SyntaxError — not useful to display.
-  if (err instanceof TRPCClientError && err.cause instanceof SyntaxError) {
-    return fallback;
-  }
   return err instanceof Error ? err.message : fallback;
 }
 
-export const CREDIT_RATE = 0.01;
-export const ANNUAL_DISCOUNT = 0.24;
+/** Credits a new account gets once, at signup. */
+export const FREE_CREDITS = 50;
 
-export const SUBSCRIPTION_VOLUME_DISCOUNT: Record<SubscriptionCredits, number> = {
-  "2_500": 0,
-  "5_000": 0,
-  "15_000": 0.1,
-  "30_000": 0.15,
-  "45_000": 0.2,
+type PlanOffer = {
+  name: string;
+  /** Credits granted every month, on monthly and yearly billing alike. */
+  monthlyCredits: number;
+  /** Display price per month (USD) for each billing period. */
+  monthlyPrice: Record<BillingPeriod, number>;
 };
 
-export const TOPUP_MARKUP: Record<TopupCredits, number> = {
+/** The plans `billing.subscribe` sells. Prices mirror the Stripe prices the API looks up. */
+export const PLANS: Record<PaidPlan, PlanOffer> = {
+  pro: { name: "Pro", monthlyCredits: 2_500, monthlyPrice: { month: 25, year: 20 } },
+  plus: { name: "Plus", monthlyCredits: 5_000, monthlyPrice: { month: 50, year: 35 } },
+  max: { name: "Max", monthlyCredits: 15_000, monthlyPrice: { month: 150, year: 100 } },
+};
+
+export const PAID_PLANS = Object.keys(PLANS) as PaidPlan[];
+
+/** USD a year of `plan` costs less when billed yearly. */
+export function yearlySavings(plan: PaidPlan): number {
+  const { month, year } = PLANS[plan].monthlyPrice;
+  return (month - year) * 12;
+}
+
+/** The largest yearly discount across the plans, as a whole percentage. */
+export const MAX_YEARLY_DISCOUNT = Math.max(
+  ...PAID_PLANS.map((plan) => {
+    const { month, year } = PLANS[plan].monthlyPrice;
+    return Math.round((1 - year / month) * 100);
+  }),
+);
+
+/** Display name of a plan. Legacy per-credit subscriptions were sold as Pro. */
+export function planName(plan: Plan): string {
+  if (plan === "free") return "Free";
+  if (plan === "legacy") return "Pro";
+  return PLANS[plan].name;
+}
+
+const CREDIT_RATE = 0.01;
+
+const TOPUP_MARKUP: Record<TopupCredits, number> = {
   "1_000": 0.2,
   "2_000": 0.1,
   "5_000": 0,
@@ -42,42 +65,33 @@ export const TOPUP_MARKUP: Record<TopupCredits, number> = {
   "25_000": 0,
 };
 
-export const SUBSCRIPTION_CREDIT_TIERS = Object.keys(
-  SUBSCRIPTION_VOLUME_DISCOUNT,
-) as SubscriptionCredits[];
-
 export const TOPUP_CREDIT_TIERS = Object.keys(TOPUP_MARKUP) as TopupCredits[];
 
-function parseCredits(tier: string): number {
+export function topupCredits(tier: TopupCredits): number {
   return parseInt(tier.replace("_", ""), 10);
-}
-
-/** Monthly display price (USD) for a subscription tier. */
-export function getSubscriptionPrice(
-  tier: SubscriptionCredits,
-  billing: BillingPeriod,
-): number {
-  const credits = parseCredits(tier);
-  const discount = SUBSCRIPTION_VOLUME_DISCOUNT[tier];
-  let price = credits * CREDIT_RATE * (1 - discount);
-  if (billing === "year") price *= 1 - ANNUAL_DISCOUNT;
-  return Math.round(price);
 }
 
 /** One-time topup price (USD) for a topup tier. */
 export function getTopupPrice(tier: TopupCredits): number {
-  const credits = parseCredits(tier);
-  const markup = TOPUP_MARKUP[tier];
-  return Math.round(credits * CREDIT_RATE * (1 + markup));
+  return Math.round(topupCredits(tier) * CREDIT_RATE * (1 + TOPUP_MARKUP[tier]));
 }
 
 const ELECTRON_CHECKOUT_REDIRECT =
   "https://app.diffusion.studio/checkout/electron-callback.html";
 
-function successAndCancelUrls(): { successUrl: string; cancelUrl: string } {
+/**
+ * `purchase` rides along on the success URL so the success dialog can name what
+ * was bought before the Stripe webhook has updated the account.
+ */
+function successAndCancelUrls(
+  purchase: { plan: PaidPlan } | { credits: number },
+): { successUrl: string; cancelUrl: string } {
+  const purchaseParams = Object.entries(purchase).map(([key, value]) => [key, String(value)]);
+
   if (window.desktop) {
+    const success = new URLSearchParams([["status", "success"], ...purchaseParams]);
     return {
-      successUrl: `${ELECTRON_CHECKOUT_REDIRECT}?status=success`,
+      successUrl: `${ELECTRON_CHECKOUT_REDIRECT}?${success}`,
       cancelUrl: `${ELECTRON_CHECKOUT_REDIRECT}?status=cancel`,
     };
   }
@@ -85,6 +99,7 @@ function successAndCancelUrls(): { successUrl: string; cancelUrl: string } {
   const cancelUrl = window.location.href;
   const success = new URL(window.location.href);
   success.searchParams.set("checkout", "success");
+  for (const [key, value] of purchaseParams) success.searchParams.set(key, value);
   return { successUrl: success.toString(), cancelUrl };
 }
 
@@ -99,13 +114,13 @@ async function openCheckoutUrl(url: string): Promise<void> {
 }
 
 export async function startSubscriptionCheckout(input: {
-  creditQuantity: SubscriptionCredits;
+  plan: PaidPlan;
   billingPeriod: BillingPeriod;
 }): Promise<void> {
   try {
-    const { url } = await trpc.createSubscription.mutate({
+    const { url } = await api.billing.subscribe.mutate({
       ...input,
-      ...successAndCancelUrls(),
+      ...successAndCancelUrls({ plan: input.plan }),
     });
     await openCheckoutUrl(url);
   } catch (err) {
@@ -117,9 +132,9 @@ export async function startTopupCheckout(
   creditQuantity: TopupCredits,
 ): Promise<void> {
   try {
-    const { url } = await trpc.createTopup.mutate({
+    const { url } = await api.billing.topup.mutate({
       creditQuantity,
-      ...successAndCancelUrls(),
+      ...successAndCancelUrls({ credits: topupCredits(creditQuantity) }),
     });
     await openCheckoutUrl(url);
   } catch (err) {
@@ -130,7 +145,7 @@ export async function startTopupCheckout(
 export async function openBillingPortal(): Promise<void> {
   if (window.desktop) {
     try {
-      const { url } = await trpc.createBillingPortal.mutate();
+      const { url } = await api.billing.portal.mutate();
       await mainBridge.call(MAIN_CHANNELS.APP_OPEN_EXTERNAL, { url });
     } catch (err) {
       toast.error(toastMessage(err, "Failed to open billing portal"));
@@ -144,7 +159,7 @@ export async function openBillingPortal(): Promise<void> {
   if (!tab) return;
 
   try {
-    const { url } = await trpc.createBillingPortal.mutate();
+    const { url } = await api.billing.portal.mutate();
     tab.location.href = url;
   } catch (err) {
     tab.close();

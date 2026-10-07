@@ -2,87 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-// Asset transcoding and preview rendering (was engine/utils/transcode.ts;
-// the timecode formatters moved to utils/time.ts). Filmstrips and waveforms
+// Asset preview rendering (was engine/utils/transcode.ts; the timecode
+// formatters moved to utils/time.ts). Filmstrips and waveforms
 // draw into an OffscreenCanvas, so everything here is worker-capable.
 
-import { ALL_FORMATS, AudioSampleSink, BlobSource, BufferTarget, CanvasSink, Conversion, Input, InputAudioTrack, Mp4OutputFormat, OggOutputFormat, Output, StreamTarget } from 'mediabunny';
+import { ALL_FORMATS, AudioSampleSink, BlobSource, CanvasSink, Input, InputAudioTrack } from 'mediabunny';
 
 import { assert } from '../utils/assert';
 import { formatTimestamp } from '../utils/time';
 import { getAssetFile } from '../actions/assets';
 
-import type { StreamTargetChunk } from 'mediabunny';
 import type { Asset, VideoAsset, AudioAsset } from '@diffusionstudio/assets';
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-export async function transcodeForTranscription(asset: Asset): Promise<File> {
-	const blob = await getAssetFile(asset);
-	const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
-	try {
-		const output = new Output({ format: new OggOutputFormat(), target: new BufferTarget() });
-		const conversion = await Conversion.init({
-			input,
-			output,
-			video: { discard: true },
-			audio: { codec: "opus", numberOfChannels: 1, sampleRate: 16000 },
-		});
-		if (!conversion.isValid || conversion.utilizedTracks.length === 0) {
-			throw new Error("No audio found. The asset has no audio track to transcribe.");
-		}
-		await conversion.execute();
-
-		const buffer = output.target.buffer;
-		assert(buffer, "Transcoding produced no output.");
-		return new File([buffer], `${crypto.randomUUID()}.ogg`, { type: "audio/ogg" });
-	} finally {
-		input.dispose();
-	}
-}
-
-export async function transcodeForAnalysis(asset: VideoAsset | AudioAsset, window?: TimeWindow & { stripVideo?: boolean }) {
-	const blob = await getAssetFile(asset);
-	const hasWindow = window?.start !== undefined || window?.end !== undefined;
-
-	const isVideo = asset.type === "VIDEO" && !window?.stripVideo;
-	const trim = hasWindow ? resolveWindow(asset.duration, window) : undefined;
-
-	const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
-
-	const { writable, readable } = new TransformStream<StreamTargetChunk, Uint8Array<ArrayBuffer>>({
-		transform: (chunk, controller) => controller.enqueue(chunk.data),
-	});
-
-	const target = new StreamTarget(writable);
-	const format = isVideo
-		? new Mp4OutputFormat({ fastStart: "fragmented" })
-		: new OggOutputFormat();
-	const output = new Output({ format, target });
-
-	const conversion = await Conversion.init({
-		input,
-		output,
-		trim: (trim && { start: trim.start, end: trim.end }),
-		video: { width: 640, frameRate: 24, bitrate: 500_000, discard: !isVideo },
-		audio: { codec: isVideo ? undefined : "opus", numberOfChannels: 1, sampleRate: 16_000 },
-	});
-
-	if (!conversion.isValid || conversion.utilizedTracks.length === 0) {
-		input.dispose();
-		throw new Error("Nothing to analyze. The asset has no usable video or audio track.");
-	}
-
-	const run = async () => {
-		try {
-			await conversion.execute();
-		} finally {
-			input.dispose();
-		}
-	};
-
-	return { readable, run };
-}
 
 const PATCH_SIZE = 28;
 const MAX_WIDTH_IN_TOKENS = 64; // 92

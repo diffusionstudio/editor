@@ -5,7 +5,7 @@
 
 import { normalizePath } from './types';
 
-import type { Asset, PartialAsset } from './types';
+import type { Asset } from './types';
 
 export const MANIFEST_VERSION = 1;
 
@@ -15,18 +15,10 @@ export const MANIFEST_FILE = 'assets.yml';
 /** The project directory the app writes its own asset bytes into. */
 export const ASSETS_DIR = 'assets';
 
-/** Where generated assets are stored inside `ASSETS_DIR`. */
-export const GENERATED_DIR = 'generated';
-
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 /** An asset as written to the manifest: the model minus its runtime handles. */
 export type AssetRecord = DistributiveOmit<Asset, 'handle' | 'directoryHandle' | 'transient'>;
-
-/** A partial document as written to the manifest: it has no handles to lose. */
-export type PartialRecord = PartialAsset;
-
-export type ManifestRecord = AssetRecord | PartialRecord;
 
 export interface Manifest {
 	version: number;
@@ -35,20 +27,20 @@ export interface Manifest {
 	 * in it is also implied by their paths). `/`-separated, no leading slash.
 	 */
 	folders: string[];
-	/** Assets and the partial records of generations without bytes, newest first. */
-	assets: ManifestRecord[];
+	/** Assets, newest first. */
+	assets: AssetRecord[];
 }
 
 const RECORD_KEYS = new Set(['handle', 'directoryHandle', 'transient']);
 
-/** The manifest record of a library entry: its data, none of its handles. */
-export function toRecord(entry: Asset | PartialAsset): ManifestRecord {
+/** The manifest record of an asset: its data, none of its handles. */
+export function toRecord(asset: Asset): AssetRecord {
 	const record: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(entry)) {
+	for (const [key, value] of Object.entries(asset)) {
 		if (RECORD_KEYS.has(key) || value === undefined) continue;
 		record[key] = value;
 	}
-	return record as ManifestRecord;
+	return record as AssetRecord;
 }
 
 /** Whether `record` has what every asset needs; unrecognized fields are kept. */
@@ -61,21 +53,6 @@ export function isAssetRecord(record: unknown): record is AssetRecord {
 		typeof r.source === 'string' && r.source.length > 0 &&
 		typeof r.type === 'string' &&
 		typeof r.mimeType === 'string'
-	);
-}
-
-/** Whether `record` is a partial document: a generation's place and state, no bytes. */
-export function isPartialRecord(record: unknown): record is PartialRecord {
-	if (!record || typeof record !== 'object') return false;
-	const r = record as Record<string, unknown>;
-	const generation = r.generation as Record<string, unknown> | undefined;
-	return (
-		typeof r.id === 'string' && r.id.length > 0 &&
-		typeof r.path === 'string' && r.path.length > 0 &&
-		typeof r.type === 'string' &&
-		(r.state === 'pending' || r.state === 'error') &&
-		!!generation && typeof generation === 'object' && typeof generation.key === 'string' &&
-		(r.error === undefined || typeof r.error === 'string')
 	);
 }
 
@@ -100,7 +77,7 @@ export function normalizeManifest(input: unknown): Manifest {
 	if (Array.isArray(raw.assets)) {
 		const seen = new Set<string>();
 		for (const record of raw.assets) {
-			if (!isAssetRecord(record) && !isPartialRecord(record)) continue;
+			if (!isAssetRecord(record)) continue;
 			const path = normalizePath(record.path);
 			if (!path || seen.has(record.id)) continue;
 			seen.add(record.id);

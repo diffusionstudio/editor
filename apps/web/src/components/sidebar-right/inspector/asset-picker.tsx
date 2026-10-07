@@ -18,7 +18,7 @@ import { Icon } from "@/components/ui/icon";
 import { Separator } from "@/components/ui/separator";
 import { LazyAssetItem } from "@/components/sidebar-left/asset-item";
 import { usePromptInput } from "@/context/prompt-input";
-import { createDefaultConfig } from "@/components/genai/prompt-input";
+import { restoreConfig } from "@/components/genai/saved-config";
 import { assetName } from "@diffusionstudio/assets";
 import { useTrait } from "@diffusionstudio/koota-solid";
 import { AssetId, isScene } from "@diffusionstudio/runtime";
@@ -177,7 +177,7 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
         <Button
           variant="secondary"
           class="w-full"
-          onClick={() => openPromptInput(createDefaultConfig("IMAGE"))}
+          onClick={() => openPromptInput(restoreConfig("IMAGE"))}
         >
           Generate with AI
         </Button>

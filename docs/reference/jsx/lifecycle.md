@@ -2,7 +2,7 @@
 
 ## A mount stays live
 
-Opening a project compiles the entry file and renders it into the document. After that the reactive graph **keeps running**: signals, effects, timers, and [`useTicker`](#useticker) keep driving the mounted entities for as long as the project is open. Updates land in the document immediately — prop writes, conditional inserts and removals (`<Show>`, `<For>`), text, and reactive `src` swaps including `generate.*`. The materialized nodes are ordinary editable entities; asset resolution is owned by the engine.
+Opening a project compiles the entry file and renders it into the document. After that the reactive graph **keeps running**: signals, effects, timers, and [`useTicker`](#useticker) keep driving the mounted entities for as long as the project is open. Updates land in the document immediately — prop writes, conditional inserts and removals (`<Show>`, `<For>`), text, and reactive `src` swaps. The materialized nodes are ordinary editable entities; asset resolution is owned by the engine.
 
 A save re-runs the pipeline. The old mount is disposed and the new render takes the stage, the way reloading a page rebuilds it — scenes are rebuilt rather than accumulated, and the entities the previous render owned go with it. A compile error changes nothing: the last good render stays on the canvas and the failure is reported.
 

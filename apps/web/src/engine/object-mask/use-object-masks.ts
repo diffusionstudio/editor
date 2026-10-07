@@ -8,26 +8,19 @@ import { createMemo } from 'solid-js';
 
 import { useDerived } from '../hooks';
 import { useLibrary } from '../library';
-import { objectMasksOf } from './copy';
+import { objectMaskGroups } from './copy';
 
 import type { Accessor } from 'solid-js';
 import type { Entity } from 'koota';
-import type { ObjectMaskSource } from './copy';
-
-export type ObjectMasks = {
-	/** The id of the video the clip plays, or null when it plays none. */
-	footage: Accessor<string | null>;
-	/** The tracked masks of that video in the library (see `objectMasksOf`). */
-	masks: Accessor<ObjectMaskSource[]>;
-};
+import type { ObjectMaskGroup } from './copy';
 
 /**
- * The tracked masks of `clip`'s footage, reactively. Which video the clip
- * plays is sampled per tick as an id — a lookup, compared by value — and the
- * library is scanned only when that id or the library's asset list changes,
- * not every frame.
+ * Every mask in the library, `clip`'s own first (see `objectMaskGroups`),
+ * reactively. Which video the clip plays is sampled per tick as an id — a
+ * lookup, compared by value — and the library is scanned only when that id
+ * or the library's asset list changes, not every frame.
  */
-export function useObjectMasks(clip: () => Entity | null | undefined): ObjectMasks {
+export function useObjectMasks(clip: () => Entity | null | undefined): Accessor<ObjectMaskGroup[]> {
 	const world = useWorld();
 	const library = useLibrary();
 
@@ -36,11 +29,8 @@ export function useObjectMasks(clip: () => Entity | null | undefined): ObjectMas
 		const asset = node ? findGeometryAsset(world, node) : null;
 		return asset?.type === 'VIDEO' ? asset.id : null;
 	});
-	const masks = createMemo(() => {
-		const id = footage();
+	return createMemo(() => {
 		const current = library();
-		return id && current ? objectMasksOf(current, id) : [];
+		return current ? objectMaskGroups(current, footage()) : [];
 	});
-
-	return { footage, masks };
 }

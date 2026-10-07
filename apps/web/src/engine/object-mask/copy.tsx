@@ -21,25 +21,36 @@ export type ObjectMaskSource = {
 	sourceIn: number;
 };
 
+/** A section of the mask menus: a heading and the masks under it. */
+export type ObjectMaskGroup = {
+	/** What to call the section. */
+	name: string;
+	masks: ObjectMaskSource[];
+};
+
 /**
- * The tracked masks of the video `footage` (its asset id) in `library`: every
- * mask file whose recipe names it, whichever effect — or none — holds it now.
- * The recipe is the record: a mask outlives the effects that used it, and
- * the library is where it is found again. It reads the library's asset list,
- * a signal, so a memo over it runs again only when the library changes (see
- * `useObjectMasks`).
+ * Every mask in `library`, the ones tracked on the video `footage` (its asset
+ * id, the clip's own footage) first, under that video's name, and all the
+ * others after them as "Others" — any effect can take any mask, but the
+ * clip's own are the likely pick. Empty sections are left out. It reads the
+ * library's asset list, a signal, so a memo over it runs again only when the
+ * library changes (see `useObjectMasks`).
  */
-export function objectMasksOf(library: AssetLibrary, footage: string): ObjectMaskSource[] {
-	const sources: ObjectMaskSource[] = [];
+export function objectMaskGroups(library: AssetLibrary, footage: string | null): ObjectMaskGroup[] {
+	const video = footage ? library.get(footage) : undefined;
+	const own: ObjectMaskGroup = { name: video ? assetName(video).replace(/\.[^.]+$/, '') : '', masks: [] };
+	const others: ObjectMaskGroup = { name: 'Others', masks: [] };
+
 	for (const asset of library.list()) {
-		if (asset.type !== 'MASK' || asset.recipe?.source !== footage) continue;
-		sources.push({
+		if (asset.type !== 'MASK') continue;
+		const group = video && asset.recipe?.source === video.id ? own : others;
+		group.masks.push({
 			asset,
 			name: assetName(asset).replace(/\.[^.]+$/, ''),
-			sourceIn: asset.recipe.first / asset.frameRate,
+			sourceIn: asset.recipe ? asset.recipe.first / asset.frameRate : 0,
 		});
 	}
-	return sources;
+	return [own, others].filter((group) => group.masks.length > 0);
 }
 
 /**

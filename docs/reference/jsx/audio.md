@@ -12,7 +12,7 @@ It draws nothing inside a scene, but on the canvas it is still something to poin
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
-| `src` | `string \| AssetRef` | **required** | See [media.md](./media.md). |
+| `src` | `string` | **required** | See [media.md](./media.md). |
 | `id`, `name` | `string` | see [elements.md](./elements.md#common-props) | Address and label. |
 | `x`, `y` | `number` | `0` | Where the waveform box sits on the canvas. No meaning inside a scene. |
 | `width`, `height` | `number` | `500`, `150` | Size of that box. |

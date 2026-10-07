@@ -3,6 +3,7 @@ export * from './assert';
 export * from './async';
 export * from './color';
 export * from './generating';
+export * from './source-failure';
 export * from './text';
 export * from './sort';
 export * from './stroke';

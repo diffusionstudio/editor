@@ -73,7 +73,7 @@ export const CheckboxInput = <T extends ValidComponent = "input">(
     <CheckboxPrimitive.Input
       data-slot="checkbox-input"
       class={cx(
-        "[&:focus-visible+div]:ring-ring/50 peer [&:focus-visible+div]:ring-[3px]",
+        "peer",
         props.class,
       )}
       {...rest}
@@ -93,7 +93,7 @@ export const CheckboxControl = <T extends ValidComponent = "div">(
     <CheckboxPrimitive.Control
       data-slot="checkbox-control"
       class={cx(
-        "peer-focus-visible:border-ring border-muted dark:bg-input/30 data-[checked]:bg-primary data-[checked]:text-primary-foreground dark:data-[checked]:bg-primary data-[checked]:border-primary data-[invalid]:ring-destructive/20 dark:data-[invalid]:ring-destructive/40 data-[invalid]:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
+        "border-muted dark:bg-input/30 data-[checked]:bg-primary data-[checked]:text-primary-foreground dark:data-[checked]:bg-primary data-[checked]:border-primary data-[invalid]:ring-destructive/20 dark:data-[invalid]:ring-destructive/40 data-[invalid]:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
         props.class,
       )}
       {...rest}

@@ -7,17 +7,15 @@ import { context } from "./context";
 import { capture } from "./capture";
 import { check } from "./check";
 import { exportScene } from "./export";
-import { models } from "./models";
-import { voices } from "./voices";
 import { fonts } from "./fonts";
 import { screenshot } from "./screenshot";
-import { mediaProbe } from "./media-probe";
-import { mediaGrab } from "./media-grab";
-import { mediaTranscribe } from "./media-transcribe";
-import { mediaFilmstrip } from "./media-filmstrip";
-import { mediaWaveform } from "./media-waveform";
-import { mediaListen } from "./media-listen";
-import { mediaSegment } from "./media-segment";
+import { probe } from "./probe";
+import { grab } from "./grab";
+import { transcribe } from "./transcribe";
+import { filmstrip } from "./filmstrip";
+import { waveform } from "./waveform";
+import { listen } from "./listen";
+import { generate, job } from "./generate";
 
 import type { Handlers } from "../handler";
 
@@ -28,15 +26,14 @@ export const handlers: Handlers = {
   capture,
   check,
   export: exportScene,
-  models,
-  voices,
   fonts,
   screenshot,
-  media_probe: mediaProbe,
-  media_grab: mediaGrab,
-  media_transcribe: mediaTranscribe,
-  media_filmstrip: mediaFilmstrip,
-  media_waveform: mediaWaveform,
-  media_listen: mediaListen,
-  media_segment: mediaSegment,
+  probe,
+  grab,
+  transcribe,
+  filmstrip,
+  waveform,
+  listen,
+  generate,
+  job,
 };

@@ -109,7 +109,7 @@ export function SourceRows(props: SourceRowsProps) {
               </div>
             }
           >
-            <div class="flex h-7 w-full items-center overflow-hidden rounded-md border border-transparent bg-input text-foreground focus-within:border-primary">
+            <div class="flex h-7 w-full items-center overflow-hidden rounded-md border border-transparent bg-input text-foreground">
               <button
                 class="flex h-full min-w-0 flex-1 items-center gap-2 pl-1 text-left"
                 onClick={() => setPicking("media")}

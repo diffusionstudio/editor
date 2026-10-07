@@ -12,7 +12,9 @@ import { useAuth } from "@/context/auth";
 import {
   TOPUP_CREDIT_TIERS,
   getTopupPrice,
+  planName,
   startTopupCheckout,
+  topupCredits,
 } from "@/lib/checkout";
 
 import {
@@ -26,10 +28,6 @@ import type { TopupCredits } from "@diffusionstudio/api-contract";
 
 function formatCredits(value: number): string {
   return value.toLocaleString();
-}
-
-function parseTierCredits(tier: TopupCredits): number {
-  return parseInt(tier.replace("_", ""), 10);
 }
 
 function formatPercent(used: number, total: number): string {
@@ -126,12 +124,12 @@ function DashboardAiCreditsTopUpSection() {
                   }
                 }}
                 class={cx(
-                  "flex flex-col gap-0.5 rounded-md border p-3 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex flex-col gap-0.5 rounded-md border p-3 outline-none transition-colors hover:bg-accent",
                   isSelected() ? "border-primary" : "border-input",
                 )}
               >
                 <span class="text-xs text-foreground">
-                  {formatCredits(parseTierCredits(tier))} credits
+                  {formatCredits(topupCredits(tier))} credits
                 </span>
                 <span class="text-xs text-muted-foreground">
                   ${getTopupPrice(tier)}
@@ -155,7 +153,7 @@ function DashboardAiCreditsNeedMoreSection() {
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
         <DashboardLabelValue
           label="Keep creating without interruptions"
-          value="Flexible credit tiers, top ups on demand, and the full Pro experience."
+          value="Monthly AI credits, top ups on demand, and the full Pro experience."
         />
         <Button class="gap-0 pl-0 pr-2" onClick={goToBilling}>
           <span class="grid h-7 w-6 place-items-center overflow-clip">
@@ -183,7 +181,7 @@ export function DashboardAiCreditsView() {
   const goToBilling = () =>
     setParams({ dashboard: "billing" }, { replace: true });
 
-  const isPro = () => auth.isPro();
+  const isSubscribed = () => auth.isSubscribed();
   const total = () => auth.creditLimit();
   const remaining = () => auth.remainingCredits();
   const used = () => Math.max(0, total() - remaining());
@@ -196,9 +194,9 @@ export function DashboardAiCreditsView() {
     return `Resets in ${days} ${days === 1 ? "day" : "days"} - ${date}`;
   };
   const creditLimitLabel = () =>
-    isPro()
-      ? `${formatCredits(total())} credits/mo`
-      : `${formatCredits(total())} trial credits`;
+    isSubscribed()
+      ? `${planName(auth.plan())} \u00B7 ${formatCredits(total())} credits/mo`
+      : `Free \u00B7 ${formatCredits(total())} trial credits`;
   const creditUsageLabel = () =>
     `${formatCredits(used())} / ${formatCredits(total())}`;
 
@@ -206,8 +204,8 @@ export function DashboardAiCreditsView() {
     <DashboardScrollView>
       <DashboardSurfaceSection title="AI credits">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <DashboardLabelValue label="Credit subscription" value={creditLimitLabel()} />
-          <Show when={!isPro()}>
+          <DashboardLabelValue label="Plan" value={creditLimitLabel()} />
+          <Show when={!isSubscribed()}>
             <Button variant="secondary" onClick={goToBilling}>
               Upgrade plan
             </Button>
@@ -221,14 +219,14 @@ export function DashboardAiCreditsView() {
           valueLabel={creditUsageLabel()}
           used={used()}
           total={total()}
-          footerLabel={isPro() ? resetLabel() : "One time only"}
+          footerLabel={isSubscribed() ? resetLabel() : "One time only"}
         />
       </DashboardSurfaceSection>
 
-      <Show when={isPro()}>
+      <Show when={isSubscribed()}>
         <DashboardAiCreditsTopUpSection />
       </Show>
-      <Show when={!isPro()}>
+      <Show when={!isSubscribed()}>
         <DashboardAiCreditsNeedMoreSection />
       </Show>
     </DashboardScrollView>

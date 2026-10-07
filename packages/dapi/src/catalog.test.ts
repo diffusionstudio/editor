@@ -50,7 +50,7 @@ describe("catalog", () => {
     expect(toolByName("fonts").environment).toBe("renderer");
     expect(toolByName("logs").environment).toBe("main");
     expect(toolByName("window").environment).toBe("main");
-    expect(isToolName("media_grab")).toBe(true);
+    expect(isToolName("grab")).toBe(true);
     expect(isToolName("media.frame")).toBe(false);
   });
 });

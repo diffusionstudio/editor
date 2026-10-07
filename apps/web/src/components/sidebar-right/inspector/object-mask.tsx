@@ -16,7 +16,15 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
 import { Keyframe } from "@/components/ui/keyframe";
-import { Select, SelectContent, SelectItem, SelectPortal, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectPortal,
+  SelectSection,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
 import { Switch, SwitchControl, SwitchInput, SwitchThumb } from "@/components/ui/switch";
 import { ControlledTextField } from "@/components/ui/text-field";
@@ -33,7 +41,7 @@ import {
 
 import type { Entity, World } from "koota";
 import type { MaskAsset } from "@diffusionstudio/assets";
-import type { MaskRestore, ObjectMaskSource } from "@/engine/object-mask";
+import type { MaskRestore, ObjectMaskGroup, ObjectMaskSource } from "@/engine/object-mask";
 
 type ObjectMaskInspectorProps = {
   /** The `<mask>`; its `src` is the tracked picture. */
@@ -44,7 +52,7 @@ type ObjectMaskInspectorProps = {
 
 /**
  * One `<mask>`'s settings, opened from its row in the effect's inspector the
- * way a paint opens its picker: which tracked mask of the clip it is (the
+ * way a paint opens its picker: which mask of the library it is (the
  * header), how strongly it limits the effect, smoothing, feather and
  * inversion, plus a way to hide it; its row in the effect removes it. A mask
  * whose file cannot be read — its decoder failed, as a video's does — can be
@@ -109,9 +117,12 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
 
   const name = useDerived(() => objectMaskName(world, props.mask));
 
-  // The tracked masks of the clip's footage: the header picks which of them this mask is.
-  const { masks: sources } = useObjectMasks(() => getParentNode(getParentNode(props.mask)));
-  const source = () => sources().find((option) => option.asset.id === props.mask.get(AssetId)?.value);
+  // Every mask in the library, the clip's own first: the header picks which of them this mask is.
+  const groups = useObjectMasks(() => getParentNode(getParentNode(props.mask)));
+  const source = () =>
+    groups()
+      .flatMap((group) => group.masks)
+      .find((option) => option.asset.id === props.mask.get(AssetId)?.value);
 
   /** Points the mask at another tracked mask's frames, placed where they were written for. */
   const switchSource = (next: ObjectMaskSource | null) => {
@@ -123,16 +134,20 @@ export function ObjectMaskInspector(props: ObjectMaskInspectorProps) {
   return (
     <FloatingInspector open anchorRef={props.anchorRef} width={248}>
       <FloatingInspectorHeader class="items-center justify-between px-2">
-        <Select<ObjectMaskSource>
+        <Select<ObjectMaskSource, ObjectMaskGroup>
           value={source()}
           onChange={switchSource}
-          options={sources()}
+          options={groups()}
           optionValue={(option) => option.asset.id}
           optionTextValue="name"
+          optionGroupChildren="masks"
           itemComponent={(itemProps) => (
             <SelectItem item={itemProps.item}>
               {itemProps.item.rawValue.name}
             </SelectItem>
+          )}
+          sectionComponent={(sectionProps) => (
+            <SelectSection>{sectionProps.section.rawValue.name}</SelectSection>
           )}
         >
           <SelectTrigger>

@@ -9,6 +9,9 @@
 // and they can come and go at any time without disturbing a turn.
 
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 
 import { isPersistedEvent, reduce } from "../reduce";
 import { HARNESS_IDS, HARNESS_LABELS, isHarnessId, titleFor } from "../protocol";
@@ -60,6 +63,8 @@ export type AgentHostOptions = {
   idleMs?: number;
   /** How old a probe may be before `refresh` re-runs it. */
   probeMaxAgeMs?: number;
+  /** Where uploaded attachments are written; default a folder in the system temp dir. */
+  uploadDir?: string;
   log?: (message: string) => void;
 };
 
@@ -191,6 +196,8 @@ export class AgentHost {
         return this.send(connection, p as MethodParams<"turn.send">) as Promise<R>;
       case "turn.interrupt":
         return this.interrupt(requireString(p, "chatId")) as Promise<R>;
+      case "attachments.upload":
+        return this.upload(p as MethodParams<"attachments.upload">) as Promise<R>;
       case "request.respond": {
         const { chatId, requestId, response } = p as MethodParams<"request.respond">;
         return this.respond(requireString({ chatId }, "chatId"), requireString({ requestId }, "requestId"), response) as R;
@@ -198,6 +205,23 @@ export class AgentHost {
       default:
         throw new HostError("bad-request", `Unknown method ${String(method)}`);
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Attachments
+
+  /**
+   * A folder of its own per upload keeps the file's name — `image.png` for a
+   * screenshot — without two uploads landing on the same path.
+   */
+  private async upload(params: MethodParams<"attachments.upload">): Promise<{ path: string }> {
+    const name = basename(requireString(params, "name")).replace(/^\.+/, "") || "pasted";
+    const data = requireString(params, "data");
+    const dir = join(this.options.uploadDir ?? join(tmpdir(), "diffusion-studio-pasted"), randomUUID());
+    await mkdir(dir, { recursive: true });
+    const path = join(dir, name);
+    await writeFile(path, Buffer.from(data, "base64"));
+    return { path };
   }
 
   // ---------------------------------------------------------------------

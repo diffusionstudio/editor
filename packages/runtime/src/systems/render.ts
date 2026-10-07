@@ -29,7 +29,8 @@ import {
 import { getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
-import { FAILED_COLOR, getGeneratingColor, getSourceFailure, isGenerating } from '../utils/generating';
+import { FAILED_COLOR, getSourceFailure } from '../utils/source-failure';
+import { getGeneratingColor, isGenerating } from '../utils/generating';
 import { applyStrokeStyle } from '../utils/stroke';
 import { renderText } from '../utils/text';
 import { getTransitionWindow } from '../utils/transition';
@@ -205,9 +206,11 @@ function buildEffects(world: World, entity: Entity): string | null {
  * before the Paint sub-entities so it always sits at the bottom of the fill
  * stack. A shader paint first in the stack takes an intrinsic image/video as
  * its input instead (see `renderShaderFill`), in which case the media is not
- * drawn here. Media paints and the surface paint (a `<surface>`, whose host
- * lives on the geometry) are intrinsic; a waveform (an audio clip's) has no
- * picture on the canvas.
+ * drawn here. Media paints, the surface paint (a `<surface>`, whose host
+ * lives on the geometry) and the waveform (an `<audio>`'s, drawn from its own
+ * asset) are intrinsic. An `<audio>` is a sound, so its waveform is drawn in
+ * the editor only, never into an export, and only for one on the stage: inside
+ * a scene it is part of a composition, where a waveform has no place.
  */
 export function renderIntrinsicFill(world: World, entity: Entity): void {
 	if (entity.has(Color)) {
@@ -234,6 +237,12 @@ export function renderIntrinsicFill(world: World, entity: Entity): void {
 	}
 	if (intrinsic === PaintType.HTML) {
 		renderHtmlFill(world, entity, entity);
+		return;
+	}
+	if (intrinsic === PaintType.WAVEFORM) {
+		if (world.get(Mode)?.value === 'realtime' && getParentNode(entity) === null) {
+			renderWaveform(world, entity, entity);
+		}
 		return;
 	}
 
@@ -589,14 +598,15 @@ function renderStrokes(world: World, entity: Entity): void {
 }
 
 /**
- * The pulse a node waiting on a generation is filled with
+ * What covers a node's fills while they cannot be shown: the pulse while a
+ * generation is filling it in, the still fill when its source failed.
  */
-function renderGenerating(world: World, entity: Entity): void {
-	const errored = getSourceFailure(entity) !== undefined;
-	if (!errored && !isGenerating(entity)) return;
+function renderPendingFill(world: World, entity: Entity): void {
+	const generating = isGenerating(entity);
+	if (!generating && !getSourceFailure(entity)) return;
 
 	const ctx = getCtx(world);
-	ctx.fillStyle = errored ? FAILED_COLOR : getGeneratingColor(world);
+	ctx.fillStyle = generating ? getGeneratingColor(world) : FAILED_COLOR;
 	ctx.fill();
 }
 
@@ -667,7 +677,7 @@ function renderShapeNode(world: World, entity: Entity): void {
 	renderShadows(world, entity);
 	renderIntrinsicFill(world, entity);
 	renderFills(world, entity);
-	renderGenerating(world, entity);
+	renderPendingFill(world, entity);
 	renderStrokes(world, entity);
 }
 

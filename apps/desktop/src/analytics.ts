@@ -3,84 +3,107 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { app } from "electron";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { access, writeFile } from "node:fs/promises";
+import { stat, writeFile } from "node:fs/promises";
+
+import type { ClientEventName, TrackedEvent, TrackProps } from "@diffusionstudio/api-contract";
+import type { WindowHost } from "./window-host";
+
+const enabled = app.isPackaged || process.env.DIFFUSION_ANALYTICS === "1";
+
+const FLUSH_INTERVAL_MS = 30_000;
+const BATCH_MAX = 100;
+const QUEUE_MAX = 2_000;
+
+const queue: TrackedEvent[] = [];
+
+let apiUrl: string | null = null;
+let token: string | null | undefined;
+
+/** Canvas edits by kind, and source files changed from outside the app, since the last flush. */
+let canvasEdits: Record<string, number> = {};
+let changedFiles = new Set<string>();
+
+export function configureAnalytics(config: { apiUrl: string; token: string | null }): void {
+  apiUrl = config.apiUrl;
+  token = config.token;
+}
+
+export function track(name: ClientEventName, props: TrackProps = {}): void {
+  if (!enabled) return;
+  // Undefined values would fail validation; JSON leaves them out.
+  queue.push({
+    id: randomUUID(),
+    at: new Date().toISOString(),
+    name,
+    props: JSON.parse(JSON.stringify(props)),
+  });
+
+  if (queue.length > QUEUE_MAX) {
+    queue.splice(0, queue.length - QUEUE_MAX);
+  }
+}
+
+/** Edits the canvas wrote back to the source (move, insert, remove, …). */
+export function countCanvasEdits(kinds: string[]): void {
+  for (const kind of kinds) {
+    canvasEdits[kind] = (canvasEdits[kind] ?? 0) + 1;
+  }
+}
+
+/** A source file changed from outside the app: an agent or an editor writing code. */
+export function countCodeChange(path: string): void {
+  changedFiles.add(path);
+}
 
 /**
- * Desktop analytics. The renderer's Umami script never fires inside Electron
- * (its `data-domains` gate does not match the `file://` origin), so main
- * posts events directly to Umami's send API: the renderer's product events
- * arrive over `ANALYTICS_TRACK`, and the install event is sent from here.
- *
- * Install tracking is proxied by the first launch of a packaged build: one
- * event, then a marker file in `userData` to never send it again. Offline
- * first launches retry on the next launch.
+ * Starts the flush and usage timers and records the launch. The first launch of an
+ * install is recorded once, guarded by a marker file in `userData`; its age
+ * goes on every `app_opened`, so install-to-sign-up time needs no device id.
  */
+export async function startAnalytics(windows: WindowHost): Promise<void> {
+  if (!enabled) return;
 
-const UMAMI_ENDPOINT = "https://cloud.umami.is/api/send";
-const UMAMI_WEBSITE_ID = "e898e381-6ce3-4f5f-a485-8327ec9aa88b";
-const HOSTNAME = "desktop.diffusion.studio";
-const MARKER_FILE = "install-tracked";
+  setInterval(flush, FLUSH_INTERVAL_MS);
+  setInterval(() => (windows.current() && track("app_used")), 60_000);
 
-// Umami discards events whose User-Agent trips its bot filter, which both
-// Node's fetch default and Electron's own UA do — send a plain browser UA
-// that still attributes the right OS.
-function userAgent(): string {
-  const platform =
-    process.platform === "darwin"
-      ? "Macintosh; Intel Mac OS X 10_15_7"
-      : process.platform === "win32"
-        ? "Windows NT 10.0; Win64; x64"
-        : "X11; Linux x86_64";
-  return `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36`;
+  const marker = join(app.getPath("userData"), "install-tracked");
+  const installedAt = await stat(marker).then((info) => info.birthtimeMs, () => null);
+
+  if (installedAt === null) {
+    track("app_installed", { arch: process.arch });
+    await writeFile(marker, new Date().toISOString()).catch(() => { });
+  }
+
+  track("app_opened", { install_age_s: Math.round((Date.now() - (installedAt ?? Date.now())) / 1000) });
 }
 
-export type AnalyticsEventData = Record<string, string | number | boolean>;
+async function flush(): Promise<void> {
+  const edits = Object.values(canvasEdits).reduce((sum, n) => sum + n, 0);
+  if (edits) {
+    track("canvas_edited", { edits, ...canvasEdits });
+  }
+  if (changedFiles.size) {
+    track("code_changed", { files: changedFiles.size });
+  }
+  canvasEdits = {};
+  changedFiles = new Set();
 
-/** Post one event to Umami. Resolves to whether Umami accepted it; never throws. */
-async function sendEvent(name: string, url: string, data: AnalyticsEventData): Promise<boolean> {
+  if (!queue.length || !apiUrl || token === undefined) return;
+  const batch = queue.splice(0, BATCH_MAX);
   try {
-    const response = await fetch(UMAMI_ENDPOINT, {
+    const response = await fetch(`${apiUrl}/api/v2/trpc/events.track`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "User-Agent": userAgent() },
-      body: JSON.stringify({
-        type: "event",
-        payload: { website: UMAMI_WEBSITE_ID, hostname: HOSTNAME, url, name, data },
-      }),
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ source: "desktop", appVersion: app.getVersion(), platform: process.platform, events: batch }),
+      signal: AbortSignal.timeout(10_000),
     });
-    return response.ok;
+    // Sent, or a batch the API will never take (400): either way it is done.
+    if (response.ok || response.status === 400) return;
   } catch {
-    // Offline or Umami unreachable.
-    return false;
-  }
-}
-
-/** A product event from the renderer. Dev builds stay out of the numbers. */
-export async function trackEvent(name: string, data: AnalyticsEventData = {}): Promise<void> {
-  if (!app.isPackaged) return;
-  await sendEvent(name, "/desktop", {
-    ...data,
-    platform: process.platform,
-    version: app.getVersion(),
-  });
-}
-
-export async function trackInstall(): Promise<void> {
-  if (!app.isPackaged) return;
-
-  const marker = join(app.getPath("userData"), MARKER_FILE);
-  try {
-    await access(marker);
-    return;
-  } catch {
-    // No marker yet — this is the first (tracked) launch.
+    // Offline or the API unreachable.
   }
 
-  const sent = await sendEvent("desktop_install", "/desktop/install", {
-    platform: process.platform,
-    arch: process.arch,
-    version: app.getVersion(),
-  });
-  // Not sent — retried on the next launch.
-  if (sent) await writeFile(marker, new Date().toISOString()).catch(() => {});
+  queue.unshift(...batch);
 }

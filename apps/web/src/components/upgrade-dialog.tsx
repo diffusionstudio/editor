@@ -3,19 +3,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import { For, Show, createSignal, onMount } from "solid-js";
-import type { SubscriptionCredits, TopupCredits } from "@diffusionstudio/api-contract";
+import type { BillingPeriod, PaidPlan, TopupCredits } from "@diffusionstudio/api-contract";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogPortal } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectPortal,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   SwitchControl,
   SwitchInput,
@@ -24,13 +16,14 @@ import {
 } from "@/components/ui/switch";
 import { useAuth } from "@/context/auth";
 import {
-  SUBSCRIPTION_CREDIT_TIERS,
-  SUBSCRIPTION_VOLUME_DISCOUNT,
+  MAX_YEARLY_DISCOUNT,
+  PAID_PLANS,
+  PLANS,
   TOPUP_CREDIT_TIERS,
-  getSubscriptionPrice,
   getTopupPrice,
   startSubscriptionCheckout,
   startTopupCheckout,
+  topupCredits,
 } from "@/lib/checkout";
 import { track } from "@/lib/analytics";
 import { mainBridge } from "@/lib/ipc";
@@ -46,20 +39,12 @@ export function showUpgradeDialog() {
   }
 }
 
+export function hideUpgradeDialog() {
+  setOpen(false);
+}
+
 function formatCredits(value: number): string {
   return value.toLocaleString();
-}
-
-function formatSubscriptionTier(tier: SubscriptionCredits): string {
-  const credits = parseInt(tier.replace("_", ""), 10).toLocaleString();
-  const discount = SUBSCRIPTION_VOLUME_DISCOUNT[tier];
-  return discount > 0
-    ? `${credits} credits (${Math.round(discount * 100)}% off)`
-    : `${credits} credits`;
-}
-
-function parseTopupCredits(tier: TopupCredits): number {
-  return parseInt(tier.replace("_", ""), 10);
 }
 
 function FeatureRow(props: { label: string }) {
@@ -75,22 +60,22 @@ function FeatureRow(props: { label: string }) {
 
 function ProUpgradeContent() {
   const [annualBilling, setAnnualBilling] = createSignal(true);
-  const [creditTier, setCreditTier] = createSignal<SubscriptionCredits>("2_500");
+  const [plan, setPlan] = createSignal<PaidPlan>("pro");
   const [loading, setLoading] = createSignal(false);
 
-  const billingPeriod = (): "month" | "year" => (annualBilling() ? "year" : "month");
-  const price = () => getSubscriptionPrice(creditTier(), billingPeriod());
+  const billingPeriod = (): BillingPeriod => (annualBilling() ? "year" : "month");
 
   const handleUpgrade = async () => {
     if (loading()) return;
     setLoading(true);
-    track('subscription_checkout_started', {
-      credit_tier: creditTier(),
+    track('checkout_started', {
+      kind: 'subscription',
+      plan: plan(),
       billing_period: billingPeriod(),
     });
     try {
       await startSubscriptionCheckout({
-        creditQuantity: creditTier(),
+        plan: plan(),
         billingPeriod: billingPeriod(),
       });
     } finally {
@@ -99,7 +84,7 @@ function ProUpgradeContent() {
   };
 
   onMount(() => {
-    track('subscription_checkout_viewed');
+    track('checkout_viewed', { kind: 'subscription' });
   });
 
   return (
@@ -107,14 +92,11 @@ function ProUpgradeContent() {
       <div class="flex flex-col gap-1">
         <img src="/mark-macos-small.png" alt="Diffusion Studio Logo Mark" class="size-12" />
         <h2 class="mt-2 text-sm leading-5 font-450 text-foreground">
-          Diffusion Studio Pro
+          Upgrade Diffusion Studio
         </h2>
-        <div class="flex items-end gap-1 mt-2">
-          <p class="text-lg leading-6 font-450 text-foreground">${price()}</p>
-          <p class="text-xs leading-none text-muted-foreground translate-y-[-4px]">
-            {annualBilling() ? "/month, billed annually" : "/month"}
-          </p>
-        </div>
+        <p class="text-xs text-muted-foreground">
+          Pick a plan to keep creating with AI.
+        </p>
       </div>
 
       <div class="flex items-center gap-2 text-xs">
@@ -124,39 +106,45 @@ function ProUpgradeContent() {
             <SwitchThumb variant="compact" />
           </SwitchControl>
         </Toggle>
-        <span class="text-muted-foreground">Yearly billing (save 24%)</span>
+        <span class="text-muted-foreground">Yearly billing (save up to {MAX_YEARLY_DISCOUNT}%)</span>
       </div>
 
-      <Select<SubscriptionCredits>
-        options={SUBSCRIPTION_CREDIT_TIERS}
-        value={creditTier()}
-        onChange={(value) => value && setCreditTier(value)}
-        itemComponent={(itemProps) => (
-          <SelectItem item={itemProps.item}>
-            {formatSubscriptionTier(itemProps.item.rawValue)}
-          </SelectItem>
-        )}
-      >
-        <SelectTrigger aria-label="Select AI credits per month">
-          <SelectValue<SubscriptionCredits>>
-            {formatSubscriptionTier(creditTier())}
-            <span class="text-xs text-muted-foreground">/mo</span>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectPortal>
-          <SelectContent />
-        </SelectPortal>
-      </Select>
+      <div role="radiogroup" aria-label="Plan" class="flex flex-col gap-2">
+        <For each={PAID_PLANS}>
+          {(option) => (
+            <button
+              role="radio"
+              aria-checked={plan() === option}
+              class="rounded-md border border-input p-3 flex items-center gap-2 font-normal transition-colors hover:bg-accent"
+              classList={{ "border-primary": plan() === option }}
+              onClick={() => setPlan(option)}
+            >
+              <span class="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                <span class="text-xs text-foreground">{PLANS[option].name}</span>
+                <span class="text-xs text-muted-foreground">
+                  {formatCredits(PLANS[option].monthlyCredits)} credits/mo
+                </span>
+              </span>
+              <span class="text-xs text-foreground">
+                ${PLANS[option].monthlyPrice[billingPeriod()]}
+                <span class="text-muted-foreground">/mo</span>
+              </span>
+            </button>
+          )}
+        </For>
+      </div>
 
       <div class="flex flex-col gap-2">
         <FeatureRow label="Monthly credit refill" />
         <FeatureRow label="Top up credits anytime" />
-        <FeatureRow label="Access to all pro models" />
-        <FeatureRow label="Priority feedback channel" />
+        <FeatureRow label="Access to all AI models" />
+        <Show when={plan() !== "pro"}>
+          <FeatureRow label="Priority support" />
+        </Show>
       </div>
 
       <Button class="w-full" disabled={loading()} onClick={handleUpgrade}>
-        Continue with Pro
+        Continue with {PLANS[plan()].name}
       </Button>
     </div>
   );
@@ -170,7 +158,7 @@ function TopupContent() {
     const tier = selected();
     if (!tier || loading()) return;
     setLoading(true);
-    track('topup_checkout_started', { credit_tier: tier });
+    track('checkout_started', { kind: 'topup', credits: tier });
     try {
       await startTopupCheckout(tier);
     } finally {
@@ -179,7 +167,7 @@ function TopupContent() {
   };
 
   onMount(() => {
-    track('topup_checkout_viewed');
+    track('checkout_viewed', { kind: 'topup' });
   });
 
   return (
@@ -197,12 +185,12 @@ function TopupContent() {
         <For each={TOPUP_CREDIT_TIERS}>
           {(tier) => (
             <button
-              class="rounded-md border border-input p-3 flex flex-col items-start gap-0.5 font-normal transition-colors hover:bg-accent data-checked:border-primary focus-ring"
+              class="rounded-md border border-input p-3 flex flex-col items-start gap-0.5 font-normal transition-colors hover:bg-accent data-checked:border-primary"
               classList={{ "border-primary": selected() === tier }}
               onClick={() => setSelected(tier)}
             >
               <span class="text-xs text-foreground">
-                {formatCredits(parseTopupCredits(tier))} credits
+                {formatCredits(topupCredits(tier))} credits
               </span>
               <span class="text-xs text-muted-foreground">
                 ${getTopupPrice(tier)}
@@ -226,7 +214,7 @@ export function UpgradeDialog() {
     <Dialog open={open()} onOpenChange={setOpen}>
       <DialogPortal>
         <DialogContent class="sm:max-w-sm">
-          <Show when={auth.isPro()} fallback={<ProUpgradeContent />}>
+          <Show when={auth.isSubscribed()} fallback={<ProUpgradeContent />}>
             <TopupContent />
           </Show>
         </DialogContent>

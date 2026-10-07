@@ -10,25 +10,23 @@ import { context } from "./tools/context";
 import { capture } from "./tools/capture";
 import { check } from "./tools/check";
 import { exportScene } from "./tools/export";
-import { models } from "./tools/models";
-import { voices } from "./tools/voices";
 import { logs } from "./tools/logs";
 import { screenshot } from "./tools/screenshot";
-import { mediaProbe } from "./tools/media-probe";
-import { mediaGrab } from "./tools/media-grab";
-import { mediaTranscribe } from "./tools/media-transcribe";
-import { mediaFilmstrip } from "./tools/media-filmstrip";
-import { mediaWaveform } from "./tools/media-waveform";
-import { mediaListen } from "./tools/media-listen";
-import { mediaSegment } from "./tools/media-segment";
+import { probe } from "./tools/probe";
+import { grab } from "./tools/grab";
+import { transcribe } from "./tools/transcribe";
+import { filmstrip } from "./tools/filmstrip";
+import { waveform } from "./tools/waveform";
+import { listen } from "./tools/listen";
+import { generate, job } from "./tools/generate";
 import { fonts } from "./tools/fonts";
 import { report } from "./tools/report";
 import { appWindow } from "./tools/window";
 
 /**
  * Every tool, in the order a listing shows them: the project loop first
- * (open, look, capture, check, export), then media inspection, then the
- * app and machine utilities.
+ * (open, look, capture, check, export), then media inspection, then
+ * generation, then the app and machine utilities.
  */
 export const catalog = [
   open,
@@ -36,15 +34,14 @@ export const catalog = [
   capture,
   check,
   exportScene,
-  mediaProbe,
-  mediaGrab,
-  mediaTranscribe,
-  mediaFilmstrip,
-  mediaWaveform,
-  mediaListen,
-  mediaSegment,
-  models,
-  voices,
+  probe,
+  grab,
+  transcribe,
+  filmstrip,
+  waveform,
+  listen,
+  generate,
+  job,
   logs,
   screenshot,
   appWindow,

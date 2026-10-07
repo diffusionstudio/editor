@@ -29,13 +29,6 @@ export interface AssetStat {
 	mtime: number;
 }
 
-/** How a generated asset came to be: the content key of the fully-resolved
- *  `generate.*` spec (dedup across runs) and the backend generation id. */
-export interface AssetGeneration {
-	key: string;
-	id?: string | null;
-}
-
 interface AssetBase {
 	/** Short content hash; identity of the asset. */
 	id: string;
@@ -48,13 +41,17 @@ interface AssetBase {
 	/**
 	 * Where the bytes are: an absolute OS path (a linked file, left where the
 	 * user had it), an `http(s)://` URL, or a project-relative path (`assets/…`,
-	 * bytes the app itself produced: generations, downloads, transcodes).
+	 * bytes the app itself produced: downloads, transcodes).
 	 */
 	source: string;
 	createdAt: string;
 	mimeType: string;
 	stat?: AssetStat;
-	generation?: AssetGeneration;
+	/**
+	 * The API job a model produced the file in, for a generated asset: what
+	 * it was asked (to run it again, or reuse its settings) and what it cost.
+	 */
+	job?: string;
 	/**
 	 * Resolved on the fly for a `src` that names a path or URL outside the
 	 * library; lives in memory only and is never written to the manifest.
@@ -133,45 +130,11 @@ export type Asset =
 
 export type AssetType = Asset['type'];
 
-/** Where a generation stands while the library has no bytes for it. */
-export type PartialAssetState = 'pending' | 'error';
-
-/**
- * A partial document: the library's record of a generation before — or
- * instead of — its bytes. Written `pending` when a run starts, so the
- * generation is in the library from the moment it is asked for; replaced by
- * the asset when the run lands; kept as `error`, with what went wrong, when
- * it does not. The error record is what keeps a refused or impossible
- * generation from being run — or paid for — again on every reopen: a
- * declaration whose key stands in error resolves to that error, and removing
- * the record is what asks for the run again. Never bound to an entity;
- * elements see the state through their resolution.
- */
-export interface PartialAsset {
-	/** Hash of the generation key: there are no bytes to hash. */
-	id: string;
-	/** Library path, like any asset's; provisional until the bytes name themselves. */
-	path: string;
-	/** What the generation is to become. */
-	type: AssetType;
-	createdAt: string;
-	generation: AssetGeneration;
-	state: PartialAssetState;
-	/** What the run failed with, on an `error` record. */
-	error?: string;
-}
-
-/** Anything the library holds at a path: an asset, or a partial standing for one. */
-export type AssetEntry = Asset | PartialAsset;
-
-/** Whether a library entry is a partial document rather than an asset with bytes. */
-export const isPartialAsset = (entry: AssetEntry): entry is PartialAsset => 'state' in entry;
-
 /** The file name of an asset: the last segment of its library path. */
-export const assetName = (asset: Pick<AssetEntry, 'path'>): string => basename(asset.path);
+export const assetName = (asset: Pick<Asset, 'path'>): string => basename(asset.path);
 
 /** The folder of an asset: its library path without the name, '' at root. */
-export const assetFolder = (asset: Pick<AssetEntry, 'path'>): string => dirname(asset.path);
+export const assetFolder = (asset: Pick<Asset, 'path'>): string => dirname(asset.path);
 
 export function basename(path: string): string {
 	const trimmed = path.replace(/[/\\]+$/, '');

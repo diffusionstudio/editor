@@ -32,21 +32,45 @@ function OAuthButton(props: OAuthButtonProps) {
   );
 }
 
+/**
+ * Service and test accounts sign in with a password instead of a magic link:
+ * plus-addressed mail on our own domain (`ci+e2e@diffusion.studio`). Only we
+ * can receive that mail, so nobody else can confirm an account that matches.
+ * Password accounts are only ever created in the Supabase dashboard.
+ */
+const PASSWORD_ACCOUNT_EMAIL = /^[^@\s]+\+[^@\s]+@diffusion\.studio$/i;
+
 export function LoginPage() {
   const auth = useAuth();
   const isFullscreen = useFullscreenState();
   const [email, setEmail] = createSignal('');
-  const [otpSending, setOtpSending] = createSignal(false);
+  const [password, setPassword] = createSignal('');
+  const [pending, setPending] = createSignal(false);
 
-  const handleOtpSubmit = async (e: SubmitEvent) => {
+  const usesPassword = () => PASSWORD_ACCOUNT_EMAIL.test(email().trim());
+  const canSubmit = () => !pending() && !!email().trim() && (!usesPassword() || !!password());
+
+  const submitLabel = () => {
+    if (usesPassword()) return pending() ? 'Signing in...' : 'Sign in';
+    return pending() ? 'Sending...' : 'Send magic link';
+  };
+
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
+    if (!canSubmit()) return;
 
     const value = email().trim();
-    if (!value) return;
+    setPending(true);
 
-    setOtpSending(true);
+    if (usesPassword()) {
+      const { error } = await auth.signInWithPassword(value, password());
+      setPending(false);
+      if (error) toast.error(error);
+      return;
+    }
+
     const { error } = await auth.signInWithOtp(value);
-    setOtpSending(false);
+    setPending(false);
 
     if (error) {
       toast.error(error);
@@ -54,6 +78,7 @@ export function LoginPage() {
       toast.success('Check your email for the login link');
     }
   };
+
 
   return (
     <div class="flex flex-col bg-background fixed inset-0 z-999">
@@ -100,7 +125,7 @@ export function LoginPage() {
               </div>
             </div>
 
-            <form class="flex flex-col gap-3" onSubmit={handleOtpSubmit}>
+            <form class="flex flex-col gap-3" onSubmit={handleSubmit}>
               <TextField>
                 <TextFieldLabel
                   uiSize="compact"
@@ -111,6 +136,7 @@ export function LoginPage() {
                 <TextFieldInput
                   uiSize="compact"
                   type="email"
+                  autocomplete="username"
                   placeholder="Enter your email"
                   value={email()}
                   onInput={(e) => setEmail(e.currentTarget.value)}
@@ -119,12 +145,33 @@ export function LoginPage() {
                 />
               </TextField>
 
+              <Show when={usesPassword()}>
+                <TextField>
+                  <TextFieldLabel
+                    uiSize="compact"
+                    class="text-xs text-muted-foreground"
+                  >
+                    Password
+                  </TextFieldLabel>
+                  <TextFieldInput
+                    uiSize="compact"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="Enter your password"
+                    value={password()}
+                    onInput={(e) => setPassword(e.currentTarget.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    onKeyUp={(e) => e.stopPropagation()}
+                  />
+                </TextField>
+              </Show>
+
               <Button
                 type="submit"
                 class="w-full"
-                disabled={otpSending() || !email().trim()}
+                disabled={!canSubmit()}
               >
-                {otpSending() ? 'Sending...' : 'Send magic link'}
+                {submitLabel()}
               </Button>
             </form>
           </div>

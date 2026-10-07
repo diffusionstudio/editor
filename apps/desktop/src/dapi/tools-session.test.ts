@@ -9,6 +9,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { JSON_SCHEMA_DIALECT, tools } from "@diffusionstudio/dapi";
 import { serveCatalog } from "./tools-session";
 
+const CONTEXT = { rootDir: null, projectDir: null, currentTime: null, fontFamilies: [] };
+
 let client: Client;
 const calls: Array<{ name: string; args: unknown }> = [];
 
@@ -17,8 +19,8 @@ beforeAll(async () => {
   serveCatalog(session, async (tool, args) => {
     calls.push({ name: tool.name, args });
     switch (tool.name) {
-      case "voices":
-        return { voices: [] };
+      case "context":
+        return CONTEXT;
       case "check":
         throw new Error("No project open — run open first");
       default:
@@ -54,9 +56,9 @@ describe("serveCatalog", () => {
     expect(JSON.stringify(bad.content)).toContain("limit");
     expect(calls.length).toBe(before);
 
-    const result = await client.callTool({ name: "voices", arguments: {} });
-    expect(result.structuredContent).toEqual({ voices: [] });
-    expect(calls.at(-1)).toEqual({ name: "voices", args: {} });
+    const result = await client.callTool({ name: "context", arguments: {} });
+    expect(result.structuredContent).toEqual(CONTEXT);
+    expect(calls.at(-1)).toEqual({ name: "context", args: {} });
   });
 
   it("returns a handler's failure as a readable error result, not a protocol error", async () => {

@@ -26,6 +26,7 @@ export {
   DropOverlay,
   attachmentPaths,
   createDropZone,
+  createPasteHandler,
   droppedAttachments,
   mergeAttachments,
   pickAttachments,

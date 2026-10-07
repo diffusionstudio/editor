@@ -67,7 +67,7 @@ export function FolderItem(props: FolderItemProps) {
   const name = () => basename(props.path);
   const childCount = createMemo(() => {
     const children = library()?.childrenOf(props.path);
-    return children ? children.folders.length + children.assets.length + children.partials.length : 0;
+    return children ? children.folders.length + children.assets.length : 0;
   });
 
   const handleDragStart = (event: DragEvent) => {

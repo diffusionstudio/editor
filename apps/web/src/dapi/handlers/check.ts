@@ -76,7 +76,7 @@ function visit(entity: Entity, window: Interval | null, depth: number, state: Wa
       code: "source-error",
       severity: "error",
       node: stamp,
-      message: `Source failed to ${failure.generated ? "generate" : "load"}: ${failure.value}`,
+      message: `Source failed to load: ${failure.value}`,
     });
   }
 

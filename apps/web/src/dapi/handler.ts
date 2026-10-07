@@ -3,7 +3,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import type { Accessor } from "solid-js";
-import type { User } from "@supabase/supabase-js";
 import type { ToolArgs, ToolName, ToolResult } from "@diffusionstudio/dapi";
 import type { EditorSession } from "./session";
 
@@ -19,11 +18,9 @@ export type ToolContext = {
   requireSession(): EditorSession;
   /** Fires when the caller cancels or goes away before the reply. */
   signal: AbortSignal;
-  /** What only the app shell can do: navigate, and know who is signed in. */
+  /** What only the app shell can do: navigate. */
   app: {
     openProject(dir: string): Promise<ToolResult<"open">>;
-    /** The signed-in user, or a `sign-in-required` error. */
-    requireUser(): User;
   };
 };
 

@@ -13,6 +13,7 @@ import {
   onCleanup,
 } from "solid-js";
 import { isServer } from "solid-js/web";
+import { createElementSize } from "@solid-primitives/resize-observer";
 import { toast } from "somoto";
 
 import {
@@ -34,6 +35,7 @@ import {
   ModelPicker,
   attachmentPaths,
   createDropZone,
+  createPasteHandler,
   currentModel,
   mergeAttachments,
   pickAttachments,
@@ -79,8 +81,15 @@ type PromptTarget =
   | { kind: "project"; project: ProjectInfo }
   | { kind: "folder"; dir: string };
 
-/** Cards that fit the one row the design gives recents, the new one included. */
-const RECENT_COLUMNS = 5;
+/**
+ * Recents get one row, and as many cards as fit it at about this width — so a
+ * wider window shows more projects rather than bigger cards. The new-project
+ * card is one of them.
+ */
+const RECENT_CARD_WIDTH_PX = 180;
+const RECENT_MIN_COLUMNS = 2;
+/** The grid's `gap-x-0.5`. */
+const RECENT_GAP_PX = 2;
 
 /** Recent projects the target menu offers before it gets unwieldy. */
 const MENU_PROJECTS = 8;
@@ -112,6 +121,7 @@ export function DashboardHomeView() {
 
   const attach = (added: Attachment[]) => setAttachments((current) => mergeAttachments(current, added));
   const drop = createDropZone(attach);
+  const paste = createPasteHandler(attach);
 
 
   let textarea: HTMLTextAreaElement | undefined;
@@ -137,6 +147,14 @@ export function DashboardHomeView() {
   // the picker is fed by the agent host's probes, so what it offers is what
   // is installed and signed in.
   const model = createMemo(() => currentModel());
+
+  const [recentGrid, setRecentGrid] = createSignal<HTMLElement>();
+  const recentGridSize = createElementSize(recentGrid);
+  const recentColumns = createMemo(() => {
+    const width = recentGridSize.width ?? 0;
+    const fit = Math.floor((width + RECENT_GAP_PX) / (RECENT_CARD_WIDTH_PX + RECENT_GAP_PX));
+    return Math.max(RECENT_MIN_COLUMNS, fit);
+  });
 
   const recentProjects = createMemo(() =>
     [...(projects() ?? [])].sort(
@@ -200,11 +218,6 @@ export function DashboardHomeView() {
       const project = await resolveTarget();
       if (!project) return;
 
-      track("home_prompt_sent", {
-        agent: `${ref.harness}/${ref.model}`,
-        target: target().kind,
-        attachments: paths.length,
-      });
       // The chat starts before the page switches: the host has the turn as
       // soon as it answers, and the editor lands with the reply streaming.
       // On failure the text survives as the project's draft (see startChat).
@@ -303,7 +316,7 @@ export function DashboardHomeView() {
                   as="button"
                   type="button"
                   aria-label="Choose the folder to work in"
-                  class="flex h-7 shrink-0 items-center rounded-md pl-0.5 pr-2 text-xs font-450 text-muted-foreground hover:bg-accent focus-ring"
+                  class="flex h-7 shrink-0 items-center rounded-md pl-0.5 pr-2 text-xs font-450 text-muted-foreground hover:bg-accent"
                 >
                   <span class="grid size-6 shrink-0 place-items-center overflow-clip">
                     <Icon name="navigation.folder" />
@@ -359,6 +372,7 @@ export function DashboardHomeView() {
               onDragEnter={drop.onDragEnter}
               onDragLeave={drop.onDragLeave}
               onDrop={drop.onDrop}
+              onPaste={paste}
             >
               <Show when={attachments().length > 0}>
                 {/* The remove buttons overhang the tiles' corners, and a
@@ -425,7 +439,7 @@ export function DashboardHomeView() {
                     onClick={handleSubmit}
                     disabled={!canSubmit()}
                     aria-label="Send to the coding agent"
-                    class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40 focus-ring"
+                    class="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-40"
                   >
                     <Show when={busy()} fallback={<Icon name="arrow-top" />}>
                       <Icon name="spinner-loader" class="animate-spin" />
@@ -447,32 +461,37 @@ export function DashboardHomeView() {
               Recents
             </h2>
           </div>
-          <div
-            data-slot="card-grid"
-            class="grid grid-cols-5 items-start gap-x-0.5 gap-y-3 px-4 pb-4"
-          >
-            <DashboardCardButton onClick={handleCreateProject}>
-              <DashboardCardPreview class="bg-overlay-soft group-hover:bg-overlay">
-                <Icon
-                  name="plus-add"
-                  class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground"
-                />
-              </DashboardCardPreview>
-              <DashboardCardMeta title="New project" />
-            </DashboardCardButton>
-            <For each={recentProjects().slice(0, RECENT_COLUMNS - 1)}>
-              {(project) => (
-                <DashboardProjectCard
-                  project={project}
-                  active={selectedProject() === project.dir}
-                  onSelect={() => setSelectedProject(project.dir)}
-                  onDeselect={() => setSelectedProject(null)}
-                  onOpen={() => openProject(project)}
-                  onDelete={() => setPendingDelete(project)}
-                  onChanged={refetchProjects}
-                />
-              )}
-            </For>
+          {/* Measured without its padding, so the width is what the cards share. */}
+          <div class="px-4 pb-4">
+            <div
+              ref={setRecentGrid}
+              data-slot="card-grid"
+              class="grid items-start gap-x-0.5 gap-y-3"
+              style={{ "grid-template-columns": `repeat(${recentColumns()}, minmax(0, 1fr))` }}
+            >
+              <DashboardCardButton onClick={handleCreateProject}>
+                <DashboardCardPreview class="bg-overlay-soft group-hover:bg-overlay">
+                  <Icon
+                    name="plus-add"
+                    class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-muted-foreground"
+                  />
+                </DashboardCardPreview>
+                <DashboardCardMeta title="New project" />
+              </DashboardCardButton>
+              <For each={recentProjects().slice(0, recentColumns() - 1)}>
+                {(project) => (
+                  <DashboardProjectCard
+                    project={project}
+                    active={selectedProject() === project.dir}
+                    onSelect={() => setSelectedProject(project.dir)}
+                    onDeselect={() => setSelectedProject(null)}
+                    onOpen={() => openProject(project)}
+                    onDelete={() => setPendingDelete(project)}
+                    onChanged={refetchProjects}
+                  />
+                )}
+              </For>
+            </div>
           </div>
         </div>
       </div>

@@ -12,13 +12,14 @@ import type { ToolInput, ToolName, ToolOutput } from "@diffusionstudio/dapi";
 
 export const APP_NAME = "Diffusion Studio";
 
-// Renders and AI generation outlive the 60s default.
+// Renders, media analysis and file transfers outlive the 60s default.
 const TIMEOUTS: Record<string, number> = {
   export: 3_600_000,
   capture: 600_000,
-  media_transcribe: 600_000,
-  media_listen: 600_000,
-  media_segment: 3_600_000,
+  transcribe: 600_000,
+  listen: 600_000,
+  generate: 600_000,
+  job: 600_000,
 };
 
 /**

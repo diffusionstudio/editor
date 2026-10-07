@@ -42,16 +42,6 @@ export async function hashSequence(frames: { name: string; size: number }[]): Pr
 	return hexOf(await crypto.subtle.digest('SHA-256', bytes)).slice(0, ID_LENGTH);
 }
 
-/**
- * The id of a partial document: the hash of its generation key, since there
- * are no bytes yet. Stable for the key, so the same generation reserved twice
- * is one record, and unlike any content hash the bytes could come to.
- */
-export async function hashKey(key: string): Promise<string> {
-	const bytes = new TextEncoder().encode(`key\n${key}`);
-	return hexOf(await crypto.subtle.digest('SHA-256', bytes)).slice(0, ID_LENGTH);
-}
-
 /** Whether a string could be an asset id (and not, say, a library path). */
 export const looksLikeId = (value: string): boolean =>
 	value.length === ID_LENGTH && /^[0-9a-f]+$/.test(value);

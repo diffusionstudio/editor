@@ -6,9 +6,8 @@
 - **Asset id**: e.g. `"9f3a2c1d7e4b8a01"`, the content hash of a library asset (`assets.yml` lists them).
 - **Global path**: e.g. `"/Movies/video.mp4"`, resolved against the user's OS. Not added to the library.
 - **Remote URL**: e.g. `"https://my.videoarchive.com/audio/clip.wav"`, fetched on mount. Not added to the library.
-- **`AssetRef`**: the value returned by a `generate.*` declaration (see [generate.md](./generate.md)). The node is mounted immediately as a placeholder and its paint is attached once the asset has generated; the result is stored under the library's `generated/` folder.
 
-Resolution is **asynchronous and non-blocking**: the element is on the canvas as soon as the project mounts, showing a generating state until its source lands. A source that never lands leaves the element carrying the reason (see [errors.md](./errors.md#failed-sources)).
+Resolution is **asynchronous and non-blocking**: the element is on the canvas as soon as the project mounts and its paint is attached once its source has loaded. A source that fails to load leaves the element carrying the reason (see [errors.md](./errors.md#failed-sources)).
 
 An `<img>` inside [`<html>`](./html.md) additionally takes a `data:` or `blob:` URL, which goes to the browser as it is.
 
@@ -24,23 +23,11 @@ A folder of pictures has a count, not a duration, so `frameRate` is what says ho
 
 `frameRate` is not [`playbackRate`](./timing.md#playback-rate), which retimes a source against the timeline whatever its natural speed is; this is what that natural speed *is*. It is unrelated to the composition's own frame rate, which the export sets.
 
-## Transforms
-
-A source can be put through a model before the element shows it, by declaring the result as the `src` — see [generate.md](./generate.md#transforms):
-
-```tsx
-import { transform } from "@diffusionstudio/jsx";
-
-<image src={transform.upscale(transform.removeBackground("footage/fox.png"))} width={800} height={450} />
-```
-
-The inner source is untouched — nothing is overwritten and nothing is lost — and the chain runs inside out, in the order it is written. Results are cached by step and input like any [generated asset](./generate.md#caching-and-idempotency) and stored in the same `generated/` folder, so one is made however many elements ask for it, and wrapping a further transform around a chain does not re-run what is inside it.
-
 ## The library
 
 A project's assets are recorded in `assets.yml` next to its entry file: for each asset, its library `path`, where its bytes are (`source`: the absolute path of a file imported from disk — imports never move or copy files — or a project-relative path under `assets/`, whether the app wrote the bytes there or a symlink points at them), and what it was found to be. Folders are listed too, so an empty one survives a reload. Renaming or moving an asset in the panel rewrites the `src` props that named it.
 
-Generations are listed from the moment they are asked for: a partial record (`state: pending`) with no `source` while the model runs, the asset once it lands, and a record in `state: error` carrying the reason when it fails, which stands until removed (see [errors.md](./errors.md#failed-sources)).
+A file a model generated — in the app's prompt box or with [`generate`](../tools/generate.md) — also records the `job` it came from. [`job`](../tools/job.md) with that id returns what was asked for in `request`: the model, the prompt and every other field (an input file appears there as the API's reference to its upload, not as a library path).
 
 ## Adding an asset
 
@@ -54,7 +41,7 @@ mkdir -p assets/b-roll && ln -s ~/Movies/drone.mp4 assets/b-roll/
 <video src="b-roll/drone.mp4" width={1920} height={1080} />
 ```
 
-Link rather than copy: the bytes stay where they are, the project holds nothing but a name for them, and the library still gets a portable path to reach them by. Give `ln -s` an absolute target — a relative link is read against the folder the link sits in, so it breaks as soon as the project moves. A directory of numbered frames is taken in whole, as one [image sequence](#image-sequences), rather than as a file each, and a link to that directory does the same. A download becomes an asset the same way: point [yt-dlp](https://github.com/yt-dlp/yt-dlp) at `assets/b-roll/` with `-o`; `generate.*` results arrive under `assets/generated/` on their own.
+Link rather than copy: the bytes stay where they are, the project holds nothing but a name for them, and the library still gets a portable path to reach them by. Give `ln -s` an absolute target — a relative link is read against the folder the link sits in, so it breaks as soon as the project moves. A directory of numbered frames is taken in whole, as one [image sequence](#image-sequences), rather than as a file each, and a link to that directory does the same. A download becomes an asset the same way: point [yt-dlp](https://github.com/yt-dlp/yt-dlp) at `assets/b-roll/` with `-o`.
 
 A link is the project's, and what it points at is not. Deleting a linked asset in the panel removes the link and stops there.
 

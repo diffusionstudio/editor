@@ -121,8 +121,6 @@ export const SegmentedControlList = (props: SegmentedControlListProps) => {
       role="presentation"
       class={cx(
         "bg-muted text-muted-foreground relative h-full w-fit rounded-lg",
-        "has-[[data-slot=segmented-control-item-input]:focus-visible]:[&_[data-slot=segmented-control-indicator]]:ring-ring/50 has-[[data-slot=segmented-control-item-input]:focus-visible]:[&_[data-slot=segmented-control-indicator]]:outline-ring has-[[data-slot=segmented-control-item-input]:focus-visible]:[&_[data-slot=segmented-control-indicator]]:ring-[3px] has-[[data-slot=segmented-control-item-input]:focus-visible]:[&_[data-slot=segmented-control-indicator]]:outline-1",
-        "group-[[data-invalid]]/segmented-control:has-[[data-slot=segmented-control-item-input]:focus-visible]:[&_[data-slot=segmented-control-indicator]]:ring-destructive/20 dark:group-[[data-invalid]]/segmented-control:has-[[data-slot=segmented-control-item-input]:focus-visible]:[&_[data-slot=segmented-control-indicator]]:ring-destructive/40",
         props.class,
       )}
       {...rest}

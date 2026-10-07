@@ -5,6 +5,7 @@
 import { useSearchParams } from "@solidjs/router";
 import { Show, createEffect, createSignal } from "solid-js";
 import { toast } from "somoto";
+import type { EmailPreferences } from "@diffusionstudio/api-contract";
 
 import { useAvatar } from "@/hooks/use-avatar";
 import {
@@ -27,14 +28,14 @@ import {
 import { TextField, TextFieldInput, TextFieldLabel } from "@/components/ui/text-field";
 import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
 
 import {
   DashboardDividedStack,
   DashboardFormModal,
   DashboardFreePlanDetails,
   DashboardInfoActionRow,
-  DashboardProPlanDetails,
+  DashboardPaidPlanDetails,
   DashboardPlanSummaryCard,
   DashboardScrollView,
   DashboardSurfaceSection,
@@ -524,7 +525,7 @@ function DashboardAccountFreePlanCard() {
         <span class="grid h-7 w-6 place-items-center overflow-clip">
           <Icon name="upgrade" class="size-6" />
         </span>
-        Upgrade to Pro
+        Upgrade
       </Button>
     </DashboardSurfaceCard>
   );
@@ -537,7 +538,7 @@ function DashboardAccountPlanSection() {
   return (
     <DashboardTitledSection title="Plan">
       <Show
-        when={auth.isPro()}
+        when={auth.isSubscribed()}
         fallback={<DashboardAccountFreePlanCard />}
       >
         <DashboardPlanSummaryCard
@@ -550,53 +551,49 @@ function DashboardAccountPlanSection() {
             </Button>
           }
         >
-          <DashboardProPlanDetails />
+          <DashboardPaidPlanDetails />
         </DashboardPlanSummaryCard>
       </Show>
     </DashboardTitledSection>
   );
 }
 
-type EmailPreferenceColumn =
-  | "product_updates_enabled"
-  | "marketing_announcements_enabled";
+type EmailPreference = keyof EmailPreferences;
 
 function DashboardAccountEmailPreferencesSection() {
   const auth = useAuth();
   const [optimistic, setOptimistic] =
-    createSignal<Partial<Record<EmailPreferenceColumn, boolean>>>({});
+    createSignal<Partial<EmailPreferences>>({});
 
-  const serverValue = (column: EmailPreferenceColumn) =>
-    column === "product_updates_enabled"
+  const serverValue = (preference: EmailPreference) =>
+    preference === "productUpdates"
       ? auth.productUpdatesEnabled()
       : auth.marketingAnnouncementsEnabled();
 
-  const value = (column: EmailPreferenceColumn) =>
-    optimistic()[column] ?? serverValue(column);
+  const value = (preference: EmailPreference) =>
+    optimistic()[preference] ?? serverValue(preference);
 
-  // Clear optimistic overrides once the server state catches up via realtime.
+  // Clear optimistic overrides once the refetched account catches up.
   createEffect(() => {
     const current = optimistic();
     let next = current;
-    for (const column of [
-      "product_updates_enabled",
-      "marketing_announcements_enabled",
-    ] as const) {
-      if (column in current && current[column] === serverValue(column)) {
+    for (const preference of ["productUpdates", "marketingAnnouncements"] as const) {
+      if (preference in current && current[preference] === serverValue(preference)) {
         if (next === current) next = { ...current };
-        delete next[column];
+        delete next[preference];
       }
     }
     if (next !== current) setOptimistic(next);
   });
 
-  const handleChange = (column: EmailPreferenceColumn) => async (v: boolean) => {
-    setOptimistic({ ...optimistic(), [column]: v });
+  const handleChange = (preference: EmailPreference) => async (v: boolean) => {
+    setOptimistic({ ...optimistic(), [preference]: v });
     try {
-      await trpc.updateEmailPreference.mutate({ column, value: v });
+      await api.account.updateEmailPreferences.mutate({ [preference]: v });
+      auth.refreshAccount();
     } catch (err) {
       const next = { ...optimistic() };
-      delete next[column];
+      delete next[preference];
       setOptimistic(next);
       const message = err instanceof Error ? err.message : "Failed to update preference";
       toast.error("Action failed", { description: message });
@@ -609,14 +606,14 @@ function DashboardAccountEmailPreferencesSection() {
         <DashboardAccountPreferenceRow
           title="Product updates"
           description="Feature updates and important changes."
-          checked={value("product_updates_enabled")}
-          onChange={handleChange("product_updates_enabled")}
+          checked={value("productUpdates")}
+          onChange={handleChange("productUpdates")}
         />
         <DashboardAccountPreferenceRow
           title="Marketing & announcements"
           description="Product news and announcements."
-          checked={value("marketing_announcements_enabled")}
-          onChange={handleChange("marketing_announcements_enabled")}
+          checked={value("marketingAnnouncements")}
+          onChange={handleChange("marketingAnnouncements")}
         />
       </DashboardDividedStack>
     </DashboardSurfaceSection>

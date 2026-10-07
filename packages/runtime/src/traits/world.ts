@@ -6,7 +6,6 @@ import { trait, type Entity, type World } from 'koota';
 
 import type { FontSource } from '../fonts/types';
 import type { AssetLibrary } from '@diffusionstudio/assets';
-import type { GenAi } from '../ai';
 import type { Quad } from '../math/aabb';
 
 
@@ -69,12 +68,6 @@ export const Fonts = trait({ list: () => [] as FontSource[] });
 // project's file system): every asset an entity's AssetId can name, library
 // and transient alike. Null in a world without a project.
 export const Library = trait(() => null as AssetLibrary | null);
-
-// The generation service, once the host has attached one (it needs a
-// backend): what the asset system runs `generate.*` sources through, and
-// what `getAi(world).generate.image(...)` calls. Optional — in a world
-// without one, such sources stay pending and never resolve.
-export const Ai = trait(() => null as GenAi | null);
 
 // Per-tick callbacks. A mounted project adds one to feed its `useTicker`
 // clock; the playback system fires the set once per tick, after playheads

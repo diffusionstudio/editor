@@ -6,9 +6,7 @@ import { createEffect, createContext, useContext, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { Project } from "@diffusionstudio/runtime";
-import { DapiError } from "@diffusionstudio/dapi";
 import { useProject } from "@/context/project";
-import { useAuth } from "@/context/auth";
 import { useEngineContext } from "@/engine";
 import { openProjectFolder } from "@/projects";
 import { projectRoute } from "@/hooks/use-project-route";
@@ -33,11 +31,10 @@ const EditorApiContext = createContext<EditorApiContextValue>();
  * reachable whether or not a project is open; the ones that need one read
  * the session slot (see ./session) per call and fail with a clear error —
  * or, for `context`, report that nothing is open. Renders nothing; must sit
- * inside the router tree for `useNavigate` and inside the auth provider.
+ * inside the router tree for `useNavigate`.
  */
 export function EditorApi() {
   const navigate = useNavigate();
-  const auth = useAuth();
 
   const context: ContextFactory = (signal) => ({
     session: editorSession,
@@ -48,11 +45,6 @@ export function EditorApi() {
         const project = await openProjectFolder(dir);
         navigate(projectRoute(project.id || project.name));
         return { id: project.id, name: project.displayName, dir: project.dir };
-      },
-      requireUser() {
-        const user = auth.user();
-        if (!user) throw new DapiError("sign-in-required", "Sign in required: AI generation needs a Diffusion Studio account.");
-        return user;
       },
     },
   });

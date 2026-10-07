@@ -30,7 +30,7 @@ export const MAIN_CHANNELS = {
   // Renderer→Main requests
   APP_OPEN_EXTERNAL: "app:open-external",
   APP_SHOW_IN_FOLDER: "app:show-in-folder",
-  ANALYTICS_TRACK: "analytics:track",
+  ANALYTICS_CONFIGURE: "analytics:configure",
   AUTH_GET_PENDING_CALLBACK: "auth:get-pending-callback",
   CHECKOUT_GET_PENDING_CALLBACK: "checkout:get-pending-callback",
   WINDOW_IS_FULLSCREEN: "window:is-fullscreen",
@@ -177,10 +177,9 @@ export type MainRequestMap = {
     request: { url: string };
     response: void;
   };
-  // A product event, posted to Umami by main (the renderer's script is inert
-  // in Electron).
-  [MAIN_CHANNELS.ANALYTICS_TRACK]: {
-    request: { event: string; data?: Record<string, string | number | boolean> };
+  // Where main sends events and as whom: on launch and every auth change.
+  [MAIN_CHANNELS.ANALYTICS_CONFIGURE]: {
+    request: { apiUrl: string; token: string | null };
     response: void;
   };
   [MAIN_CHANNELS.AUTH_GET_PENDING_CALLBACK]: {

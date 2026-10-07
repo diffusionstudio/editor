@@ -10,9 +10,9 @@ Write the brief first. It records the source files, the target duration (or "kee
 
 The transcript is the spine, so transcribe everything with speech.
 
-- **Transcribe every video and any external audio.** `media_transcribe` writes word-level start/end times to a JSON file — the times you cut on. Run it on each camera take and on any separate recording (a lav or interface track you will sync to).
-- **Render the waveform to read the gaps.** `media_waveform` marks silence in red and returns it as second ranges. A transcript marks only speech, so a gap in it can be silence *or* something to keep — a laugh, a breath. The waveform tells them apart: red is dead air to cut; a gap that still shows signal is performance to keep.
-- **Resolve double takes visually.** The transcript shows repeated lines; usually the **last** take is the keeper. When takes read equally well, `media_grab` the first word of each and keep the sharpest — motion blur means a bad take.
+- **Transcribe every video and any external audio.** `transcribe` writes word-level start/end times to a JSON file — the times you cut on. Run it on each camera take and on any separate recording (a lav or interface track you will sync to).
+- **Render the waveform to read the gaps.** `waveform` marks silence in red and returns it as second ranges. A transcript marks only speech, so a gap in it can be silence *or* something to keep — a laugh, a breath. The waveform tells them apart: red is dead air to cut; a gap that still shows signal is performance to keep.
+- **Resolve double takes visually.** The transcript shows repeated lines; usually the **last** take is the keeper. When takes read equally well, `grab` the first word of each and keep the sharpest — motion blur means a bad take.
 
 ## 3. Lay out the A-roll
 
@@ -97,9 +97,9 @@ One line of copy is a job for the native `<text>` tag:
 
 ## 7. Captions (optional)
 
-Add captions **last**, after every cut and overlay is verified, so they transcribe the final audio at its final placement. Use the **`whisper`** preset aligned to the bottom, and start it where the hook ends — set both `start` and `sourceIn` to that timestamp so the transcript stays aligned (see `reference/jsx/captions.md` in the project's docs). Keep captions off overlays and off the important part of the A-roll.
+Add captions **last**, after every cut and overlay is verified. `src` names the recording's subtitle file (`.srt`, `.vtt`, or a transcript `.json`). Use the **`whisper`** preset aligned to the bottom, and start it where the hook ends — set both `start` and `sourceIn` to that timestamp so the transcript stays aligned (see `reference/jsx/captions.md` in the project's docs). Keep captions off overlays and off the important part of the A-roll.
 
 ```tsx
 {/* Hook holds until 00:03; captions begin there. */}
-<captions preset="whisper" verticalAlign="bottom" start={3} sourceIn={3} />
+<captions src="talk.srt" preset="whisper" verticalAlign="bottom" start={3} sourceIn={3} />
 ```

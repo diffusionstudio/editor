@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogPortal } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { useAuth } from "@/context/auth";
 import { cx } from "@/lib/cva";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
+import { FREE_CREDITS, planName } from "@/lib/checkout";
 import {
   For,
   Show,
@@ -228,7 +229,7 @@ export function DashboardFreePlanDetails() {
     <DashboardPlanDetails
       details={[
         { label: "Free", value: "$0.00" },
-        { label: "AI credits", value: "50 trial credits \u00B7 One time only" },
+        { label: "AI credits", value: `${FREE_CREDITS} trial credits \u00B7 One time only` },
       ]}
     />
   );
@@ -247,9 +248,16 @@ function formatCurrency(amountCents: number, currency: string) {
   }).format(amountCents / 100);
 }
 
-export function DashboardProPlanDetails() {
+export function DashboardPaidPlanDetails() {
   const auth = useAuth();
-  const [summary] = createResource(() => trpc.getSubscriptionSummary.query());
+  const [summary] = createResource(async () => {
+    try {
+      return await api.billing.subscription.query();
+    } catch (err) {
+      console.error("Failed to load the subscription", err);
+      return null;
+    }
+  });
 
   const priceLabel = () => {
     const s = summary();
@@ -270,7 +278,7 @@ export function DashboardProPlanDetails() {
   return (
     <DashboardPlanDetails
       details={[
-        { label: "Pro", value: priceLabel() },
+        { label: planName(auth.plan()), value: priceLabel() },
         { label: "AI credits", value: creditsLabel() },
         { label: "Renews", value: renewsLabel() },
       ]}
@@ -488,7 +496,7 @@ export function DashboardCardButton(props: DashboardCardButtonProps) {
       onDblClick={props.onDoubleClick}
       onKeyDown={handleKeyDown}
       class={cx(
-        "flex min-w-0 flex-col gap-3 rounded-xl px-2 pt-2 pb-3 text-left outline-none transition-colors hover:bg-accent/50 focus-ring group",
+        "flex min-w-0 flex-col gap-3 rounded-xl px-2 pt-2 pb-3 text-left outline-none transition-colors hover:bg-accent/50 group",
         props.active && "bg-primary/15 hover:bg-primary/15 ring-1 ring-inset ring-primary",
         props.class,
       )}

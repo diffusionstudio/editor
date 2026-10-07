@@ -105,14 +105,36 @@ export function resetCameraZoom(world: World): void {
  * rect should bring it into view, not magnify it.
  */
 export function focusRect(world: World, rect: Rect, padding = FOCUS_PADDING): void {
+	const fit = fitScale(world, rect, padding);
+	if (fit !== null) centerOn(world, rect, clamp(fit, MIN_CAMERA_ZOOM, 1));
+}
+
+/**
+ * Bring a document-space rect into view: centered, and fully visible with
+ * `padding` CSS pixels to spare. Unlike `focusRect` the zoom is kept where it
+ * fits — the view only zooms out, and only as far as the rect needs.
+ */
+export function revealRect(world: World, rect: Rect, padding = FOCUS_PADDING): void {
+	const fit = fitScale(world, rect, padding);
+	if (fit !== null) centerOn(world, rect, clamp(Math.min(fit, getCameraScale(world)), MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM));
+}
+
+/** The zoom at which `rect` just fits the viewport inside `padding`, or null when nothing can. */
+function fitScale(world: World, rect: Rect, padding: number): number | null {
 	const viewport = getViewport(world);
-	if (!viewport || rect.width <= 0 || rect.height <= 0) return;
+	if (!viewport || rect.width <= 0 || rect.height <= 0) return null;
 
 	const width = viewport.width - padding * 2;
 	const height = viewport.height - padding * 2;
-	if (width <= 0 || height <= 0) return;
+	if (width <= 0 || height <= 0) return null;
 
-	const scale = clamp(Math.min(width / rect.width, height / rect.height), MIN_CAMERA_ZOOM, 1);
+	return Math.min(width / rect.width, height / rect.height);
+}
+
+/** Put the middle of `rect` in the middle of the viewport, at `scale`. */
+function centerOn(world: World, rect: Rect, scale: number): void {
+	const viewport = getViewport(world);
+	if (!viewport) return;
 
 	setCamera(world, {
 		a: scale,

@@ -5,9 +5,9 @@
 // The whole loop over a real socket: the browser client against the host
 // with the fake harness behind it. What the UI does is what these do.
 
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { WebSocket } from "ws";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -37,6 +37,7 @@ beforeAll(async () => {
     mcp: { name: "diffusion", url: "http://127.0.0.1:3274/mcp?client=chat" },
     version: "0.0.0-test",
     harnesses: [fake],
+    uploadDir: join(dir, "uploads"),
     allowedOrigins: ["null"],
     log: () => {},
   });
@@ -304,6 +305,25 @@ describe("agent chat end to end", () => {
     expect((await client.request("chats.list", { projectId: other.projectId })).map((entry) => entry.id)).toEqual([kept]);
     expect(existsSync(join(dir, "chats", gone))).toBe(false);
     expect(existsSync(join(dir, "chats", kept))).toBe(true);
+  });
+
+  it("writes an uploaded attachment to a path of its own, under its name", async () => {
+    const client = await connect();
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 255]);
+    const data = bytes.toString("base64");
+
+    const first = await client.request("attachments.upload", { name: "image.png", data });
+    const second = await client.request("attachments.upload", { name: "image.png", data });
+    expect(first.path).not.toBe(second.path);
+    for (const { path } of [first, second]) {
+      expect(path.endsWith("image.png")).toBe(true);
+      expect(readFileSync(path)).toEqual(bytes);
+    }
+
+    // A name is only ever a name: it cannot climb out of the upload folder.
+    const sneaky = await client.request("attachments.upload", { name: "../../.evil.png", data });
+    expect(dirname(dirname(sneaky.path))).toBe(join(dir, "uploads"));
+    expect(sneaky.path.endsWith("evil.png")).toBe(true);
   });
 
   it("refuses a harness that is not ready", async () => {

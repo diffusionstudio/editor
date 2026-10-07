@@ -25,7 +25,7 @@ export const AssetPath = z
     "absolute file path or URL (works with or without an open project), or a library path like `b-roll/clip.mp4` (needs an open project)",
   );
 
-/** Beyond this the cells get too small to be worth the tokens; use `media_filmstrip`. */
+/** Beyond this the cells get too small to be worth the tokens; use `filmstrip`. */
 export const MAX_FRAMES_PER_SHEET = 12;
 
 /**

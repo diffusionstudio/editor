@@ -4,9 +4,9 @@
 
 import { parseSource } from '@diffusionstudio/jsx';
 
-import { Ai, Cache, Computed, Delay, FrameRate, FramePromises, Generating, GenerationRequest, Host, Library, LoadRequest, PendingSource, PendingSync, PlaybackRate, Source, SourceError, SyncRequest, TranscriptionRequest, Trim } from '../traits';
+import { Cache, Computed, Delay, FrameRate, FramePromises, Host, Library, LoadRequest, PendingSource, PendingSync, PlaybackRate, Source, SourceError, SyncRequest, Trim } from '../traits';
 import { bindAsset, getAssetFile } from '../actions/assets';
-import { getEntityTree, getParentNode, getSceneAncestor } from '../queries/hierarchy';
+import { getParentNode } from '../queries/hierarchy';
 import { findAssetDuration, findGeometryAsset } from '../utils/time';
 import { computeAudioSyncOffsetCached } from '../media/audio-sync';
 import { store } from '../world/store';
@@ -31,26 +31,6 @@ export function assetSystem(world: World): void {
 			const source = entity.get(LoadRequest)!.value;
 			entity.remove(LoadRequest);
 			resolve(world, entity, library.resolve(source));
-		}
-	}
-
-	const ai = world.get(Ai);
-	if (ai) {
-		for (const entity of world.query(GenerationRequest)) {
-			const ref = entity.get(GenerationRequest)!.ref;
-			entity.remove(GenerationRequest);
-			if (ref === null) continue;
-			if (isDomImage(entity)) pointDomImageAt(entity, null);
-			resolve(world, entity, ai.resolve(ref), true);
-		}
-
-		for (const entity of world.query(TranscriptionRequest)) {
-			const scene = getSceneAncestor(entity);
-			if (!scene || hasPendingSources(world, scene, entity)) continue;
-
-			const seed = entity.get(TranscriptionRequest)!.seed;
-			entity.remove(TranscriptionRequest);
-			resolve(world, entity, ai.transcribe(world, scene, seed), true);
 		}
 	}
 
@@ -200,36 +180,19 @@ function waitingOnSources(entity: Entity): boolean {
 }
 
 function pendingSource(entity: Entity): boolean {
-	return entity.has(LoadRequest) || entity.has(GenerationRequest) || entity.has(PendingSource);
+	return entity.has(LoadRequest) || entity.has(PendingSource);
 }
 
 /** Takes the sync off and leaves why on the element, `resolve`-style. */
 function fail(entity: Entity, message: string): void {
 	entity.remove(SyncRequest, PendingSync);
 	entity.add(SourceError);
-	entity.set(SourceError, { value: message, generated: false });
+	entity.set(SourceError, { value: message });
 	console.error('[runtime] could not sync:', message);
 }
 
 function currentSync(entity: Entity, token: object): boolean {
 	return entity.isAlive() && entity.get(PendingSync)?.value === token;
-}
-
-/**
- * Whether anything in `scene`'s subtree (besides `except`, the requesting
- * element itself) is still waiting on a source: a request this system has
- * not consumed, or a resolution it started that has not landed. A pending
- * `syncTo` counts — the clip has a source but not yet the placement a
- * transcription would read it at.
- */
-function hasPendingSources(world: World, scene: Entity, except: Entity): boolean {
-	for (const entity of getEntityTree(world, scene)) {
-		if (entity === except) continue;
-		if (pendingSource(entity) || entity.has(SyncRequest) || entity.has(PendingSync)) {
-			return true;
-		}
-	}
-	return false;
 }
 
 /**
@@ -239,23 +202,22 @@ function hasPendingSources(world: World, scene: Entity, except: Entity): boolean
  * the identity rather than what was asked for — the later question is always
  * the one being asked.
  */
-function resolve(world: World, entity: Entity, promise: Promise<Asset>, generating = false): void {
+function resolve(world: World, entity: Entity, promise: Promise<Asset>): void {
 	const token = {};
 	entity.remove(SourceError);
 	entity.add(PendingSource);
 	entity.set(PendingSource, { value: token });
-	if (generating) entity.add(Generating);
 
 	const done = promise.then(async (asset) => {
 		if (!current(entity, token)) return;
 		bindAsset(entity, asset);
 		await bindDomImage(entity, asset, token);
-		if (current(entity, token)) entity.remove(PendingSource, Generating);
+		if (current(entity, token)) entity.remove(PendingSource);
 	}).catch((error: unknown) => {
 		if (!current(entity, token)) return;
-		entity.remove(PendingSource, Generating);
+		entity.remove(PendingSource);
 		entity.add(SourceError);
-		entity.set(SourceError, { value: errorMessage(error), generated: generating });
+		entity.set(SourceError, { value: errorMessage(error) });
 		console.error('[runtime] could not resolve src:', error);
 	});
 

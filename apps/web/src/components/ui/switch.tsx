@@ -33,7 +33,6 @@ export const switchControlVariants = cva({
   base: [
     "inline-flex items-center rounded-full border border-transparent transition-all",
     "data-[checked]:bg-primary",
-    "peer-focus-visible/switch-input:border-ring peer-focus-visible/switch-input:ring-ring/50 peer-focus-visible/switch-input:ring-[3px]",
     "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
   ],
   variants: {

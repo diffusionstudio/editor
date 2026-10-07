@@ -4,10 +4,11 @@
 
 import { createContext, createSignal, useContext } from "solid-js";
 import type { JSX } from "solid-js";
-import type { GenerationConfig } from "@/components/genai/schemas";
+import type { GenerationConfig } from "@/components/genai/types";
 
 type PromptInputContextValue = {
-  openPromptInput: (config: GenerationConfig) => void;
+  /** Opens the prompt box with `config`, or as it was last left without one. */
+  openPromptInput: (config?: GenerationConfig) => void;
   promptInputOpen: () => boolean;
   setPromptInputOpen: (open: boolean) => void;
   promptInputConfig: () => GenerationConfig | undefined;
@@ -16,13 +17,14 @@ type PromptInputContextValue = {
 const PromptInputContext = createContext<PromptInputContextValue>();
 
 export function PromptInputProvider(props: { children: JSX.Element }) {
-  const [promptInputOpen, setPromptInputOpen] = createSignal(false);
+  const [promptInputOpen, setOpen] = createSignal(false);
   const [promptInputConfig, setPromptInputConfig] = createSignal<GenerationConfig | undefined>();
 
-  const openPromptInput = (config: GenerationConfig) => {
+  const openPromptInput = (config?: GenerationConfig) => {
     setPromptInputConfig(config);
-    setPromptInputOpen(true);
+    setOpen(true);
   };
+  const setPromptInputOpen = (open: boolean) => (open ? openPromptInput() : setOpen(false));
 
   return (
     <PromptInputContext.Provider value={{ openPromptInput, promptInputOpen, promptInputConfig, setPromptInputOpen }}>
