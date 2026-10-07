@@ -15,8 +15,11 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
   DropdownMenuPortal,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
@@ -34,7 +37,7 @@ import {
 import { SliderInput } from "@/components/ui/slider-input";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { AssetId, Cache, Computed, Effect, Hidden, getParentNode } from "@diffusionstudio/runtime";
+import { Cache, Computed, Effect, Hidden } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
 import { copyObjectMask, useObjectMasks } from "@/engine/object-mask";
@@ -78,16 +81,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   const value = useDerived(() => props.effect.get(Computed)?.value ?? 0);
   const masks = useDerived(() => props.effect.get(Cache)?.masks ?? NO_MASKS);
 
-  const { footage, masks: sources } = useObjectMasks(() => getParentNode(props.effect));
-
-  const used = useDerived(() =>
-    (props.effect.get(Cache)?.masks ?? NO_MASKS).map((mask) => mask.get(AssetId)?.value ?? "").join("\n"),
-  );
-
-  const shareable = createMemo(() => {
-    const taken = new Set(used().split("\n"));
-    return sources().filter((source) => !taken.has(source.asset.id));
-  });
+  const groups = useObjectMasks();
 
   const editingMask = createMemo(() => {
     const mask = pickedMask();
@@ -225,7 +219,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
           </ControlRow>
         </Show>
 
-        <Show when={footage()}>
+        <Show when={groups().length > 0 || masks().length > 0}>
           <For each={masks()}>
             {(mask, index) => (
               <ControlRow label="Mask" labelClass={index() > 0 ? "invisible" : undefined}>
@@ -243,7 +237,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
               <DropdownMenuTrigger
                 as="button"
                 type="button"
-                disabled={shareable().length === 0}
+                disabled={groups().length === 0}
                 class="flex h-7 w-full min-w-0 cursor-default items-center gap-2 overflow-clip rounded-md bg-input p-1 pr-2 text-xs text-muted-foreground transition-colors hover:bg-input/80 disabled:opacity-50 disabled:hover:bg-input"
               >
                 <div class="flex size-5 shrink-0 items-center justify-center overflow-clip rounded-sm bg-secondary text-foreground">
@@ -253,11 +247,23 @@ export function EffectsInspector(props: EffectsInspectorProps) {
               </DropdownMenuTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuContent class="max-h-[min(var(--kb-popper-content-available-height),275px)]">
-                  <For each={shareable()}>
-                    {(source) => (
-                      <DropdownMenuItem onSelect={() => copyObjectMask(world, props.effect, source)}>
-                        {source.name}
-                      </DropdownMenuItem>
+                  <For each={groups()}>
+                    {(group, index) => (
+                      <>
+                        <Show when={index() > 0}>
+                          <DropdownMenuSeparator />
+                        </Show>
+                        <DropdownMenuGroup>
+                          <DropdownMenuGroupLabel class="truncate">{group.name}</DropdownMenuGroupLabel>
+                          <For each={group.masks}>
+                            {(source) => (
+                              <DropdownMenuItem onSelect={() => copyObjectMask(world, props.effect, source)}>
+                                {source.name}
+                              </DropdownMenuItem>
+                            )}
+                          </For>
+                        </DropdownMenuGroup>
+                      </>
                     )}
                   </For>
                 </DropdownMenuContent>

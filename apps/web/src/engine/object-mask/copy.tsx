@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { assetName } from '@diffusionstudio/assets';
+import { assetFolder, assetName, basename } from '@diffusionstudio/assets';
 import { Mask } from '@diffusionstudio/reconciler';
 import { AssetId, Blur, Cache, Library, Mask as MaskTrait, getParentNode } from '@diffusionstudio/runtime';
 
@@ -21,25 +21,37 @@ export type ObjectMaskSource = {
 	sourceIn: number;
 };
 
+/** The masks of one library folder, under the folder's name: a section of the mask menus. */
+export type ObjectMaskGroup = {
+	/** What to call the section: the folder's own name. */
+	name: string;
+	masks: ObjectMaskSource[];
+};
+
 /**
- * The tracked masks of the video `footage` (its asset id) in `library`: every
- * mask file whose recipe names it, whichever effect — or none — holds it now.
- * The recipe is the record: a mask outlives the effects that used it, and
- * the library is where it is found again. It reads the library's asset list,
- * a signal, so a memo over it runs again only when the library changes (see
+ * Every mask in `library`, grouped by the folder it is in — a mask is not
+ * tied to the clip it was tracked on, so any effect can take any of them.
+ * Folders keep the library's order. It reads the library's asset list, a
+ * signal, so a memo over it runs again only when the library changes (see
  * `useObjectMasks`).
  */
-export function objectMasksOf(library: AssetLibrary, footage: string): ObjectMaskSource[] {
-	const sources: ObjectMaskSource[] = [];
+export function objectMaskGroups(library: AssetLibrary): ObjectMaskGroup[] {
+	const groups = new Map<string, ObjectMaskGroup>();
 	for (const asset of library.list()) {
-		if (asset.type !== 'MASK' || asset.recipe?.source !== footage) continue;
-		sources.push({
+		if (asset.type !== 'MASK') continue;
+		const folder = assetFolder(asset);
+		let group = groups.get(folder);
+		if (!group) {
+			group = { name: basename(folder) || 'Library', masks: [] };
+			groups.set(folder, group);
+		}
+		group.masks.push({
 			asset,
 			name: assetName(asset).replace(/\.[^.]+$/, ''),
-			sourceIn: asset.recipe.first / asset.frameRate,
+			sourceIn: asset.recipe ? asset.recipe.first / asset.frameRate : 0,
 		});
 	}
-	return sources;
+	return [...groups.values()];
 }
 
 /**
