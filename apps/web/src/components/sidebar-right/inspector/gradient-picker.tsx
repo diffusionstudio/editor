@@ -37,23 +37,32 @@ import { useDrag } from "@/hooks/use-drag";
 import { clamp, mergeColorWithOpacity } from "@/utils";
 import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { ColorStop as ColorStopElement } from "@diffusionstudio/reconciler";
-import { Computed, Paint, PaintType, colorToHex, parseColor } from "@diffusionstudio/runtime";
+import { Computed, LINEAR_GRADIENT_DEFAULTS, Paint, PaintType, colorToHex, parseColor } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
+import { beginGradientTool, endGradientTool } from "@/engine/gradient-tool";
 import { readGradientStops, sameGradientStops, type GradientStop } from "./gradient-stops";
 
 import type { Entity } from "koota";
+import type { GradientKind } from "./fill-picker";
 
 export type GradientPickerProps = {
+  node: Entity;
   fill: Entity;
-  /** Swaps the gradient for one of the other kind, which is another element. */
-  onChangeKind(radial: boolean): void;
+  onChangeKind(kind: GradientKind): void;
 };
 
-const GRADIENT_STYLE_OPTIONS = ["Linear", "Radial"] as const;
-type GradientStyleOption = (typeof GRADIENT_STYLE_OPTIONS)[number];
+const GRADIENT_STYLES = {
+  Linear: PaintType.LINEAR_GRADIENT,
+  Radial: PaintType.RADIAL_GRADIENT,
+  Angular: PaintType.ANGULAR_GRADIENT,
+} as const;
 
-/** `<colorStop>`'s and `<linearGradientPaint>`'s defaults. */
+const GRADIENT_STYLE_OPTIONS = Object.keys(GRADIENT_STYLES) as GradientStyleOption[];
+
+type GradientStyleOption = keyof typeof GRADIENT_STYLES;
+
+/** `<colorStop>`'s and the radial and angular gradients' defaults. */
 const DEFAULT_OPACITY = 1;
 const DEFAULT_ROTATION = 0;
 
@@ -87,7 +96,7 @@ function isPrimaryPointerButton(e: PointerEvent) {
 }
 
 /**
- * A gradient paint: its stops, its rotation, and which of the two gradient
+ * A gradient paint: its stops, its angle, and which of the two gradient
  * elements it is. Every stop is a `<colorStop offset color opacity>` of its
  * own, so adding, moving and deleting one are element edits; the values shown
  * are `Computed`, which the motion system writes.
@@ -105,8 +114,27 @@ export function GradientFillPicker(props: GradientPickerProps) {
 
   const stops = useDerived(() => readGradientStops(world, props.fill), sameGradientStops);
 
+  createEffect(() => {
+    const { node, fill } = props;
+    beginGradientTool(world, node, fill);
+    onCleanup(() => endGradientTool(world, fill));
+  });
+
   const paint = useTrait(() => props.fill, Paint);
-  const rotation = useDerived(() => props.fill.get(Computed)?.rotation ?? DEFAULT_ROTATION);
+  const isLinear = () => paint()?.value === PaintType.LINEAR_GRADIENT;
+
+  const rotation = useDerived(() => {
+    const computed = props.fill.get(Computed);
+    if (!computed) {
+      return DEFAULT_ROTATION;
+    }
+    if (!isLinear()) {
+      return computed.rotation;
+    }
+    const { gradientX1: x1, gradientY1: y1, gradientX2: x2, gradientY2: y2 } = computed;
+    const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+    return Math.round((((angle % 360) + 360) % 360) * 100) / 100;
+  });
 
   const editOffset = (stop: Entity, offset: number) => {
     editor.editProperty(stop, "offset", offset);
@@ -286,8 +314,32 @@ export function GradientFillPicker(props: GradientPickerProps) {
 
   const editRotation = (value: number) => {
     const next = ((value % 360) + 360) % 360;
+    if (isLinear()) {
+      pointLine(next);
+      return;
+    }
     editor.editProperty(props.fill, "rotation", next === DEFAULT_ROTATION ? false : next);
     syncKeyframe(world, editor, props.fill, "rotation", next);
+  };
+
+  /** Turns a linear gradient's line to `degrees` about its midpoint, keeping its length. */
+  const pointLine = (degrees: number) => {
+    const computed = props.fill.get(Computed);
+    if (!computed) return;
+    const { gradientX1: x1, gradientY1: y1, gradientX2: x2, gradientY2: y2 } = computed;
+    const half = Math.hypot(x2 - x1, y2 - y1) / 2;
+    const angle = (degrees * Math.PI) / 180;
+    const dx = Math.cos(angle) * half;
+    const dy = Math.sin(angle) * half;
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+
+    const points = { x1: mx - dx, y1: my - dy, x2: mx + dx, y2: my + dy };
+    for (const name of ["x1", "y1", "x2", "y2"] as const) {
+      const value = Math.round(points[name] * 10000) / 10000;
+      editor.editProperty(props.fill, name, value === LINEAR_GRADIENT_DEFAULTS[name] ? false : value);
+      syncKeyframe(world, editor, props.fill, name, value);
+    }
   };
 
   const rotateGradient = () => editRotation(rotation() + 90);
@@ -300,16 +352,19 @@ export function GradientFillPicker(props: GradientPickerProps) {
 
   const handleGradientStyleChange = (style: GradientStyleOption | null) => {
     if (style === null) return;
-    props.onChangeKind(style === "Radial");
+    props.onChangeKind(GRADIENT_STYLES[style]);
   };
 
   const handleRotationChange = (value: number) => {
     editRotation(Math.round(value * 100) / 100);
   };
 
-  const gradientLabel = createMemo(() =>
-    paint()?.value === PaintType.RADIAL_GRADIENT ? "Radial" : "Linear",
-  );
+  const gradientLabel = createMemo((): GradientStyleOption => {
+    const value = paint()?.value;
+    if (value === PaintType.RADIAL_GRADIENT) return "Radial";
+    if (value === PaintType.ANGULAR_GRADIENT) return "Angular";
+    return "Linear";
+  });
 
   const gradientBackground = createMemo(() => {
     const parts = stops().map((s) => {
@@ -385,7 +440,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
           <ContextMenu modal={false}>
             <ContextMenuTrigger
               as="div"
-              class="h-7 w-full touch-none rounded-md border border-border-input"
+              class="h-7 w-full touch-none rounded-md border border-border-input bg-origin-border"
               style={{ "background-image": gradientBackground() }}
               onPointerDown={beginInsertAndDragStop}
             />

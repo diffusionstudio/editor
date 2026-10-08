@@ -18,7 +18,7 @@ import { clamp } from '../math/common';
 import { colorToHex } from './color';
 import { applyStrokeStyle, findWidestStroke } from './stroke';
 import { getSurfaceContext } from './surface';
-import { createLinearGradient, createRadialGradient } from '../systems/gradients';
+import { createAngularGradientPattern, createLinearGradient, createRadialGradientPattern } from '../systems/gradients';
 
 import type { Entity, World } from 'koota';
 
@@ -265,6 +265,32 @@ function tokenizeText(world: World, entity: Entity) {
 	store(world, TextCache).tokens[entity.id()] = lines;
 }
 
+type EllipticalPatterns = Map<Entity, CanvasPattern | CanvasGradient>;
+
+/**
+ * A radial or angular paint's pattern, made once per text render and kept in
+ * `patterns`: one costs a canvas-sized draw, and it holds for every word,
+ * since the words share the box and the matrix.
+ */
+function getEllipticalPattern(
+	world: World,
+	ctx: Ctx,
+	patterns: EllipticalPatterns,
+	paint: Entity,
+	paintType: PaintType,
+	w: number,
+	h: number,
+): CanvasPattern | CanvasGradient {
+	let pattern = patterns.get(paint);
+	if (!pattern) {
+		pattern = paintType === PaintType.ANGULAR_GRADIENT
+			? createAngularGradientPattern(world, paint, ctx, w, h)
+			: createRadialGradientPattern(world, paint, ctx, w, h);
+		patterns.set(paint, pattern);
+	}
+	return pattern;
+}
+
 /** Renders text tokens directly to the given canvas context. */
 function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 	const eid = entity.id();
@@ -281,6 +307,9 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 	const paintStore = store(world, Paint);
 
 	const savedAlpha = ctx.globalAlpha;
+
+	// Radial and angular paints' patterns, made on first use.
+	let patterns: EllipticalPatterns | null = null;
 
 	// Draw all text shadows
 	{
@@ -368,8 +397,8 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				const paintType = paintStore.value[sid];
 				if (paintType === PaintType.LINEAR_GRADIENT) {
 					ctx.strokeStyle = createLinearGradient(world, stroke, ctx, w, h);
-				} else if (paintType === PaintType.RADIAL_GRADIENT) {
-					ctx.strokeStyle = createRadialGradient(world, stroke, ctx, w, h);
+				} else if (paintType === PaintType.RADIAL_GRADIENT || paintType === PaintType.ANGULAR_GRADIENT) {
+					ctx.strokeStyle = getEllipticalPattern(world, ctx, patterns ??= new Map(), stroke, paintType, w, h);
 				} else {
 					ctx.strokeStyle = colorToHex(colorStore.value[sid] ?? 0x000000);
 				}
@@ -420,8 +449,8 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				const paintType = paintStore.value[fid];
 				if (paintType === PaintType.LINEAR_GRADIENT) {
 					ctx.fillStyle = createLinearGradient(world, fill, ctx, w, h);
-				} else if (paintType === PaintType.RADIAL_GRADIENT) {
-					ctx.fillStyle = createRadialGradient(world, fill, ctx, w, h);
+				} else if (paintType === PaintType.RADIAL_GRADIENT || paintType === PaintType.ANGULAR_GRADIENT) {
+					ctx.fillStyle = getEllipticalPattern(world, ctx, patterns ??= new Map(), fill, paintType, w, h);
 				} else {
 					ctx.fillStyle = colorToHex(colorStore.value[fid] ?? 0x000000);
 				}

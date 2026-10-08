@@ -118,6 +118,14 @@ export type AnimatableProperty =
   | "volume"
   | "color"
   | "offset"
+  | "x1"
+  | "y1"
+  | "x2"
+  | "y2"
+  | "cx"
+  | "cy"
+  | "rx"
+  | "ry"
   | "blur"
   | "value";
 
@@ -556,7 +564,7 @@ export type RectProps = CommonProps & FillProps & {
   mask?: boolean;
   /**
    * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
-   * `<RadialGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
    * `<Animation>` and `<KeyframeTrack>` children.
    */
   children?: SolidJSX.Element;
@@ -690,10 +698,67 @@ export type KeyframeProps = {
 export type SolidPaintProps = ColorProps & PaintProps & TrackChildren;
 
 export type GradientPaintProps = PaintProps & {
-  /** Gradient rotation in degrees. Defaults to 0 (left to right). */
-  rotation?: number;
   /** `<ColorStop>` children — the gradient's color stops. */
   children?: SolidJSX.Element;
+};
+
+/**
+ * `<linearGradientPaint>` — a gradient along a line in the parent's box, from
+ * stop 0 at (`x1`, `y1`) to stop 1 at (`x2`, `y2`). As in SVG's default
+ * `objectBoundingBox` units, the points are fractions of the box, not px:
+ * 0–1 spans its width horizontally and its height vertically. Unplaced, the
+ * line runs across the middle of the box, left to right, edge to edge.
+ */
+export type LinearGradientPaintProps = GradientPaintProps & {
+  /** Start of the line, as a fraction of the box width. Default 0. */
+  x1?: number;
+  /** Start of the line, as a fraction of the box height. Default 0.5. */
+  y1?: number;
+  /** End of the line, as a fraction of the box width. Default 1. */
+  x2?: number;
+  /** End of the line, as a fraction of the box height. Default 0.5. */
+  y2?: number;
+};
+
+/**
+ * `<radialGradientPaint>` — a gradient from stop 0 at a center out to stop 1
+ * on an ellipse in the parent's box: SVG's `cx`/`cy` plus the `rx`/`ry` of
+ * `<ellipse>`, as fractions of the box (0–1 spans its width horizontally and
+ * its height vertically). Unplaced, the ellipse is centered and touches the
+ * middle of each edge of the box.
+ */
+export type RadialGradientPaintProps = GradientPaintProps & {
+  /** Center, as a fraction of the box width. Default 0.5. */
+  cx?: number;
+  /** Center, as a fraction of the box height. Default 0.5. */
+  cy?: number;
+  /** Radius along the ellipse's first axis, as a fraction of the box width. Default 0.5. */
+  rx?: number;
+  /** Radius along the ellipse's second axis, as a fraction of the box height. Default 0.5. */
+  ry?: number;
+  /** Turns the radii, degrees clockwise. Default 0. */
+  rotation?: number;
+};
+
+/**
+ * `<angularGradientPaint>` — a gradient that sweeps its stops once around a
+ * center, like Figma's angular gradient and CSS `conic-gradient`: stop 0
+ * along the ellipse's first radius, turning clockwise through the second.
+ * Placed like `<radialGradientPaint>`, by the same props in fractions of the
+ * box; the ellipse's shape spreads the sweep, so on a stretched one the
+ * stops crowd toward its long ends.
+ */
+export type AngularGradientPaintProps = GradientPaintProps & {
+  /** Center, as a fraction of the box width. Default 0.5. */
+  cx?: number;
+  /** Center, as a fraction of the box height. Default 0.5. */
+  cy?: number;
+  /** Radius along the ellipse's first axis, where the sweep starts, as a fraction of the box width. Default 0.5. */
+  rx?: number;
+  /** Radius along the ellipse's second axis, as a fraction of the box height. Default 0.5. */
+  ry?: number;
+  /** Turns the radii, and with them where the sweep starts, degrees clockwise. Default 0 (stop 0 to the right of the center). */
+  rotation?: number;
 };
 
 export type ColorStopProps = ColorProps & OpacityProps & TrackChildren & {

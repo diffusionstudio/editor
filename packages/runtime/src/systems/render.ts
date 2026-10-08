@@ -36,7 +36,14 @@ import { renderText } from '../utils/text';
 import { getTransitionWindow } from '../utils/transition';
 import { drawOnto, getSurfaceContext } from '../utils/surface';
 import { findGeometryAssetSource, getIntrinsicPaint } from '../utils/time';
-import { createLinearGradient, createRadialGradient } from './gradients';
+import {
+	fillAngularGradient,
+	fillLinearGradient,
+	fillRadialGradient,
+	strokeAngularGradient,
+	strokeLinearGradient,
+	strokeRadialGradient,
+} from './gradients';
 import {
 	MaskDecoder, resolveImageDecoder, resolveVideoDecoder,
 	resolveCaptionDecoder, resolveShaderHost, resolveWaveformPeaks,
@@ -387,13 +394,15 @@ export function renderFills(world: World, entity: Entity): void {
 		} else if (paint === PaintType.LINEAR_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			ctx.fillStyle = createLinearGradient(world, fill, ctx, w, h);
-			ctx.fill();
+			fillLinearGradient(world, fill, ctx, w, h);
 		} else if (paint === PaintType.RADIAL_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			ctx.fillStyle = createRadialGradient(world, fill, ctx, w, h);
-			ctx.fill();
+			fillRadialGradient(world, fill, ctx, w, h);
+		} else if (paint === PaintType.ANGULAR_GRADIENT) {
+			const w = computed.width[eid]!;
+			const h = computed.height[eid]!;
+			fillAngularGradient(world, fill, ctx, w, h);
 		} else if (paint === PaintType.WAVEFORM) {
 			renderWaveform(world, entity, fill);
 		} else if (paint === PaintType.SHADER) {
@@ -582,15 +591,19 @@ function renderStrokes(world: World, entity: Entity): void {
 		if (paintType === PaintType.LINEAR_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			ctx.strokeStyle = createLinearGradient(world, stroke, ctx, w, h);
+			strokeLinearGradient(world, stroke, ctx, w, h);
 		} else if (paintType === PaintType.RADIAL_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			ctx.strokeStyle = createRadialGradient(world, stroke, ctx, w, h);
+			strokeRadialGradient(world, stroke, ctx, w, h);
+		} else if (paintType === PaintType.ANGULAR_GRADIENT) {
+			const w = computed.width[eid]!;
+			const h = computed.height[eid]!;
+			strokeAngularGradient(world, stroke, ctx, w, h);
 		} else {
 			ctx.strokeStyle = colorToHex(computed.color[sid]!);
+			ctx.stroke();
 		}
-		ctx.stroke();
 
 		ctx.globalCompositeOperation = savedCO;
 		ctx.globalAlpha = savedAlpha;

@@ -26,7 +26,9 @@ import type {
   ColorStopProps,
   EffectProps,
   MaskProps,
-  GradientPaintProps,
+  LinearGradientPaintProps,
+  RadialGradientPaintProps,
+  AngularGradientPaintProps,
   GroupProps,
   HtmlPaintProps,
   HtmlProps,
@@ -99,8 +101,9 @@ export const Sequence = hostElement<SequenceProps>("Sequence");
 export const Captions = hostElement<CaptionsProps>("Captions");
 export const AdjustmentLayer = hostElement<AdjustmentLayerProps>("AdjustmentLayer");
 export const SolidPaint = hostElement<SolidPaintProps>("SolidPaint");
-export const LinearGradientPaint = hostElement<GradientPaintProps>("LinearGradientPaint");
-export const RadialGradientPaint = hostElement<GradientPaintProps>("RadialGradientPaint");
+export const LinearGradientPaint = hostElement<LinearGradientPaintProps>("LinearGradientPaint");
+export const RadialGradientPaint = hostElement<RadialGradientPaintProps>("RadialGradientPaint");
+export const AngularGradientPaint = hostElement<AngularGradientPaintProps>("AngularGradientPaint");
 export const ImagePaint = hostElement<MediaPaintProps>("ImagePaint");
 export const VideoPaint = hostElement<MediaPaintProps>("VideoPaint");
 export const ColorStop = hostElement<ColorStopProps>("ColorStop");

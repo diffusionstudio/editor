@@ -29,6 +29,7 @@ import type { LayerRowProps } from './layer';
 const PAINT_NAMES: Partial<Record<PaintType, string>> = {
   [PaintType.LINEAR_GRADIENT]: 'Gradient',
   [PaintType.RADIAL_GRADIENT]: 'Gradient',
+  [PaintType.ANGULAR_GRADIENT]: 'Gradient',
   [PaintType.SOLID]: 'Solid',
   [PaintType.IMAGE]: 'Image',
   [PaintType.VIDEO]: 'Video',

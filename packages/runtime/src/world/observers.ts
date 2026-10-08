@@ -9,7 +9,7 @@ import {
 	Delay, Trim, PlaybackRate, SourceFrameRate, Keyframe, ItemIndex,
 	Position, Offset, Rotation, Scale, UniformScale, Skew, Anchor, Flip,
 	Opacity, Color, Blur, Volume, Effect, CornerRadius, MixedCornerRadius,
-	ColorStop, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
+	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
 	ImageDecoderHandle, VideoDecoderHandle,
 	AudioDecoderHandle, CaptionDecoderHandle, WaveformHandle,
 	ShaderHostHandle, AudioBusHandle, TextStyle, TextRange,
@@ -269,6 +269,24 @@ export function observeWorld(world: World): () => void {
 
 	mirror(ColorStop, (entity) => {
 		store(world, Computed).stopOffset[entity.id()] = entity.get(ColorStop)!.offset;
+	});
+
+	mirror(LinearGradient, (entity) => {
+		const computed = store(world, Computed);
+		const { x1, y1, x2, y2 } = entity.get(LinearGradient)!;
+		computed.gradientX1[entity.id()] = x1;
+		computed.gradientY1[entity.id()] = y1;
+		computed.gradientX2[entity.id()] = x2;
+		computed.gradientY2[entity.id()] = y2;
+	});
+
+	mirror(EllipticalGradient, (entity) => {
+		const computed = store(world, Computed);
+		const { cx, cy, rx, ry } = entity.get(EllipticalGradient)!;
+		computed.gradientCX[entity.id()] = cx;
+		computed.gradientCY[entity.id()] = cy;
+		computed.gradientRX[entity.id()] = rx;
+		computed.gradientRY[entity.id()] = ry;
 	});
 
 	mirror(StrokeStyle, (entity) => {

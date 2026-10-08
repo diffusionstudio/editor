@@ -33,7 +33,7 @@ Children of a node, stacked in document order over its intrinsic fill. See [pain
 | Element | What it is |
 | ------- | ---------- |
 | `<solidPaint>` | A solid color; what the `fill` prop is shorthand for. |
-| `<linearGradientPaint>` / `<radialGradientPaint>` | A gradient; takes `<colorStop>` children. |
+| `<linearGradientPaint>` / `<radialGradientPaint>` / `<angularGradientPaint>` | A gradient; takes `<colorStop>` children. |
 | `<colorStop>` | One gradient stop. Valid only inside a gradient paint. |
 | `<imagePaint>` / `<videoPaint>` | Media painted into another element's box — a rect or a text filled with a picture. |
 | [`<htmlPaint>`](./html.md) | The paint form of `<html>`. |

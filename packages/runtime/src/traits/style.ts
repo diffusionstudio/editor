@@ -5,7 +5,7 @@
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { trait } from 'koota';
 
-import { BlendModeType, EffectType, ScaleModeType, StrokeJoin, StrokeCap } from '../constants';
+import { BlendModeType, EffectType, ScaleModeType, StrokeJoin, StrokeCap, LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
 
 // Opacity of whatever the entity is: a node, a paint, a stroke, a shadow, a
 // gradient stop's color. Absent means opaque.
@@ -52,6 +52,18 @@ export const Mask = trait({
 // between gradients with different stop counts use a separate fill and
 // cross-fade.
 export const ColorStop = trait({ offset: 0 });
+
+// Where a linear gradient paint draws its line, SVG's x1/y1/x2/y2 in its
+// holder's box as fractions of it (objectBoundingBox): stop 0 at (x1, y1),
+// stop 1 at (x2, y2). Absent means LINEAR_GRADIENT_DEFAULTS.
+export const LinearGradient = trait({ ...LINEAR_GRADIENT_DEFAULTS });
+
+// Where a radial or angular gradient paint draws its ellipse, SVG's cx/cy
+// plus the rx/ry of <ellipse>, in its holder's box as fractions of it: a
+// radial one goes from stop 0 at the center to stop 1 on the ellipse, an
+// angular one sweeps around the center. The entity's Rotation turns the radii.
+// Absent means ELLIPTICAL_GRADIENT_DEFAULTS.
+export const EllipticalGradient = trait({ ...ELLIPTICAL_GRADIENT_DEFAULTS });
 
 // How a stroke sub-entity is drawn: line width, joins, caps. Lives on the
 // stroke itself (next to its Paint/Color/Opacity), so each stroke of a node

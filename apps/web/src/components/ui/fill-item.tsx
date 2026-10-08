@@ -393,7 +393,7 @@ function PaintItemIcon(props: PaintItemIconProps) {
         />
       </Show>
 
-      <Show when={type() === PaintType.LINEAR_GRADIENT || type() === PaintType.RADIAL_GRADIENT}>
+      <Show when={type() === PaintType.LINEAR_GRADIENT || type() === PaintType.RADIAL_GRADIENT || type() === PaintType.ANGULAR_GRADIENT}>
         <div
           class="size-full"
           style={{ "background-image": getGradientBackground(stops(), type()) }}
@@ -433,6 +433,8 @@ function FillLabel(props: FillLabelProps) {
       return "Linear";
     } else if (type() === PaintType.RADIAL_GRADIENT) {
       return "Radial";
+    } else if (type() === PaintType.ANGULAR_GRADIENT) {
+      return "Angular";
     } else if (type() === PaintType.HTML) {
       return "HTML";
     } else if (type() === PaintType.SURFACE) {
@@ -462,6 +464,10 @@ function getGradientBackground(stops: GradientStop[], style: PaintType) {
 
   if (style === PaintType.RADIAL_GRADIENT) {
     return `radial-gradient(circle, ${parts.join(", ")})`;
+  }
+
+  if (style === PaintType.ANGULAR_GRADIENT) {
+    return `conic-gradient(from 90deg, ${parts.join(", ")})`;
   }
 
   return `linear-gradient(90deg, ${parts.join(", ")})`;

@@ -27,7 +27,9 @@ import type {
   ColorStopProps,
   EffectProps,
   MaskProps,
-  GradientPaintProps,
+  LinearGradientPaintProps,
+  RadialGradientPaintProps,
+  AngularGradientPaintProps,
   MediaPaintProps,
   GroupProps,
   HtmlPaintProps,
@@ -90,8 +92,9 @@ export declare namespace JSX {
     captions: CaptionsProps & SourceProps;
     adjustmentLayer: AdjustmentLayerProps & SourceProps;
     solidPaint: SolidPaintProps & SourceProps;
-    linearGradientPaint: GradientPaintProps & SourceProps;
-    radialGradientPaint: GradientPaintProps & SourceProps;
+    linearGradientPaint: LinearGradientPaintProps & SourceProps;
+    radialGradientPaint: RadialGradientPaintProps & SourceProps;
+    angularGradientPaint: AngularGradientPaintProps & SourceProps;
     imagePaint: MediaPaintProps & SourceProps;
     videoPaint: MediaPaintProps & SourceProps;
     colorStop: ColorStopProps & SourceProps;

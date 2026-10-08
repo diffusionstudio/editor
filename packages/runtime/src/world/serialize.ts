@@ -10,7 +10,7 @@ import {
 	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
 	Constraint, KeepAspectRatio,
 	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, Blur, ScaleMode, Effect, Mask,
-	ColorStop, StrokeStyle, Shader,
+	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, Shader,
 	Chars, TextStyle,
 	Delay, Trim, PlaybackRate, SourceFrameRate,
 	Playback, Sequential, Transition, ClipHeight, Expanded,
@@ -119,6 +119,18 @@ export interface EntityRecord {
 	Muted?: {};
 	ColorStop?: {
 		offset?: number;
+	};
+	LinearGradient?: {
+		x1?: number;
+		y1?: number;
+		x2?: number;
+		y2?: number;
+	};
+	EllipticalGradient?: {
+		cx?: number;
+		cy?: number;
+		rx?: number;
+		ry?: number;
 	};
 	StrokeStyle?: {
 		width?: number;
@@ -320,6 +332,14 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	}
 	if (entity.has(ColorStop)) {
 		record.ColorStop = { offset: entity.get(ColorStop)!.offset };
+	}
+	if (entity.has(LinearGradient)) {
+		const { x1, y1, x2, y2 } = entity.get(LinearGradient)!;
+		record.LinearGradient = { x1, y1, x2, y2 };
+	}
+	if (entity.has(EllipticalGradient)) {
+		const { cx, cy, rx, ry } = entity.get(EllipticalGradient)!;
+		record.EllipticalGradient = { cx, cy, rx, ry };
 	}
 	if (entity.has(StrokeStyle)) {
 		const stroke = entity.get(StrokeStyle)!;
@@ -575,6 +595,14 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.ColorStop !== undefined) {
 		entity.add(ColorStop);
 		entity.set(ColorStop, defined(e.ColorStop));
+	}
+	if (e.LinearGradient !== undefined) {
+		entity.add(LinearGradient);
+		entity.set(LinearGradient, defined(e.LinearGradient));
+	}
+	if (e.EllipticalGradient !== undefined) {
+		entity.add(EllipticalGradient);
+		entity.set(EllipticalGradient, defined(e.EllipticalGradient));
 	}
 	if (e.StrokeStyle !== undefined) {
 		entity.add(StrokeStyle);

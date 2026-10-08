@@ -11,9 +11,9 @@ import {
 	Computed, Cache, Animation, KeyframeTrack, Keyframe, Chars,
 	UniformScale, Position, Offset, Rotation, Scale, Skew, Size, Opacity,
 	Color, Blur, Volume, Effect, StrokeStyle, CornerRadius, MixedCornerRadius,
-	ColorStop,
+	ColorStop, LinearGradient, EllipticalGradient,
 } from '../traits';
-import { AnimationType, AnimationPhase } from '../constants';
+import { AnimationType, AnimationPhase, LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
 import { revealChars, revealWords, scrambleChars } from '../utils/text-motion';
 import { getLocalWindow } from '../utils/time';
 
@@ -55,6 +55,14 @@ export function resetAnimatedValues(world: World, entity: Entity | null, ignore?
 	computed.cornerRadiusBottomRight[eid] = read(MixedCornerRadius, 'bottomRight', 0);
 	computed.cornerRadiusBottomLeft[eid] = read(MixedCornerRadius, 'bottomLeft', 0);
 	computed.stopOffset[eid] = read(ColorStop, 'offset', 0);
+	computed.gradientX1[eid] = read(LinearGradient, 'x1', LINEAR_GRADIENT_DEFAULTS.x1);
+	computed.gradientY1[eid] = read(LinearGradient, 'y1', LINEAR_GRADIENT_DEFAULTS.y1);
+	computed.gradientX2[eid] = read(LinearGradient, 'x2', LINEAR_GRADIENT_DEFAULTS.x2);
+	computed.gradientY2[eid] = read(LinearGradient, 'y2', LINEAR_GRADIENT_DEFAULTS.y2);
+	computed.gradientCX[eid] = read(EllipticalGradient, 'cx', ELLIPTICAL_GRADIENT_DEFAULTS.cx);
+	computed.gradientCY[eid] = read(EllipticalGradient, 'cy', ELLIPTICAL_GRADIENT_DEFAULTS.cy);
+	computed.gradientRX[eid] = read(EllipticalGradient, 'rx', ELLIPTICAL_GRADIENT_DEFAULTS.rx);
+	computed.gradientRY[eid] = read(EllipticalGradient, 'ry', ELLIPTICAL_GRADIENT_DEFAULTS.ry);
 
 	if (entity.has(UniformScale) && ignore !== UniformScale) {
 		computed.scaleX[eid] = read(UniformScale, 'value', 1);
@@ -360,6 +368,38 @@ export function getPropertyPaths(world: World) {
 		'stop.offset': {
 			computed: computed.stopOffset,
 			authored: store(world, ColorStop).offset,
+		},
+		'gradient.x1': {
+			computed: computed.gradientX1,
+			authored: store(world, LinearGradient).x1,
+		},
+		'gradient.y1': {
+			computed: computed.gradientY1,
+			authored: store(world, LinearGradient).y1,
+		},
+		'gradient.x2': {
+			computed: computed.gradientX2,
+			authored: store(world, LinearGradient).x2,
+		},
+		'gradient.y2': {
+			computed: computed.gradientY2,
+			authored: store(world, LinearGradient).y2,
+		},
+		'gradient.cx': {
+			computed: computed.gradientCX,
+			authored: store(world, EllipticalGradient).cx,
+		},
+		'gradient.cy': {
+			computed: computed.gradientCY,
+			authored: store(world, EllipticalGradient).cy,
+		},
+		'gradient.rx': {
+			computed: computed.gradientRX,
+			authored: store(world, EllipticalGradient).rx,
+		},
+		'gradient.ry': {
+			computed: computed.gradientRY,
+			authored: store(world, EllipticalGradient).ry,
 		},
 		'chars': {
 			computed: computed.chars,

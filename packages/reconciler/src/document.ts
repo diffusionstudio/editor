@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -116,6 +116,7 @@ const PAINT_TYPES: Record<string, PaintType> = {
 	solidPaint: PaintType.SOLID,
 	linearGradientPaint: PaintType.LINEAR_GRADIENT,
 	radialGradientPaint: PaintType.RADIAL_GRADIENT,
+	angularGradientPaint: PaintType.ANGULAR_GRADIENT,
 	shaderPaint: PaintType.SHADER,
 	surfacePaint: PaintType.SURFACE,
 	htmlPaint: PaintType.HTML,
@@ -196,6 +197,14 @@ const TRACK_PROPERTIES: Record<string, PropertyPath> = {
 	volume: 'volume',
 	color: 'color',
 	offset: 'stop.offset',
+	x1: 'gradient.x1',
+	y1: 'gradient.y1',
+	x2: 'gradient.x2',
+	y2: 'gradient.y2',
+	cx: 'gradient.cx',
+	cy: 'gradient.cy',
+	rx: 'gradient.rx',
+	ry: 'gradient.ry',
 	blur: 'blur',
 	value: 'effect.value',
 };
@@ -579,6 +588,7 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			case 'solidPaint':
 			case 'linearGradientPaint':
 			case 'radialGradientPaint':
+			case 'angularGradientPaint':
 			case 'shaderPaint':
 			case 'surfacePaint':
 			case 'htmlPaint':
@@ -1280,6 +1290,25 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				if (entity.has(ColorStop)) {
 					entity.set(ColorStop, { offset: toNumber(value) ?? 0 });
 				}
+				return;
+			}
+			case 'x1':
+			case 'y1':
+			case 'x2':
+			case 'y2': {
+				if (entity.get(Paint)?.value !== PaintType.LINEAR_GRADIENT) return;
+				entity.add(LinearGradient);
+				entity.set(LinearGradient, { [name]: toNumber(value) ?? LINEAR_GRADIENT_DEFAULTS[name as keyof typeof LINEAR_GRADIENT_DEFAULTS] });
+				return;
+			}
+			case 'cx':
+			case 'cy':
+			case 'rx':
+			case 'ry': {
+				const paint = entity.get(Paint)?.value;
+				if (paint !== PaintType.RADIAL_GRADIENT && paint !== PaintType.ANGULAR_GRADIENT) return;
+				entity.add(EllipticalGradient);
+				entity.set(EllipticalGradient, { [name]: toNumber(value) ?? ELLIPTICAL_GRADIENT_DEFAULTS[name as keyof typeof ELLIPTICAL_GRADIENT_DEFAULTS] });
 				return;
 			}
 			case 'fontSize': {

@@ -4,6 +4,8 @@
 
 import { trait, type Entity } from 'koota';
 
+import { LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
+
 // Fully resolved per-frame values (base state + constraints + animations +
 // keyframes). Written by the motion and transform systems, read by render and
 // UI code. Never serialized.
@@ -33,6 +35,14 @@ export const Computed = trait({
 	cornerRadiusBottomRight: 0,
 	cornerRadiusBottomLeft: 0,
 	stopOffset: 0,
+	gradientX1: LINEAR_GRADIENT_DEFAULTS.x1,
+	gradientY1: LINEAR_GRADIENT_DEFAULTS.y1,
+	gradientX2: LINEAR_GRADIENT_DEFAULTS.x2,
+	gradientY2: LINEAR_GRADIENT_DEFAULTS.y2,
+	gradientCX: ELLIPTICAL_GRADIENT_DEFAULTS.cx,
+	gradientCY: ELLIPTICAL_GRADIENT_DEFAULTS.cy,
+	gradientRX: ELLIPTICAL_GRADIENT_DEFAULTS.rx,
+	gradientRY: ELLIPTICAL_GRADIENT_DEFAULTS.ry,
 	width: 0,
 	height: 0,
 	chars: undefined as string | undefined,
