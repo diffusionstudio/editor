@@ -49,6 +49,13 @@ export const ClipsContent = trait();
 
 export const Generating = trait({ label: '', progress: undefined as number | undefined });
 
+// On a scene that work is running on (being captioned): the stage outlines it
+// with the blue shimmer. A scene is the frame everything else sits in, so it
+// has nothing to stand in with the way a generating node pulses. `start` is
+// when the work began on the world's clock, which the shimmer's turns count
+// from.
+export const Shimmering = trait({ start: 0 });
+
 export const Name = trait({ value: '' });
 
 // Stable identity for entities.

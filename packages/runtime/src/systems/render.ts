@@ -21,10 +21,10 @@ import {
 	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
 	BlendMode, Effect, Mask, Transition, MixedCornerRadius,
 	LocalTransform, WorldTransform, Computed, Cache,
-	Host,
+	Host, Scene, Shimmering,
 	Mode, FrameRate, Camera, Background, RenderSurface,
 	HitRegions,
-	Root,
+	Root, Time,
 } from '../traits';
 import { getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
@@ -610,6 +610,103 @@ function renderPendingFill(world: World, entity: Entity): void {
 	ctx.fill();
 }
 
+const SHIMMER_PERIOD = 2400; // ms per turn of the highlights
+const SHIMMER_SWEEP = 1400; // ms the light takes to cross the scene after each turn
+const SHIMMER_BAND = 1; // width of the light, in diagonals of the scene
+const SHIMMER_PRIMARY = [0, 140, 255] as const; // #008CFF
+const SHIMMER_DEPTH = 0.7; // how far the highlights darken toward the stage background
+const SHIMMER_SWEEP_OPACITY = 0.2;
+
+/**
+ * The outline of a scene that work is running on (see `Shimmering`), over
+ * everything the scene draws: a primary blue stroke along its edge with two
+ * highlights travelling around it that darken toward the stage background,
+ * and after each turn a band of translucent primary blue sweeping across the
+ * scene, corner to corner. Counted on the world's clock from when
+ * the work began. The editor's only, never drawn into an export. The stroke
+ * keeps its width on screen whatever the zoom, so it is drawn in device
+ * pixels from the scene's corners.
+ */
+function renderShimmer(world: World, entity: Entity): void {
+	if (!entity.has(Shimmering) || !entity.has(Scene)) return;
+
+	const ctx = getCtx(world);
+	const computed = store(world, Computed);
+	const w = computed.width[entity.id()]!;
+	const h = computed.height[entity.id()]!;
+	const resolution = world.get(RenderSurface)?.resolution ?? 1;
+
+	const m = ctx.getTransform();
+	const quad = [[0, 0], [w, 0], [w, h], [0, h]].map(([x, y]) => m.transformPoint({ x, y }));
+	const cx = (quad[0]!.x + quad[1]!.x + quad[2]!.x + quad[3]!.x) / 4;
+	const cy = (quad[0]!.y + quad[1]!.y + quad[2]!.y + quad[3]!.y) / 4;
+	const trace = () => {
+		ctx.beginPath();
+		ctx.moveTo(quad[0]!.x, quad[0]!.y);
+		ctx.lineTo(quad[1]!.x, quad[1]!.y);
+		ctx.lineTo(quad[2]!.x, quad[2]!.y);
+		ctx.lineTo(quad[3]!.x, quad[3]!.y);
+		ctx.closePath();
+	};
+
+	const elapsed = Math.max(0, (world.get(Time)?.now ?? 0) - entity.get(Shimmering)!.start);
+	const turn = elapsed % SHIMMER_PERIOD;
+
+	ctx.save();
+	ctx.resetTransform();
+	ctx.globalAlpha = 1;
+	ctx.globalCompositeOperation = 'source-over';
+	ctx.filter = 'none';
+
+	if (elapsed >= SHIMMER_PERIOD && turn < SHIMMER_SWEEP) {
+		// The band's centre goes from half a band before the first corner to
+		// half a band past the opposite one: it enters and leaves the scene
+		// exactly, and is on it the whole sweep.
+		const t = turn / SHIMMER_SWEEP;
+		const eased = (1 - Math.cos(Math.PI * t)) / 2;
+		const centre = -SHIMMER_BAND / 2 + eased * (1 + SHIMMER_BAND);
+		const dx = quad[2]!.x - quad[0]!.x;
+		const dy = quad[2]!.y - quad[0]!.y;
+		const from = centre - SHIMMER_BAND / 2;
+		const to = centre + SHIMMER_BAND / 2;
+		const light = ctx.createLinearGradient(
+			quad[0]!.x + dx * from, quad[0]!.y + dy * from,
+			quad[0]!.x + dx * to, quad[0]!.y + dy * to,
+		);
+		const [r, g, b] = SHIMMER_PRIMARY;
+		// Full strength across the middle of the band, fading at its edges.
+		light.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+		light.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, ${SHIMMER_SWEEP_OPACITY})`);
+		light.addColorStop(0.7, `rgba(${r}, ${g}, ${b}, ${SHIMMER_SWEEP_OPACITY})`);
+		light.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+		trace();
+		ctx.fillStyle = light;
+		ctx.fill();
+	}
+
+	const background = world.get(Root)!.get(Background)?.value ?? 0;
+	const backdrop = [(background >> 16) & 0xff, (background >> 8) & 0xff, background & 0xff];
+	const primary = `rgb(${SHIMMER_PRIMARY.join(', ')})`;
+	const dark = `rgb(${SHIMMER_PRIMARY.map((channel, i) => Math.round(channel + (backdrop[i]! - channel) * SHIMMER_DEPTH)).join(', ')})`;
+
+	const ring = ctx.createConicGradient(turn / SHIMMER_PERIOD * Math.PI * 2, cx, cy);
+	for (const start of [0, 0.5]) {
+		ring.addColorStop(start, primary);
+		ring.addColorStop(start + 0.12, dark);
+		ring.addColorStop(start + 0.24, primary);
+	}
+	ring.addColorStop(1, primary);
+
+	trace();
+	ctx.strokeStyle = ring;
+	ctx.lineWidth = Math.round(2 * resolution);
+	ctx.shadowColor = primary;
+	ctx.shadowBlur = 8 * resolution;
+	ctx.stroke();
+	ctx.restore();
+}
+
 // ── WAVEFORM paint ─────────────────────────────────────
 //
 // Renders an audio asset's pre-computed peaks as a bar chart inside the
@@ -828,6 +925,8 @@ export function renderNode(world: World, entity: Entity): void {
 	} else {
 		renderContent(world, entity, buildEffects(world, entity));
 	}
+
+	renderShimmer(world, entity);
 
 	ctx.restore();
 }
