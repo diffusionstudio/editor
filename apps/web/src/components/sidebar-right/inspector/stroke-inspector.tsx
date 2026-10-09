@@ -141,11 +141,13 @@ export function StrokeInspector(props: StrokeInspectorProps) {
 
           <ControlRow label="Weight">
             <ControlledTextField
+              icon={<Icon name="stroke.weight" />}
               value={width()}
               onNumber={editWidth}
               step={1}
               min={0}
               autoSelect
+              sliderEnabled
               limitEvents
               keyframe={<Keyframe target={props.stroke} property="width" />}
             />
@@ -163,11 +165,13 @@ export function StrokeInspector(props: StrokeInspectorProps) {
 
           <ControlRow label="Miter">
             <ControlledTextField
+              icon={<Icon name="stroke.miter" />}
               value={miterLimit()}
               onNumber={editMiterLimit}
               step={1}
               min={1}
               autoSelect
+              sliderEnabled
               limitEvents
             />
           </ControlRow>
