@@ -10,6 +10,7 @@ import {
 	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
 	Constraint, KeepAspectRatio,
 	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, PointCount, Blur, ScaleMode, Effect, Mask,
+	VectorPath, EvenOdd, ViewBox, PathTrim,
 	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, Shader,
 	Chars, TextStyle,
 	Delay, Trim, PlaybackRate, SourceFrameRate,
@@ -18,6 +19,7 @@ import {
 	KeyframeTrack, Keyframe, Animation, Stage,
 } from '../traits';
 import { createEntity } from '../actions/entities';
+import { formatPath, parsePath } from '../math/path';
 
 import type { Entity, World } from 'koota';
 
@@ -108,6 +110,11 @@ export interface EntityRecord {
 		bottomLeft: number;
 	};
 	PointCount?: number;
+	/** A path's outline as path data, which is what it is authored as. */
+	VectorPath?: string;
+	EvenOdd?: {};
+	ViewBox?: { x: number; y: number; width: number; height: number };
+	PathTrim?: { start: number; end: number; offset: number };
 	Color?: number;
 	Blur?: number;
 	AssetId?: string;
@@ -171,6 +178,8 @@ export interface EntityRecord {
 		time?: number;
 		value?: number;
 		easing?: string;
+		/** A `d` keyframe's outline, as path data. */
+		path?: string;
 	};
 	Animation?: {
 		duration?: number;
@@ -303,6 +312,22 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	if (entity.has(PointCount)) {
 		record.PointCount = entity.get(PointCount)!.value;
 	}
+	const geometry = entity.get(VectorPath)?.geometry;
+	if (geometry) {
+		// Full precision: a copy is the same outline, not one rounded for a file.
+		record.VectorPath = formatPath(geometry, 6);
+	}
+	if (entity.has(EvenOdd)) {
+		record.EvenOdd = {};
+	}
+	if (entity.has(ViewBox)) {
+		const { x, y, width, height } = entity.get(ViewBox)!;
+		record.ViewBox = { x, y, width, height };
+	}
+	if (entity.has(PathTrim)) {
+		const { start, end, offset } = entity.get(PathTrim)!;
+		record.PathTrim = { start, end, offset };
+	}
 	if (entity.has(MixedCornerRadius)) {
 		const radius = entity.get(MixedCornerRadius)!;
 		record.MixedCornerRadius = {
@@ -399,7 +424,12 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	}
 	if (entity.has(Keyframe)) {
 		const keyframe = entity.get(Keyframe)!;
-		record.Keyframe = { time: keyframe.time, value: keyframe.value, easing: keyframe.easing };
+		record.Keyframe = {
+			time: keyframe.time,
+			value: keyframe.value,
+			easing: keyframe.easing,
+			...(keyframe.path ? { path: formatPath(keyframe.path, 6) } : {}),
+		};
 	}
 	if (entity.has(Animation)) {
 		const animation = entity.get(Animation)!;
@@ -566,6 +596,21 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 		entity.add(PointCount);
 		entity.set(PointCount, { value: e.PointCount });
 	}
+	if (e.VectorPath !== undefined) {
+		entity.add(VectorPath);
+		entity.set(VectorPath, { geometry: parsePath(e.VectorPath).geometry });
+	}
+	if (e.EvenOdd !== undefined) {
+		entity.add(EvenOdd);
+	}
+	if (e.ViewBox !== undefined) {
+		entity.add(ViewBox);
+		entity.set(ViewBox, e.ViewBox);
+	}
+	if (e.PathTrim !== undefined) {
+		entity.add(PathTrim);
+		entity.set(PathTrim, e.PathTrim);
+	}
 	if (e.MixedCornerRadius !== undefined) {
 		entity.add(MixedCornerRadius);
 		entity.set(MixedCornerRadius, defined(e.MixedCornerRadius));
@@ -658,8 +703,9 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 		entity.set(KeyframeTrack, defined(e.KeyframeTrack));
 	}
 	if (e.Keyframe !== undefined) {
+		const { path, ...keyframe } = e.Keyframe;
 		entity.add(Keyframe);
-		entity.set(Keyframe, defined(e.Keyframe));
+		entity.set(Keyframe, defined({ ...keyframe, path: path === undefined ? undefined : parsePath(path).geometry }));
 	}
 	if (e.Animation !== undefined) {
 		entity.add(Animation);
