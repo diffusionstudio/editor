@@ -224,7 +224,12 @@ export function FillPicker(props: FillPickerProps) {
   });
 
   return (
-    <FloatingInspector open anchorRef={props.anchorRef}>
+    <FloatingInspector
+      open
+      anchorRef={props.anchorRef}
+      onClose={props.onClose}
+      locked={currentTab() === "gradient"}
+    >
       <FloatingInspectorHeader>
         <FloatingInspectorTitle>
           {TABS.find((mode) => mode.value === currentTab())?.label}

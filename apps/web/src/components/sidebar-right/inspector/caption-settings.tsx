@@ -128,7 +128,7 @@ export function CaptionSettings(props: CaptionSettingsProps) {
       </For>
 
       <Show when={openSlot() !== null}>
-        <FloatingInspector open anchorRef={anchorRef}>
+        <FloatingInspector open anchorRef={anchorRef} onClose={() => setOpenSlot(null)}>
           <FloatingInspectorHeader>
             <FloatingInspectorTitle>
               {slots()[openSlot()!]?.label ?? "Color"}

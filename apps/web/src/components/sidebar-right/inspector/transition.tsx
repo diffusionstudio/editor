@@ -140,7 +140,7 @@ export function TransitionSettings(props: TransitionSettingsProps) {
       </PanelSection>
 
       <Show when={open() && has()}>
-        <FloatingInspector open anchorRef={anchorRef} width={248}>
+        <FloatingInspector open anchorRef={anchorRef} width={248} onClose={() => setOpen(false)}>
           <FloatingInspectorHeader class="items-center justify-between px-2">
             <Select<TransitionOption>
               value={option()}

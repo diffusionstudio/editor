@@ -163,7 +163,7 @@ export function SourceRows(props: SourceRowsProps) {
       </Show>
 
       <Show when={picking() === "media"}>
-        <FloatingInspector open anchorRef={props.anchorRef}>
+        <FloatingInspector open anchorRef={props.anchorRef} onClose={() => setPicking(undefined)}>
           <FloatingInspectorHeader>
             <FloatingInspectorTitle>Source</FloatingInspectorTitle>
             <div class="ml-auto flex items-center gap-1">
@@ -307,7 +307,7 @@ function SolidFillRow(props: SolidFillRowProps) {
       </div>
 
       <Show when={props.picking}>
-        <FloatingInspector open anchorRef={props.anchorRef}>
+        <FloatingInspector open anchorRef={props.anchorRef} onClose={() => props.onPickingChange(false)}>
           <FloatingInspectorHeader>
             <FloatingInspectorTitle>Solid</FloatingInspectorTitle>
             <div class="ml-auto flex items-center gap-1">

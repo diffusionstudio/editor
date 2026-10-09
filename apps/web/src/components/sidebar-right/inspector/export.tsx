@@ -326,7 +326,7 @@ function ExportInspector(props: ExportInspectorProps) {
   const write = props.onPatch;
 
   return (
-    <FloatingInspector open anchorRef={props.anchorRef} width={272}>
+    <FloatingInspector open anchorRef={props.anchorRef} width={272} onClose={props.onClose}>
       <FloatingInspectorHeader class="items-center justify-between px-2">
         <Select
           value={templateId()}

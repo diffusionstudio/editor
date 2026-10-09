@@ -86,7 +86,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
 
   return (
     <>
-      <FloatingInspector open anchorRef={props.anchorRef} width={248}>
+      <FloatingInspector open anchorRef={props.anchorRef} width={248} onClose={handleClose}>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle>Drop Shadow</FloatingInspectorTitle>
           <Tooltip>
@@ -159,7 +159,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
         </FloatingInspectorContent>
       </FloatingInspector>
 
-      <FloatingInspector open={pickingColor} anchorRef={() => colorRowRef} offset={26}>
+      <FloatingInspector open={pickingColor} anchorRef={() => colorRowRef} offset={26} onClose={() => setPickingColor(false)}>
         <FloatingInspectorHeader>
           <FloatingInspectorTitle>Color</FloatingInspectorTitle>
           <div class="ml-auto">

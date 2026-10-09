@@ -117,7 +117,7 @@ export function StrokeInspector(props: StrokeInspectorProps) {
 
   return (
     <>
-      <FloatingInspector open anchorRef={props.anchorRef} width={248} ref={inspectorRef}>
+      <FloatingInspector open anchorRef={props.anchorRef} width={248} ref={inspectorRef} onClose={handleClose}>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle>Stroke</FloatingInspectorTitle>
           <Tooltip>

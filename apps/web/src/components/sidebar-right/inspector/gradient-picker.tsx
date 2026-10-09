@@ -568,6 +568,7 @@ export function GradientFillPicker(props: GradientPickerProps) {
       <FloatingInspector
         open={colorPickerStop() !== null}
         anchorRef={rootRef}
+        onClose={() => setColorPickerStop(null)}
       >
         <FloatingInspectorHeader>
           <FloatingInspectorTitle class="flex-1">Stop color</FloatingInspectorTitle>

@@ -50,6 +50,7 @@ export function BackgroundSettings() {
       <FloatingInspector
         open={isPickerOpen}
         anchorRef={anchorRef}
+        onClose={() => setIsPickerOpen(false)}
       >
         <FloatingInspectorHeader>
           <FloatingInspectorTitle>Color</FloatingInspectorTitle>

@@ -116,7 +116,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   };
 
   return (
-    <FloatingInspector open anchorRef={props.anchorRef} width={248}>
+    <FloatingInspector open anchorRef={props.anchorRef} width={248} onClose={props.onClose}>
       <FloatingInspectorHeader class="items-center justify-between px-2">
         <Select<EffectOption>
           value={option()}

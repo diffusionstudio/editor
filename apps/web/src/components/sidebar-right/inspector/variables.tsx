@@ -199,7 +199,7 @@ function ColorControl(props: { entry: InspectEntry; onCommit: (value: InspectVal
         onClick={() => setIsPickerOpen(true)}
       />
 
-      <FloatingInspector open={isPickerOpen} anchorRef={anchorRef}>
+      <FloatingInspector open={isPickerOpen} anchorRef={anchorRef} onClose={() => setIsPickerOpen(false)}>
         <FloatingInspectorHeader>
           <FloatingInspectorTitle>{props.entry.label}</FloatingInspectorTitle>
           <div class="ml-auto">
