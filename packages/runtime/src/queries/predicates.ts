@@ -58,14 +58,19 @@ export function isPolygon(entity: Entity): boolean {
 	return entity.get(Geometry)?.value === GeometryType.POLYGON;
 }
 
+export function isPath(entity: Entity): boolean {
+	return entity.get(Geometry)?.value === GeometryType.PATH;
+}
+
 /** Whether a geometry draws a filled and stroked outline: everything but text. */
 export function isShapeGeometry(type: GeometryType | undefined): boolean {
 	return type === GeometryType.RECT
 		|| type === GeometryType.ELLIPSE
-		|| type === GeometryType.POLYGON;
+		|| type === GeometryType.POLYGON
+		|| type === GeometryType.PATH;
 }
 
-/** A vanilla shape (rect, ellipse or polygon) — not a container
+/** A vanilla shape (rect, ellipse, polygon or path) — not a container
  *  (group/scene/sequence) or audio clip. (Captions live on TEXT geometry, so
  *  they're naturally excluded.) */
 export function isShape(entity: Entity): boolean {

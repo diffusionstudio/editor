@@ -23,7 +23,7 @@ import {
 	computeGroupBounds, computeLocalMatrix, decompose2D, entityAnchor,
 	entityOffset, entityQuad, entityWorldMat, enterEntity,
 	findKeyframeTrackEntity, getParentEntity, getParentNode, getSceneAncestor,
-	getSelection, getSelectionMask, identity2D, invert2D, isPointerInEntity,
+	getSelection, getSelectionMask, identity2D, invert2D, isPath, isPointerInEntity,
 	multiply2D, quadCenter, quadContainsQuad, quadsIntersect, rectToQuad,
 	rotate2D, scale2D,
 	store, syncInteractiveState, togglePlayback, transformPoint, transformSystem,
@@ -33,6 +33,7 @@ import { Not, Or } from 'koota';
 
 import { getDocumentEditor } from '../editor';
 import { syncKeyframe } from '../keyframes';
+import { beginPathEdit, pinViewBox } from '../path-tool';
 import { Hud, Keys, Pointer, SnapLines } from '../traits';
 import { getToolCursor, updateCursor, type CursorType } from './cursor';
 import { mountNameInput } from '../hud/name-input';
@@ -173,6 +174,13 @@ export function handleGeometryInteraction(world: World, event: DispatchedPointer
 
 	if (event.type === 'drag' || event.type === 'dragend') {
 		handleMaskInteraction(world, event);
+	}
+
+	// Double-click on a path edits its vertices.
+	if (event.type === 'dblclick' && event.target.kind === 'entity' && isPath(event.target.id)) {
+		editor.select(event.target.id);
+		beginPathEdit(world, event.target.id);
+		return;
 	}
 
 	// Double-click drills into a container: its children become the things the
@@ -512,6 +520,8 @@ function resizeNode(world: World, entity: Entity, oldTr: Mat2D, localScale: Mat2
 		['y', Math.round(decomposed.y - height * anchor.y - offset.y)],
 	];
 	if (writeAngles) writes.push(['rotation', Math.round(decomposed.rotation * 100) / 100]);
+	// A path's outline stretches with its box rather than staying put in it.
+	pinViewBox(world, editor, entity);
 	editTransform(world, editor, entity, writes);
 
 	if (writeAngles) {

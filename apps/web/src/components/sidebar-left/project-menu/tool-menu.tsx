@@ -47,6 +47,10 @@ export function ToolMenu() {
         <DropdownMenuItem onSelect={() => setTool(ToolType.POLYGON)}>
           Polygon
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setTool(ToolType.PEN)}>
+          Pen
+          <DropdownMenuShortcut>P</DropdownMenuShortcut>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setTool(ToolType.OBJECT_MASK)}>
           Object Mask
           <DropdownMenuShortcut>M</DropdownMenuShortcut>

@@ -12,6 +12,7 @@ import {
   isCaption,
   isGroup,
   isClipPath,
+  isPath,
   isScene,
   isSequence,
   isShape,
@@ -25,6 +26,7 @@ import { SceneTemplatePanel } from "./scene-template";
 import { AssetInfoPanel } from "./asset-info";
 import { TimeSettings } from "./time";
 import { AppearanceSettings } from "./appearance";
+import { PathSettings } from "./path";
 import { Alignment } from "./alignment";
 import { ExportPanel } from "./export";
 import { LayoutPanel } from "./layout";
@@ -149,6 +151,10 @@ export function Inspector() {
 
           <Show when={includesTarget("text", "caption")}>
             <TextPanel selection={nodes()} />
+          </Show>
+
+          <Show when={nodes().length === 1 && isPath(nodes()[0]!)}>
+            <PathSettings selection={nodes()} />
           </Show>
 
           <Show when={includesTarget("shape", "text", "scene")}>

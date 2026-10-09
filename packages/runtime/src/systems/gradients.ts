@@ -73,10 +73,10 @@ export function createLinearGradient(
 	return gradient;
 }
 
-/** Fill the current path with a linear gradient paint. */
-export function fillLinearGradient(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number): void {
+/** Fill the current path with a linear gradient paint, by `fillRule`. */
+export function fillLinearGradient(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number, fillRule: CanvasFillRule = 'nonzero'): void {
 	ctx.fillStyle = createLinearGradient(world, paint, ctx, w, h);
-	ctx.fill();
+	ctx.fill(fillRule);
 }
 
 /** Stroke the current path with a linear gradient paint, in the stroke style already set on `ctx`. */
@@ -195,12 +195,12 @@ const unitAngularGradient: UnitGradient = (world, paint, ctx) => {
  * ellipse comes from the matrix, which bends only the paint: the path was
  * placed when it was built.
  */
-function fillThroughEllipse(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number, unit: UnitGradient): void {
+function fillThroughEllipse(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number, unit: UnitGradient, fillRule: CanvasFillRule): void {
 	const { a, b, c, d, e, f } = getGradientEllipseMatrix(world, paint, w, h);
 	ctx.save();
 	ctx.transform(a, b, c, d, e, f);
 	ctx.fillStyle = unit(world, paint, ctx);
-	ctx.fill();
+	ctx.fill(fillRule);
 	ctx.restore();
 }
 
@@ -253,9 +253,9 @@ function createPatternThroughEllipse(
 	return pattern;
 }
 
-/** Fill the current path with a radial gradient paint. */
-export function fillRadialGradient(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number): void {
-	fillThroughEllipse(world, paint, ctx, w, h, unitRadialGradient);
+/** Fill the current path with a radial gradient paint, by `fillRule`. */
+export function fillRadialGradient(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number, fillRule: CanvasFillRule = 'nonzero'): void {
+	fillThroughEllipse(world, paint, ctx, w, h, unitRadialGradient, fillRule);
 }
 
 /**
@@ -273,9 +273,9 @@ export function strokeRadialGradient(world: World, paint: Entity, ctx: Ctx2D, w:
 	ctx.stroke();
 }
 
-/** Fill the current path with an angular gradient paint. */
-export function fillAngularGradient(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number): void {
-	fillThroughEllipse(world, paint, ctx, w, h, unitAngularGradient);
+/** Fill the current path with an angular gradient paint, by `fillRule`. */
+export function fillAngularGradient(world: World, paint: Entity, ctx: Ctx2D, w: number, h: number, fillRule: CanvasFillRule = 'nonzero'): void {
+	fillThroughEllipse(world, paint, ctx, w, h, unitAngularGradient, fillRule);
 }
 
 /**

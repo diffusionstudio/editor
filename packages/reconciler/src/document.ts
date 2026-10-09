@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, EvenOdd, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, parsePath, PathTrim, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, VectorPath, ViewBox, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -207,6 +207,10 @@ const TRACK_PROPERTIES: Record<string, PropertyPath> = {
 	ry: 'gradient.ry',
 	blur: 'blur',
 	value: 'effect.value',
+	d: 'path',
+	trimStart: 'trim.start',
+	trimEnd: 'trim.end',
+	trimOffset: 'trim.offset',
 };
 
 /**
@@ -238,6 +242,13 @@ const TRACK_PROPERTY_NAMES = {
 export function trackProperty(path: string): AnimatableProperty | undefined {
 	return TRACK_PROPERTY_NAMES[path as PropertyPath];
 }
+
+/**
+ * Whether a keyframe's value is path data rather than a color: it opens with
+ * a moveto and a coordinate, which no CSS color does ("magenta" has no digit
+ * after its m).
+ */
+const PATH_DATA = /^\s*[Mm][\s,]*[-+.\d]/;
 
 /** The `<rect>` props of the per-corner radii, in the trait's (CSS) order. */
 const CORNER_PROPS = ['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'] as const;
@@ -538,6 +549,15 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity = createEntity(this.world);
 				entity.add(Geometry);
 				entity.set(Geometry, { value: name === 'ellipse' ? GeometryType.ELLIPSE : GeometryType.POLYGON });
+				entity.add(Position);
+				entity.set(Position, { x: 0, y: 0 });
+				resizeEntity(this.world, entity, { width: 100, height: 100 });
+				break;
+			}
+			case 'path': {
+				entity = createEntity(this.world);
+				entity.add(Geometry);
+				entity.set(Geometry, { value: GeometryType.PATH });
 				entity.add(Position);
 				entity.set(Position, { x: 0, y: 0 });
 				resizeEntity(this.world, entity, { width: 100, height: 100 });
@@ -980,6 +1000,55 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				}
 				return;
 			}
+			case 'd': {
+				if (typeof value !== 'string') {
+					entity.remove(VectorPath);
+					return;
+				}
+
+				const { geometry, error } = parsePath(value);
+
+				if (error !== null) {
+					console.warn(`[path] ${error} in d="${value}"`);
+				}
+
+				entity.add(VectorPath);
+				entity.set(VectorPath, { geometry });
+				return;
+			}
+			case 'viewBox': {
+				const numbers = typeof value === 'string' ? value.trim().split(/[\s,]+/).map(Number) : [];
+				const [x, y, width, height] = numbers;
+				if (numbers.length !== 4 || numbers.some((n) => !Number.isFinite(n)) || width! <= 0 || height! <= 0) {
+					entity.remove(ViewBox);
+					return;
+				}
+				entity.add(ViewBox);
+				entity.set(ViewBox, { x: x!, y: y!, width: width!, height: height! });
+				return;
+			}
+			case 'fillRule': {
+				if (value === 'evenodd') {
+					entity.add(EvenOdd);
+				} else {
+					entity.remove(EvenOdd);
+				}
+				return;
+			}
+			case 'trimStart':
+			case 'trimEnd':
+			case 'trimOffset': {
+				const start = toNumber(node.props.trimStart);
+				const end = toNumber(node.props.trimEnd);
+				const offset = toNumber(node.props.trimOffset);
+				if (start === undefined && end === undefined && offset === undefined) {
+					entity.remove(PathTrim);
+					return;
+				}
+				entity.add(PathTrim);
+				entity.set(PathTrim, { start: start ?? 0, end: end ?? 1, offset: offset ?? 0 });
+				return;
+			}
 			case 'blendMode': {
 				const mode = typeof value === 'string' ? BLEND_MODES[value] : undefined;
 				if (mode === undefined || mode === BlendModeType.SOURCE_OVER) {
@@ -1139,8 +1208,10 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			}
 			case 'value': {
 				if (entity.has(Keyframe)) {
-					// A number, or a color on a color track; either is a number to the trait.
-					entity.set(Keyframe, { value: toNumber(value) ?? parseColor(value) ?? 0 });
+					// A number, or a color on a color track; either is a number to the
+					// trait. Path data, on a `d` track, is an outline instead.
+					const path = typeof value === 'string' && PATH_DATA.test(value) ? parsePath(value).geometry : null;
+					entity.set(Keyframe, { value: path ? 0 : toNumber(value) ?? parseColor(value) ?? 0, path });
 					return;
 				}
 				if (!entity.has(Effect)) return;

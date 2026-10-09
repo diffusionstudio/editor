@@ -5,3 +5,4 @@ export * from './timeline-index';
 export * from './timeline-view';
 export * from './hit-test';
 export * from './interaction';
+export * from './path';

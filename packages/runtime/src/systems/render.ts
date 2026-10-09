@@ -19,7 +19,7 @@ import {
 import {
 	ChildOf, Hidden, Culled, Interactive, IsClipPath, AssetId,
 	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
-	BlendMode, Effect, Mask, Transition, MixedCornerRadius, PointCount,
+	BlendMode, Effect, Mask, Transition, MixedCornerRadius, PointCount, EvenOdd,
 	LocalTransform, WorldTransform, Computed, Cache,
 	Host, Scene, Shimmering,
 	Mode, FrameRate, Camera, Background, RenderSurface,
@@ -28,7 +28,8 @@ import {
 } from '../traits';
 import { getParentNode } from '../queries/hierarchy';
 import { isShapeGeometry } from '../queries/predicates';
-import { traceShape } from '../math';
+import { tracePath, traceShape } from '../math';
+import { getDrawnPath, getPathTransform } from '../queries/path';
 import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
 import { FAILED_COLOR, getSourceFailure } from '../utils/source-failure';
@@ -62,11 +63,16 @@ function getCtx(world: World): Ctx2D {
 	return getSurfaceContext(world)!;
 }
 
+// The rule the shape path fills and clips by. A canvas takes it with each
+// fill or clip rather than with the path, so `drawShapePath` leaves it here
+// for the calls that fill or clip by the outline it traced.
+let shapeFillRule: CanvasFillRule = 'nonzero';
+
 /**
  * Begins the current path with the outline of `entity` in its own box: a
- * rect with its corner radii, or the ellipse, line or polygon its geometry
- * names. Everything that fills, strokes or clips by the node's shape reads it
- * from here.
+ * rect with its corner radii, the ellipse or polygon its geometry names, or
+ * a path's outline (with its fill rule left in `shapeFillRule`). Everything
+ * that fills, strokes or clips by the node's shape reads it from here.
  */
 export function drawShapePath(world: World, entity: Entity): void {
 	const ctx = getCtx(world);
@@ -76,6 +82,14 @@ export function drawShapePath(world: World, entity: Entity): void {
 	const h = computed.height[eid]!;
 
 	const type = entity.has(Geometry) ? store(world, Geometry).value[eid]! : GeometryType.RECT;
+	shapeFillRule = 'nonzero';
+	if (type === GeometryType.PATH) {
+		ctx.beginPath();
+		const geometry = getDrawnPath(world, entity);
+		if (geometry !== null) tracePath(ctx, geometry, getPathTransform(world, entity));
+		if (entity.has(EvenOdd)) shapeFillRule = 'evenodd';
+		return;
+	}
 	if (type !== GeometryType.RECT && isShapeGeometry(type)) {
 		const pointCount = entity.has(PointCount) ? store(world, PointCount).value[eid]! : 3;
 		ctx.beginPath();
@@ -241,7 +255,7 @@ export function renderIntrinsicFill(world: World, entity: Entity): void {
 		const computed = store(world, Computed);
 		const eid = entity.id();
 		ctx.fillStyle = colorToHex(computed.color[eid] ?? 0);
-		ctx.fill();
+		ctx.fill(shapeFillRule);
 	}
 
 	const intrinsic = getIntrinsicPaint(entity);
@@ -252,7 +266,7 @@ export function renderIntrinsicFill(world: World, entity: Entity): void {
 			const computed = store(world, Computed);
 			const eid = entity.id();
 			ctx.save();
-			ctx.clip();
+			ctx.clip(shapeFillRule);
 			ctx.drawImage(canvas, 0, 0, computed.width[eid]!, computed.height[eid]!);
 			ctx.restore();
 		}
@@ -309,7 +323,7 @@ function renderHtmlFill(world: World, entity: Entity, source: Entity): void {
 	const eid = entity.id();
 
 	ctx.save();
-	ctx.clip();
+	ctx.clip(shapeFillRule);
 
 	const width = computed.width[eid]!;
 	const height = computed.height[eid]!;
@@ -354,7 +368,7 @@ function renderMedia(world: World, entity: Entity, source: Entity, kind: MediaKi
 
 	if (frame) {
 		ctx.save();
-		ctx.clip();
+		ctx.clip(shapeFillRule);
 
 		const mode = store(world, ScaleMode).value[source.id()] ?? 0;
 		const [dx, dy, sw, sh] = getScaledImageProps(mode, frame.width, frame.height, w, h);
@@ -363,7 +377,7 @@ function renderMedia(world: World, entity: Entity, source: Entity, kind: MediaKi
 		ctx.restore();
 	} else if (failed) {
 		ctx.fillStyle = MISSING_ASSET_COLOR;
-		ctx.fill();
+		ctx.fill(shapeFillRule);
 	}
 }
 
@@ -400,25 +414,25 @@ export function renderFills(world: World, entity: Entity): void {
 			const canvas = fill.get(Host)?.element;
 			if (canvas instanceof HTMLCanvasElement) {
 				ctx.save();
-				ctx.clip();
+				ctx.clip(shapeFillRule);
 				ctx.drawImage(canvas, 0, 0, computed.width[eid]!, computed.height[eid]!);
 				ctx.restore();
 			}
 		} else if (paint === PaintType.SOLID) {
 			ctx.fillStyle = colorToHex(computed.color[fid]!);
-			ctx.fill();
+			ctx.fill(shapeFillRule);
 		} else if (paint === PaintType.LINEAR_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			fillLinearGradient(world, fill, ctx, w, h);
+			fillLinearGradient(world, fill, ctx, w, h, shapeFillRule);
 		} else if (paint === PaintType.RADIAL_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			fillRadialGradient(world, fill, ctx, w, h);
+			fillRadialGradient(world, fill, ctx, w, h, shapeFillRule);
 		} else if (paint === PaintType.ANGULAR_GRADIENT) {
 			const w = computed.width[eid]!;
 			const h = computed.height[eid]!;
-			fillAngularGradient(world, fill, ctx, w, h);
+			fillAngularGradient(world, fill, ctx, w, h, shapeFillRule);
 		} else if (paint === PaintType.WAVEFORM) {
 			renderWaveform(world, entity, fill);
 		} else if (paint === PaintType.SHADER) {
@@ -541,7 +555,7 @@ function renderShaderFill(world: World, entity: Entity, fills: Entity[], index: 
 	const time = (computed.localTime[eid] ?? 0) / fps;
 
 	ctx.save();
-	ctx.clip();
+	ctx.clip(shapeFillRule);
 	host.draw(ctx, w, h, input?.source ?? null, input?.width ?? 1, input?.height ?? 1, fit, time, store(world, Shader).uniforms[fills[index]!.id()] ?? null);
 	ctx.restore();
 }
@@ -573,7 +587,7 @@ function renderShadows(world: World, entity: Entity): void {
 		ctx.shadowBlur = computed.blur[sid]! * shadowScale;
 		ctx.shadowOffsetX = computed.offsetX[sid]! * shadowScale;
 		ctx.shadowOffsetY = computed.offsetY[sid]! * shadowScale;
-		ctx.fill();
+		ctx.fill(shapeFillRule);
 	}
 
 	ctx.restore();
@@ -660,7 +674,7 @@ function renderPendingFill(world: World, entity: Entity): void {
 
 	const ctx = getCtx(world);
 	ctx.fillStyle = generating ? getGeneratingColor(world) : FAILED_COLOR;
-	ctx.fill();
+	ctx.fill(shapeFillRule);
 }
 
 const SHIMMER_PERIOD = 2400; // ms per turn of the highlights
@@ -785,7 +799,7 @@ function renderWaveform(world: World, entity: Entity, fill: Entity): void {
 	const h = computed.height[entity.id()]!;
 
 	ctx.save();
-	ctx.clip();
+	ctx.clip(shapeFillRule);
 
 	// Background
 	ctx.fillStyle = WAVEFORM_BG_COLOR;
@@ -991,7 +1005,7 @@ function clipTo(world: World, clipPath: Entity): void {
 	setWorldTransform(world, ctx, clipPath);
 	drawShapePath(world, clipPath);
 	ctx.restore();
-	ctx.clip();
+	ctx.clip(shapeFillRule);
 }
 
 function setWorldTransform(world: World, ctx: Ctx2D, entity: Entity): void {
@@ -1032,7 +1046,7 @@ function renderContent(world: World, entity: Entity, effects: string | null): vo
 	if (children.length) {
 		if (entity.has(ClipsContent)) {
 			ctx.save();
-			ctx.clip();
+			ctx.clip(shapeFillRule);
 		}
 
 		for (const child of children) {
@@ -1219,7 +1233,7 @@ function applyMaskedEffect(world: World, entity: Entity, pass: Extract<EffectPas
 		resetLayer(coverage, local);
 		drawOnto(coverage.ctx, () => drawShapePath(world, entity));
 		coverage.ctx.fillStyle = '#000000';
-		coverage.ctx.fill();
+		coverage.ctx.fill(shapeFillRule);
 		for (const mask of pass.masks) {
 			const strength = Math.min(1, Math.max(0, opacities[mask.id()] ?? 1));
 			if (strength <= EPSILON || !drawMaskRemoval(world, entity, mask, scratch, local)) continue;
@@ -1273,9 +1287,9 @@ function drawMaskRemoval(world: World, entity: Entity, mask: Entity, layer: Laye
 	drawOnto(ctx, () => drawShapePath(world, entity));
 	if (!inverted) {
 		ctx.fillStyle = '#000000';
-		ctx.fill();
+		ctx.fill(shapeFillRule);
 	}
-	ctx.clip();
+	ctx.clip(shapeFillRule);
 	ctx.globalCompositeOperation = inverted ? 'source-over' : 'destination-out';
 	if (feather > EPSILON) ctx.filter = `blur(${feather}px)`;
 	if (outline) {

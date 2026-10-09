@@ -11,9 +11,10 @@
 
 import { trait } from 'koota';
 
-import type { CanvasPointerEvent, Point } from '@diffusionstudio/runtime';
+import type { CanvasPointerEvent, PathGeometry, Point } from '@diffusionstudio/runtime';
 import type { Entity } from 'koota';
 import type { GradientHandle } from './gradient-tool';
+import type { PathPart, PenVertex } from './path-tool';
 import type { ObjectMaskMode, ObjectMaskOp } from './object-mask/store';
 import type { ProjectConfig as ProjectConfigStore } from './project-config';
 
@@ -102,13 +103,37 @@ export const GradientTool = trait({
 });
 
 /**
- * A box being drawn by the rect, scene or text tool: whether a press is
- * drawing one, and the scene it landed in, which the new node goes into.
- * The box itself is the pointer's, from where the press began to where it is.
+ * A node being drawn: whether a press is drawing, and the scene the first
+ * press landed in, which the new node goes into. For the rect, ellipse,
+ * polygon, scene and text tools the press is the whole gesture, and the box
+ * is the pointer's, from where it began to where it is. The pen takes a
+ * press per vertex, so it also keeps the `vertices` put down so far, in
+ * document space; `drawing` is then whether the press that placed the last
+ * one is still down, pulling out its handles.
  */
 export const DrawTool = trait({
 	drawing: false,
 	scene: null as Entity | null,
+	vertices: () => [] as PenVertex[],
+});
+
+/**
+ * The path whose vertices are being edited, null while none is. `subpath`
+ * and `vertex` are the vertex picked (-1 for none). While a press holds a
+ * vertex or a handle, `held` is which part, `heldVertex` whose (a handle can
+ * be a neighbor's of the picked vertex), `start` the outline as the press
+ * found it and `originX`/`originY` where it went down, in the `d`'s
+ * coordinates.
+ */
+export const PathEditor = trait({
+	entity: null as Entity | null,
+	subpath: -1,
+	vertex: -1,
+	held: null as PathPart | null,
+	heldVertex: -1,
+	start: () => null as PathGeometry | null,
+	originX: 0,
+	originY: 0,
 });
 
 /**

@@ -37,6 +37,7 @@ import type {
   KeyframeProps,
   KeyframeTrackProps,
   MediaPaintProps,
+  PathProps,
   PolygonProps,
   RectProps,
   SceneProps,
@@ -96,6 +97,7 @@ export const Group = hostElement<GroupProps>("Group");
 export const Rect = hostElement<RectProps>("Rect");
 export const Ellipse = hostElement<EllipseProps>("Ellipse");
 export const Polygon = hostElement<PolygonProps>("Polygon");
+export const Path = hostElement<PathProps>("Path");
 export const Video = hostElement<VideoProps>("Video");
 export const Image = hostElement<ImageProps>("Image");
 export const Audio = hostElement<AudioProps>("Audio");

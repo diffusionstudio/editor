@@ -20,6 +20,7 @@ import { useHas, useWorld } from "@diffusionstudio/koota-solid";
 import { ClipsContent, Computed, KeepAspectRatio, isScene } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
+import { pinViewBox } from "@/engine/path-tool";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -95,6 +96,9 @@ export function LayoutPanel(props: LayoutPanelProps) {
         width = Math.round(height * ratio);
       }
     }
+
+    // A path's outline stretches with its box rather than staying put in it.
+    pinViewBox(world, editor, entity());
 
     if (width !== undefined) {
       width = Math.round(width);

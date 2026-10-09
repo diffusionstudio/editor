@@ -21,6 +21,13 @@ export type StrokeJoin = "miter" | "round" | "bevel";
 export type StrokeCap = "butt" | "round" | "square";
 
 /**
+ * What a `<path>` counts as inside where its outline crosses itself or one
+ * subpath sits in another: SVG's `fill-rule`. "nonzero" fills a hole drawn
+ * the same way round as its outline; "evenodd" never does.
+ */
+export type FillRule = "nonzero" | "evenodd";
+
+/**
  * How an element follows its scene's frame along one axis when that frame is
  * resized: pinned to the near edge ("left"/"top", the default), to the far
  * one ("right"/"bottom"), to the middle ("center"), to both edges at once
@@ -96,7 +103,8 @@ export type Easing =
  * The props a `<keyframeTrack>` can drive, by name. Whose prop is the
  * track's holder's: `x` under a `<rect>` is the rect's, `width` under a
  * `<stroke>` the line width, `value` under an `<effect>` its amount,
- * `color`/`opacity` under a paint the paint's.
+ * `color`/`opacity` under a paint the paint's. `d` morphs a `<path>`'s
+ * outline from one keyframe's path data to the next.
  */
 export type AnimatableProperty =
   | "x"
@@ -127,7 +135,11 @@ export type AnimatableProperty =
   | "rx"
   | "ry"
   | "blur"
-  | "value";
+  | "value"
+  | "d"
+  | "trimStart"
+  | "trimEnd"
+  | "trimOffset";
 
 /** Transition styles — the editor's transition inspector options. */
 export type TransitionType =
@@ -606,6 +618,58 @@ export type PolygonProps = CommonProps & FillProps & {
 };
 
 /**
+ * `<path>` — a vector outline from SVG path data: any number of subpaths,
+ * open or closed, of lines and curves. `d` is drawn in the box's own pixels,
+ * or, with a `viewBox`, stretched from it onto the box, so resizing the box
+ * resizes the outline without the data changing. Takes the same children as
+ * `<rect>`; a stroke ends its open subpaths with its `cap`.
+ */
+export type PathProps = CommonProps & FillProps & {
+  /**
+   * SVG path data: `M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, absolute or
+   * relative. The editor writes it back as absolute `M`/`L`/`C`/`Z`. A
+   * malformed `d` draws what came before the error, as in SVG. A `d`
+   * `<keyframeTrack>` morphs it: anchors and control points move in a
+   * straight line from keyframe to keyframe, the first vertex of each
+   * subpath (its `M`) to the first; paths with different vertex counts are
+   * subdivided to match, and ones with a different number of subpaths, or an
+   * open against a closed one, hold until the next keyframe.
+   */
+  d?: string;
+  /**
+   * The rectangle of `d`'s coordinates the box shows, `"x y width height"`,
+   * stretched to the box on each axis (SVG's `preserveAspectRatio="none"`).
+   * Default `"0 0 width height"`: `d` is in the box's pixels.
+   */
+  viewBox?: string;
+  /** Default "nonzero". */
+  fillRule?: FillRule;
+  /**
+   * Trims the outline to part of its length (After Effects' Trim Paths), as
+   * fractions 0–1 of each subpath's length: what lies between `trimStart`
+   * and `trimEnd` is drawn, filled and hit. Default 0 and 1, the whole path.
+   */
+  trimStart?: number;
+  trimEnd?: number;
+  /**
+   * Slides the trimmed stretch along the path, as a fraction of its length;
+   * it wraps, so 1 is once round. Default 0.
+   */
+  trimOffset?: number;
+  /**
+   * Makes the path a clip path of its parent, as `<rect clipPath>` does: the
+   * parent shows only inside its outline. Never rendered or hit.
+   */
+  clipPath?: boolean;
+  /**
+   * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<Animation>` and `<KeyframeTrack>` children.
+   */
+  children?: SolidJSX.Element;
+};
+
+/**
  * `<stroke>` — an outline of the parent's box (or glyphs), a sub-entity like a
  * paint: `color` is its own solid paint, `width`/`join`/`cap`/`miterLimit` its
  * line style, and paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
@@ -620,7 +684,7 @@ export type StrokeProps = Partial<ColorProps> & PaintProps & {
   width?: number;
   /** How the stroke turns corners. Default "miter". */
   join?: StrokeJoin;
-  /** How the stroke ends open paths (text glyphs). Default "butt". */
+  /** How the stroke ends open paths (text glyphs, open `<path>` subpaths). Default "butt". */
   cap?: StrokeCap;
   /** Miter length limit, as a ratio of the width. Default 10. */
   miterLimit?: number;
@@ -729,7 +793,7 @@ export type KeyframeProps = {
    * stay pinned to the same content when the clip is moved or trimmed.
    */
   time: Time;
-  /** The value at `time`: a number, or any CSS color on a `color` track. */
+  /** The value at `time`: a number, any CSS color on a `color` track, or path data on a `d` track. */
   value: number | string;
   /** Shapes the segment to the next keyframe; ignored on the last. Default "linear". */
   easing?: Easing;

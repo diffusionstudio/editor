@@ -48,6 +48,8 @@ export function Toolbar() {
   const selectedTool = useTool();
   const cursorTool = createMemo(() => CURSOR_TOOLS.find((cursor) => cursor.tool === selectedTool()));
   const shapeTool = createMemo(() => SHAPE_TOOLS.find((shape) => shape.tool === selectedTool()));
+  // Editing a path's vertices is the pen's other half, as in Figma.
+  const penTool = () => selectedTool() === ToolType.PEN || selectedTool() === ToolType.PATH_EDIT;
 
   createEffect(() => {
     const shape = shapeTool();
@@ -189,6 +191,18 @@ export function Toolbar() {
             </DropdownMenuPortal>
           </DropdownMenu>
         </div>
+        <Tooltip>
+          <TooltipTrigger
+            as={Button}
+            size="icon-square"
+            variant={penTool() ? 'default' : 'ghost'}
+            onClick={() => handleToolChange(ToolType.PEN)}
+            class={penTool() ? 'text-foreground' : 'text-muted-foreground'}
+          >
+            <Icon name="tool.pen" />
+          </TooltipTrigger>
+          <TooltipContent shortcut="P">Pen</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger
             as={Button}

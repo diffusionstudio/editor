@@ -11,13 +11,15 @@ import {
 	Computed, Cache, Animation, KeyframeTrack, Keyframe, Chars,
 	UniformScale, Position, Offset, Rotation, Scale, Skew, Size, Opacity,
 	Color, Blur, Volume, Effect, StrokeStyle, CornerRadius, MixedCornerRadius,
-	ColorStop, LinearGradient, EllipticalGradient,
+	ColorStop, LinearGradient, EllipticalGradient, PathTrim, VectorPath,
 } from '../traits';
 import { AnimationType, AnimationPhase, LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
 import { revealChars, revealWords, scrambleChars } from '../utils/text-motion';
 import { getLocalWindow } from '../utils/time';
+import { interpolatePath } from '../math/path';
 
 import type { Entity, Trait, TraitRecord, World } from 'koota';
+import type { PathGeometry } from '../math/path';
 
 /**
  * Reset an entity's Computed values back to its authored trait values.
@@ -63,6 +65,9 @@ export function resetAnimatedValues(world: World, entity: Entity | null, ignore?
 	computed.gradientCY[eid] = read(EllipticalGradient, 'cy', ELLIPTICAL_GRADIENT_DEFAULTS.cy);
 	computed.gradientRX[eid] = read(EllipticalGradient, 'rx', ELLIPTICAL_GRADIENT_DEFAULTS.rx);
 	computed.gradientRY[eid] = read(EllipticalGradient, 'ry', ELLIPTICAL_GRADIENT_DEFAULTS.ry);
+	computed.trimStart[eid] = read(PathTrim, 'start', 0);
+	computed.trimEnd[eid] = read(PathTrim, 'end', 1);
+	computed.trimOffset[eid] = read(PathTrim, 'offset', 0);
 
 	if (entity.has(UniformScale) && ignore !== UniformScale) {
 		computed.scaleX[eid] = read(UniformScale, 'value', 1);
@@ -76,6 +81,8 @@ export function resetAnimatedValues(world: World, entity: Entity | null, ignore?
 	// Chars straight to the store, so a copy would pin the text a static
 	// node shows. Unset, the renderer reads Chars; text motion overrides it.
 	computed.chars[eid] = undefined;
+	// The same for a path's outline: unset, the renderer reads VectorPath.
+	computed.path[eid] = undefined;
 }
 
 /**
@@ -251,6 +258,11 @@ export function motionSystem(world: World): void {
 			const property = keyframeTrack.property[tid] as PropertyPath;
 			const target = keyframeTrack.target[tid];
 			const keyframes = cache.keyframes[tid] ?? [];
+			if (property === 'path') {
+				const path = samplePathTrack(world, keyframes, localFrame);
+				if (path !== null && target != null) computed.path[target.id()] = path;
+				continue;
+			}
 			const result = sampleTrack(world, keyframes, localFrame, property);
 			if (result === null || target == null) continue;
 			worldProps[property].computed[target.id()] = result;
@@ -405,6 +417,22 @@ export function getPropertyPaths(world: World) {
 			computed: computed.chars,
 			authored: store(world, Chars).value,
 		},
+		'path': {
+			computed: computed.path,
+			authored: store(world, VectorPath).geometry,
+		},
+		'trim.start': {
+			computed: computed.trimStart,
+			authored: store(world, PathTrim).start,
+		},
+		'trim.end': {
+			computed: computed.trimEnd,
+			authored: store(world, PathTrim).end,
+		},
+		'trim.offset': {
+			computed: computed.trimOffset,
+			authored: store(world, PathTrim).offset,
+		},
 	};
 }
 
@@ -521,6 +549,37 @@ function sampleTrack(
 	}
 
 	return lastValue;
+}
+
+/**
+ * Sample a presorted `d` track at a local frame: the outline between the two
+ * keyframes around it (see `interpolatePath`), or the first/last one outside
+ * them. Returns null if no keyframe holds an outline.
+ */
+function samplePathTrack(world: World, keyframes: Entity[], frame: number): PathGeometry | null {
+	const keyframe = store(world, Keyframe);
+	const keyed = keyframes.filter((entity) => keyframe.path[entity.id()] != null);
+	if (keyed.length === 0) return null;
+
+	const first = keyed[0]!.id();
+	const last = keyed[keyed.length - 1]!.id();
+	if (keyed.length === 1 || frame <= keyframe.time[first]!) return keyframe.path[first]!;
+	if (frame >= keyframe.time[last]!) return keyframe.path[last]!;
+
+	for (let i = 0; i < keyed.length - 1; i++) {
+		const from = keyed[i]!.id();
+		const to = keyed[i + 1]!.id();
+		const start = keyframe.time[from]!;
+		const end = keyframe.time[to]!;
+		if (frame < start || frame > end || end - start <= 0) continue;
+
+		let progress = Math.max(0, Math.min(1, (frame - start) / (end - start)));
+		const easingFn = resolveEasing(keyframe.easing[from]);
+		if (easingFn) progress = easingFn(progress);
+		return interpolatePath(keyframe.path[from]!, keyframe.path[to]!, progress);
+	}
+
+	return keyframe.path[last]!;
 }
 
 /**

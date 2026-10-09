@@ -70,6 +70,7 @@ export enum GeometryType {
   TEXT,
   ELLIPSE,
   POLYGON,
+  PATH,
 }
 
 export enum PaintType {
@@ -189,4 +190,6 @@ export enum ToolType {
   ANGULAR_GRADIENT,
   ELLIPSE,
   POLYGON,
+  PEN,
+  PATH_EDIT,
 }

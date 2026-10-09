@@ -12,14 +12,14 @@ Three sub-entity children a node takes alongside its [paints](./paints.md): an o
 
 ## `<stroke>`
 
-An outline of the parent's shape (its box, or the curve of an `<ellipse>`, the corners of a `<polygon>`) — or of its glyphs, on a `<text>` or a `<textRange>`. `color` is its paint, the rest its line style.
+An outline of the parent's shape (its box, or the curve of an `<ellipse>`, the corners of a `<polygon>`, the outline of a `<path>`) — or of its glyphs, on a `<text>` or a `<textRange>`. `color` is its paint, the rest its line style.
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
 | `color` | `string` | none | Any CSS color; alpha is ignored (use `opacity`). Without it the stroke is drawn by its paint children alone. |
 | `width` | `number` | `1` | Line width, px. A `width` [keyframe track](./keyframes.md) under a stroke drives this, not a box. |
 | `join` | `"miter" \| "round" \| "bevel"` | `"miter"` | How the stroke turns corners. |
-| `cap` | `"butt" \| "round" \| "square"` | `"butt"` | How the stroke ends open paths (text glyphs). |
+| `cap` | `"butt" \| "round" \| "square"` | `"butt"` | How the stroke ends open paths (text glyphs, open subpaths of a [`<path>`](./path.md)). |
 | `miterLimit` | `number` | `10` | Miter length limit, as a ratio of the width. |
 | `opacity` | `number` | `1` | `0`–`1`, over `color` and every paint child. |
 | `blendMode` | `BlendMode` | `"sourceOver"` | How the stroke composites. |

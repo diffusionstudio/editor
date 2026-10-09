@@ -346,7 +346,7 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
       </Show>
 
       <Show when={isPolygon(entity())}>
-        <ControlRow label="Count" contentClass="grid grid-cols-2 gap-2 min-w-0">
+        <ControlRow label="Points" contentClass="grid grid-cols-2 gap-2 min-w-0">
           <ControlledTextField
             value={pointCount()}
             autoSelect

@@ -73,7 +73,8 @@ type StrokeInspectorProps = {
  * The paint is the stroke's own `color` or a gradient paint child, picked in
  * the fill picker without its asset tab; a gradient is placed in the box of
  * the stroke's parent, so that is where its handles go. `cap` has no control
- * yet: it only shows on open paths (text glyphs) and there are no icons for it.
+ * yet: it only shows on open paths (text glyphs, open `<path>` subpaths) and
+ * there are no icons for it.
  */
 export function StrokeInspector(props: StrokeInspectorProps) {
   const world = useWorld();

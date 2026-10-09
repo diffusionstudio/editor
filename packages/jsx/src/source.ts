@@ -95,6 +95,7 @@ export const COMPOSITION_TAGS = [
   "rect",
   "ellipse",
   "polygon",
+  "path",
   "video",
   "image",
   "audio",

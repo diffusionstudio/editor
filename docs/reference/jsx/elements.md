@@ -18,6 +18,7 @@ camelCase composition elements map 1:1 onto entities. Lowercase DOM vocabulary i
 | [`<rect>`](./rect.md) | A rectangle. Takes paints, strokes, shadows and effects. With `clipPath` it clips its parent instead of drawing. |
 | [`<ellipse>`](./ellipse.md) | An ellipse inscribed in its box. Takes what a rect takes. |
 | [`<polygon>`](./polygon.md) | A regular polygon (`pointCount` corners, a triangle by default) stretched to fill its box. Takes what a rect takes. |
+| [`<path>`](./path.md) | A vector outline from SVG path data (`d`), in its box's pixels or stretched from a `viewBox`; morphs between keyframes and trims. Takes what a rect takes. |
 | [`<text>`](./text.md) | Text; its children are the glyphs. Sizes itself to them unless given a box. |
 | [`<textRange>`](./text.md#textrange) | A style override over a run of the parent `<text>`'s glyphs, by character index. |
 | [`<video>`](./video.md) | A video clip: a rect whose intrinsic paint is the media `src` names. |
@@ -67,7 +68,7 @@ User-defined components are ordinary Solid components; they compose the elements
 | ------- | ----------- |
 | `<video>`, `<image>`, `<adjustmentLayer>` | 1920 × 1080 |
 | `<scene>` | required — the frame's own size |
-| `<rect>`, `<ellipse>`, `<polygon>`, `<html>`, `<surface>` | 100 × 100 |
+| `<rect>`, `<ellipse>`, `<polygon>`, `<path>`, `<html>`, `<surface>` | 100 × 100 |
 | `<audio>` | 500 × 150 (the waveform box on the canvas) |
 | `<rect clipPath>` | 500 × 500 |
 | `<text>` | fits its glyphs |

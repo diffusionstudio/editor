@@ -22,8 +22,10 @@ import {
   FrameRate,
   colorToHex,
   findKeyframeTargetNode,
+  formatPath,
   framesToSeconds,
   getNodeLocalFrame,
+  getPathGeometry,
   getParentEntity,
   getPropertyPaths,
   Paint,
@@ -59,9 +61,14 @@ export function keyframeFrame(target: Entity): number | null {
 /**
  * The value of `target`'s `property` as shown right now: the computed one,
  * which is what a keyframe added here should hold. Colors come back as the
- * CSS hex a color track's keyframe is spelled with.
+ * CSS hex a color track's keyframe is spelled with, outlines as path data.
  */
 function currentValue(world: World, target: Entity, property: AnimatableProperty): number | string | null {
+  // An outline, as the path data a `d` keyframe is spelled with.
+  if (property === "d") {
+    const geometry = getPathGeometry(world, target);
+    return geometry === null ? null : formatPath(geometry);
+  }
   const path = trackPropertyPath(target, property);
   if (!path) return null;
   const value = getPropertyPaths(world)[path]?.computed[target.id()];

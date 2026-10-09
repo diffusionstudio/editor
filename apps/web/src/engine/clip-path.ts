@@ -56,7 +56,7 @@ export function clearClipPathTarget(): void {
 
 /**
  * Whether `entity` can become a clip path of `target`: a plain shape (a clip
- * path is a `<rect>`, `<ellipse>` or `<polygon>`, so media, text and
+ * path is a `<rect>`, `<ellipse>`, `<polygon>` or `<path>`, so media, text and
  * containers are out), not one
  * already, and not the target or something the target sits inside — a node
  * cannot be moved into its own subtree.

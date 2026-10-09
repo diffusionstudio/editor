@@ -12,6 +12,7 @@ import {
 	isGroup,
 	isClipPath,
 	isEllipse,
+	isPath,
 	isPolygon,
 	isRect,
 	isScene,
@@ -89,6 +90,7 @@ export function getClipFallbackName(world: World, entity: Entity): string {
 
 	if (isEllipse(entity)) return 'Ellipse';
 	if (isPolygon(entity)) return 'Polygon';
+	if (isPath(entity)) return 'Path';
 	return isRect(entity) ? 'Rectangle' : 'Layer';
 }
 

@@ -24,7 +24,7 @@ type ClipPathsSettingsProps = {
 
 /**
  * The clip path children of the selected node (`<rect clipPath>`,
- * `<ellipse clipPath>`, `<polygon clipPath>`): the shapes it is clipped to
+ * `<ellipse clipPath>`, `<polygon clipPath>`, `<path clipPath>`): the shapes it is clipped to
  * (several intersect). A clip path is a shape like any other, so it
  * has no inspector of its own — a row selects it and the transform, time and
  * appearance panels are then its own. The plus picks up the clip path tool,

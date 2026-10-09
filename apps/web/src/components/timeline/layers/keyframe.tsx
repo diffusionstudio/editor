@@ -185,6 +185,10 @@ const PROPERTY_NAMES: Partial<Record<PropertyPath, string>> = {
   'gradient.ry': 'Radius Y',
   'effect.value': 'Value',
   'chars': 'Text',
+  'path': 'Path',
+  'trim.start': 'Trim Start',
+  'trim.end': 'Trim End',
+  'trim.offset': 'Trim Offset',
 };
 
 /**

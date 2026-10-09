@@ -5,6 +5,8 @@
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { trait } from 'koota';
 
+import type { PathGeometry } from '../math/path';
+
 import { BlendModeType, EffectType, ScaleModeType, StrokeJoin, StrokeCap, LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
 
 // Opacity of whatever the entity is: a node, a paint, a stroke, a shadow, a
@@ -29,6 +31,22 @@ export const MixedCornerRadius = trait({
 
 // A polygon's corner count, at least 3 (see `clampPointCount`). Absent means 3.
 export const PointCount = trait({ value: 3 });
+
+// A path's outline: its `d`, parsed (see `parsePath`), in the coordinates
+// of its ViewBox. Absent or null draws nothing; a `d` keyframe track
+// overrides it through Computed.path.
+export const VectorPath = trait({ geometry: () => null as PathGeometry | null });
+
+// A path filled by the even-odd rule rather than nonzero (`fillRule`).
+export const EvenOdd = trait();
+
+// Where a path's `d` is drawn from, stretched onto its box on each axis.
+// Absent means the box's own coordinates ("0 0 width height").
+export const ViewBox = trait({ x: 0, y: 0, width: 0, height: 0 });
+
+// A path trimmed to part of its length, as fractions of each subpath's
+// length (see `trimPath`). Absent means the whole path.
+export const PathTrim = trait({ start: 0, end: 1, offset: 0 });
 
 export const Blur = trait({ value: 0 });
 

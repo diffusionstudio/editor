@@ -6,6 +6,8 @@ import { trait, type Entity } from 'koota';
 
 import { LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
 
+import type { PathGeometry } from '../math/path';
+
 // Fully resolved per-frame values (base state + constraints + animations +
 // keyframes). Written by the motion and transform systems, read by render and
 // UI code. Never serialized.
@@ -43,9 +45,15 @@ export const Computed = trait({
 	gradientCY: ELLIPTICAL_GRADIENT_DEFAULTS.cy,
 	gradientRX: ELLIPTICAL_GRADIENT_DEFAULTS.rx,
 	gradientRY: ELLIPTICAL_GRADIENT_DEFAULTS.ry,
+	trimStart: 0,
+	trimEnd: 1,
+	trimOffset: 0,
 	width: 0,
 	height: 0,
 	chars: undefined as string | undefined,
+	// A path's outline as its `d` track has it this frame. Unset, the
+	// renderer reads VectorPath.
+	path: () => undefined as PathGeometry | undefined,
 	localTimeInSeconds: 0, // playhead position in seconds
 	localTime: 0, // playhead position in frames (mirrors localTimeInSeconds)
 	duration: 0, // end - start

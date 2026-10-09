@@ -9,7 +9,7 @@ import {
 	Delay, Trim, PlaybackRate, SourceFrameRate, Keyframe, ItemIndex,
 	Position, Offset, Rotation, Scale, UniformScale, Skew, Anchor, Flip,
 	Opacity, Color, Blur, Volume, Effect, CornerRadius, MixedCornerRadius,
-	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
+	ColorStop, LinearGradient, EllipticalGradient, PathTrim, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
 	ImageDecoderHandle, VideoDecoderHandle,
 	AudioDecoderHandle, CaptionDecoderHandle, WaveformHandle,
 	ShaderHostHandle, AudioBusHandle, TextStyle, TextRange,
@@ -287,6 +287,14 @@ export function observeWorld(world: World): () => void {
 		computed.gradientCY[entity.id()] = cy;
 		computed.gradientRX[entity.id()] = rx;
 		computed.gradientRY[entity.id()] = ry;
+	});
+
+	mirror(PathTrim, (entity) => {
+		const computed = store(world, Computed);
+		const { start, end, offset } = entity.get(PathTrim)!;
+		computed.trimStart[entity.id()] = start;
+		computed.trimEnd[entity.id()] = end;
+		computed.trimOffset[entity.id()] = offset;
 	});
 
 	mirror(StrokeStyle, (entity) => {
