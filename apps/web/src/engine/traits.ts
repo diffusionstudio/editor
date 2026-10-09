@@ -102,6 +102,16 @@ export const GradientTool = trait({
 });
 
 /**
+ * A box being drawn by the rect, scene or text tool: whether a press is
+ * drawing one, and the scene it landed in, which the new node goes into.
+ * The box itself is the pointer's, from where the press began to where it is.
+ */
+export const DrawTool = trait({
+	drawing: false,
+	scene: null as Entity | null,
+});
+
+/**
  * Queue of pointer events to be processed by the input system.
  */
 export const PointerEvents = trait({ queue: () => [] as CanvasPointerEvent[] });
