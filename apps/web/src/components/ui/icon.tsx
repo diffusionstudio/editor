@@ -26,7 +26,7 @@ export function Icon(props: IconProps) {
     <>
       {(() => {
         const IconComponent = getIcon();
-        return IconComponent ? <IconComponent class={cx("size-6 shrink-0", props.class)} /> : null;
+        return IconComponent ? <IconComponent class={cx("size-[25px] shrink-0", props.class)} /> : null;
       })()}
     </>
   )

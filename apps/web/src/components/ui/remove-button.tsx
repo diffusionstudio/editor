@@ -35,7 +35,7 @@ export function RemoveButton(props: RemoveButtonProps) {
           grid child falls back to the start edge instead of centring. */}
       <Icon
         name="close-remove-small"
-        class="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2"
+        class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
       />
     </button>
   );

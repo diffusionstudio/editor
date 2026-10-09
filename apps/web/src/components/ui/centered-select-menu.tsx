@@ -84,7 +84,7 @@ export const CenteredSelectMenu = <Value extends string>(
           {selectedOption()?.label ?? ""}
         </span>
         <span class="grid h-7 w-6 place-items-center overflow-clip text-muted-foreground">
-          <Icon name="chevron-down" class="size-6" />
+          <Icon name="chevron-down" />
         </span>
       </PopoverTrigger>
 
@@ -126,7 +126,7 @@ export const CenteredSelectMenu = <Value extends string>(
               >
                 <span class="flex h-7 w-6 shrink-0 items-center justify-center overflow-clip">
                   <Listbox.ItemIndicator>
-                    <Icon name="confirm-check" class="size-6" />
+                    <Icon name="confirm-check" />
                   </Listbox.ItemIndicator>
                 </span>
                 <span class="min-w-0 flex-1 truncate text-xs">

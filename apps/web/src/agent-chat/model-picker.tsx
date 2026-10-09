@@ -107,7 +107,7 @@ export function ModelPicker(props: ModelPickerProps) {
                               <DropdownMenuItem onSelect={() => props.onSelect({ harness: harness.id, model: model.id })}>
                                 <span class="min-w-0 flex-1 truncate">{model.label}</span>
                                 <Show when={props.value?.harness === harness.id && props.value?.model === model.id}>
-                                  <Icon name="confirm-check" class="size-6" />
+                                  <Icon name="confirm-check" />
                                 </Show>
                               </DropdownMenuItem>
                             )}

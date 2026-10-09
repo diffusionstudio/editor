@@ -104,7 +104,7 @@ export function DashboardHelpView() {
       {/* 
       <DashboardSurfaceSection title="Keyboard shortcuts">
         <DashboardInfoActionRow
-          leading={<Icon name="keyboard-shortcut" class="size-6 text-foreground" />}
+          leading={<Icon name="keyboard-shortcut" class="text-foreground" />}
           title="View, search, and customize shortcuts."
           action={
             <Button variant="secondary">

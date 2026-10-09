@@ -190,7 +190,7 @@ export function SceneInitOverlay() {
                 class="flex items-center ursor-pointer bg-transparent border-none p-0 text-xs font-450 text-muted-foreground outline-none"
               >
                 <span>{selectedPreset().label}</span>
-                <Icon name="chevron-down" class="size-6" />
+                <Icon name="chevron-down" />
               </DropdownMenuTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuContent class="w-60">
@@ -229,7 +229,7 @@ export function SceneInitOverlay() {
             onClick={handleInitializeScene}
             ref={buttonRef}
           >
-            <Icon name="plus-add" class="size-6 text-muted-foreground" />
+            <Icon name="plus-add" class="text-muted-foreground" />
           </button>
         </div>
 

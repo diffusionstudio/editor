@@ -32,9 +32,9 @@ export function DashboardSidebarItem(props: DashboardSidebarItemProps) {
       <span class="grid size-7 shrink-0 place-items-center overflow-clip">
         <Show
           when={props.active}
-          fallback={<Icon name={props.icon} class="size-6 text-muted-foreground" />}
+          fallback={<Icon name={props.icon} class="text-muted-foreground" />}
         >
-          <Icon name={props.icon} class="size-6 text-foreground" />
+          <Icon name={props.icon} class="text-foreground" />
         </Show>
       </span>
       <span
@@ -52,7 +52,7 @@ export function DashboardSidebarHeader() {
     // Extra top padding on the macOS desktop build clears the traffic lights
     // (hiddenInset title bar), except in fullscreen where they are gone.
     <div class="flex flex-col items-start gap-3 p-4 [[data-platform=darwin]:not([data-fullscreen=true])_&]:pt-14">
-      <Icon name="diffusion-logo-large" class="size-6 text-muted-foreground" />
+      <Icon name="diffusion-logo-large" class="text-muted-foreground" />
       <div class="flex w-full flex-col items-start gap-1 text-muted-foreground">
         <p class="w-full text-2xl leading-5 font-450 text-muted-foreground">
           Diffusion Studio
@@ -74,7 +74,7 @@ export function DashboardSidebarHeader() {
 export function DashboardSidebarTitleBar() {
   return (
     <div class="flex h-10 shrink-0 items-center gap-2 pl-3 pr-4">
-      <Icon name="diffusion-logo" class="size-6 shrink-0 text-muted-foreground" />
+      <Icon name="diffusion-logo" class="shrink-0 text-muted-foreground" />
       <p class="min-w-0 flex-1 truncate text-xs font-450 text-muted-foreground">Diffusion Studio</p>
       <p class="shrink-0 text-xxs text-muted-foreground">v{APP_VERSION}</p>
     </div>
@@ -197,7 +197,7 @@ export function DashboardSidebarUser(props: DashboardSidebarUserProps) {
             {planLabel()}
           </span>
         </div>
-        <Icon name="settings" class="size-6 shrink-0 text-muted-foreground" />
+        <Icon name="settings" class="shrink-0 text-muted-foreground" />
       </button>
     </div>
   );

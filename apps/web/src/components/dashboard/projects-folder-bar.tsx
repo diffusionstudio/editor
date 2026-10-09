@@ -46,7 +46,7 @@ export function DashboardProjectsFolderBar() {
             <span class="relative size-4 shrink-0 text-muted-foreground">
               <Icon
                 name="navigation.folder"
-                class="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2"
+                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
               />
             </span>
             <div class="flex min-w-0 flex-1 flex-col justify-center gap-1">

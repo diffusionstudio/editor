@@ -321,7 +321,7 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
               onClick={handleEyeDropper}
               disabled={isEyeDropperOpen() || !("EyeDropper" in window)}
             >
-              <Icon name="tool.color-picker" class="size-6" />
+              <Icon name="tool.color-picker" />
             </TooltipTrigger>
             <TooltipContent>Pick color from screen</TooltipContent>
           </Tooltip>

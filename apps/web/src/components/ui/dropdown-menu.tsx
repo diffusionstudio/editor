@@ -213,7 +213,7 @@ export const DropdownMenuCheckboxItem = <T extends ValidComponent = "div">(
     >
       <span class="pointer-events-none absolute left-0 flex size-6 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon name="confirm-check" class="size-6 text-foreground" />
+          <Icon name="confirm-check" class="text-foreground" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {props.children}

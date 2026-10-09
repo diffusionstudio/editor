@@ -86,7 +86,7 @@ export const SelectTrigger = <T extends ValidComponent = "button">(
                 local.class,
               )}
             >
-              <Icon name="chevron-down" class="size-6" />
+              <Icon name="chevron-down" />
             </div>
           )
         }}
@@ -172,7 +172,7 @@ export const SelectItem = <T extends ValidComponent = "li">(
     >
       <span class="size-6 shrink-0 flex items-center justify-center overflow-clip">
         <SelectPrimitive.ItemIndicator>
-          <Icon name="confirm-check" class="size-6 text-foreground" />
+          <Icon name="confirm-check" class="text-foreground" />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemLabel class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">

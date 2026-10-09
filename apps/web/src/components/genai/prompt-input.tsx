@@ -454,7 +454,7 @@ export function PromptInput(props: PromptInputProps) {
                   class="text-muted-foreground"
                   onClick={swapVideoFrameImages}
                 >
-                  <Icon name="switch-flip" class="size-6" />
+                  <Icon name="switch-flip" />
                 </TooltipTrigger>
                 <TooltipContent>Swap frames</TooltipContent>
               </Tooltip>
@@ -543,7 +543,7 @@ export function PromptInput(props: PromptInputProps) {
               class="text-muted-foreground"
               onClick={() => setSettingsVisible(!settingsVisible())}
             >
-              <Icon name="preferences-adjust" class="size-6" />
+              <Icon name="preferences-adjust" />
             </TooltipTrigger>
             <TooltipContent>Settings</TooltipContent>
           </Tooltip>
@@ -617,7 +617,7 @@ export function PromptInput(props: PromptInputProps) {
             disabled={!hasPromptText()}
             onClick={handleSubmit}
           >
-            <Icon name="arrow-right" class="-rotate-90 size-6" />
+            <Icon name="arrow-right" class="-rotate-90" />
           </TooltipTrigger>
           <TooltipContent class="flex-col items-stretch px-2 pt-0.5 pb-2">
             <div class="flex h-7 items-center gap-2">
@@ -636,7 +636,7 @@ export function PromptInput(props: PromptInputProps) {
         <div class="absolute inset-0 z-20 rounded-xl bg-background border border-primary p-2 overflow-hidden">
           <div class="absolute inset-0 bg-accent/40 rounded-xl" />
           <div class="flex size-full items-center justify-center rounded-md border border-dashed border-border-input">
-            <Icon name="attachment" class="size-6 text-muted-foreground" />
+            <Icon name="attachment" class="text-muted-foreground" />
             <span class="text-xs font-450 text-muted-foreground">Drop images here</span>
           </div>
         </div>
@@ -691,7 +691,7 @@ function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
             variant="ghost"
             class={DEFAULT_BUTTON_CLASS}
           >
-            <Icon name={selectedIcon()} class="size-6" />
+            <Icon name={selectedIcon()} />
             {selectedLabel()}
           </Button>
         )}
@@ -715,7 +715,7 @@ function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
                     <Show when={option.icon}>
                       {(icon) => (
                         <span class="grid h-7 w-7 shrink-0 place-items-center overflow-clip">
-                          <Icon name={icon()} class="size-6 text-muted-foreground" />
+                          <Icon name={icon()} class="text-muted-foreground" />
                         </span>
                       )}
                     </Show>
@@ -730,7 +730,7 @@ function PromptInputCompactMenu(props: PromptInputCompactMenuProps) {
                     </span>
                     <span class="grid h-7 w-7 shrink-0 place-items-center overflow-clip">
                       <Show when={selected()}>
-                        <Icon name="confirm-check" class="size-6 text-foreground" />
+                        <Icon name="confirm-check" class="text-foreground" />
                       </Show>
                     </span>
                   </DropdownMenuItem>
@@ -787,7 +787,7 @@ function DurationMenu(props: DurationMenuProps) {
             variant="ghost"
             class={DEFAULT_BUTTON_CLASS}
           >
-            <Icon name="duration" class="size-6" />
+            <Icon name="duration" />
             {`${value()}s`}
           </Button>
         )}
@@ -938,7 +938,7 @@ function DurationRangeMenu(props: DurationRangeMenuProps) {
               if (draft() !== undefined && commit()) setOpen(false);
             }}
           >
-            <Icon name="confirm-check" class="size-6 text-foreground" />
+            <Icon name="confirm-check" class="text-foreground" />
           </button>
         </Show>
       </div>
@@ -1062,7 +1062,7 @@ function ModelMenu(props: ModelMenuProps) {
             variant="ghost"
             class={DEFAULT_BUTTON_CLASS}
           >
-            <Icon name={icon()} class="size-6" />
+            <Icon name={icon()} />
             {name()}
           </Button>
         )}
@@ -1102,7 +1102,7 @@ function ModelMenu(props: ModelMenuProps) {
                     {...nav.rowProps(index)}
                   >
                     <div class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-sm" >
-                      <Icon name={option.icon!} class="size-6 text-muted-foreground" />
+                      <Icon name={option.icon!} class="text-muted-foreground" />
                     </div>
                     <div class="min-w-0 flex-1 text-muted-foreground">
                       <div class="flex items-center gap-0.5 font-450">
@@ -1113,7 +1113,7 @@ function ModelMenu(props: ModelMenuProps) {
                     </div>
                     <span class="grid size-7 place-items-center">
                       <Show when={selected()}>
-                        <Icon name="confirm-check" class="size-6 text-foreground" />
+                        <Icon name="confirm-check" class="text-foreground" />
                       </Show>
                     </span>
                   </button>
@@ -1211,7 +1211,7 @@ function VoiceMenu(props: VoiceMenuProps) {
             variant="ghost"
             class={DEFAULT_BUTTON_CLASS}
           >
-            <Icon name="user" class="size-6" />
+            <Icon name="user" />
             {selectedLabel()}
           </Button>
         )}
@@ -1262,7 +1262,7 @@ function VoiceMenu(props: VoiceMenuProps) {
                       >
                         <Icon
                           name={isPlaying() ? "pause" : "play"}
-                          class={cx("size-6 text-white transition-opacity group-hover/thumb:opacity-100", isPlaying() ? "opacity-100" : "opacity-0")}
+                          class={cx("text-white transition-opacity group-hover/thumb:opacity-100", isPlaying() ? "opacity-100" : "opacity-0")}
                         />
                       </div>
                     </div>
@@ -1277,7 +1277,7 @@ function VoiceMenu(props: VoiceMenuProps) {
                     </div>
                     <span class="grid size-7 place-items-center shrink-0">
                       <Show when={selected()}>
-                        <Icon name="confirm-check" class="size-6 text-foreground" />
+                        <Icon name="confirm-check" class="text-foreground" />
                       </Show>
                     </span>
                   </button>
@@ -1333,7 +1333,7 @@ export function PromptInputAttachButton(props: PromptInputAttachButtonProps) {
       )}
       onClick={props.onClick}
     >
-      <Icon name={props.icon} class="size-6" />
+      <Icon name={props.icon} />
       <span class="whitespace-nowrap text-xs">
         {props.label}
       </span>

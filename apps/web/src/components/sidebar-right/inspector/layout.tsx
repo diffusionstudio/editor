@@ -178,7 +178,7 @@ export function LayoutPanel(props: LayoutPanelProps) {
             <span class="relative h-6 w-4 shrink-0 overflow-clip">
               <Icon
                 name="chevron-down"
-                class="absolute -left-1 top-0 size-6 text-muted-foreground"
+                class="absolute -left-1 top-0 text-muted-foreground"
               />
             </span>
           </DropdownMenuTrigger>

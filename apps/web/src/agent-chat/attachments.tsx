@@ -199,7 +199,7 @@ export function DropOverlay(props: { radius?: string }) {
             shape-rendering="crispEdges"
           />
         </svg>
-        <Icon name="attachment" class="size-6 text-muted-foreground" />
+        <Icon name="attachment" class="text-muted-foreground" />
         <span class="text-xs font-450 text-muted-foreground">Drop files or folders here</span>
       </div>
     </div>
@@ -236,7 +236,7 @@ export function AttachmentTile(props: AttachmentTileProps) {
                 </span>
               }
             >
-              <Icon name="navigation.folder" class="size-6" />
+              <Icon name="navigation.folder" />
             </Show>
           }
         >

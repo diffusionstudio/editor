@@ -103,7 +103,7 @@ export function KeyframeLayer(props: LayerRowProps) {
         >
           <div class="size-4 shrink-0" />
           <div class="size-4 shrink-0 mr-0.5 flex items-center justify-center overflow-clip">
-            <Icon name="keyframe-indicator-default" class="size-6" />
+            <Icon name="keyframe-indicator-default" />
           </div>
           <span class="text-xs px-0.5 shrink-0 whitespace-nowrap text-muted-foreground">
             {formatProperty(path())}
@@ -119,7 +119,7 @@ export function KeyframeLayer(props: LayerRowProps) {
             disabled={previous() === undefined}
             onClick={() => goTo(previous())}
           >
-            <Icon name="caret-left" class="size-6" />
+            <Icon name="caret-left" />
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent>Previous keyframe</TooltipContent>
@@ -136,7 +136,7 @@ export function KeyframeLayer(props: LayerRowProps) {
             disabled={next() === undefined}
             onClick={() => goTo(next())}
           >
-            <Icon name="caret-right" class="size-6" />
+            <Icon name="caret-right" />
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent>Next keyframe</TooltipContent>

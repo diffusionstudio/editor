@@ -36,7 +36,7 @@ export function InspectorHeader() {
               style="-webkit-app-region: no-drag;"
             >
               <span>{zoomLabel()}</span>
-              <Icon name="chevron-down" class="size-6 shrink-0" />
+              <Icon name="chevron-down" class="shrink-0" />
             </Button>
           )}
         />

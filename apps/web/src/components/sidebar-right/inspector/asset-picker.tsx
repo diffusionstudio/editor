@@ -121,7 +121,7 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
                         variant="ghost"
                         class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
                       >
-                        <Icon name="preferences-adjust" class="size-6" />
+                        <Icon name="preferences-adjust" />
                       </Button>
                     )}
                   />
@@ -141,11 +141,11 @@ export function AssetFillPicker(props: AssetFillPickerProps) {
                       <div class="flex items-center">
                         <span class="w-6 h-7 shrink-0 flex items-center justify-center">
                           <Show when={assetFilter() === option.value}>
-                            <Icon name="confirm-check" class="size-6 text-popover-foreground" />
+                            <Icon name="confirm-check" class="text-popover-foreground" />
                           </Show>
                         </span>
                         <span class="w-7 h-7 flex items-center justify-center">
-                          <Icon name={option.icon} class="size-6 text-popover-foreground" />
+                          <Icon name={option.icon} class="text-popover-foreground" />
                         </span>
                       </div>
                       <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">

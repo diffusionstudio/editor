@@ -61,7 +61,7 @@ export function SegmentedIconTabs<T extends string = string>(
                     <span class="text-xs font-450">{item.label}</span>
                   </Match>
                   <Match when={typeof item.icon === "string"}>
-                    <Icon name={item.icon as string} class={cx("size-6", props.iconClass)} />
+                    <Icon name={item.icon as string} class={props.iconClass} />
                   </Match>
                   <Match when={typeof item.icon === "object" && item.icon != null}>
                     {item.icon}

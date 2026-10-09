@@ -247,7 +247,7 @@ export function FillPicker(props: FillPickerProps) {
               class="text-muted-foreground"
               onClick={props.onClose}
             >
-              <Icon name="close-remove" class="size-6" />
+              <Icon name="close-remove" />
             </TooltipTrigger>
             <TooltipContent>Close</TooltipContent>
           </Tooltip>
@@ -311,7 +311,7 @@ export function FitMenu(props: FitMenuProps) {
                   variant="ghost"
                   class="text-muted-foreground hover:bg-accent data-expanded:bg-accent"
                 >
-                  <Icon name="media-fit-type" class="size-6" />
+                  <Icon name="media-fit-type" />
                 </Button>
               )}
             />
@@ -395,7 +395,6 @@ function BlendModeMenu(props: BlendModeMenuProps) {
                 >
                   <Icon
                     name={selected() === BlendModeType.SOURCE_OVER ? "blending-mode-default" : "blending-mode-set"}
-                    class="size-6"
                   />
                 </Button>
               )}
@@ -417,7 +416,7 @@ function BlendModeMenu(props: BlendModeMenuProps) {
                   onPointerEnter={() => preview(mode)}
                 >
                   <Show when={selected() === mode} fallback={<div class="size-6" />}>
-                    <Icon name="confirm-check" class="size-6 text-primary-foreground" />
+                    <Icon name="confirm-check" class="text-primary-foreground" />
                   </Show>
                   <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                     {displayBlendMode(mode)}

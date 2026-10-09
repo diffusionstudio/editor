@@ -142,7 +142,7 @@ export function CaptionSettings(props: CaptionSettingsProps) {
                   class="text-muted-foreground"
                   onClick={() => setOpenSlot(null)}
                 >
-                  <Icon name="close-remove" class="size-6" />
+                  <Icon name="close-remove" />
                 </TooltipTrigger>
                 <TooltipContent>Close</TooltipContent>
               </Tooltip>

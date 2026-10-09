@@ -206,7 +206,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
         <Show when={option().unit === "deg"}>
           <ControlRow label="Angle">
             <ControlledTextField
-              icon={<Icon name="rotate-angle" class="size-6" />}
+              icon={<Icon name="rotate-angle" />}
               value={value()}
               onNumber={editValue}
               unit="deg"

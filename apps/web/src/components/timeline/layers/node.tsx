@@ -231,11 +231,11 @@ export function NodeLayer(props: LayerRowProps) {
                 class="size-4 shrink-0 flex items-center justify-center overflow-clip invisible group-hover/layers:visible focus-ring rounded-sm"
               >
                 <Show when={props.layer.expandable}>
-                  <Icon name={props.expanded ? "chevron-down" : "chevron-right"} class="size-6 hover:text-foreground" />
+                  <Icon name={props.expanded ? "chevron-down" : "chevron-right"} class="hover:text-foreground" />
                 </Show>
               </button>
               <div class="size-4 shrink-0 flex items-center justify-center overflow-clip mr-0.5">
-                <Icon name={icon()} class="size-6" />
+                <Icon name={icon()} />
               </div>
               <Show
                 when={editing()}
@@ -277,7 +277,7 @@ export function NodeLayer(props: LayerRowProps) {
                 style={{ visibility: muted() ? 'visible' : undefined }}
                 onClick={toggleMuted}
               >
-                <Icon name="mute" class="size-6" />
+                <Icon name="mute" />
               </TooltipTrigger>
               <TooltipPortal>
                 <TooltipContent>{muted() ? "Unmute" : "Mute"}</TooltipContent>
@@ -292,7 +292,7 @@ export function NodeLayer(props: LayerRowProps) {
                 style={{ visibility: soloed() ? 'visible' : undefined }}
                 onClick={toggleSoloed}
               >
-                <Icon name="solo" class="size-6" />
+                <Icon name="solo" />
               </TooltipTrigger>
               <TooltipPortal>
                 <TooltipContent>{soloed() ? "Unsolo" : "Solo"}</TooltipContent>
@@ -307,8 +307,8 @@ export function NodeLayer(props: LayerRowProps) {
                 onClick={toggleHidden}
                 style={{ visibility: hidden() ? 'visible' : undefined }}
               >
-                <Show when={!hidden()} fallback={<Icon name="eye-off" class="size-6" />}>
-                  <Icon name="eye-on" class="size-6" />
+                <Show when={!hidden()} fallback={<Icon name="eye-off" />}>
+                  <Icon name="eye-on" />
                 </Show>
               </TooltipTrigger>
               <TooltipPortal>

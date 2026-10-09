@@ -176,7 +176,7 @@ export function SourceRows(props: SourceRowsProps) {
                   class="text-muted-foreground"
                   onClick={() => setPicking(undefined)}
                 >
-                  <Icon name="close-remove" class="size-6" />
+                  <Icon name="close-remove" />
                 </TooltipTrigger>
                 <TooltipContent>Close</TooltipContent>
               </Tooltip>
@@ -319,7 +319,7 @@ function SolidFillRow(props: SolidFillRowProps) {
                   class="text-muted-foreground"
                   onClick={() => props.onPickingChange(false)}
                 >
-                  <Icon name="close-remove" class="size-6" />
+                  <Icon name="close-remove" />
                 </TooltipTrigger>
                 <TooltipContent>Close</TooltipContent>
               </Tooltip>
