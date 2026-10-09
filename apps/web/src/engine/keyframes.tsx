@@ -24,6 +24,7 @@ import {
   findKeyframeTargetNode,
   framesToSeconds,
   getNodeLocalFrame,
+  getParentEntity,
   getPropertyPaths,
   Paint,
   PaintType,
@@ -142,6 +143,22 @@ export function syncKeyframe(world: World, editor: DocumentEditor, target: Entit
 export function removeKeyframeTrack(world: World, editor: DocumentEditor, target: Entity, property: AnimatableProperty): void {
   const track = findKeyframeTrack(world, target, property);
   if (track) editor.remove(track);
+}
+
+/**
+ * `entities` plus every track they would leave without keyframes, so that
+ * removing a track's last keyframes removes the track too.
+ */
+export function withEmptiedTracks(entities: Entity[]): Entity[] {
+  const doomed = new Set(entities);
+  for (const entity of entities) {
+    if (!entity.has(Keyframe)) continue;
+    const track = getParentEntity(entity);
+    if (!track?.has(KeyframeTrack) || doomed.has(track)) continue;
+    const keyframes = track.get(Cache)?.keyframes ?? [];
+    if (keyframes.every((keyframe) => doomed.has(keyframe))) doomed.add(track);
+  }
+  return [...doomed];
 }
 
 /** The props a paint's keyframe holds, by what the paint is. A gradient's stops keep their own. */

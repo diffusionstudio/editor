@@ -38,6 +38,7 @@ import { applyClipPaths, cancelClipPath } from '../clip-path';
 import { getDocumentEditor } from '../editor';
 import { groupSelection, ungroupSelection, unwrapSequenceSelection, wrapSelectionInScene, wrapSelectionInSequence } from '../group';
 import { getEditHistory } from '../history';
+import { withEmptiedTracks } from '../keyframes';
 import { cancelObjectMask, getObjectTrack, trackObjectMask, undoMaskStroke } from '../object-mask';
 import { splitAtPlayhead } from '../split';
 import { Keys, MODIFIER_KEYS, ObjectMaskTool, Pointer } from '../traits';
@@ -68,7 +69,7 @@ export function deleteSelection(world: World): void {
 	const selected = [...world.query(Selected)];
 
 	if (selected.length) {
-		getDocumentEditor(world).remove(selected);
+		getDocumentEditor(world).remove(withEmptiedTracks(selected));
 	}
 };
 
