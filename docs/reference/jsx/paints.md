@@ -11,7 +11,7 @@ Internally a node's fill is not a property but a **paint child**: a sub-entity a
 </rect>
 ```
 
-Paint elements are valid inside any filled visual element (`<rect>`, `<text>`, `<textRange>`, `<video>`, `<image>`, `<html>`, `<surface>`, and a `<scene>`); a `<group>` has no fill of its own, so it takes none. Multiple paints stack in document order; later paints render on top, and a paint child on a `<video>`/`<image>` draws over the media paint created by `src`.
+Paint elements are valid inside any filled visual element (`<rect>`, `<text>`, `<textRange>`, `<video>`, `<image>`, `<html>`, `<surface>`, and a `<scene>`); a `<group>` has no fill of its own, so it takes none. A [`<stroke>`](./styles.md#stroke) takes solid and gradient paints too, and draws its line with them. Multiple paints stack in document order; later paints render on top, and a paint child on a `<video>`/`<image>` draws over the media paint created by `src`.
 
 | Element | Props | Meaning |
 | ------- | ----- | ------- |
@@ -31,7 +31,7 @@ Colors accept any CSS color; alpha is ignored (use `opacity`). `color`, `opacity
 
 ## Placing a gradient
 
-Gradients are placed the way SVG places them by default (`gradientUnits="objectBoundingBox"`): in fractions of the parent's box, not px. `0`–`1` spans the box's width horizontally and its height vertically, so a gradient keeps its place when the box is resized. Values outside `0`–`1` reach past the edges.
+Gradients are placed the way SVG places them by default (`gradientUnits="objectBoundingBox"`): in fractions of the parent's box, not px. Under a `<stroke>`, the box is the stroke's parent's. `0`–`1` spans the box's width horizontally and its height vertically, so a gradient keeps its place when the box is resized. Values outside `0`–`1` reach past the edges.
 
 A `<linearGradientPaint>` draws stop `0` at (`x1`, `y1`) and stop `1` at (`x2`, `y2`), SVG's names:
 

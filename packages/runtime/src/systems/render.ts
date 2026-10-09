@@ -566,12 +566,14 @@ function renderShadows(world: World, entity: Entity): void {
 function renderStrokes(world: World, entity: Entity): void {
 	const ctx = getCtx(world);
 	const eid = entity.id();
-	const strokes = store(world, Cache).strokes[eid];
+	const cache = store(world, Cache);
+	const strokes = cache.strokes[eid];
 	if (!strokes) return;
 
 	const computed = store(world, Computed);
 	const blendMode = store(world, BlendMode);
-	const paintStore = store(world, Paint);
+	const w = computed.width[eid]!;
+	const h = computed.height[eid]!;
 
 	for (const stroke of strokes) {
 		if (stroke.has(Hidden)) continue;
@@ -585,28 +587,50 @@ function renderStrokes(world: World, entity: Entity): void {
 		}
 
 		applyStrokeStyle(ctx, world, stroke);
-		ctx.globalAlpha = savedAlpha * computed.opacity[sid]!;
+		const strokeAlpha = savedAlpha * computed.opacity[sid]!;
+		const strokeCO = ctx.globalCompositeOperation;
 
-		const paintType = paintStore.value[sid];
-		if (paintType === PaintType.LINEAR_GRADIENT) {
-			const w = computed.width[eid]!;
-			const h = computed.height[eid]!;
-			strokeLinearGradient(world, stroke, ctx, w, h);
-		} else if (paintType === PaintType.RADIAL_GRADIENT) {
-			const w = computed.width[eid]!;
-			const h = computed.height[eid]!;
-			strokeRadialGradient(world, stroke, ctx, w, h);
-		} else if (paintType === PaintType.ANGULAR_GRADIENT) {
-			const w = computed.width[eid]!;
-			const h = computed.height[eid]!;
-			strokeAngularGradient(world, stroke, ctx, w, h);
-		} else {
-			ctx.strokeStyle = colorToHex(computed.color[sid]!);
-			ctx.stroke();
+		// The stroke's own paint (its `color`) is intrinsic, beneath its paint
+		// children; each child draws through the same line at its own opacity.
+		ctx.globalAlpha = strokeAlpha;
+		strokeWithPaint(world, ctx, stroke, w, h);
+
+		for (const paint of cache.fills[sid] ?? NO_STROKE_PAINTS) {
+			if (paint.has(Hidden)) continue;
+			const pid = paint.id();
+			const pbi = blendMode.value[pid] ?? 0;
+
+			ctx.globalCompositeOperation = pbi !== 0 ? COMPOSITE_OPERATIONS[pbi]! : strokeCO;
+			ctx.globalAlpha = strokeAlpha * computed.opacity[pid]!;
+			strokeWithPaint(world, ctx, paint, w, h);
 		}
 
 		ctx.globalCompositeOperation = savedCO;
 		ctx.globalAlpha = savedAlpha;
+	}
+}
+
+// Stable empty list for strokes without paint children, so the render loop allocates none.
+const NO_STROKE_PAINTS: Entity[] = [];
+
+/**
+ * Strokes the current path, in the line style already set on `ctx`, with a
+ * paint in a `w` × `h` box: a stroke's own paint or one of its paint
+ * children. A solid paints only with a `Color`, so a stroke whose color is
+ * unset draws nothing of its own.
+ */
+function strokeWithPaint(world: World, ctx: Ctx2D, paint: Entity, w: number, h: number): void {
+	const paintType = paint.has(Paint) ? store(world, Paint).value[paint.id()] : undefined;
+
+	if (paintType === PaintType.LINEAR_GRADIENT) {
+		strokeLinearGradient(world, paint, ctx, w, h);
+	} else if (paintType === PaintType.RADIAL_GRADIENT) {
+		strokeRadialGradient(world, paint, ctx, w, h);
+	} else if (paintType === PaintType.ANGULAR_GRADIENT) {
+		strokeAngularGradient(world, paint, ctx, w, h);
+	} else if (paint.has(Color)) {
+		ctx.strokeStyle = colorToHex(store(world, Computed).color[paint.id()]!);
+		ctx.stroke();
 	}
 }
 

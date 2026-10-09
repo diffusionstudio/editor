@@ -572,10 +572,15 @@ export type RectProps = CommonProps & FillProps & {
 
 /**
  * `<stroke>` — an outline of the parent's box (or glyphs), a sub-entity like a
- * paint: `color`/`opacity` are its paint, `width`/`join`/`cap`/`miterLimit`
- * its line style. Several stack in document order, later ones on top.
+ * paint: `color` is its own solid paint, `width`/`join`/`cap`/`miterLimit` its
+ * line style, and paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+ * `<RadialGradientPaint>`, `<AngularGradientPaint>`) draw through the same
+ * line over `color`, placed in the parent's box. `opacity` and `blendMode`
+ * apply to all of it. Several stack in document order, later ones on top.
  */
-export type StrokeProps = ColorProps & PaintProps & TrackChildren & {
+export type StrokeProps = Partial<ColorProps> & PaintProps & {
+  /** Paint children, stacked over `color`; `<KeyframeTrack>` children. */
+  children?: SolidJSX.Element;
   /** Line width, px. Default 1. */
   width?: number;
   /** How the stroke turns corners. Default "miter". */
@@ -697,6 +702,7 @@ export type KeyframeProps = {
 
 export type SolidPaintProps = ColorProps & PaintProps & TrackChildren;
 
+/** A gradient's box is its parent's; under a `<stroke>`, the stroke's parent's. */
 export type GradientPaintProps = PaintProps & {
   /** `<ColorStop>` children — the gradient's color stops. */
   children?: SolidJSX.Element;

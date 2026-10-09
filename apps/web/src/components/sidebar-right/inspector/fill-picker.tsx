@@ -31,7 +31,7 @@ import {
   SolidPaint,
   VideoPaint,
 } from "@diffusionstudio/reconciler";
-import { BlendMode, BlendModeType, Cache, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, Paint, PaintType, Rotation, ScaleMode, ScaleModeType } from "@diffusionstudio/runtime";
+import { BlendMode, BlendModeType, Cache, Color, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, Paint, PaintType, Rotation, ScaleMode, ScaleModeType, Stroke, getParentEntity } from "@diffusionstudio/runtime";
 import { useEditor } from "@/engine/hooks";
 import { BLEND_MODE_ORDER, BLEND_MODE_SEPARATORS, blendModeName, displayBlendMode } from "./blend-modes";
 import { readStopProps } from "./gradient-stops";
@@ -77,7 +77,6 @@ export type FillPickerProps = {
   node: Entity;
   fill: Entity;
   onClose(): void;
-  /** The picker replaced the fill element; this one is the paint now. */
   onReplace(next: Entity): void;
   tabs?: FillTab[];
 };
@@ -109,6 +108,10 @@ export function FillPicker(props: FillPickerProps) {
   const world = useWorld();
   const editor = useEditor();
 
+  // Whose box the paint is placed in: a stroke has none, so its paints are
+  // placed in its parent's, and that is where the gradient's handles go.
+  const box = () => (props.node.has(Stroke) ? getParentEntity(props.node) : null) ?? props.node;
+
   const paint = useTrait(() => props.fill, Paint);
   const paintType = () => paint()?.value ?? PaintType.SOLID;
 
@@ -125,6 +128,18 @@ export function FillPicker(props: FillPickerProps) {
    */
   const replaceFill = (element: () => unknown) => {
     const fills = props.node.get(Cache)?.fills ?? [];
+
+    // A stroke's own `color` is the paint beneath all its children: the new
+    // paint takes that place, the bottom of the stack, and the color is unset.
+    if (props.fill === props.node) {
+      const [next] = editor.insertElement(props.node, element, fills[0]);
+      if (!next) return;
+
+      editor.editProperty(props.node, "color", false);
+      props.onReplace(next);
+      return;
+    }
+
     const index = fills.indexOf(props.fill);
     const anchor = index === -1 ? undefined : fills[index + 1];
 
@@ -139,6 +154,16 @@ export function FillPicker(props: FillPickerProps) {
     setCurrentTab(tab);
 
     if (tab === "solid" && paintType() !== PaintType.SOLID) {
+      // A stroke drawn by this paint alone goes back to its own `color`, the
+      // shorthand for a solid paint, rather than gaining a <solidPaint>.
+      const fills = props.node.get(Cache)?.fills ?? [];
+      if (props.node.has(Stroke) && !props.node.has(Color) && fills.length === 1) {
+        editor.editProperty(props.node, "color", DEFAULT_SOLID_COLOR);
+        editor.remove(props.fill);
+        props.onReplace(props.node);
+        return;
+      }
+
       replaceFill(() => <SolidPaint color={DEFAULT_SOLID_COLOR} />);
       return;
     }
@@ -237,7 +262,7 @@ export function FillPicker(props: FillPickerProps) {
             <SolidFillPicker fill={props.fill} />
           </Show>
           <Show when={currentTab() === "gradient"}>
-            <GradientFillPicker node={props.node} fill={props.fill} onChangeKind={handleGradientKindChange} />
+            <GradientFillPicker node={box()} fill={props.fill} onChangeKind={handleGradientKindChange} />
           </Show>
           <Show when={currentTab() === "asset"}>
             <AssetFillPicker node={props.node} fill={props.fill} onSelectAsset={handleSelectAsset} />

@@ -46,7 +46,7 @@ Sub-entity children of the node (or paint) that holds them. See [styles.md](./st
 
 | Element | What it is |
 | ------- | ---------- |
-| `<stroke>` | An outline of the parent's box or glyphs. Several stack. |
+| `<stroke>` | An outline of the parent's box or glyphs, in its `color` or its solid and gradient paint children. Several stack. |
 | `<shadow>` | A drop shadow beneath the parent's silhouette. Several stack. |
 | `<effect>` | A CSS-style filter over the parent's rendered pixels. Several stack. |
 | `<mask>` | A matte limiting the `<effect>` holding it: the alpha of a tracked frame sequence. Under an `opacity` effect, the cut-out. See [styles.md](./styles.md#mask). |

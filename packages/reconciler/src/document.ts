@@ -661,7 +661,6 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity.add(Stroke);
 				entity.add(Paint);
 				entity.set(Paint, { value: PaintType.SOLID });
-				entity.add(Color);
 				entity.add(StrokeStyle);
 				break;
 			}

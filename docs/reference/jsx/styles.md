@@ -12,18 +12,31 @@ Three sub-entity children a node takes alongside its [paints](./paints.md): an o
 
 ## `<stroke>`
 
-An outline of the parent's box — or of its glyphs, on a `<text>` or a `<textRange>`. `color`/`opacity` are its paint, the rest its line style.
+An outline of the parent's box — or of its glyphs, on a `<text>` or a `<textRange>`. `color` is its paint, the rest its line style.
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |
-| `color` | `string` | **required** | Any CSS color; alpha is ignored (use `opacity`). |
+| `color` | `string` | none | Any CSS color; alpha is ignored (use `opacity`). Without it the stroke is drawn by its paint children alone. |
 | `width` | `number` | `1` | Line width, px. A `width` [keyframe track](./keyframes.md) under a stroke drives this, not a box. |
 | `join` | `"miter" \| "round" \| "bevel"` | `"miter"` | How the stroke turns corners. |
 | `cap` | `"butt" \| "round" \| "square"` | `"butt"` | How the stroke ends open paths (text glyphs). |
 | `miterLimit` | `number` | `10` | Miter length limit, as a ratio of the width. |
-| `opacity` | `number` | `1` | `0`–`1`. |
+| `opacity` | `number` | `1` | `0`–`1`, over `color` and every paint child. |
 | `blendMode` | `BlendMode` | `"sourceOver"` | How the stroke composites. |
 | `hidden` | `boolean` | absent | Excludes the stroke without removing it. |
+
+`color` is shorthand for a solid paint, as `fill` is on a node. To draw the line with a gradient, put the [paint](./paints.md) inside the stroke instead: `<solidPaint>`, `<linearGradientPaint>`, `<radialGradientPaint>` and `<angularGradientPaint>` are allowed, and any other paint is an error. Paint children stack over `color` in document order, each through the same line, and take their own `opacity` and `blendMode`. A gradient is placed in the box of the stroke's parent, the same box its fills use, so a fill and a stroke with the same gradient line up. The line is centered on the box's edge, so its outer half reaches past `rx={0.5}`.
+
+```tsx
+<rect width={640} height={360} cornerRadius={24} fill="#111111">
+  <stroke width={8} join="round">
+    <angularGradientPaint rotation={-90}>
+      <colorStop offset={0} color="#FF0055" />
+      <colorStop offset={1} color="#0055FF" />
+    </angularGradientPaint>
+  </stroke>
+</rect>
+```
 
 ## `<shadow>`
 

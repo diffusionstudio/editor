@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createMemo, createSignal } from "solid-js";
+import { Show, createMemo, createSignal } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
@@ -14,15 +14,17 @@ import {
   FloatingInspectorTitle,
 } from "@/components/ui/floating-inspector";
 import { ControlRow } from "@/components/ui/control-group";
-import { ColorOpacityRow } from "@/components/ui/color-opacity-row";
-import { ColorOpacityPicker } from "@/components/ui/color-opacity-picker";
+import { FillItem } from "@/components/ui/fill-item";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Keyframe } from "@/components/ui/keyframe";
 import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { Computed, StrokeJoin, StrokeStyle, colorToHex } from "@diffusionstudio/runtime";
+import { Cache, Computed, StrokeJoin, StrokeStyle } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
+import { FillPicker, type FillTab } from "./fill-picker";
+
+import type { Accessor } from "solid-js";
 
 import type { StrokeJoin as StrokeJoinName } from "@diffusionstudio/jsx";
 import type { Entity } from "koota";
@@ -39,10 +41,26 @@ const JOIN_NAMES: Record<StrokeJoin, StrokeJoinName> = {
   [StrokeJoin.ROUND]: "round",
 };
 
+/** A line is drawn with a color or a gradient, never a picture. */
+const STROKE_TABS: FillTab[] = ["solid", "gradient"];
+
 /** `<stroke>`'s defaults; a control left at one of these unsets its prop. */
-const DEFAULT_OPACITY = 1;
 const DEFAULT_WIDTH = 1;
 const DEFAULT_MITER_LIMIT = 10;
+
+// Stable identity, so a stroke without paint children does not resample every tick.
+const NO_PAINTS: Entity[] = [];
+
+/**
+ * The paint the inspector shows for `stroke`: its topmost paint child, or,
+ * without one, the stroke itself, whose `color` is its own solid paint. A
+ * stroke stacking several paint children is edited through its top one.
+ */
+export function useStrokePaint(stroke: Accessor<Entity>): Accessor<Entity> {
+  // Cache is derived state, written without change events.
+  const paints = useDerived(() => stroke().get(Cache)?.fills ?? NO_PAINTS);
+  return createMemo(() => paints().at(-1) ?? stroke());
+}
 
 type StrokeInspectorProps = {
   stroke: Entity;
@@ -51,41 +69,27 @@ type StrokeInspectorProps = {
 };
 
 /**
- * One `<stroke>`: its paint (color and opacity) and its line style
- * (`width`/`join`/`miterLimit`). A stroke is a solid color and takes no paint
- * children, so the color half is the color picker alone, with no gradient or
- * asset tab. `cap` has no control yet: it only shows on open paths (text
- * glyphs) and there are no icons for it.
+ * One `<stroke>`: its paint and its line style (`width`/`join`/`miterLimit`).
+ * The paint is the stroke's own `color` or a gradient paint child, picked in
+ * the fill picker without its asset tab; a gradient is placed in the box of
+ * the stroke's parent, so that is where its handles go. `cap` has no control
+ * yet: it only shows on open paths (text glyphs) and there are no icons for it.
  */
 export function StrokeInspector(props: StrokeInspectorProps) {
   const world = useWorld();
   const editor = useEditor();
 
-  let colorRowRef: HTMLDivElement | undefined;
+  let inspectorRef: HTMLDivElement | undefined;
 
-  const [pickingColor, setPickingColor] = createSignal(false);
+  const [pickingPaint, setPickingPaint] = createSignal(false);
 
-  const color = useDerived(() => props.stroke.get(Computed)?.color ?? 0);
-  const opacity = useDerived(() => props.stroke.get(Computed)?.opacity ?? DEFAULT_OPACITY);
+  const paint = useStrokePaint(() => props.stroke);
   const width = useDerived(() => props.stroke.get(Computed)?.strokeWidth ?? DEFAULT_WIDTH);
 
   const style = useTrait(() => props.stroke, StrokeStyle);
 
   const join = createMemo(() => JOIN_NAMES[style()?.join ?? StrokeJoin.MITER]);
   const miterLimit = () => style()?.miterLimit ?? DEFAULT_MITER_LIMIT;
-
-  /** A stroke's color is required, never unset. */
-  const editColor = (value: number) => {
-    const hex = colorToHex(value);
-    editor.editProperty(props.stroke, "color", hex);
-    syncKeyframe(world, editor, props.stroke, "color", hex);
-  };
-
-  const editOpacity = (value: number) => {
-    const next = Math.round(value * 100) / 100;
-    editor.editProperty(props.stroke, "opacity", next === DEFAULT_OPACITY ? false : next);
-    syncKeyframe(world, editor, props.stroke, "opacity", next);
-  };
 
   const editWidth = (value: number) => {
     // Unlike a node's width this is the line width, not `resizeEntity`, so
@@ -107,13 +111,13 @@ export function StrokeInspector(props: StrokeInspectorProps) {
   };
 
   const handleClose = () => {
-    setPickingColor(false);
+    setPickingPaint(false);
     props.onClose();
   };
 
   return (
     <>
-      <FloatingInspector open anchorRef={props.anchorRef} width={248}>
+      <FloatingInspector open anchorRef={props.anchorRef} width={248} ref={inspectorRef}>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle>Stroke</FloatingInspectorTitle>
           <Tooltip>
@@ -131,15 +135,8 @@ export function StrokeInspector(props: StrokeInspectorProps) {
         </FloatingInspectorHeader>
         <FloatingInspectorSeparator />
         <FloatingInspectorContent class="flex flex-col gap-2 p-4">
-          <ControlRow label="Color" ref={colorRowRef}>
-            <ColorOpacityRow
-              color={color()}
-              onChangeColor={editColor}
-              opacity={opacity()}
-              onChangeOpacity={editOpacity}
-              onClick={() => setPickingColor(true)}
-              keyframe={<Keyframe target={props.stroke} property="opacity" />}
-            />
+          <ControlRow label="Paint">
+            <FillItem fill={paint()} onClick={() => setPickingPaint(true)} />
           </ControlRow>
 
           <ControlRow label="Weight">
@@ -177,34 +174,16 @@ export function StrokeInspector(props: StrokeInspectorProps) {
         </FloatingInspectorContent>
       </FloatingInspector>
 
-      <FloatingInspector open={pickingColor} anchorRef={() => colorRowRef} offset={26}>
-        <FloatingInspectorHeader>
-          <FloatingInspectorTitle>Color</FloatingInspectorTitle>
-          <div class="ml-auto">
-            <Tooltip>
-              <TooltipTrigger
-                as={Button}
-                size="icon"
-                variant="ghost"
-                class="text-muted-foreground"
-                onClick={() => setPickingColor(false)}
-              >
-                <Icon name="close-remove" class="size-6" />
-              </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
-            </Tooltip>
-          </div>
-        </FloatingInspectorHeader>
-        <FloatingInspectorContent class="p-0">
-          <ColorOpacityPicker
-            color={color()}
-            opacity={opacity()}
-            onColorChange={editColor}
-            onOpacityChange={editOpacity}
-            keyframeTarget={props.stroke}
-          />
-        </FloatingInspectorContent>
-      </FloatingInspector>
+      <Show when={pickingPaint()}>
+        <FillPicker
+          anchorRef={inspectorRef!}
+          node={props.stroke}
+          fill={paint()}
+          tabs={STROKE_TABS}
+          onClose={() => setPickingPaint(false)}
+          onReplace={() => {}}
+        />
+      </Show>
     </>
   );
 }

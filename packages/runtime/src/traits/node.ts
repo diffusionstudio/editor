@@ -38,9 +38,10 @@ export const IsClipPath = trait();
 // sub-entities in ChildOf queries).
 export const Shadow = trait();
 
-// Tag for stroke sub-entities: the entity is the stroke's paint (Paint/Color/
-// Opacity/BlendMode like a fill; a missing Paint reads as solid) and carries
-// its own StrokeStyle.
+// Tag for stroke sub-entities: the entity is the stroke's intrinsic paint
+// (Paint/Color/Opacity/BlendMode like a fill; a solid without Color paints
+// nothing), carries its own StrokeStyle, and takes paint children of its own
+// (Cache.fills of the stroke), drawn through the same line above it.
 export const Stroke = trait();
 
 export const Hidden = trait();

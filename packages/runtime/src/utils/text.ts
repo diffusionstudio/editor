@@ -311,6 +311,8 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 	// Radial and angular paints' patterns, made on first use.
 	let patterns: EllipticalPatterns | null = null;
 
+	const cache = store(world, Cache);
+
 	// Draw all text shadows
 	{
 		ctx.save();
@@ -371,14 +373,14 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 		ctx.textAlign = 'start';
 		ctx.textBaseline = 'top';
 
+		const w = computed.width[eid]!;
+		const h = computed.height[eid]!;
+
 		for (const word of words) {
 			const strokes = getStrokes(world, entity, word.ranges);
 			if (!strokes.length) continue;
 
 			applyFont(ctx, world, entity, word.ranges);
-
-			const w = computed.width[eid]!;
-			const h = computed.height[eid]!;
 
 			// Draw strokes (if any)
 			for (const stroke of strokes) {
@@ -391,18 +393,38 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				if (blendMode !== 0) {
 					ctx.globalCompositeOperation = COMPOSITE_OPERATIONS[blendMode]!;
 				}
-				ctx.globalAlpha = savedAlpha * (stroke.has(Opacity) ? opacityStore.value[sid] ?? 1 : 1);
+				const strokeAlpha = savedAlpha * (stroke.has(Opacity) ? opacityStore.value[sid] ?? 1 : 1);
+				const strokeCO = ctx.globalCompositeOperation;
 				applyStrokeStyle(ctx, world, stroke);
 
-				const paintType = paintStore.value[sid];
-				if (paintType === PaintType.LINEAR_GRADIENT) {
-					ctx.strokeStyle = createLinearGradient(world, stroke, ctx, w, h);
-				} else if (paintType === PaintType.RADIAL_GRADIENT || paintType === PaintType.ANGULAR_GRADIENT) {
-					ctx.strokeStyle = getEllipticalPattern(world, ctx, patterns ??= new Map(), stroke, paintType, w, h);
-				} else {
-					ctx.strokeStyle = colorToHex(colorStore.value[sid] ?? 0x000000);
+				// The stroke's own paint (its `color`, index -1) is intrinsic,
+				// beneath its paint children; each child draws through the same
+				// line at its own opacity and blend mode.
+				const paints = cache.fills[sid] ?? NO_PAINTS;
+				for (let i = -1; i < paints.length; i++) {
+					const own = i < 0;
+					const paint = own ? stroke : paints[i]!;
+					if (!own && paint.has(Hidden)) continue;
+					const pid = paint.id();
+
+					const paintType = paint.has(Paint) ? paintStore.value[pid] : undefined;
+					if (paintType === PaintType.LINEAR_GRADIENT) {
+						ctx.strokeStyle = createLinearGradient(world, paint, ctx, w, h);
+					} else if (paintType === PaintType.RADIAL_GRADIENT || paintType === PaintType.ANGULAR_GRADIENT) {
+						ctx.strokeStyle = getEllipticalPattern(world, ctx, patterns ??= new Map(), paint, paintType, w, h);
+					} else if (paint.has(Color)) {
+						ctx.strokeStyle = colorToHex(colorStore.value[pid] ?? 0x000000);
+					} else {
+						// A solid without a Color: a stroke whose color is unset.
+						continue;
+					}
+
+					const paintBlendMode = !own && paint.has(BlendMode) ? blendStore.value[pid] ?? 0 : 0;
+					ctx.globalCompositeOperation = paintBlendMode !== 0 ? COMPOSITE_OPERATIONS[paintBlendMode]! : strokeCO;
+					ctx.globalAlpha = own ? strokeAlpha : strokeAlpha * (paint.has(Opacity) ? opacityStore.value[pid] ?? 1 : 1);
+					ctx.strokeText(word.chars, word.x, word.y);
 				}
-				ctx.strokeText(word.chars, word.x, word.y);
+
 				ctx.globalCompositeOperation = savedCO;
 			}
 		}
@@ -611,6 +633,9 @@ function getFills(world: World, entity: Entity, ranges: Entity[]): Entity[] {
 
 	return value;
 }
+
+// Stable empty list for strokes without paint children, so the render loop allocates none.
+const NO_PAINTS: Entity[] = [];
 
 function getStrokes(world: World, entity: Entity, ranges: Entity[]): Entity[] {
 	const cache = store(world, Cache);
