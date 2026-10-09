@@ -4,7 +4,7 @@
 
 import { store } from '../../world/store';
 import { CaptionAlign, CaptionType, PaintType, FontStyle, TextAlign, TextBaseline, TextCase } from '../../constants';
-import { Paint, Color, Caption, ItemIndex, TextRange, TextStyle } from '../../traits';
+import { Paint, Color, Caption, Computed, ItemIndex, TextRange, TextStyle } from '../../traits';
 import { renderText } from '../../utils/text';
 import { groupBy, findActiveGroup, splitSequence, clearTextRanges, resolveTranscript, setChars } from './utils';
 import { placeCaption } from './position';
@@ -136,7 +136,9 @@ export class GuineaCaptionDecoder implements CaptionDecoder {
 		const index = PSEUDO_RANDOM_SEQUENCE[this.colorIndex % PSEUDO_RANDOM_SEQUENCE.length]!;
 
 		if (this.fill) {
+			// Text draws Computed, which a direct store write does not mirror to.
 			store(world, Color).value[this.fill.id()] = colors[index]!;
+			store(world, Computed).color[this.fill.id()] = colors[index]!;
 		}
 
 		renderText(world, entity);

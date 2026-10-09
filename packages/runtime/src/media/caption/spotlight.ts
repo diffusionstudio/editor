@@ -4,7 +4,7 @@
 
 import { store } from '../../world/store';
 import { CaptionAlign, CaptionType, PaintType, FontStyle, TextAlign, TextBaseline, TextCase } from '../../constants';
-import { Paint, Color, Caption, TextRange } from '../../traits';
+import { Paint, Color, Caption, Computed, TextRange } from '../../traits';
 import { renderText } from '../../utils/text';
 import { groupBy, findActiveGroup, clearTextRanges, resolveTranscript, setChars } from './utils';
 import { placeCaption } from './position';
@@ -118,7 +118,9 @@ export class SpotlightCaptionDecoder implements CaptionDecoder {
 		const highlightColor = entity.get(Caption)?.colors?.[0] ?? HIGHLIGHT_COLOR;
 
 		if (this.fill) {
+			// Text draws Computed, which a direct store write does not mirror to.
 			store(world, Color).value[this.fill.id()] = highlightColor;
+			store(world, Computed).color[this.fill.id()] = highlightColor;
 		}
 
 		renderText(world, entity);

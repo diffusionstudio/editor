@@ -10,7 +10,7 @@ import {
 	TextAlign, TextBaseline, TextCase,
 } from '../constants';
 import {
-	Size, Hidden, Paint, Color, Blur, Offset, Opacity, BlendMode,
+	Size, Hidden, Paint, Color, BlendMode,
 	Chars, TextStyle, TextRange, TextCache, Cache, Computed, Camera,
 	RenderSurface, Root,
 } from '../traits';
@@ -299,10 +299,6 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 	const words = lines.flat();
 
 	const computed = store(world, Computed);
-	const offsetStore = store(world, Offset);
-	const blurStore = store(world, Blur);
-	const colorStore = store(world, Color);
-	const opacityStore = store(world, Opacity);
 	const blendStore = store(world, BlendMode);
 	const paintStore = store(world, Paint);
 
@@ -342,14 +338,14 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				if (shadow.has(Hidden)) continue;
 				const sid = shadow.id();
 
-				// Recycled-id safety: optional traits only behind has().
-				const hasOffset = shadow.has(Offset);
-				ctx.shadowOffsetX = (hasOffset ? offsetStore.x[sid] ?? 0 : 0) * shadowScale;
-				ctx.shadowOffsetY = (hasOffset ? offsetStore.y[sid] ?? 0 : 0) * shadowScale;
-				ctx.shadowBlur = (shadow.has(Blur) ? blurStore.value[sid] ?? 0 : 0) * shadowScale;
-				ctx.shadowColor = colorToHex(colorStore.value[sid] ?? 0x000000);
-				ctx.fillStyle = colorToHex(colorStore.value[sid] ?? 0x000000);
-				ctx.globalAlpha = savedAlpha * (shadow.has(Opacity) ? opacityStore.value[sid] ?? 1 : 1);
+				// Computed, not the authored traits: keyframes animate these.
+				const color = colorToHex(computed.color[sid]!);
+				ctx.shadowOffsetX = computed.offsetX[sid]! * shadowScale;
+				ctx.shadowOffsetY = computed.offsetY[sid]! * shadowScale;
+				ctx.shadowBlur = computed.blur[sid]! * shadowScale;
+				ctx.shadowColor = color;
+				ctx.fillStyle = color;
+				ctx.globalAlpha = savedAlpha * computed.opacity[sid]!;
 
 				if (widest !== null) {
 					ctx.strokeText(word.chars, word.x, word.y);
@@ -393,7 +389,7 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				if (blendMode !== 0) {
 					ctx.globalCompositeOperation = COMPOSITE_OPERATIONS[blendMode]!;
 				}
-				const strokeAlpha = savedAlpha * (stroke.has(Opacity) ? opacityStore.value[sid] ?? 1 : 1);
+				const strokeAlpha = savedAlpha * computed.opacity[sid]!;
 				const strokeCO = ctx.globalCompositeOperation;
 				applyStrokeStyle(ctx, world, stroke);
 
@@ -413,7 +409,7 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 					} else if (paintType === PaintType.RADIAL_GRADIENT || paintType === PaintType.ANGULAR_GRADIENT) {
 						ctx.strokeStyle = getEllipticalPattern(world, ctx, patterns ??= new Map(), paint, paintType, w, h);
 					} else if (paint.has(Color)) {
-						ctx.strokeStyle = colorToHex(colorStore.value[pid] ?? 0x000000);
+						ctx.strokeStyle = colorToHex(computed.color[pid]!);
 					} else {
 						// A solid without a Color: a stroke whose color is unset.
 						continue;
@@ -421,7 +417,7 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 
 					const paintBlendMode = !own && paint.has(BlendMode) ? blendStore.value[pid] ?? 0 : 0;
 					ctx.globalCompositeOperation = paintBlendMode !== 0 ? COMPOSITE_OPERATIONS[paintBlendMode]! : strokeCO;
-					ctx.globalAlpha = own ? strokeAlpha : strokeAlpha * (paint.has(Opacity) ? opacityStore.value[pid] ?? 1 : 1);
+					ctx.globalAlpha = own ? strokeAlpha : strokeAlpha * computed.opacity[pid]!;
 					ctx.strokeText(word.chars, word.x, word.y);
 				}
 
@@ -466,7 +462,7 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				if (blendMode !== 0) {
 					ctx.globalCompositeOperation = COMPOSITE_OPERATIONS[blendMode]!;
 				}
-				ctx.globalAlpha = savedAlpha * (fill.has(Opacity) ? opacityStore.value[fid] ?? 1 : 1);
+				ctx.globalAlpha = savedAlpha * computed.opacity[fid]!;
 
 				const paintType = paintStore.value[fid];
 				if (paintType === PaintType.LINEAR_GRADIENT) {
@@ -474,7 +470,7 @@ function renderTokens(ctx: Ctx, world: World, entity: Entity): void {
 				} else if (paintType === PaintType.RADIAL_GRADIENT || paintType === PaintType.ANGULAR_GRADIENT) {
 					ctx.fillStyle = getEllipticalPattern(world, ctx, patterns ??= new Map(), fill, paintType, w, h);
 				} else {
-					ctx.fillStyle = colorToHex(colorStore.value[fid] ?? 0x000000);
+					ctx.fillStyle = colorToHex(computed.color[fid]!);
 				}
 				ctx.fillText(word.chars, word.x, word.y);
 				ctx.globalCompositeOperation = savedCO;

@@ -5,7 +5,7 @@
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import { AssetThumbnail } from "@/components/ui/asset-thumbnail";
 import { Icon } from "@/components/ui/icon";
-import { Keyframe } from "@/components/ui/keyframe";
+import { PaintKeyframe } from "@/components/ui/keyframe";
 import { OpacitySwatch } from "@/components/ui/opacity-swatch";
 import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { AssetId, Computed, Paint, PaintType, colorToHex, parseColor } from "@diffusionstudio/runtime";
@@ -29,7 +29,8 @@ type FillItemProps = {
  * One paint, as the fills panel shows it: a swatch of what it paints, its
  * color (a solid) or its name (everything else), and an opacity that doubles
  * as a slider across the row. Both values are props of the paint element, so
- * they are written through the editor and keyframed after.
+ * they are written through the editor and keyframed after. The row's keyframe
+ * is the paint's one keyframe, for all of its props at once.
  */
 export function FillItem(props: FillItemProps) {
   const world = useWorld();
@@ -357,7 +358,7 @@ export function FillItem(props: FillItemProps) {
             class="z-20 min-w-2"
             onFocusIn={(e) => e.stopPropagation()}
           >
-            <Keyframe property="opacity" target={props.fill} />
+            <PaintKeyframe paint={props.fill} />
           </div>
         </div>
       </div>
