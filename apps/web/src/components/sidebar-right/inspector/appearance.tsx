@@ -353,7 +353,7 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
             step={1}
             min={3}
             onNumber={handlePointCountChange}
-            icon={<Icon name="tool.polygon-small" />}
+            icon={<Icon name="vector-side-count" />}
             sliderEnabled
             limitEvents
           />
