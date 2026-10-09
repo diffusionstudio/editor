@@ -6,6 +6,7 @@ import { For, Match, Switch, type Accessor, type JSX } from "solid-js";
 
 import { cx } from "@/lib/cva";
 import { Icon } from "@/components/ui/icon";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type SegmentedIconTab<T extends string = string> = {
   value: T;
@@ -40,32 +41,35 @@ export function SegmentedIconTabs<T extends string = string>(
             props.disabled || item.disabled;
 
           return (
-            <button
-              type="button"
-              class={cx(
-                "flex-1 h-7 flex items-center justify-center",
-                props.buttonClass,
-                isActive()
-                  ? "bg-inset text-foreground"
-                  : "bg-input text-muted-foreground",
-              )}
-              disabled={isDisabled()}
-              onClick={() => props.onChange?.(item.value)}
-              title={item.label}
-              aria-label={item.label}
-            >
-              <Switch>
-                <Match when={!item.icon}>
-                  <span class="text-xs font-450">{item.label}</span>
-                </Match>
-                <Match when={typeof item.icon === "string"}>
-                  <Icon name={item.icon as string} class={cx("size-6", props.iconClass)} />
-                </Match>
-                <Match when={typeof item.icon === "object" && item.icon != null}>
-                  {item.icon}
-                </Match>
-              </Switch>
-            </button>
+            <Tooltip openDelay={600} disabled={!item.icon}>
+              <TooltipTrigger
+                as="button"
+                type="button"
+                class={cx(
+                  "flex-1 h-7 flex items-center justify-center",
+                  props.buttonClass,
+                  isActive()
+                    ? "bg-inset text-foreground"
+                    : "bg-input text-muted-foreground",
+                )}
+                disabled={isDisabled()}
+                onClick={() => props.onChange?.(item.value)}
+                aria-label={item.label}
+              >
+                <Switch>
+                  <Match when={!item.icon}>
+                    <span class="text-xs font-450">{item.label}</span>
+                  </Match>
+                  <Match when={typeof item.icon === "string"}>
+                    <Icon name={item.icon as string} class={cx("size-6", props.iconClass)} />
+                  </Match>
+                  <Match when={typeof item.icon === "object" && item.icon != null}>
+                    {item.icon}
+                  </Match>
+                </Switch>
+              </TooltipTrigger>
+              <TooltipContent>{item.label}</TooltipContent>
+            </Tooltip>
           );
         }}
       </For>
