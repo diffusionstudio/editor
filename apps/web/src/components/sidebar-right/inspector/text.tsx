@@ -191,11 +191,13 @@ export function TextPanel(props: TextPanelProps) {
 
         <ControlledTextField
           class="flex-1"
+          icon={<Icon name="text.font-size" />}
           value={fontSize()}
           onNumber={(v) => editor.editProperty(entity(), 'fontSize', v)}
           step={1}
           min={1}
           autoSelect
+          sliderEnabled
           limitEvents
         />
       </ControlRow>
