@@ -24,9 +24,6 @@ import type { InspectValue, PropValue } from '@diffusionstudio/jsx';
 import type { Entity, World } from 'koota';
 import type { AuthoredTree, ProjectDocument, RuntimeDocument } from '@diffusionstudio/reconciler';
 
-/** A value an edit can carry to the file: what a source spells as a literal. */
-export type EditValue = PropValue;
-
 /**
  * A property the editor changed, in the vocabulary of the JSX rather than of
  * the traits it was written to: `source` is the element it belongs to (its
@@ -38,7 +35,7 @@ export interface PropEdit {
 	kind: 'prop';
 	source: string;
 	name: string;
-	value: EditValue;
+	value: PropValue;
 	/**
 	 * What the element authored for `name` before this edit — `false` for a
 	 * prop it did not author, the same value an editor unsets one with. The
@@ -76,7 +73,7 @@ export interface InsertEdit {
 	source: string;
 	parent: string;
 	tag: string;
-	props: Record<string, EditValue>;
+	props: Record<string, PropValue>;
 	before?: string;
 	text?: string;
 }
@@ -105,8 +102,9 @@ export interface MoveEdit {
 /**
  * A deleted subtree as it stood the moment before it went, one node per
  * authored element: the source it was stamped with, what a project would
- * author it as (live values included — this never crosses a wire), and its children in order. What an undo needs to put the subtree
- * back, and to pair the old sources with the new ones the reinsert mints.
+ * author it as (live values included — this never crosses a wire), and its
+ * children in order. What an undo needs to put the subtree back, and to pair
+ * the old sources with the new ones the reinsert mints.
  */
 export interface CapturedNode {
 	source: string;
@@ -139,7 +137,7 @@ export interface RemoveEdit {
  * own names — the pending source its entity has been re-stamped with, so the
  * write can answer with the real one (see `isPendingSource`).
  */
-export type LoopIteration = Record<string, { props: Record<string, EditValue>; text?: string; pending?: string }>;
+export type LoopIteration = Record<string, { props: Record<string, PropValue>; text?: string; pending?: string }>;
 
 /**
  * A `<For>`/`<Index>` the editor needs written out as its iterations, so that
@@ -190,23 +188,23 @@ export const isLooped = (entity: Entity): boolean => entity.isAlive() && entity.
 /** What `insertElement` learns about each element while it renders. */
 interface Recorded {
 	tag: string;
-	props: Record<string, EditValue>;
+	props: Record<string, PropValue>;
 }
 
 /**
- * A prop as an edit can carry it (see `EditValue`): a value a file spells as
+ * A prop as an edit can carry it (a `PropValue`): a value a file spells as
  * it is, or undefined for anything else — an element is written with whatever
  * of it the file can say, and the rest is the project's to keep, not the
  * writer's to guess at. The one place that decides this, so a new kind of
  * value is taught here once.
  */
-function wireValue(value: unknown): EditValue | undefined {
+function wireValue(value: unknown): PropValue | undefined {
 	return isPropValue(value) ? value : undefined;
 }
 
 /** `wireValue` over a whole authored element, dropping what will not travel. */
-function wireProps(props: Record<string, unknown>): Record<string, EditValue> {
-	const wired: Record<string, EditValue> = {};
+function wireProps(props: Record<string, unknown>): Record<string, PropValue> {
+	const wired: Record<string, PropValue> = {};
 	for (const [name, value] of Object.entries(props)) {
 		const wire = wireValue(value);
 		if (wire !== undefined) wired[name] = wire;
@@ -329,7 +327,7 @@ export class DocumentEditor {
 			if (background !== undefined && background !== DEFAULT_BACKGROUND) previous = colorToHex(background);
 		}
 		this.document.setProperty(node, name, value);
-		this.reportEdit(entity, name, wireValue(value)!, wireValue(previous) ?? false);
+		this.reportEdit(entity, name, value, wireValue(previous) ?? false);
 	}
 
 	/**
@@ -373,7 +371,7 @@ export class DocumentEditor {
 	 * (see `PropEdit`); a caller that cannot say what the value was leaves it
 	 * out, and the edit is not undoable.
 	 */
-	public reportEdit(entity: Entity, name: string, value: EditValue, previous?: unknown): void {
+	public reportEdit(entity: Entity, name: string, value: PropValue, previous?: unknown): void {
 		this.settle(entity);
 		const source = entity.get(Source)?.value;
 
