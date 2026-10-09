@@ -33,7 +33,7 @@ export default function Project() {
 | [stage.md](./stage.md) | `<stage>`: the root, canvas background and camera, canvas placement |
 | [scene.md](./scene.md) | `<scene>`: the clipped, playable frame and the timeline its children sit on |
 | [elements.md](./elements.md) | Element-to-node mapping, coordinates and sizing, the shared property table |
-| [group.md](./group.md), [rect.md](./rect.md), [text.md](./text.md), [video.md](./video.md), [image.md](./image.md), [audio.md](./audio.md) | Per-element props |
+| [group.md](./group.md), [rect.md](./rect.md), [ellipse.md](./ellipse.md), [polygon.md](./polygon.md), [text.md](./text.md), [video.md](./video.md), [image.md](./image.md), [audio.md](./audio.md) | Per-element props |
 | [fonts.md](./fonts.md) | Fonts for `<text>` and HTML: local families, the `fonts` tool |
 | [paints.md](./paints.md) | `<solidPaint>`, gradients, `<colorStop>`, `<imagePaint>` / `<videoPaint>` |
 | [styles.md](./styles.md) | `<stroke>`, `<shadow>`, `<effect>`: outlines, drop shadows and filters |

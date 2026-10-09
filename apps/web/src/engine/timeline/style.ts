@@ -11,6 +11,8 @@ import {
 	isCaption,
 	isGroup,
 	isClipPath,
+	isEllipse,
+	isPolygon,
 	isRect,
 	isScene,
 	isSequence,
@@ -85,6 +87,8 @@ export function getClipFallbackName(world: World, entity: Entity): string {
 			return 'Audio';
 	}
 
+	if (isEllipse(entity)) return 'Ellipse';
+	if (isPolygon(entity)) return 'Polygon';
 	return isRect(entity) ? 'Rectangle' : 'Layer';
 }
 

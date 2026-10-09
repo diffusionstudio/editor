@@ -19,7 +19,7 @@ A rect with neither `fill` nor a paint child draws nothing; it is still a box: i
 
 ## Clip paths
 
-A `<rect clipPath>` clips the element holding it instead of drawing: the parent's fills, strokes, shadows and children show only inside the rect's box. It is still a rect — same coordinates, `cornerRadius`, transform and timing — so it can be moved, rotated, keyframed and animated independently of what it clips: a clip path whose `width` is keyframed across a text is a wipe, one that starts later than its parent is a reveal.
+A `<rect clipPath>` clips the element holding it instead of drawing: the parent's fills, strokes, shadows and children show only inside the rect's box. [`<ellipse clipPath>`](./ellipse.md) and [`<polygon clipPath>`](./polygon.md) work the same way and clip to their curve or outline; everything below applies to them too. It is still a rect — same coordinates, `cornerRadius`, transform and timing — so it can be moved, rotated, keyframed and animated independently of what it clips: a clip path whose `width` is keyframed across a text is a wipe, one that starts later than its parent is a reveal.
 
 ```tsx
 <text fontSize={120} color="#FFFFFF" textAlign="center" textBaseline="middle">

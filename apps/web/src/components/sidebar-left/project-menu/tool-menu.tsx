@@ -40,6 +40,13 @@ export function ToolMenu() {
           Rectangle
           <DropdownMenuShortcut>R</DropdownMenuShortcut>
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setTool(ToolType.ELLIPSE)}>
+          Ellipse
+          <DropdownMenuShortcut>O</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setTool(ToolType.POLYGON)}>
+          Polygon
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setTool(ToolType.OBJECT_MASK)}>
           Object Mask
           <DropdownMenuShortcut>M</DropdownMenuShortcut>

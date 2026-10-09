@@ -93,6 +93,8 @@ export const COMPOSITION_TAGS = [
   "scene",
   "group",
   "rect",
+  "ellipse",
+  "polygon",
   "video",
   "image",
   "audio",

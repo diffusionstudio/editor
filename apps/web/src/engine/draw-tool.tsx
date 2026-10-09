@@ -3,16 +3,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * The tools that put a new node on the stage: rect, scene and text. A drag
- * draws the node's box, a click drops one of a default size centered on the
- * pointer. A rect or text lands in the scene the press was in, a scene always
- * at the root.
+ * The tools that put a new node on the stage: the shapes (rect, ellipse,
+ * polygon), scene and text. A drag draws the node's box, a click drops one of
+ * a default size centered on the pointer. A shape or text lands in the scene
+ * the press was in, a scene always at the root.
  */
 
-import { Rect, Scene, SolidPaint, Text } from '@diffusionstudio/reconciler';
+import { Ellipse, Polygon, Rect, Scene, SolidPaint, Text } from '@diffusionstudio/reconciler';
 import {
-	Computed, HitRegions, RenderSurface, Root, Source, Tool, ToolType,
-	findSceneAt, getNextName, identity2D, rectToQuad, screenToWorld, store, worldToLocal,
+	Computed, GeometryType, HitRegions, RenderSurface, Root, Source, Tool, ToolType,
+	findSceneAt, getNextName, identity2D, rectToQuad, screenToWorld, store, traceShape, worldToLocal,
 } from '@diffusionstudio/runtime';
 
 import { getDocumentEditor } from './editor';
@@ -25,6 +25,8 @@ type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 type DrawConfig = {
 	namePrefix: string;
+	/** The outline the preview traces. */
+	geometry: GeometryType;
 	fillColor: string;
 	/** What the box is filled with while it is drawn; null for an outline only. */
 	previewColor: string | null;
@@ -36,6 +38,23 @@ type DrawConfig = {
 const DRAW_CONFIG: Partial<Record<ToolType, DrawConfig>> = {
 	[ToolType.RECT]: {
 		namePrefix: 'Rect',
+		geometry: GeometryType.RECT,
+		fillColor: '#E0E0E0',
+		previewColor: '#E0E0E0',
+		defaultWidth: 300,
+		defaultHeight: 300,
+	},
+	[ToolType.ELLIPSE]: {
+		namePrefix: 'Ellipse',
+		geometry: GeometryType.ELLIPSE,
+		fillColor: '#E0E0E0',
+		previewColor: '#E0E0E0',
+		defaultWidth: 300,
+		defaultHeight: 300,
+	},
+	[ToolType.POLYGON]: {
+		namePrefix: 'Polygon',
+		geometry: GeometryType.POLYGON,
 		fillColor: '#E0E0E0',
 		previewColor: '#E0E0E0',
 		defaultWidth: 300,
@@ -43,6 +62,7 @@ const DRAW_CONFIG: Partial<Record<ToolType, DrawConfig>> = {
 	},
 	[ToolType.SCENE]: {
 		namePrefix: 'Scene',
+		geometry: GeometryType.RECT,
 		fillColor: '#000000',
 		previewColor: '#000000',
 		defaultWidth: 1920,
@@ -50,6 +70,7 @@ const DRAW_CONFIG: Partial<Record<ToolType, DrawConfig>> = {
 	},
 	[ToolType.TEXT]: {
 		namePrefix: 'Text',
+		geometry: GeometryType.RECT,
 		fillColor: '#FFFFFF',
 		previewColor: null,
 		// A clicked-in text sizes itself to its glyphs.
@@ -106,7 +127,9 @@ export function drawDrawTool(world: World, ctx: Ctx2D, resolution: number): void
 	ctx.resetTransform();
 
 	ctx.beginPath();
-	ctx.rect(rect.x, rect.y, rect.width, rect.height);
+	ctx.translate(rect.x, rect.y);
+	traceShape(ctx, config.geometry, rect.width, rect.height, 3);
+	ctx.translate(-rect.x, -rect.y);
 	if (config.previewColor) {
 		ctx.fillStyle = config.previewColor;
 		ctx.fill();
@@ -193,7 +216,7 @@ export function handleDrawInteraction(world: World, event: DispatchedPointerEven
 	let posX = isClick ? topLeft.x - width / 2 : topLeft.x;
 	let posY = isClick ? topLeft.y - height / 2 : topLeft.y;
 
-	// Scenes always live at the root; rect/text may parent into a hovered scene.
+	// Scenes always live at the root; anything else may parent into a hovered scene.
 	const parentScene = tool === ToolType.SCENE ? null : targetScene;
 	if (parentScene !== null) {
 		const local = worldToLocal(world, parentScene, posX, posY);
@@ -227,6 +250,20 @@ export function handleDrawInteraction(world: World, event: DispatchedPointerEven
 					Text
 					<SolidPaint color={config.fillColor} />
 				</Text>
+			);
+		}
+		if (tool === ToolType.ELLIPSE) {
+			return (
+				<Ellipse name={name} x={x} y={y} {...size}>
+					<SolidPaint color={config.fillColor} />
+				</Ellipse>
+			);
+		}
+		if (tool === ToolType.POLYGON) {
+			return (
+				<Polygon name={name} x={x} y={y} {...size}>
+					<SolidPaint color={config.fillColor} />
+				</Polygon>
 			);
 		}
 		return (

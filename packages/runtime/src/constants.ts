@@ -68,6 +68,8 @@ export enum ConstraintType {
 export enum GeometryType {
   RECT,
   TEXT,
+  ELLIPSE,
+  POLYGON,
 }
 
 export enum PaintType {
@@ -185,4 +187,6 @@ export enum ToolType {
   LINEAR_GRADIENT,
   RADIAL_GRADIENT,
   ANGULAR_GRADIENT,
+  ELLIPSE,
+  POLYGON,
 }

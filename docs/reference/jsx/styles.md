@@ -12,7 +12,7 @@ Three sub-entity children a node takes alongside its [paints](./paints.md): an o
 
 ## `<stroke>`
 
-An outline of the parent's box — or of its glyphs, on a `<text>` or a `<textRange>`. `color` is its paint, the rest its line style.
+An outline of the parent's shape (its box, or the curve of an `<ellipse>`, the corners of a `<polygon>`) — or of its glyphs, on a `<text>` or a `<textRange>`. `color` is its paint, the rest its line style.
 
 | Prop | Type | Default | Meaning |
 | ---- | ---- | ------- | ------- |

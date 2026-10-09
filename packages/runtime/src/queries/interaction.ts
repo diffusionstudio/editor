@@ -13,14 +13,15 @@
 import { Not, Or } from 'koota';
 
 import {
-	Anchor, Computed, Geometry, Group, LocalTransform, Offset, Selected,
+	Anchor, Computed, Geometry, Group, LocalTransform, Offset, PointCount, Selected,
 	Sequential, WorldBounds, WorldTransform,
 } from '../traits';
+import { GeometryType } from '../constants';
 import { store } from '../world/store';
 import { isStage } from './predicates';
 import { getViewMatrix } from './camera';
 import {
-	decompose2D, identity2D, invert2D, multiply2D, rectToQuad, rotate2D,
+	decompose2D, identity2D, invert2D, multiply2D, pointInShape, rectToQuad, rotate2D,
 	scale2D, skew2D, transformPoint, translate2D,
 } from '../math';
 
@@ -101,8 +102,17 @@ export function isPointerInEntity(world: World, entity: Entity, point: Point): b
 	const originX = computed.originX[eid] ?? 0;
 	const originY = computed.originY[eid] ?? 0;
 
-	return local.x >= originX && local.x <= originX + (computed.width[eid] ?? 0)
-		&& local.y >= originY && local.y <= originY + (computed.height[eid] ?? 0);
+	const width = computed.width[eid] ?? 0;
+	const height = computed.height[eid] ?? 0;
+
+	const type = entity.has(Geometry) ? store(world, Geometry).value[eid] : undefined;
+	if (type === GeometryType.ELLIPSE || type === GeometryType.POLYGON) {
+		const pointCount = entity.has(PointCount) ? store(world, PointCount).value[eid]! : 3;
+		return pointInShape(type, local.x - originX, local.y - originY, width, height, pointCount);
+	}
+
+	return local.x >= originX && local.x <= originX + width
+		&& local.y >= originY && local.y <= originY + height;
 }
 
 /** The entities a selection mask spans: sequences are not spatial, so they never do. */

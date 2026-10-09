@@ -7,7 +7,7 @@ import { trait } from 'koota';
 import { GeometryType, PaintType, CaptionType, CaptionAlign } from '../constants';
 
 
-// Geometric primitive: RECT or TEXT (see GeometryType). Other node-like roles
+// Geometric primitive: RECT, ELLIPSE, POLYGON or TEXT (see GeometryType). Other node-like roles
 // (group, audio, scene, caption) are layered on top via tag traits.
 export const Geometry = trait({ value: GeometryType.RECT as GeometryType });
 

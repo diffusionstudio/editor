@@ -570,6 +570,41 @@ export type RectProps = CommonProps & FillProps & {
   children?: SolidJSX.Element;
 };
 
+/** `<ellipse>` — an ellipse inscribed in its box. Takes the same children as `<rect>`. */
+export type EllipseProps = CommonProps & FillProps & {
+  /**
+   * Makes the ellipse a clip path of its parent, as `<rect clipPath>` does:
+   * the parent shows only inside the curve. Never rendered or hit.
+   */
+  clipPath?: boolean;
+  /**
+   * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<Animation>` and `<KeyframeTrack>` children.
+   */
+  children?: SolidJSX.Element;
+};
+
+/**
+ * `<polygon>` — a regular polygon stretched to fill its box, its first
+ * corner at the top center: a triangle by default.
+ */
+export type PolygonProps = CommonProps & FillProps & {
+  /** How many corners, a whole number of at least 3. Default 3. */
+  pointCount?: number;
+  /**
+   * Makes the polygon a clip path of its parent, as `<rect clipPath>` does:
+   * the parent shows only inside its outline. Never rendered or hit.
+   */
+  clipPath?: boolean;
+  /**
+   * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<Animation>` and `<KeyframeTrack>` children.
+   */
+  children?: SolidJSX.Element;
+};
+
 /**
  * `<stroke>` — an outline of the parent's box (or glyphs), a sub-entity like a
  * paint: `color` is its own solid paint, `width`/`join`/`cap`/`miterLimit` its

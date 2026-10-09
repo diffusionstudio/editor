@@ -35,7 +35,7 @@ const round2 = (value: number): number => Math.round(value * 100) / 100;
 // The node the tool is aimed at, reactive so the bar follows it.
 const [clipPathTarget, setClipPathTarget] = createSignal<Entity | null>(null);
 
-/** The node the picked rects will clip, reactive; null while the tool is down. */
+/** The node the picked shapes will clip, reactive; null while the tool is down. */
 export { clipPathTarget };
 
 export function getClipPathTarget(): Entity | null {
@@ -43,7 +43,7 @@ export function getClipPathTarget(): Entity | null {
 	return target?.isAlive() ? target : null;
 }
 
-/** Picks the tool to add clip paths to `target`. The selection stays on it until a rect is picked. */
+/** Picks the tool to add clip paths to `target`. The selection stays on it until a shape is picked. */
 export function beginClipPathFor(world: World, target: Entity): void {
 	setClipPathTarget(target);
 	world.set(Tool, { value: ToolType.CLIP_PATH });
@@ -55,8 +55,9 @@ export function clearClipPathTarget(): void {
 }
 
 /**
- * Whether `entity` can become a clip path of `target`: a plain rect (a clip
- * path is always a `<rect>`, so media, text and containers are out), not one
+ * Whether `entity` can become a clip path of `target`: a plain shape (a clip
+ * path is a `<rect>`, `<ellipse>` or `<polygon>`, so media, text and
+ * containers are out), not one
  * already, and not the target or something the target sits inside — a node
  * cannot be moved into its own subtree.
  */
@@ -66,7 +67,7 @@ export function canClipWith(world: World, target: Entity, entity: Entity): boole
 	return !getEntityTree(world, entity).includes(target);
 }
 
-/** The selected rects Confirm would apply to the target, in selection order. */
+/** The selected shapes Confirm would apply to the target, in selection order. */
 export function getClipPathPicks(world: World): Entity[] {
 	const target = getClipPathTarget();
 	if (!target) return [];
@@ -74,8 +75,8 @@ export function getClipPathPicks(world: World): Entity[] {
 }
 
 /**
- * Makes the picked rects clip paths of the target, one undo step, and puts
- * the tool down with the target selected. Each rect keeps its place on the
+ * Makes the picked shapes clip paths of the target, one undo step, and puts
+ * the tool down with the target selected. Each shape keeps its place on the
  * canvas: its matrix is carried from the parent it had into the target's
  * space and written back as `x`, `y` and `rotation`, with whatever scale the
  * move adds (a target drawn at half size, say) folded into its `width` and
@@ -91,29 +92,29 @@ export function applyClipPaths(world: World): void {
 	const flip = store(world, Flip);
 	const targetInverse = invert2D(entityWorldMat(world, target));
 
-	for (const rect of picks) {
-		const eid = rect.id();
+	for (const shape of picks) {
+		const eid = shape.id();
 		const width = computed.width[eid] ?? 0;
 		const height = computed.height[eid] ?? 0;
-		const anchor = entityAnchor(world, rect);
+		const anchor = entityAnchor(world, shape);
 
 		// Where it is drawn now, pivot folded in (see `bakeContainerInto`),
 		// taken into the target's space before the move changes its parent.
 		const placed = decompose2D(multiply2D(
 			targetInverse,
-			multiply2D(entityWorldMat(world, rect), translate2D(anchor.x * width, anchor.y * height)),
+			multiply2D(entityWorldMat(world, shape), translate2D(anchor.x * width, anchor.y * height)),
 		));
 
-		if (!editor.reparent(rect, target)) continue;
-		editor.editProperty(rect, 'clipPath', true);
+		if (!editor.reparent(shape, target)) continue;
+		editor.editProperty(shape, 'clipPath', true);
 
-		// The scale the rect carries of its own stays its own; the rest is the move's.
+		// The scale the shape carries of its own stays its own; the rest is the move's.
 		const ownX = (computed.scaleX[eid] ?? 1) * (flip.x[eid] ?? 1);
 		const ownY = (computed.scaleY[eid] ?? 1) * (flip.y[eid] ?? 1);
 		const nextWidth = ownX === 0 ? width : Math.round(width * Math.abs(placed.scaleX / ownX));
 		const nextHeight = ownY === 0 ? height : Math.round(height * Math.abs(placed.scaleY / ownY));
 
-		const offset = entityOffset(world, rect);
+		const offset = entityOffset(world, shape);
 		const x = Math.round(placed.x - anchor.x * nextWidth - offset.x);
 		const y = Math.round(placed.y - anchor.y * nextHeight - offset.y);
 		const rotation = round2(placed.rotation);
@@ -124,7 +125,7 @@ export function applyClipPaths(world: World): void {
 		if (rotation !== round2(computed.rotation[eid] ?? 0)) writes.push(['rotation', rotation]);
 		if (nextWidth !== Math.round(width)) writes.push(['width', nextWidth]);
 		if (nextHeight !== Math.round(height)) writes.push(['height', nextHeight]);
-		if (writes.length) editTransform(world, editor, rect, writes);
+		if (writes.length) editTransform(world, editor, shape, writes);
 	}
 
 	leaveClipPathTool(world, target);

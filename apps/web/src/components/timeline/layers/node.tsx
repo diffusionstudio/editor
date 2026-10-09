@@ -20,6 +20,8 @@ import {
   isCaption,
   isGroup,
   isClipPath,
+  isEllipse,
+  isPolygon,
   isScene,
   isSequence,
   isText,
@@ -358,6 +360,8 @@ function getLayerIcon(world: World, layer: TimelineNode) {
   if (isGroup(entity)) return "group";
   if (isCaption(entity)) return "captions-small";
   if (isText(entity)) return "text-small";
+  if (isEllipse(entity)) return "tool.ellipse-small";
+  if (isPolygon(entity)) return "tool.polygon-small";
 
   switch (findGeometryAsset(world, entity)?.type) {
     case 'IMAGE':

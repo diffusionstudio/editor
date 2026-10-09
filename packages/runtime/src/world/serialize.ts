@@ -9,7 +9,7 @@ import {
 	Caption,
 	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
 	Constraint, KeepAspectRatio,
-	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, Blur, ScaleMode, Effect, Mask,
+	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, PointCount, Blur, ScaleMode, Effect, Mask,
 	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, Shader,
 	Chars, TextStyle,
 	Delay, Trim, PlaybackRate, SourceFrameRate,
@@ -107,6 +107,7 @@ export interface EntityRecord {
 		bottomRight: number;
 		bottomLeft: number;
 	};
+	PointCount?: number;
 	Color?: number;
 	Blur?: number;
 	AssetId?: string;
@@ -298,6 +299,9 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	}
 	if (entity.has(CornerRadius)) {
 		record.CornerRadius = entity.get(CornerRadius)!.value;
+	}
+	if (entity.has(PointCount)) {
+		record.PointCount = entity.get(PointCount)!.value;
 	}
 	if (entity.has(MixedCornerRadius)) {
 		const radius = entity.get(MixedCornerRadius)!;
@@ -557,6 +561,10 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.CornerRadius !== undefined) {
 		entity.add(CornerRadius);
 		entity.set(CornerRadius, { value: e.CornerRadius });
+	}
+	if (e.PointCount !== undefined) {
+		entity.add(PointCount);
+		entity.set(PointCount, { value: e.PointCount });
 	}
 	if (e.MixedCornerRadius !== undefined) {
 		entity.add(MixedCornerRadius);

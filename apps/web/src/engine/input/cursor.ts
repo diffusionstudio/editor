@@ -89,6 +89,8 @@ const TOOL_CURSORS: Record<ToolType, { idle: CursorType; pressed?: CursorType }>
 	[ToolType.BLADE]: { idle: 'crosshair' },
 	[ToolType.SCENE]: { idle: 'crosshair' },
 	[ToolType.RECT]: { idle: 'crosshair' },
+	[ToolType.ELLIPSE]: { idle: 'crosshair' },
+	[ToolType.POLYGON]: { idle: 'crosshair' },
 	[ToolType.TEXT]: { idle: 'crosshair' },
 	[ToolType.TEXT_EDIT]: { idle: 'text' },
 	[ToolType.OBJECT_MASK]: { idle: 'crosshair' },

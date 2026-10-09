@@ -25,6 +25,7 @@ import type {
   CaptionsProps,
   ColorStopProps,
   EffectProps,
+  EllipseProps,
   MaskProps,
   LinearGradientPaintProps,
   RadialGradientPaintProps,
@@ -36,6 +37,7 @@ import type {
   KeyframeProps,
   KeyframeTrackProps,
   MediaPaintProps,
+  PolygonProps,
   RectProps,
   SceneProps,
   SequenceProps,
@@ -92,6 +94,8 @@ export const Stage = hostElement<StageProps>("Stage");
 export const Scene = hostElement<SceneProps>("Scene");
 export const Group = hostElement<GroupProps>("Group");
 export const Rect = hostElement<RectProps>("Rect");
+export const Ellipse = hostElement<EllipseProps>("Ellipse");
+export const Polygon = hostElement<PolygonProps>("Polygon");
 export const Video = hostElement<VideoProps>("Video");
 export const Image = hostElement<ImageProps>("Image");
 export const Audio = hostElement<AudioProps>("Audio");

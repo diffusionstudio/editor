@@ -19,7 +19,7 @@ import {
 import {
 	ChildOf, Hidden, Culled, Interactive, IsClipPath, AssetId,
 	ClipsContent, Geometry, Group, Paint, Color, Caption, ScaleMode, Shader,
-	BlendMode, Effect, Mask, Transition, MixedCornerRadius,
+	BlendMode, Effect, Mask, Transition, MixedCornerRadius, PointCount,
 	LocalTransform, WorldTransform, Computed, Cache,
 	Host, Scene, Shimmering,
 	Mode, FrameRate, Camera, Background, RenderSurface,
@@ -27,6 +27,8 @@ import {
 	Root, Time,
 } from '../traits';
 import { getParentNode } from '../queries/hierarchy';
+import { isShapeGeometry } from '../queries/predicates';
+import { traceShape } from '../math';
 import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
 import { FAILED_COLOR, getSourceFailure } from '../utils/source-failure';
@@ -60,12 +62,26 @@ function getCtx(world: World): Ctx2D {
 	return getSurfaceContext(world)!;
 }
 
-export function drawRectPath(world: World, entity: Entity): void {
+/**
+ * Begins the current path with the outline of `entity` in its own box: a
+ * rect with its corner radii, or the ellipse, line or polygon its geometry
+ * names. Everything that fills, strokes or clips by the node's shape reads it
+ * from here.
+ */
+export function drawShapePath(world: World, entity: Entity): void {
 	const ctx = getCtx(world);
 	const computed = store(world, Computed);
 	const eid = entity.id();
 	const w = computed.width[eid]!;
 	const h = computed.height[eid]!;
+
+	const type = entity.has(Geometry) ? store(world, Geometry).value[eid]! : GeometryType.RECT;
+	if (type !== GeometryType.RECT && isShapeGeometry(type)) {
+		const pointCount = entity.has(PointCount) ? store(world, PointCount).value[eid]! : 3;
+		ctx.beginPath();
+		traceShape(ctx, type, w, h, pointCount);
+		return;
+	}
 
 	const hasMixed = entity.has(MixedCornerRadius);
 	let tl = hasMixed ? computed.cornerRadiusTopLeft[eid]! : computed.cornerRadius[eid]!;
@@ -807,7 +823,7 @@ function renderWaveform(world: World, entity: Entity, fill: Entity): void {
 }
 
 function renderShapeNode(world: World, entity: Entity): void {
-	drawRectPath(world, entity);
+	drawShapePath(world, entity);
 	renderShadows(world, entity);
 	renderIntrinsicFill(world, entity);
 	renderFills(world, entity);
@@ -973,7 +989,7 @@ function clipTo(world: World, clipPath: Entity): void {
 	const ctx = getCtx(world);
 	ctx.save();
 	setWorldTransform(world, ctx, clipPath);
-	drawRectPath(world, clipPath);
+	drawShapePath(world, clipPath);
 	ctx.restore();
 	ctx.clip();
 }
@@ -1007,7 +1023,7 @@ function renderContent(world: World, entity: Entity, effects: string | null): vo
 		renderCaptionNode(world, entity);
 	} else if (store(world, Geometry).value[eid] === GeometryType.TEXT) {
 		renderTextNode(world, entity);
-	} else if (store(world, Geometry).value[eid] === GeometryType.RECT) {
+	} else if (isShapeGeometry(store(world, Geometry).value[eid])) {
 		renderShapeNode(world, entity);
 	}
 
@@ -1201,7 +1217,7 @@ function applyMaskedEffect(world: World, entity: Entity, pass: Extract<EffectPas
 
 	try {
 		resetLayer(coverage, local);
-		drawOnto(coverage.ctx, () => drawRectPath(world, entity));
+		drawOnto(coverage.ctx, () => drawShapePath(world, entity));
 		coverage.ctx.fillStyle = '#000000';
 		coverage.ctx.fill();
 		for (const mask of pass.masks) {
@@ -1254,7 +1270,7 @@ function drawMaskRemoval(world: World, entity: Entity, mask: Entity, layer: Laye
 	const { ctx } = layer;
 	resetLayer(layer, local);
 	ctx.save();
-	drawOnto(ctx, () => drawRectPath(world, entity));
+	drawOnto(ctx, () => drawShapePath(world, entity));
 	if (!inverted) {
 		ctx.fillStyle = '#000000';
 		ctx.fill();

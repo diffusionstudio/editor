@@ -27,6 +27,9 @@ export const MixedCornerRadius = trait({
 	bottomLeft: 0,
 });
 
+// A polygon's corner count, at least 3 (see `clampPointCount`). Absent means 3.
+export const PointCount = trait({ value: 3 });
+
 export const Blur = trait({ value: 0 });
 
 // Scale mode for image fills and any other scaled asset display.
