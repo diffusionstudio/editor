@@ -177,6 +177,30 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
     event.preventDefault()
   }
 
+  const clampToViewport = () => {
+    const root = rootRef
+    if (!root) return
+
+    setPosition((current) => {
+      const rect = root.getBoundingClientRect()
+      const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - rect.width - VIEWPORT_PADDING)
+      const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - rect.height - VIEWPORT_PADDING)
+
+      const left = clamp(current.left, VIEWPORT_PADDING, maxLeft)
+      const top = clamp(current.top, VIEWPORT_PADDING, maxTop)
+      return left === current.left && top === current.top ? current : { left, top }
+    })
+  }
+
+  const resizeObserver = new ResizeObserver(clampToViewport)
+
+
+  const setRoot = (el: HTMLDivElement) => {
+    if (rootRef) resizeObserver.unobserve(rootRef)
+    rootRef = el
+    resizeObserver.observe(el)
+  }
+
   const setDragHandle = (el: HTMLElement | null) => {
     if (dragHandleRef) {
       dragHandleRef.removeEventListener("pointerdown", onPointerDown)
@@ -208,26 +232,11 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
       }
     })
 
-    const onResize = () => {
-      const root = rootRef
-      if (!root) return
-
-      setPosition((current) => {
-        const rect = root.getBoundingClientRect()
-        const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - rect.width - VIEWPORT_PADDING)
-        const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - rect.height - VIEWPORT_PADDING)
-
-        return {
-          left: clamp(current.left, VIEWPORT_PADDING, maxLeft),
-          top: clamp(current.top, VIEWPORT_PADDING, maxTop),
-        }
-      })
-    }
-
-    window.addEventListener("resize", onResize)
+    window.addEventListener("resize", clampToViewport)
 
     onCleanup(() => {
-      window.removeEventListener("resize", onResize)
+      window.removeEventListener("resize", clampToViewport)
+      resizeObserver.disconnect()
       cleanupDrag()
       setDragHandle(null)
     })
@@ -242,7 +251,7 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
       <FloatingInspectorTopContext.Provider value={{ top: () => position().top }}>
         <FloatingInspectorContext.Provider value={contextValue}>
           <div
-            ref={rootRef}
+            ref={setRoot}
             data-slot="floating-inspector"
             class={cx(
               "bg-background border-border fixed z-50 w-[264px] overflow-hidden rounded-xl border",
