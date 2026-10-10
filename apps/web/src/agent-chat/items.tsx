@@ -55,7 +55,7 @@ export function ReasoningItem(props: { item: Of<"reasoning"> }) {
         aria-expanded={open()}
         onClick={() => expandable() && setOpen(!open())}
       >
-        <Icon name={open() ? "chevron-down" : "chevron-right"} class="size-6" />
+        <Icon name={open() ? "chevron-down" : "chevron-right"} />
         <span>Thinking</span>
       </button>
       <Show when={open()}>
@@ -80,13 +80,13 @@ export function ToolItem(props: { item: Of<"tool"> }) {
         onClick={() => expandable() && setOpen(!open())}
       >
         <Show when={props.item.status === "running"}>
-          <Icon name="spinner-loader" class="size-6 shrink-0 animate-spin" />
+          <Icon name="spinner-loader" class="shrink-0 animate-spin" />
         </Show>
         <Show when={props.item.status === "done"}>
-          <Icon name="confirm-check" class="size-6 shrink-0" />
+          <Icon name="confirm-check" class="shrink-0" />
         </Show>
         <Show when={props.item.status === "failed"}>
-          <Icon name="close-remove-small" class="size-6 shrink-0 text-destructive" />
+          <Icon name="close-remove-small" class="shrink-0 text-destructive" />
         </Show>
         <span class="shrink-0 font-450" classList={{ "agent-shimmer": props.item.status === "running" }}>
           {props.item.title}

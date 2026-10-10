@@ -50,6 +50,7 @@ export function BackgroundSettings() {
       <FloatingInspector
         open={isPickerOpen}
         anchorRef={anchorRef}
+        onClose={() => setIsPickerOpen(false)}
       >
         <FloatingInspectorHeader>
           <FloatingInspectorTitle>Color</FloatingInspectorTitle>
@@ -62,7 +63,7 @@ export function BackgroundSettings() {
                 class="text-muted-foreground"
                 onClick={() => setIsPickerOpen(false)}
               >
-                <Icon name="close-remove" class="size-6" />
+                <Icon name="close-remove" />
               </TooltipTrigger>
               <TooltipContent>Close</TooltipContent>
             </Tooltip>

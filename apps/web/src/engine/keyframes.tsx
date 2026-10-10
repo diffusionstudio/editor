@@ -22,9 +22,14 @@ import {
   FrameRate,
   colorToHex,
   findKeyframeTargetNode,
+  formatPath,
   framesToSeconds,
   getNodeLocalFrame,
+  getPathGeometry,
+  getParentEntity,
   getPropertyPaths,
+  Paint,
+  PaintType,
 } from "@diffusionstudio/runtime";
 
 import type { AnimatableProperty } from "@diffusionstudio/jsx";
@@ -56,9 +61,14 @@ export function keyframeFrame(target: Entity): number | null {
 /**
  * The value of `target`'s `property` as shown right now: the computed one,
  * which is what a keyframe added here should hold. Colors come back as the
- * CSS hex a color track's keyframe is spelled with.
+ * CSS hex a color track's keyframe is spelled with, outlines as path data.
  */
 function currentValue(world: World, target: Entity, property: AnimatableProperty): number | string | null {
+  // An outline, as the path data a `d` keyframe is spelled with.
+  if (property === "d") {
+    const geometry = getPathGeometry(world, target);
+    return geometry === null ? null : formatPath(geometry);
+  }
   const path = trackPropertyPath(target, property);
   if (!path) return null;
   const value = getPropertyPaths(world)[path]?.computed[target.id()];
@@ -140,4 +150,69 @@ export function syncKeyframe(world: World, editor: DocumentEditor, target: Entit
 export function removeKeyframeTrack(world: World, editor: DocumentEditor, target: Entity, property: AnimatableProperty): void {
   const track = findKeyframeTrack(world, target, property);
   if (track) editor.remove(track);
+}
+
+/**
+ * `entities` plus every track they would leave without keyframes, so that
+ * removing a track's last keyframes removes the track too.
+ */
+export function withEmptiedTracks(entities: Entity[]): Entity[] {
+  const doomed = new Set(entities);
+  for (const entity of entities) {
+    if (!entity.has(Keyframe)) continue;
+    const track = getParentEntity(entity);
+    if (!track?.has(KeyframeTrack) || doomed.has(track)) continue;
+    const keyframes = track.get(Cache)?.keyframes ?? [];
+    if (keyframes.every((keyframe) => doomed.has(keyframe))) doomed.add(track);
+  }
+  return [...doomed];
+}
+
+/** The props a paint's keyframe holds, by what the paint is. A gradient's stops keep their own. */
+function paintProperties(paint: Entity): AnimatableProperty[] {
+  switch (paint.get(Paint)?.value ?? PaintType.SOLID) {
+    case PaintType.SOLID:
+      return ["color", "opacity"];
+    case PaintType.LINEAR_GRADIENT:
+      return ["opacity", "x1", "y1", "x2", "y2"];
+    case PaintType.RADIAL_GRADIENT:
+    case PaintType.ANGULAR_GRADIENT:
+      return ["opacity", "cx", "cy", "rx", "ry", "rotation"];
+    default:
+      return ["opacity"];
+  }
+}
+
+/**
+ * The tracks behind a paint's keyframe. Only its own props count: a stroke
+ * standing in as its own paint also holds a `width` track, which is not one.
+ */
+export function findPaintKeyframeTracks(world: World, paint: Entity): Entity[] {
+  const paths: (string | undefined)[] = paintProperties(paint).map((property) => trackPropertyPath(paint, property));
+  return [...world.query(KeyframeTrack, ChildOf(paint))].filter((track) => paths.includes(track.get(KeyframeTrack)!.property));
+}
+
+/**
+ * A paint has one keyframe for all its props. With any of them keyed at the
+ * current frame, those keyframes are removed (each track with its last);
+ * otherwise every prop is keyed at its shown value.
+ */
+export function togglePaintKeyframe(world: World, editor: DocumentEditor, paint: Entity): void {
+  const frame = keyframeFrame(paint);
+  if (frame === null) return;
+
+  const existing: Entity[] = [];
+  for (const track of findPaintKeyframeTracks(world, paint)) {
+    const keyframe = findKeyframeAt(track, frame);
+    if (!keyframe) continue;
+    const last = (track.get(Cache)?.keyframes.length ?? 0) <= 1;
+    existing.push(last ? track : keyframe);
+  }
+
+  if (existing.length > 0) {
+    editor.remove(existing);
+    return;
+  }
+
+  for (const property of paintProperties(paint)) writeKeyframe(world, editor, paint, property);
 }

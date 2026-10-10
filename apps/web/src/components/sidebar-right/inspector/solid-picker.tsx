@@ -40,7 +40,6 @@ export function SolidFillPicker(props: SolidFillPickerProps) {
       opacity={opacity()}
       onColorChange={updateColor}
       onOpacityChange={updateOpacity}
-      keyframeTarget={props.fill}
     />
   );
 }

@@ -18,7 +18,7 @@ import { PromptInput } from "../genai/prompt-input";
 import { ActionBar } from "../genai/action-bar";
 import { ObjectMaskBar } from "./object-mask-bar";
 import { ClipPathBar } from "./clip-path-bar";
-import { For, Match, Show, Switch, createEffect, createMemo } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal } from "solid-js";
 import { Tool, ToolType } from "@diffusionstudio/runtime";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import { clearClipPathTarget, useTool } from "@/engine";
@@ -30,11 +30,31 @@ const CURSOR_TOOLS = [
   { tool: ToolType.OBJECT_MASK, label: 'Object Mask', shortcut: 'M', icon: 'object-mask', menuIcon: 'object-mask' },
 ] as const;
 
+const SHAPE_TOOLS = [
+  { tool: ToolType.RECT, label: 'Rectangle', shortcut: 'R', icon: 'tool.rectangle', menuIcon: 'tool.rectangle-small' },
+  { tool: ToolType.ELLIPSE, label: 'Ellipse', shortcut: 'O', icon: 'tool.ellipse', menuIcon: 'tool.ellipse-small' },
+  { tool: ToolType.POLYGON, label: 'Polygon', shortcut: undefined, icon: 'tool.polygon', menuIcon: 'tool.polygon-small' },
+] as const;
+
+type ShapeTool = (typeof SHAPE_TOOLS)[number];
+
+// The shape the toolbar offers: the one last picked, however it was picked.
+// Outlives the toolbar, which unmounts with the canvas.
+const [lastShapeTool, setLastShapeTool] = createSignal<ShapeTool>(SHAPE_TOOLS[0]);
+
 export function Toolbar() {
   const world = useWorld();
   const { promptInputOpen, promptInputConfig, openPromptInput, setPromptInputOpen } = usePromptInput();
   const selectedTool = useTool();
   const cursorTool = createMemo(() => CURSOR_TOOLS.find((cursor) => cursor.tool === selectedTool()));
+  const shapeTool = createMemo(() => SHAPE_TOOLS.find((shape) => shape.tool === selectedTool()));
+  // Editing a path's vertices is the pen's other half, as in Figma.
+  const penTool = () => selectedTool() === ToolType.PEN || selectedTool() === ToolType.PATH_EDIT;
+
+  createEffect(() => {
+    const shape = shapeTool();
+    if (shape) setLastShapeTool(shape);
+  });
 
   createEffect(() => {
     if (selectedTool() !== ToolType.CLIP_PATH) {
@@ -124,17 +144,64 @@ export function Toolbar() {
           </TooltipTrigger>
           <TooltipContent shortcut="F">Frame</TooltipContent>
         </Tooltip>
+        <div class="flex gap-1">
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon-square"
+              variant={shapeTool() ? 'default' : 'ghost'}
+              onClick={() => handleToolChange(lastShapeTool().tool)}
+              class={shapeTool() ? 'text-foreground' : 'text-muted-foreground'}
+            >
+              <Icon name={lastShapeTool().icon} />
+            </TooltipTrigger>
+            <TooltipContent shortcut={lastShapeTool().shortcut}>{lastShapeTool().label}</TooltipContent>
+          </Tooltip>
+          <DropdownMenu placement="top-start">
+            <Tooltip>
+              <TooltipTrigger<typeof DropdownMenuTrigger>
+                as={(triggerProps: object) => (
+                  <DropdownMenuTrigger<typeof Button>
+                    {...triggerProps}
+                    as={(buttonProps) => (
+                      <Button {...buttonProps} size="icon-select" variant="ghost" class="text-muted-foreground">
+                        <Icon name="chevron-down" />
+                      </Button>
+                    )}
+                  />
+                )}
+              />
+              <TooltipContent>Shape tools</TooltipContent>
+            </Tooltip>
+            <DropdownMenuPortal>
+              <DropdownMenuContent>
+                <For each={SHAPE_TOOLS}>
+                  {(shape) => (
+                    <DropdownMenuItem class="px-0 pr-2 gap-0.5" onSelect={() => handleToolChange(shape.tool)}>
+                      <div classList={{ "visible": selectedTool() === shape.tool }} class="invisible">
+                        <Icon name="confirm-check" class="text-foreground" />
+                      </div>
+                      <Icon name={shape.menuIcon} class="text-foreground" />
+                      <span class="mx-1 flex-1 whitespace-nowrap">{shape.label}</span>
+                      <DropdownMenuShortcut class="pl-6">{shape.shortcut}</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  )}
+                </For>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
+        </div>
         <Tooltip>
           <TooltipTrigger
             as={Button}
             size="icon-square"
-            variant={selectedTool() === ToolType.RECT ? 'default' : 'ghost'}
-            onClick={() => handleToolChange(ToolType.RECT)}
-            class={selectedTool() === ToolType.RECT ? 'text-foreground' : 'text-muted-foreground'}
+            variant={penTool() ? 'default' : 'ghost'}
+            onClick={() => handleToolChange(ToolType.PEN)}
+            class={penTool() ? 'text-foreground' : 'text-muted-foreground'}
           >
-            <Icon name="tool.rectangle" />
+            <Icon name="tool.pen" />
           </TooltipTrigger>
-          <TooltipContent shortcut="R">Rectangle</TooltipContent>
+          <TooltipContent shortcut="P">Pen</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger

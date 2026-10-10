@@ -16,7 +16,7 @@ export function runningLabel(last: Item | undefined): string {
 export function RunningIndicator(props: { last: Item | undefined }) {
   return (
     <div class="flex h-6 items-center text-[11px] text-muted-foreground" role="status" aria-live="polite">
-      <Icon name="spinner-loader" class="size-6 shrink-0 animate-spin" />
+      <Icon name="spinner-loader" class="shrink-0 animate-spin" />
       <span class="agent-ellipsis">{runningLabel(props.last)}</span>
     </div>
   );

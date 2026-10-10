@@ -62,48 +62,6 @@ export function resolveSequentialOverlaps(world: World, dragged: Entity[]): void
 }
 
 /**
- * Enforce the no-overlap invariant on a *freshly created* Sequential container.
- *
- * resolveSequentialOverlaps has an authoritative set: the clips the user just
- * dragged. On creation there is none: every child is a peer that merely happened
- * to overlap on the canvas. We pick a deterministic precedence instead; earlier
- * clips win and keep their full extent; later clips yield, trimmed back to start
- * after the clip preceding them (fully-covered clips are removed).
- *
- * Children are processed in start-frame order with each one authoritative over
- * all later siblings. Because every authoritative pass trims *all* later
- * siblings uniformly, each clip's start stays monotonic by rank, so the "dropped
- * clip lands inside a sibling" split case from resolveEntityOverlap cannot arise
- * here; only edge trims and removals.
- */
-export function resolveNewSequenceOverlaps(world: World, sequence: Entity): void {
-	if (!sequence.has(Sequential)) return;
-
-	const computed = store(world, Computed);
-
-	const children = [...world.query(Or(Geometry, Group), ChildOf(sequence))]
-		.sort((a, b) => (computed.start[a.id()] ?? 0) - (computed.start[b.id()] ?? 0));
-
-	// No dragged clips to protect; group recursion has no leaves to skip.
-	const ignore = new Set<Entity>();
-
-	for (let i = 0; i < children.length; i++) {
-		const entity = children[i]!;
-		// An earlier authoritative clip may have removed or trimmed this one.
-		if (!world.has(entity)) continue;
-		const occStart = computed.start[entity.id()];
-		const occEnd = computed.end[entity.id()];
-		if (occStart === undefined || occEnd === undefined || occEnd <= occStart) continue;
-
-		for (let j = i + 1; j < children.length; j++) {
-			const sibling = children[j]!;
-			if (!world.has(sibling)) continue;
-			resolveEntityOverlap(world, sibling, occStart, occEnd, ignore);
-		}
-	}
-}
-
-/**
  * Resolve a single entity against the occupied [occStart, occEnd) span.
  * Groups recurse to their children; leaf clips are trimmed, removed, or split.
  */

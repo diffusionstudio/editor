@@ -4,6 +4,10 @@
 
 import { trait, type Entity } from 'koota';
 
+import { LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
+
+import type { PathGeometry } from '../math/path';
+
 // Fully resolved per-frame values (base state + constraints + animations +
 // keyframes). Written by the motion and transform systems, read by render and
 // UI code. Never serialized.
@@ -27,15 +31,32 @@ export const Computed = trait({
 	volume: 0,
 	value: 0,
 	strokeWidth: 0,
+	dash: 0,
+	dashGap: 0,
+	dashOffset: 0,
 	cornerRadius: 0,
 	cornerRadiusTopLeft: 0,
 	cornerRadiusTopRight: 0,
 	cornerRadiusBottomRight: 0,
 	cornerRadiusBottomLeft: 0,
 	stopOffset: 0,
+	gradientX1: LINEAR_GRADIENT_DEFAULTS.x1,
+	gradientY1: LINEAR_GRADIENT_DEFAULTS.y1,
+	gradientX2: LINEAR_GRADIENT_DEFAULTS.x2,
+	gradientY2: LINEAR_GRADIENT_DEFAULTS.y2,
+	gradientCX: ELLIPTICAL_GRADIENT_DEFAULTS.cx,
+	gradientCY: ELLIPTICAL_GRADIENT_DEFAULTS.cy,
+	gradientRX: ELLIPTICAL_GRADIENT_DEFAULTS.rx,
+	gradientRY: ELLIPTICAL_GRADIENT_DEFAULTS.ry,
+	trimStart: 0,
+	trimEnd: 1,
+	trimOffset: 0,
 	width: 0,
 	height: 0,
 	chars: undefined as string | undefined,
+	// A path's outline as its `d` track has it this frame. Unset, the
+	// renderer reads VectorPath.
+	path: () => undefined as PathGeometry | undefined,
 	localTimeInSeconds: 0, // playhead position in seconds
 	localTime: 0, // playhead position in frames (mirrors localTimeInSeconds)
 	duration: 0, // end - start

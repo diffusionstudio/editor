@@ -18,19 +18,23 @@ import {
 	Computed,
 	Geometry,
 	Group,
+	Keyframe,
 	KeyframeDragOrigin,
 	Selected,
 	TrimDragOrigin,
 	findAssetDuration,
+	findClosestParentGeometry,
+	framesToSeconds,
 	store,
 } from '@diffusionstudio/runtime';
 import { Not, Or } from 'koota';
 
 import { clamp } from '@/utils';
+import { getDocumentEditor } from '../editor';
 import { resolveSequentialOverlaps } from '../overlap';
 import { authoredTime, moveEntityTo, trimIn, trimOut } from '../timing';
 import { findSnapDelta, findSnapFrame } from './snapping';
-import { framesToPixels, pixelsToFrames } from './view';
+import { framesToPixels, getFrameRate, getResolution, pixelsToFrames } from './view';
 
 import type { Entity, World } from 'koota';
 import type { TimelineSurfaceState } from './surface';
@@ -48,7 +52,7 @@ export type TrimEdge = 'in' | 'out';
  * a gesture ends when the pointer is let go, which is not an event any clip
  * receives — the clip only ever hears that it is still being dragged.
  */
-export function updateDragGestures(world: World, surface: TimelineSurfaceState): void {
+export function updateDragGestures(world: World, scene: Entity, surface: TimelineSurfaceState): void {
 	const position = surface.pointer?.position;
 	const dragging = !!position && position.state !== 'idle';
 
@@ -68,6 +72,18 @@ export function updateDragGestures(world: World, surface: TimelineSurfaceState):
 		for (const entity of world.query(NODES, Selected, Not(ClipDragOrigin))) {
 			beginClipDrag(world, entity);
 		}
+	}
+
+	// Keyframes likewise, and moved here rather than where they are drawn: a
+	// selected keyframe scrolled out of view, or on a collapsed track, still
+	// has to go with the rest.
+	if (world.query(KeyframeDragOrigin, Selected).length > 0) {
+		for (const keyframe of world.query(Keyframe, Selected, Not(KeyframeDragOrigin))) {
+			beginKeyframeDrag(keyframe);
+		}
+	}
+	for (const keyframe of world.query(KeyframeDragOrigin)) {
+		applyKeyframeDrag(world, scene, surface, keyframe);
 	}
 }
 
@@ -130,6 +146,32 @@ function earliestDraggedStart(world: World): number {
 		earliest = Math.min(earliest, origins.start[entity.id()] ?? 0);
 	}
 	return Number.isFinite(earliest) ? earliest : 0;
+}
+
+/** Notes where `keyframe` is, in its clip's own time. */
+export function beginKeyframeDrag(keyframe: Entity): void {
+	keyframe.add(KeyframeDragOrigin);
+	keyframe.set(KeyframeDragOrigin, { time: keyframe.get(Keyframe)?.time ?? 0 });
+}
+
+/**
+ * Places `keyframe` at where it started plus how far the pointer has come. A
+ * keyframe's time is a prop of its element, so a drag of it is an edit like
+ * any other.
+ */
+function applyKeyframeDrag(world: World, scene: Entity, surface: TimelineSurfaceState, keyframe: Entity): void {
+	const origin = keyframe.get(KeyframeDragOrigin)!;
+
+	// The pointer moves in scene frames; the keyframe lives in the clip's,
+	// which run `rate` times as fast.
+	const rate = findClosestParentGeometry(keyframe)?.get(Computed)?.playbackRate || 1;
+	const moved = pixelsToFrames(draggedPixels(surface), getResolution(world, scene)) * rate;
+
+	getDocumentEditor(world).editProperty(
+		keyframe,
+		'time',
+		framesToSeconds(Math.max(0, origin.time + moved), getFrameRate(world)),
+	);
 }
 
 /** Notes where `entity`'s edges are, so a trim can be measured from them. */

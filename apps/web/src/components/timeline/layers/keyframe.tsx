@@ -103,7 +103,7 @@ export function KeyframeLayer(props: LayerRowProps) {
         >
           <div class="size-4 shrink-0" />
           <div class="size-4 shrink-0 mr-0.5 flex items-center justify-center overflow-clip">
-            <Icon name="keyframe-indicator-default" class="size-6" />
+            <Icon name="keyframe-indicator-default" />
           </div>
           <span class="text-xs px-0.5 shrink-0 whitespace-nowrap text-muted-foreground">
             {formatProperty(path())}
@@ -119,7 +119,7 @@ export function KeyframeLayer(props: LayerRowProps) {
             disabled={previous() === undefined}
             onClick={() => goTo(previous())}
           >
-            <Icon name="caret-left" class="size-6" />
+            <Icon name="caret-left" />
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent>Previous keyframe</TooltipContent>
@@ -136,7 +136,7 @@ export function KeyframeLayer(props: LayerRowProps) {
             disabled={next() === undefined}
             onClick={() => goTo(next())}
           >
-            <Icon name="caret-right" class="size-6" />
+            <Icon name="caret-right" />
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent>Next keyframe</TooltipContent>
@@ -169,14 +169,29 @@ const PROPERTY_NAMES: Partial<Record<PropertyPath, string>> = {
   'blur': 'Blur',
   'volume': 'Volume',
   'stroke.width': 'Stroke Width',
+  'stroke.dash': 'Dash',
+  'stroke.dashGap': 'Dash Gap',
+  'stroke.dashOffset': 'Dash Offset',
   'vertexRadius': 'Radius',
   'mixedVertexRadius.topLeft': 'Radius TL',
   'mixedVertexRadius.topRight': 'Radius TR',
   'mixedVertexRadius.bottomRight': 'Radius BR',
   'mixedVertexRadius.bottomLeft': 'Radius BL',
   'stop.offset': 'Offset',
+  'gradient.x1': 'Start X',
+  'gradient.y1': 'Start Y',
+  'gradient.x2': 'End X',
+  'gradient.y2': 'End Y',
+  'gradient.cx': 'Center X',
+  'gradient.cy': 'Center Y',
+  'gradient.rx': 'Radius X',
+  'gradient.ry': 'Radius Y',
   'effect.value': 'Value',
   'chars': 'Text',
+  'path': 'Path',
+  'trim.start': 'Trim Start',
+  'trim.end': 'Trim End',
+  'trim.offset': 'Trim Offset',
 };
 
 /**

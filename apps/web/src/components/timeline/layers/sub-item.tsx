@@ -29,6 +29,7 @@ import type { LayerRowProps } from './layer';
 const PAINT_NAMES: Partial<Record<PaintType, string>> = {
   [PaintType.LINEAR_GRADIENT]: 'Gradient',
   [PaintType.RADIAL_GRADIENT]: 'Gradient',
+  [PaintType.ANGULAR_GRADIENT]: 'Gradient',
   [PaintType.SOLID]: 'Solid',
   [PaintType.IMAGE]: 'Image',
   [PaintType.VIDEO]: 'Video',
@@ -84,7 +85,7 @@ export function SubItemLayer(props: LayerRowProps) {
             class="size-4 shrink-0 flex items-center justify-center overflow-clip invisible group-hover/layers:visible focus-ring rounded-sm mr-0.5"
           >
             <Show when={props.layer.expandable}>
-              <Icon name={props.expanded ? "chevron-down" : "chevron-right"} class="size-6 hover:text-foreground" />
+              <Icon name={props.expanded ? "chevron-down" : "chevron-right"} class="hover:text-foreground" />
             </Show>
           </button>
           <span class="text-xs px-0.5 shrink-0 whitespace-nowrap text-foreground">

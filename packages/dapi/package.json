@@ -18,7 +18,7 @@
     "zod"
   ],
   "dependencies": {
-    "@diffusionstudio/api-contract": "^0.4.0",
+    "@diffusionstudio/api-contract": "^0.5.0",
     "@diffusionstudio/jsx": "*",
     "zod": "^4.4.3"
   },

@@ -27,16 +27,18 @@ import {
   ImagePaint,
   LinearGradientPaint,
   RadialGradientPaint,
+  AngularGradientPaint,
   SolidPaint,
   VideoPaint,
 } from "@diffusionstudio/reconciler";
-import { BlendMode, BlendModeType, Cache, Paint, PaintType, Rotation, ScaleMode, ScaleModeType } from "@diffusionstudio/runtime";
+import { BlendMode, BlendModeType, Cache, Color, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, Paint, PaintType, Rotation, ScaleMode, ScaleModeType, Stroke, getParentEntity } from "@diffusionstudio/runtime";
 import { useEditor } from "@/engine/hooks";
 import { BLEND_MODE_ORDER, BLEND_MODE_SEPARATORS, blendModeName, displayBlendMode } from "./blend-modes";
 import { readStopProps } from "./gradient-stops";
 import { SolidFillPicker } from "./solid-picker";
 import { GradientFillPicker } from "./gradient-picker";
 import { AssetFillPicker } from "./asset-picker";
+import { assert } from "@/utils";
 
 import type { Fit } from "@diffusionstudio/jsx";
 import type { Asset } from "@diffusionstudio/assets";
@@ -75,15 +77,23 @@ export type FillPickerProps = {
   node: Entity;
   fill: Entity;
   onClose(): void;
-  /** The picker replaced the fill element; this one is the paint now. */
   onReplace(next: Entity): void;
   tabs?: FillTab[];
+};
+
+export type GradientKind = PaintType.LINEAR_GRADIENT | PaintType.RADIAL_GRADIENT | PaintType.ANGULAR_GRADIENT;
+
+const GRADIENT_ELEMENTS = {
+  [PaintType.LINEAR_GRADIENT]: LinearGradientPaint,
+  [PaintType.RADIAL_GRADIENT]: RadialGradientPaint,
+  [PaintType.ANGULAR_GRADIENT]: AngularGradientPaint,
 };
 
 export function getFillTab(paint: PaintType): FillTab {
   if (paint === PaintType.SOLID) return "solid";
   if (paint === PaintType.LINEAR_GRADIENT) return "gradient";
   if (paint === PaintType.RADIAL_GRADIENT) return "gradient";
+  if (paint === PaintType.ANGULAR_GRADIENT) return "gradient";
   return "asset";
 }
 
@@ -97,6 +107,10 @@ export function getFillTab(paint: PaintType): FillTab {
 export function FillPicker(props: FillPickerProps) {
   const world = useWorld();
   const editor = useEditor();
+
+  // Whose box the paint is placed in: a stroke has none, so its paints are
+  // placed in its parent's, and that is where the gradient's handles go.
+  const box = () => (props.node.has(Stroke) ? getParentEntity(props.node) : null) ?? props.node;
 
   const paint = useTrait(() => props.fill, Paint);
   const paintType = () => paint()?.value ?? PaintType.SOLID;
@@ -114,6 +128,18 @@ export function FillPicker(props: FillPickerProps) {
    */
   const replaceFill = (element: () => unknown) => {
     const fills = props.node.get(Cache)?.fills ?? [];
+
+    // A stroke's own `color` is the paint beneath all its children: the new
+    // paint takes that place, the bottom of the stack, and the color is unset.
+    if (props.fill === props.node) {
+      const [next] = editor.insertElement(props.node, element, fills[0]);
+      if (!next) return;
+
+      editor.editProperty(props.node, "color", false);
+      props.onReplace(next);
+      return;
+    }
+
     const index = fills.indexOf(props.fill);
     const anchor = index === -1 ? undefined : fills[index + 1];
 
@@ -128,6 +154,16 @@ export function FillPicker(props: FillPickerProps) {
     setCurrentTab(tab);
 
     if (tab === "solid" && paintType() !== PaintType.SOLID) {
+      // A stroke drawn by this paint alone goes back to its own `color`, the
+      // shorthand for a solid paint, rather than gaining a <solidPaint>.
+      const fills = props.node.get(Cache)?.fills ?? [];
+      if (props.node.has(Stroke) && !props.node.has(Color) && fills.length === 1) {
+        editor.editProperty(props.node, "color", DEFAULT_SOLID_COLOR);
+        editor.remove(props.fill);
+        props.onReplace(props.node);
+        return;
+      }
+
       replaceFill(() => <SolidPaint color={DEFAULT_SOLID_COLOR} />);
       return;
     }
@@ -145,21 +181,20 @@ export function FillPicker(props: FillPickerProps) {
     // picked there is nothing to author.
   };
 
-  /**
-   * Swaps a linear gradient for a radial one (or back). The two are separate
-   * elements, so the stops and the rotation are written out onto the new one
-   * rather than carried by it.
-   */
-  const handleGradientKindChange = (radial: boolean) => {
-    const isRadial = paintType() === PaintType.RADIAL_GRADIENT;
-    if (radial === isRadial) return;
+  const handleGradientKindChange = (kind: GradientKind) => {
+    if (kind === paintType()) return;
 
     const stops = readStopProps(world, props.fill);
-    const rotation = props.fill.get(Rotation)?.value ?? 0;
-    const Element = radial ? RadialGradientPaint : LinearGradientPaint;
+    const Element = GRADIENT_ELEMENTS[kind];
+
+    // switching between elliptical gradients preserves placement
+    let placement: Record<string, number> = {};
+    if (isEllipticalGradient(kind) && isEllipticalGradient(paintType())) {
+      placement = readEllipitcalGradientProps(props.fill);
+    }
 
     replaceFill(() => (
-      <Element {...(rotation === 0 ? {} : { rotation })}>
+      <Element {...placement}>
         {stops.map((stop) => (
           <ColorStopElement offset={stop.offset} color={stop.color} opacity={stop.opacity} />
         ))}
@@ -189,7 +224,12 @@ export function FillPicker(props: FillPickerProps) {
   });
 
   return (
-    <FloatingInspector open anchorRef={props.anchorRef}>
+    <FloatingInspector
+      open
+      anchorRef={props.anchorRef}
+      onClose={props.onClose}
+      locked={currentTab() === "gradient"}
+    >
       <FloatingInspectorHeader>
         <FloatingInspectorTitle>
           {TABS.find((mode) => mode.value === currentTab())?.label}
@@ -207,7 +247,7 @@ export function FillPicker(props: FillPickerProps) {
               class="text-muted-foreground"
               onClick={props.onClose}
             >
-              <Icon name="close-remove" class="size-6" />
+              <Icon name="close-remove" />
             </TooltipTrigger>
             <TooltipContent>Close</TooltipContent>
           </Tooltip>
@@ -227,7 +267,7 @@ export function FillPicker(props: FillPickerProps) {
             <SolidFillPicker fill={props.fill} />
           </Show>
           <Show when={currentTab() === "gradient"}>
-            <GradientFillPicker fill={props.fill} onChangeKind={handleGradientKindChange} />
+            <GradientFillPicker node={box()} fill={props.fill} onChangeKind={handleGradientKindChange} />
           </Show>
           <Show when={currentTab() === "asset"}>
             <AssetFillPicker node={props.node} fill={props.fill} onSelectAsset={handleSelectAsset} />
@@ -271,7 +311,7 @@ export function FitMenu(props: FitMenuProps) {
                   variant="ghost"
                   class="text-muted-foreground hover:bg-accent data-expanded:bg-accent"
                 >
-                  <Icon name="media-fit-type" class="size-6" />
+                  <Icon name="media-fit-type" />
                 </Button>
               )}
             />
@@ -355,7 +395,6 @@ function BlendModeMenu(props: BlendModeMenuProps) {
                 >
                   <Icon
                     name={selected() === BlendModeType.SOURCE_OVER ? "blending-mode-default" : "blending-mode-set"}
-                    class="size-6"
                   />
                 </Button>
               )}
@@ -377,7 +416,7 @@ function BlendModeMenu(props: BlendModeMenuProps) {
                   onPointerEnter={() => preview(mode)}
                 >
                   <Show when={selected() === mode} fallback={<div class="size-6" />}>
-                    <Icon name="confirm-check" class="size-6 text-primary-foreground" />
+                    <Icon name="confirm-check" class="text-primary-foreground" />
                   </Show>
                   <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                     {displayBlendMode(mode)}
@@ -390,4 +429,29 @@ function BlendModeMenu(props: BlendModeMenuProps) {
       </DropdownMenuPortal>
     </DropdownMenu>
   );
+}
+
+function isEllipticalGradient(paint: PaintType): boolean {
+  return paint === PaintType.RADIAL_GRADIENT || paint === PaintType.ANGULAR_GRADIENT;
+}
+
+/** A radial or angular paint's authored placement, as the props that write it; defaults are left out. */
+function readEllipitcalGradientProps(paint: Entity): Record<string, number> {
+  const ellipse = paint.get(EllipticalGradient);
+  const rotation = paint.get(Rotation)?.value ?? 0;
+  const placement: Record<string, number> = {};
+
+  assert(ellipse, "Elliptical gradient not found");
+
+  for (const name of ["cx", "cy", "rx", "ry"] as const) {
+    if (ellipse[name] !== ELLIPTICAL_GRADIENT_DEFAULTS[name]) {
+      placement[name] = ellipse[name];
+    }
+  }
+
+  if (rotation !== 0) {
+    placement.rotation = rotation;
+  }
+
+  return placement;
 }

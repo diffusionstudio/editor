@@ -4,10 +4,10 @@ Every model [`generate`](./tools/generate.md) runs, and the fields each takes. A
 
 | Kind | Models | Makes |
 | --- | --- | --- |
-| [Image](#image) | `nano-banana-pro`, `gpt-image-2.5-sunburst`, `nano-banana-2`, `seedream-5.0-pro`, `flux-2-pro`, `grok-imagine-image-2.0`, `flux-2-klein`, `krea-2-large` | images from a prompt, or edits of reference images |
-| [Video](#video) | `veo-3.1`, `veo-3.1-fast`, `kling-3-pro`, `kling-o3-pro`, `seedance-2.5`, `wan-3.0`, `minimax-h3`, `flux-3-video`, `grok-imagine-video-1.5` | a clip from a prompt, optionally from a start (and end) frame |
+| [Image](#image) | `nano-banana-2.1`, `nano-banana-pro`, `gpt-image-2.5-sunburst`, `nano-banana-2`, `seedream-5.0-pro`, `flux-3-image`, `flux-2-pro`, `grok-imagine-image-2.0`, `flux-2-klein`, `krea-2-large` | images from a prompt, or edits of reference images |
+| [Video](#video) | `veo-3.1`, `veo-3.1-fast`, `kling-3-pro`, `kling-o3-pro`, `seedance-2.5`, `wan-3.0`, `minimax-h3`, `minimax-h3-max`, `flux-3-video`, `grok-imagine-video-1.5` | a clip from a prompt, optionally from a start (and end) frame |
 | [Audio](#audio) | `elevenlabs-music`, `elevenlabs-sfx` | music, sound effects |
-| [Voice](#voice) | `elevenlabs-v3`, `gemini-3.8-flash-tts` | speech |
+| [Voice](#voice) | `elevenlabs-v4`, `elevenlabs-v3`, `gemini-3.8-flash-tts` | speech |
 | [Tools](#tools) | `bria-rmbg-2.0`, `seedvr-2`, `bytedance-upscaler`, `universal-3.5-pro`, `qwen3.8-omni-flash` | one file in, one file out |
 | [Local](#local) | `sam-2.1` | runs on this machine, free: an object's mask, tracked through footage |
 
@@ -23,10 +23,12 @@ Every model [`generate`](./tools/generate.md) runs, and the fields each takes. A
 
 | Model | | References | Aspect ratios | Resolutions |
 | --- | --- | --- | --- | --- |
+| `nano-banana-2.1` | Nano Banana 2.1 — Google's newest, sharper edits at Flash cost | 14 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K, 2K, 4K |
 | `nano-banana-pro` | Nano Banana Pro — pro control, readable text, ultra consistent | 14 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K, 2K, 4K |
 | `gpt-image-2.5-sunburst` | GPT Image 2.5 Sunburst — precise detail, strong text, true edits | 16 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K |
 | `nano-banana-2` | Nano Banana 2 — fast, high quality, flexible edits | 14 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K, 2K, 4K |
 | `seedream-5.0-pro` | Seedream 5.0 Pro — lifelike scenes, precise multi-image edits | 14 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K, 2K |
+| `flux-3-image` | FLUX.3 Image — BFL's flagship, sharp up to 4K | 10 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K, 2K, 4K |
 | `flux-2-pro` | FLUX.2 Pro — frontier quality, consistent references | 8 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K |
 | `grok-imagine-image-2.0` | Grok Imagine 2.0 — fast, vivid, photoreal | 3 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K, 2K |
 | `flux-2-klein` | FLUX.2 Klein — low budget, high quality, fast | 4 | 16:9, 9:16, 1:1, 4:3, 3:4 | 1K |
@@ -54,6 +56,7 @@ The aspect ratios listed work on every model in its row. Some models take more (
 | `seedance-2.5` | Seedance 2.5 — rich motion, lip-synced audio, up to 30 s | start, end | 4–30 | 16:9, 9:16, 1:1, 4:3, 3:4 | 480p, 720p |
 | `wan-3.0` | Wan 3.0 — expressive motion, clips up to 30 s | start | 2–30 | 16:9, 9:16, 1:1, 4:3, 3:4 | 480p, 720p, 1080p |
 | `minimax-h3` | MiniMax H3 — native 2K with built-in audio | start, end | 5–15 | 16:9, 9:16, 1:1, 4:3, 3:4 | 2K |
+| `minimax-h3-max` | MiniMax H3 Max — faster, cheaper H3 with native audio | start, end | 5–15 | 16:9, 9:16, 1:1, 4:3, 3:4 | 480p, 720p |
 | `flux-3-video` | FLUX.3 Video — sharp detail with native audio | start, end | 5–20 | 16:9, 9:16, 1:1, 4:3, 3:4 | 720p, 1080p |
 | `grok-imagine-video-1.5` | Grok Imagine Video 1.5 — quick clips from text or a frame | start | 1–15 | 16:9, 9:16, 1:1, 4:3, 3:4 | 480p, 720p, 1080p |
 
@@ -75,11 +78,12 @@ Durations given as a range take any whole second in it.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `prompt` | `string`, required | the text to speak; up to 5,000 characters. ElevenLabs v3 takes audio tags in brackets (`[whispers]`, `[laughs]`); Gemini takes a style instruction before the text (`Say cheerfully: …`) |
+| `prompt` | `string`, required | the text to speak; up to 10,000 characters (5,000 for ElevenLabs v3). ElevenLabs v3 takes audio tags in brackets (`[whispers]`, `[laughs]`); Gemini takes a style instruction before the text (`Say cheerfully: …`) |
 | `voice` | `string`, required | one of the model's voices, from its voice list (linked below) |
 
 | Model | | Voices |
 | --- | --- | --- |
+| `elevenlabs-v4` | ElevenLabs v4 — lifelike speech, up to 10,000 characters | [an ElevenLabs voice id](./voices/elevenlabs-v3.md) |
 | `elevenlabs-v3` | ElevenLabs v3 — expressive speech in many voices | [an ElevenLabs voice id](./voices/elevenlabs-v3.md) |
 | `gemini-3.8-flash-tts` | Gemini 3.8 Flash TTS — natural speech, styled in the prompt | [a Gemini voice name](./voices/gemini-3.8-flash-tts.md) |
 

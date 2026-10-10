@@ -1,6 +1,6 @@
 {
   "name": "@diffusionstudio/editor",
-  "version": "0.210.0",
+  "version": "0.211.0",
   "private": true,
   "license": "MPL-2.0",
   "type": "module",

@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, PendingSource, PendingSync, Playback, PlaybackRate, Position, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, EvenOdd, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Pivot, Paint, PaintType, parseColor, parsePath, PathTrim, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeDash, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, VectorPath, ViewBox, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -116,6 +116,7 @@ const PAINT_TYPES: Record<string, PaintType> = {
 	solidPaint: PaintType.SOLID,
 	linearGradientPaint: PaintType.LINEAR_GRADIENT,
 	radialGradientPaint: PaintType.RADIAL_GRADIENT,
+	angularGradientPaint: PaintType.ANGULAR_GRADIENT,
 	shaderPaint: PaintType.SHADER,
 	surfacePaint: PaintType.SURFACE,
 	htmlPaint: PaintType.HTML,
@@ -196,8 +197,23 @@ const TRACK_PROPERTIES: Record<string, PropertyPath> = {
 	volume: 'volume',
 	color: 'color',
 	offset: 'stop.offset',
+	x1: 'gradient.x1',
+	y1: 'gradient.y1',
+	x2: 'gradient.x2',
+	y2: 'gradient.y2',
+	cx: 'gradient.cx',
+	cy: 'gradient.cy',
+	rx: 'gradient.rx',
+	ry: 'gradient.ry',
 	blur: 'blur',
 	value: 'effect.value',
+	d: 'path',
+	trimStart: 'trim.start',
+	trimEnd: 'trim.end',
+	trimOffset: 'trim.offset',
+	dash: 'stroke.dash',
+	dashGap: 'stroke.dashGap',
+	dashOffset: 'stroke.dashOffset',
 };
 
 /**
@@ -229,6 +245,13 @@ const TRACK_PROPERTY_NAMES = {
 export function trackProperty(path: string): AnimatableProperty | undefined {
 	return TRACK_PROPERTY_NAMES[path as PropertyPath];
 }
+
+/**
+ * Whether a keyframe's value is path data rather than a color: it opens with
+ * a moveto and a coordinate, which no CSS color does ("magenta" has no digit
+ * after its m).
+ */
+const PATH_DATA = /^\s*[Mm][\s,]*[-+.\d]/;
 
 /** The `<rect>` props of the per-corner radii, in the trait's (CSS) order. */
 const CORNER_PROPS = ['cornerRadiusTopLeft', 'cornerRadiusTopRight', 'cornerRadiusBottomRight', 'cornerRadiusBottomLeft'] as const;
@@ -524,6 +547,25 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				resizeEntity(this.world, entity, { width: 100, height: 100 });
 				break;
 			}
+			case 'ellipse':
+			case 'polygon': {
+				entity = createEntity(this.world);
+				entity.add(Geometry);
+				entity.set(Geometry, { value: name === 'ellipse' ? GeometryType.ELLIPSE : GeometryType.POLYGON });
+				entity.add(Position);
+				entity.set(Position, { x: 0, y: 0 });
+				resizeEntity(this.world, entity, { width: 100, height: 100 });
+				break;
+			}
+			case 'path': {
+				entity = createEntity(this.world);
+				entity.add(Geometry);
+				entity.set(Geometry, { value: GeometryType.PATH });
+				entity.add(Position);
+				entity.set(Position, { x: 0, y: 0 });
+				resizeEntity(this.world, entity, { width: 100, height: 100 });
+				break;
+			}
 			case 'text': {
 				// No Size: a text without one sizes itself to its glyphs.
 				entity = createEntity(this.world);
@@ -579,6 +621,7 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			case 'solidPaint':
 			case 'linearGradientPaint':
 			case 'radialGradientPaint':
+			case 'angularGradientPaint':
 			case 'shaderPaint':
 			case 'surfacePaint':
 			case 'htmlPaint':
@@ -651,7 +694,6 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity.add(Stroke);
 				entity.add(Paint);
 				entity.set(Paint, { value: PaintType.SOLID });
-				entity.add(Color);
 				entity.add(StrokeStyle);
 				break;
 			}
@@ -909,6 +951,25 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity.set(Scale, { [name === 'scaleX' ? 'x' : 'y']: toNumber(value) ?? 1 });
 				return;
 			}
+			case 'pivotX':
+			case 'pivotY': {
+				const { entity, props } = node;
+				if (entity.has(Sequential)) return;
+
+				// One trait for both axes: absent, the node turns about its
+				// anchor (a group about its origin), so an axis left out of a
+				// pivot that has the other is 0, like an unset x.
+				const x = toNumber(props.pivotX);
+				const y = toNumber(props.pivotY);
+				if (x === undefined && y === undefined) {
+					entity.remove(Pivot);
+					return;
+				}
+
+				entity.add(Pivot);
+				entity.set(Pivot, { x: x ?? 0, y: y ?? 0 });
+				return;
+			}
 			case 'constrainX':
 			case 'constrainY': {
 				const { entity, props } = node;
@@ -948,6 +1009,66 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			case 'cornerRadiusBottomRight':
 			case 'cornerRadiusBottomLeft': {
 				this.syncCornerRadii(node);
+				return;
+			}
+			case 'pointCount': {
+				if (entity.get(Geometry)?.value !== GeometryType.POLYGON) return;
+				const count = toNumber(value);
+				if (count === undefined) {
+					entity.remove(PointCount);
+				} else {
+					entity.add(PointCount);
+					entity.set(PointCount, { value: clampPointCount(count) });
+				}
+				return;
+			}
+			case 'd': {
+				if (typeof value !== 'string') {
+					entity.remove(VectorPath);
+					return;
+				}
+
+				const { geometry, error } = parsePath(value);
+
+				if (error !== null) {
+					console.warn(`[path] ${error} in d="${value}"`);
+				}
+
+				entity.add(VectorPath);
+				entity.set(VectorPath, { geometry });
+				return;
+			}
+			case 'viewBox': {
+				const numbers = typeof value === 'string' ? value.trim().split(/[\s,]+/).map(Number) : [];
+				const [x, y, width, height] = numbers;
+				if (numbers.length !== 4 || numbers.some((n) => !Number.isFinite(n)) || width! <= 0 || height! <= 0) {
+					entity.remove(ViewBox);
+					return;
+				}
+				entity.add(ViewBox);
+				entity.set(ViewBox, { x: x!, y: y!, width: width!, height: height! });
+				return;
+			}
+			case 'fillRule': {
+				if (value === 'evenodd') {
+					entity.add(EvenOdd);
+				} else {
+					entity.remove(EvenOdd);
+				}
+				return;
+			}
+			case 'trimStart':
+			case 'trimEnd':
+			case 'trimOffset': {
+				const start = toNumber(node.props.trimStart);
+				const end = toNumber(node.props.trimEnd);
+				const offset = toNumber(node.props.trimOffset);
+				if (start === undefined && end === undefined && offset === undefined) {
+					entity.remove(PathTrim);
+					return;
+				}
+				entity.add(PathTrim);
+				entity.set(PathTrim, { start: start ?? 0, end: end ?? 1, offset: offset ?? 0 });
 				return;
 			}
 			case 'blendMode': {
@@ -1084,6 +1205,27 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				entity.set(StrokeStyle, { miterLimit: toNumber(value) ?? 10 });
 				return;
 			}
+			case 'dash':
+			case 'dashGap':
+			case 'dashOffset': {
+				if (!entity.has(Stroke)) return;
+				const dash = toNumber(node.props.dash);
+				const gap = toNumber(node.props.dashGap);
+				const offset = toNumber(node.props.dashOffset);
+				if (dash === undefined && gap === undefined && offset === undefined) {
+					entity.remove(StrokeDash);
+					return;
+				}
+				// An unset gap is the dash length as written; a `dash` track
+				// leaves it there.
+				entity.add(StrokeDash);
+				entity.set(StrokeDash, {
+					dash: Math.max(0, dash ?? 0),
+					gap: Math.max(0, gap ?? dash ?? 0),
+					offset: offset ?? 0,
+				});
+				return;
+			}
 			case 'type': {
 				if (entity.has(Animation)) {
 					const type = typeof value === 'string' ? ANIMATION_TYPES[value] : undefined;
@@ -1109,8 +1251,10 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			}
 			case 'value': {
 				if (entity.has(Keyframe)) {
-					// A number, or a color on a color track; either is a number to the trait.
-					entity.set(Keyframe, { value: toNumber(value) ?? parseColor(value) ?? 0 });
+					// A number, or a color on a color track; either is a number to the
+					// trait. Path data, on a `d` track, is an outline instead.
+					const path = typeof value === 'string' && PATH_DATA.test(value) ? parsePath(value).geometry : null;
+					entity.set(Keyframe, { value: path ? 0 : toNumber(value) ?? parseColor(value) ?? 0, path });
 					return;
 				}
 				if (!entity.has(Effect)) return;
@@ -1280,6 +1424,25 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				if (entity.has(ColorStop)) {
 					entity.set(ColorStop, { offset: toNumber(value) ?? 0 });
 				}
+				return;
+			}
+			case 'x1':
+			case 'y1':
+			case 'x2':
+			case 'y2': {
+				if (entity.get(Paint)?.value !== PaintType.LINEAR_GRADIENT) return;
+				entity.add(LinearGradient);
+				entity.set(LinearGradient, { [name]: toNumber(value) ?? LINEAR_GRADIENT_DEFAULTS[name as keyof typeof LINEAR_GRADIENT_DEFAULTS] });
+				return;
+			}
+			case 'cx':
+			case 'cy':
+			case 'rx':
+			case 'ry': {
+				const paint = entity.get(Paint)?.value;
+				if (paint !== PaintType.RADIAL_GRADIENT && paint !== PaintType.ANGULAR_GRADIENT) return;
+				entity.add(EllipticalGradient);
+				entity.set(EllipticalGradient, { [name]: toNumber(value) ?? ELLIPTICAL_GRADIENT_DEFAULTS[name as keyof typeof ELLIPTICAL_GRADIENT_DEFAULTS] });
 				return;
 			}
 			case 'fontSize': {

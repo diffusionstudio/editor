@@ -20,6 +20,7 @@ import { useHas, useWorld } from "@diffusionstudio/koota-solid";
 import { ClipsContent, Computed, KeepAspectRatio, isScene } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
+import { pinViewBox } from "@/engine/path-tool";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -96,6 +97,9 @@ export function LayoutPanel(props: LayoutPanelProps) {
       }
     }
 
+    // A path's outline stretches with its box rather than staying put in it.
+    pinViewBox(world, editor, entity());
+
     if (width !== undefined) {
       width = Math.round(width);
       syncKeyframe(world, editor, entity(), "width", width);
@@ -164,51 +168,49 @@ export function LayoutPanel(props: LayoutPanelProps) {
   return (
     <PanelSection
       title={
-        <Show when={sceneSelected()} fallback={<span class="text-xs font-450 text-foreground">Layout</span>}>
-          <DropdownMenu placement="left">
-            <DropdownMenuTrigger
-              as="button"
-              type="button"
-              class="flex items-center text-xs font-450 text-foreground outline-none"
-            >
-              <span>Layout</span>
-              <span class="relative h-6 w-4 shrink-0 overflow-clip">
-                <Icon
-                  name="chevron-down"
-                  class="absolute -left-1 top-0 size-6 text-muted-foreground"
-                />
-              </span>
-            </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent class="w-60">
-                <For each={PRESET_CATEGORIES}>
-                  {(category, index) => (
-                    <>
-                      <Show when={index() > 0}>
-                        <DropdownMenuSeparator />
-                      </Show>
-                      <DropdownMenuGroup>
-                        <DropdownMenuGroupLabel>{category.label}</DropdownMenuGroupLabel>
-                        <For each={category.items}>{
-                          (item) => (
-                            <DropdownMenuItem {...item} onSelect={() => setSize(item.width, item.height)}>
-                              <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                                {item.label}
-                              </span>
-                              <DropdownMenuItemDetail>
-                                {item.width}x{item.height}
-                              </DropdownMenuItemDetail>
-                            </DropdownMenuItem>
-                          )
-                        }</For>
-                      </DropdownMenuGroup>
-                    </>
-                  )}
-                </For>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
-          </DropdownMenu>
-        </Show>
+        <DropdownMenu placement="left">
+          <DropdownMenuTrigger
+            as="button"
+            type="button"
+            class="flex items-center text-xs font-450 text-foreground outline-none"
+          >
+            <span>Layout</span>
+            <span class="relative h-6 w-4 shrink-0 overflow-clip">
+              <Icon
+                name="chevron-down"
+                class="absolute -left-1 top-0 text-muted-foreground"
+              />
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent class="w-60">
+              <For each={PRESET_CATEGORIES}>
+                {(category, index) => (
+                  <>
+                    <Show when={index() > 0}>
+                      <DropdownMenuSeparator />
+                    </Show>
+                    <DropdownMenuGroup>
+                      <DropdownMenuGroupLabel>{category.label}</DropdownMenuGroupLabel>
+                      <For each={category.items}>{
+                        (item) => (
+                          <DropdownMenuItem {...item} onSelect={() => setSize(item.width, item.height)}>
+                            <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                              {item.label}
+                            </span>
+                            <DropdownMenuItemDetail>
+                              {item.width}x{item.height}
+                            </DropdownMenuItemDetail>
+                          </DropdownMenuItem>
+                        )
+                      }</For>
+                    </DropdownMenuGroup>
+                  </>
+                )}
+              </For>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
       }
       actions={
         <div class="flex items-center gap-1">

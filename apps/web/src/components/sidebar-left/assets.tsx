@@ -326,7 +326,7 @@ export function Assets() {
                           variant="ghost"
                           class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
                         >
-                          <Icon name="preferences-adjust" class="size-6" />
+                          <Icon name="preferences-adjust" />
                         </Button>
                       )}
                     />
@@ -371,7 +371,7 @@ export function Assets() {
                         aria-label="Add assets"
                         class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
                       >
-                        <Icon name="plus-add" class="size-6" />
+                        <Icon name="plus-add" />
                       </Button>
                     )}
                   />
@@ -444,7 +444,7 @@ export function Assets() {
           </Show>
           <div class="relative">
             <div class="absolute left-1 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-              <Icon name="search" class="size-6" />
+              <Icon name="search" />
             </div>
             <input
               type="text"
@@ -472,7 +472,7 @@ export function Assets() {
           <div class="absolute inset-x-2 bottom-2 top-0 z-50 p-2 bg-background rounded-xl border border-ring">
             <div class="absolute inset-0 bg-accent/20 rounded-xl" />
             <div class="size-full flex items-center justify-center rounded-md border border-dashed border-border-input">
-              <Icon name="plus-add" class="size-6 text-muted-foreground" />
+              <Icon name="plus-add" class="text-muted-foreground" />
               <span class="text-xxs font-450 text-muted-foreground">Drop media here</span>
             </div>
           </div>
@@ -561,11 +561,11 @@ function FilterIconStack(props: FilterIconStackProps) {
     <div class="flex items-center">
       <span class="w-6 h-7 shrink-0 flex items-center justify-center">
         <Show when={props.selected}>
-          <Icon name="confirm-check" class="size-6 text-popover-foreground" />
+          <Icon name="confirm-check" class="text-popover-foreground" />
         </Show>
       </span>
       <span class="w-7 h-7 flex items-center justify-center">
-        <Icon name={props.icon} class="size-6 text-popover-foreground" />
+        <Icon name={props.icon} class="text-popover-foreground" />
       </span>
     </div>
   );
@@ -632,7 +632,7 @@ function FilterBadge(props: FilterBadgeProps) {
     >
       <span>{props.label}</span>
       <span class="relative w-4 h-5 flex items-center justify-center overflow-hidden">
-        <Icon name="close-remove-small" class="absolute -left-1 -top-0.5 size-6" />
+        <Icon name="close-remove-small" class="absolute -left-1 -top-0.5" />
       </span>
     </button>
   );

@@ -23,11 +23,12 @@ type ClipPathsSettingsProps = {
 };
 
 /**
- * The `<rect clipPath>` children of the selected node: the boxes it is
- * clipped to (several intersect). A clip path is a rect like any other, so it
+ * The clip path children of the selected node (`<rect clipPath>`,
+ * `<ellipse clipPath>`, `<polygon clipPath>`, `<path clipPath>`): the shapes it is clipped to
+ * (several intersect). A clip path is a shape like any other, so it
  * has no inspector of its own — a row selects it and the transform, time and
  * appearance panels are then its own. The plus picks up the clip path tool,
- * whose bar over the canvas turns the rects selected there into clip paths
+ * whose bar over the canvas turns the shapes selected there into clip paths
  * of this node.
  */
 export function ClipPathsSettings(props: ClipPathsSettingsProps) {

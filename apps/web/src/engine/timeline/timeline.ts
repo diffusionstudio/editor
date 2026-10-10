@@ -51,7 +51,7 @@ export function timelineSystem(world: World): void {
 		// Before anything is drawn, and whether or not the rows are: a gesture
 		// that ended has to be closed before the clips it moved are laid out
 		// again, and collapsing the timeline mid-drag must not strand one.
-		updateDragGestures(world, surface);
+		updateDragGestures(world, scene, surface);
 
 		// The rows are clipped to below the ruler, which is then painted over
 		// the top of them: a clip scrolled up under the ruler disappears

@@ -21,6 +21,13 @@ export type StrokeJoin = "miter" | "round" | "bevel";
 export type StrokeCap = "butt" | "round" | "square";
 
 /**
+ * What a `<path>` counts as inside where its outline crosses itself or one
+ * subpath sits in another: SVG's `fill-rule`. "nonzero" fills a hole drawn
+ * the same way round as its outline; "evenodd" never does.
+ */
+export type FillRule = "nonzero" | "evenodd";
+
+/**
  * How an element follows its scene's frame along one axis when that frame is
  * resized: pinned to the near edge ("left"/"top", the default), to the far
  * one ("right"/"bottom"), to the middle ("center"), to both edges at once
@@ -95,8 +102,10 @@ export type Easing =
 /**
  * The props a `<keyframeTrack>` can drive, by name. Whose prop is the
  * track's holder's: `x` under a `<rect>` is the rect's, `width` under a
- * `<stroke>` the line width, `value` under an `<effect>` its amount,
- * `color`/`opacity` under a paint the paint's.
+ * `<stroke>` the line width (and `dash`/`dashGap`/`dashOffset` only go
+ * under a stroke), `value` under an `<effect>` its amount,
+ * `color`/`opacity` under a paint the paint's. `d` morphs a `<path>`'s
+ * outline from one keyframe's path data to the next.
  */
 export type AnimatableProperty =
   | "x"
@@ -118,8 +127,23 @@ export type AnimatableProperty =
   | "volume"
   | "color"
   | "offset"
+  | "x1"
+  | "y1"
+  | "x2"
+  | "y2"
+  | "cx"
+  | "cy"
+  | "rx"
+  | "ry"
   | "blur"
-  | "value";
+  | "value"
+  | "d"
+  | "trimStart"
+  | "trimEnd"
+  | "trimOffset"
+  | "dash"
+  | "dashGap"
+  | "dashOffset";
 
 /** Transition styles — the editor's transition inspector options. */
 export type TransitionType =
@@ -235,7 +259,20 @@ type SizeProps = {
   keepAspectRatio?: boolean;
 };
 
-type TransformProps = PositionProps & OffsetProps & SizeProps & {
+type PivotProps = {
+  /**
+   * The point `rotation`, `scale` and skew turn about, px in the element's
+   * own space (from its box's top-left; for a `<group>`, its children's
+   * coordinates), like SVG's `rotate(angle cx cy)`. Absent, an element turns
+   * about the center of its box and a `<group>` about its origin; the
+   * editor's group action sets one at the members' center. An axis left out
+   * of a pivot that has the other is 0.
+   */
+  pivotX?: number;
+  pivotY?: number;
+};
+
+type TransformProps = PositionProps & OffsetProps & SizeProps & PivotProps & {
   /**
    * How the element follows its scene's frame when that frame is resized —
    * horizontally, then vertically. They are read only against a frame that
@@ -248,7 +285,7 @@ type TransformProps = PositionProps & OffsetProps & SizeProps & {
   constrainY?: VerticalConstraint;
   /** Rotation in degrees. */
   rotation?: number;
-  /** Uniform scale about the box origin, 1 = natural size. Overrides `scaleX`/`scaleY` while set. */
+  /** Uniform scale about the pivot, 1 = natural size. Overrides `scaleX`/`scaleY` while set. */
   scale?: number;
   /** Per-axis scale, 1 = natural size. */
   scaleX?: number;
@@ -556,7 +593,94 @@ export type RectProps = CommonProps & FillProps & {
   mask?: boolean;
   /**
    * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
-   * `<RadialGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<Animation>` and `<KeyframeTrack>` children.
+   */
+  children?: SolidJSX.Element;
+};
+
+/** `<ellipse>` — an ellipse inscribed in its box. Takes the same children as `<rect>`. */
+export type EllipseProps = CommonProps & FillProps & {
+  /**
+   * Makes the ellipse a clip path of its parent, as `<rect clipPath>` does:
+   * the parent shows only inside the curve. Never rendered or hit.
+   */
+  clipPath?: boolean;
+  /**
+   * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<Animation>` and `<KeyframeTrack>` children.
+   */
+  children?: SolidJSX.Element;
+};
+
+/**
+ * `<polygon>` — a regular polygon stretched to fill its box, its first
+ * corner at the top center: a triangle by default.
+ */
+export type PolygonProps = CommonProps & FillProps & {
+  /** How many corners, a whole number of at least 3. Default 3. */
+  pointCount?: number;
+  /**
+   * Makes the polygon a clip path of its parent, as `<rect clipPath>` does:
+   * the parent shows only inside its outline. Never rendered or hit.
+   */
+  clipPath?: boolean;
+  /**
+   * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
+   * `<Animation>` and `<KeyframeTrack>` children.
+   */
+  children?: SolidJSX.Element;
+};
+
+/**
+ * `<path>` — a vector outline from SVG path data: any number of subpaths,
+ * open or closed, of lines and curves. `d` is drawn in the box's own pixels,
+ * or, with a `viewBox`, stretched from it onto the box, so resizing the box
+ * resizes the outline without the data changing. Takes the same children as
+ * `<rect>`; a stroke ends its open subpaths with its `cap`.
+ */
+export type PathProps = CommonProps & FillProps & {
+  /**
+   * SVG path data: `M`/`L`/`H`/`V`/`C`/`S`/`Q`/`T`/`A`/`Z`, absolute or
+   * relative. The editor writes it back as absolute `M`/`L`/`C`/`Z`. A
+   * malformed `d` draws what came before the error, as in SVG. A `d`
+   * `<keyframeTrack>` morphs it: anchors and control points move in a
+   * straight line from keyframe to keyframe, the first vertex of each
+   * subpath (its `M`) to the first; paths with different vertex counts are
+   * subdivided to match, and ones with a different number of subpaths, or an
+   * open against a closed one, hold until the next keyframe.
+   */
+  d?: string;
+  /**
+   * The rectangle of `d`'s coordinates the box shows, `"x y width height"`,
+   * stretched to the box on each axis (SVG's `preserveAspectRatio="none"`).
+   * Default `"0 0 width height"`: `d` is in the box's pixels.
+   */
+  viewBox?: string;
+  /** Default "nonzero". */
+  fillRule?: FillRule;
+  /**
+   * Trims the outline to part of its length (After Effects' Trim Paths), as
+   * fractions 0–1 of each subpath's length: what lies between `trimStart`
+   * and `trimEnd` is drawn, filled and hit. Default 0 and 1, the whole path.
+   */
+  trimStart?: number;
+  trimEnd?: number;
+  /**
+   * Slides the trimmed stretch along the path, as a fraction of its length;
+   * it wraps, so 1 is once round. Default 0.
+   */
+  trimOffset?: number;
+  /**
+   * Makes the path a clip path of its parent, as `<rect clipPath>` does: the
+   * parent shows only inside its outline. Never rendered or hit.
+   */
+  clipPath?: boolean;
+  /**
+   * Paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+   * `<RadialGradientPaint>`, `<AngularGradientPaint>`), plus `<Stroke>`, `<Shadow>`, `<Effect>`,
    * `<Animation>` and `<KeyframeTrack>` children.
    */
   children?: SolidJSX.Element;
@@ -564,18 +688,44 @@ export type RectProps = CommonProps & FillProps & {
 
 /**
  * `<stroke>` — an outline of the parent's box (or glyphs), a sub-entity like a
- * paint: `color`/`opacity` are its paint, `width`/`join`/`cap`/`miterLimit`
- * its line style. Several stack in document order, later ones on top.
+ * paint: `color` is its own solid paint, `width`/`join`/`cap`/`miterLimit` and
+ * `dash`/`dashGap`/`dashOffset` its line style, and paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+ * `<RadialGradientPaint>`, `<AngularGradientPaint>`) draw through the same
+ * line over `color`, placed in the parent's box. `opacity` and `blendMode`
+ * apply to all of it. Several stack in document order, later ones on top.
  */
-export type StrokeProps = ColorProps & PaintProps & TrackChildren & {
+export type StrokeProps = Partial<ColorProps> & PaintProps & {
+  /** Paint children, stacked over `color`; `<KeyframeTrack>` children. */
+  children?: SolidJSX.Element;
   /** Line width, px. Default 1. */
   width?: number;
   /** How the stroke turns corners. Default "miter". */
   join?: StrokeJoin;
-  /** How the stroke ends open paths (text glyphs). Default "butt". */
+  /**
+   * How the stroke ends open paths (text glyphs, open `<path>` subpaths) and
+   * each of its dashes. "round" and "square" reach half the width past the
+   * end, into the gap. Default "butt".
+   */
   cap?: StrokeCap;
   /** Miter length limit, as a ratio of the width. Default 10. */
   miterLimit?: number;
+  /**
+   * Dashes the line: `dash` px of line, then `dashGap` px of gap, repeated
+   * along it. Default 0, a solid line unless `dashGap` is set; `dash={0}`
+   * with `cap="round"` draws dots.
+   */
+  dash?: number;
+  /**
+   * The gap between dashes, px. Default `dash` as written (a `dash` track
+   * does not move it); 0 is a solid line.
+   */
+  dashGap?: number;
+  /**
+   * How far into the dash pattern the line starts, px: SVG's
+   * `stroke-dashoffset`. Animating it walks the dashes along the line, back
+   * toward the start as it grows. Default 0.
+   */
+  dashOffset?: number;
 };
 
 /**
@@ -681,7 +831,7 @@ export type KeyframeProps = {
    * stay pinned to the same content when the clip is moved or trimmed.
    */
   time: Time;
-  /** The value at `time`: a number, or any CSS color on a `color` track. */
+  /** The value at `time`: a number, any CSS color on a `color` track, or path data on a `d` track. */
   value: number | string;
   /** Shapes the segment to the next keyframe; ignored on the last. Default "linear". */
   easing?: Easing;
@@ -689,11 +839,69 @@ export type KeyframeProps = {
 
 export type SolidPaintProps = ColorProps & PaintProps & TrackChildren;
 
+/** A gradient's box is its parent's; under a `<stroke>`, the stroke's parent's. */
 export type GradientPaintProps = PaintProps & {
-  /** Gradient rotation in degrees. Defaults to 0 (left to right). */
-  rotation?: number;
   /** `<ColorStop>` children — the gradient's color stops. */
   children?: SolidJSX.Element;
+};
+
+/**
+ * `<linearGradientPaint>` — a gradient along a line in the parent's box, from
+ * stop 0 at (`x1`, `y1`) to stop 1 at (`x2`, `y2`). As in SVG's default
+ * `objectBoundingBox` units, the points are fractions of the box, not px:
+ * 0–1 spans its width horizontally and its height vertically. Unplaced, the
+ * line runs across the middle of the box, left to right, edge to edge.
+ */
+export type LinearGradientPaintProps = GradientPaintProps & {
+  /** Start of the line, as a fraction of the box width. Default 0. */
+  x1?: number;
+  /** Start of the line, as a fraction of the box height. Default 0.5. */
+  y1?: number;
+  /** End of the line, as a fraction of the box width. Default 1. */
+  x2?: number;
+  /** End of the line, as a fraction of the box height. Default 0.5. */
+  y2?: number;
+};
+
+/**
+ * `<radialGradientPaint>` — a gradient from stop 0 at a center out to stop 1
+ * on an ellipse in the parent's box: SVG's `cx`/`cy` plus the `rx`/`ry` of
+ * `<ellipse>`, as fractions of the box (0–1 spans its width horizontally and
+ * its height vertically). Unplaced, the ellipse is centered and touches the
+ * middle of each edge of the box.
+ */
+export type RadialGradientPaintProps = GradientPaintProps & {
+  /** Center, as a fraction of the box width. Default 0.5. */
+  cx?: number;
+  /** Center, as a fraction of the box height. Default 0.5. */
+  cy?: number;
+  /** Radius along the ellipse's first axis, as a fraction of the box width. Default 0.5. */
+  rx?: number;
+  /** Radius along the ellipse's second axis, as a fraction of the box height. Default 0.5. */
+  ry?: number;
+  /** Turns the radii, degrees clockwise. Default 0. */
+  rotation?: number;
+};
+
+/**
+ * `<angularGradientPaint>` — a gradient that sweeps its stops once around a
+ * center, like Figma's angular gradient and CSS `conic-gradient`: stop 0
+ * along the ellipse's first radius, turning clockwise through the second.
+ * Placed like `<radialGradientPaint>`, by the same props in fractions of the
+ * box; the ellipse's shape spreads the sweep, so on a stretched one the
+ * stops crowd toward its long ends.
+ */
+export type AngularGradientPaintProps = GradientPaintProps & {
+  /** Center, as a fraction of the box width. Default 0.5. */
+  cx?: number;
+  /** Center, as a fraction of the box height. Default 0.5. */
+  cy?: number;
+  /** Radius along the ellipse's first axis, where the sweep starts, as a fraction of the box width. Default 0.5. */
+  rx?: number;
+  /** Radius along the ellipse's second axis, as a fraction of the box height. Default 0.5. */
+  ry?: number;
+  /** Turns the radii, and with them where the sweep starts, degrees clockwise. Default 0 (stop 0 to the right of the center). */
+  rotation?: number;
 };
 
 export type ColorStopProps = ColorProps & OpacityProps & TrackChildren & {

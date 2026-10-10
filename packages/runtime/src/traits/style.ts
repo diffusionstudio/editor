@@ -5,7 +5,9 @@
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { trait } from 'koota';
 
-import { BlendModeType, EffectType, ScaleModeType, StrokeJoin, StrokeCap } from '../constants';
+import type { PathGeometry } from '../math/path';
+
+import { BlendModeType, EffectType, ScaleModeType, StrokeJoin, StrokeCap, LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
 
 // Opacity of whatever the entity is: a node, a paint, a stroke, a shadow, a
 // gradient stop's color. Absent means opaque.
@@ -26,6 +28,25 @@ export const MixedCornerRadius = trait({
 	bottomRight: 0,
 	bottomLeft: 0,
 });
+
+// A polygon's corner count, at least 3 (see `clampPointCount`). Absent means 3.
+export const PointCount = trait({ value: 3 });
+
+// A path's outline: its `d`, parsed (see `parsePath`), in the coordinates
+// of its ViewBox. Absent or null draws nothing; a `d` keyframe track
+// overrides it through Computed.path.
+export const VectorPath = trait({ geometry: () => null as PathGeometry | null });
+
+// A path filled by the even-odd rule rather than nonzero (`fillRule`).
+export const EvenOdd = trait();
+
+// Where a path's `d` is drawn from, stretched onto its box on each axis.
+// Absent means the box's own coordinates ("0 0 width height").
+export const ViewBox = trait({ x: 0, y: 0, width: 0, height: 0 });
+
+// A path trimmed to part of its length, as fractions of each subpath's
+// length (see `trimPath`). Absent means the whole path.
+export const PathTrim = trait({ start: 0, end: 1, offset: 0 });
 
 export const Blur = trait({ value: 0 });
 
@@ -53,6 +74,18 @@ export const Mask = trait({
 // cross-fade.
 export const ColorStop = trait({ offset: 0 });
 
+// Where a linear gradient paint draws its line, SVG's x1/y1/x2/y2 in its
+// holder's box as fractions of it (objectBoundingBox): stop 0 at (x1, y1),
+// stop 1 at (x2, y2). Absent means LINEAR_GRADIENT_DEFAULTS.
+export const LinearGradient = trait({ ...LINEAR_GRADIENT_DEFAULTS });
+
+// Where a radial or angular gradient paint draws its ellipse, SVG's cx/cy
+// plus the rx/ry of <ellipse>, in its holder's box as fractions of it: a
+// radial one goes from stop 0 at the center to stop 1 on the ellipse, an
+// angular one sweeps around the center. The entity's Rotation turns the radii.
+// Absent means ELLIPTICAL_GRADIENT_DEFAULTS.
+export const EllipticalGradient = trait({ ...ELLIPTICAL_GRADIENT_DEFAULTS });
+
 // How a stroke sub-entity is drawn: line width, joins, caps. Lives on the
 // stroke itself (next to its Paint/Color/Opacity), so each stroke of a node
 // has its own width. Absent means a 1px miter/butt line.
@@ -62,6 +95,11 @@ export const StrokeStyle = trait({
 	cap: StrokeCap.BUTT as StrokeCap,
 	miterLimit: 10,
 });
+
+// A dashed stroke sub-entity: `dash` px of line then `gap` px of gap,
+// repeated from `offset` px along the line. A gap of 0 is a solid line.
+// Absent means solid.
+export const StrokeDash = trait({ dash: 0, gap: 0, offset: 0 });
 
 // Shader paint source (document data; the compiled host lives in ShaderHost).
 export const Shader = trait({

@@ -69,9 +69,9 @@ export function ProjectMenu() {
           type="button"
           class="flex items-center gap-0 h-7 rounded-md text-muted-foreground outline-none focus-ring hover:text-foreground data-expanded:text-foreground"
         >
-          <Icon name="diffusion-logo" class="size-6" />
+          <Icon name="diffusion-logo" />
           <div class="flex items-center justify-center overflow-clip h-6 w-4">
-            <Icon name="chevron-down" class="size-6" />
+            <Icon name="chevron-down" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
@@ -156,7 +156,7 @@ export function ProjectMenu() {
                   onSelect={() => downloadDesktopApp("main_menu")}
                 >
                   <span class="grid h-7 w-6 shrink-0 place-items-center overflow-clip">
-                    <Icon name="download" class="size-6" />
+                    <Icon name="download" />
                   </span>
                   Get desktop app{desktopAppPlatformLabel() ? ` (${desktopAppPlatformLabel()})` : ""}
                 </DropdownMenuItem>

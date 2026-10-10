@@ -16,6 +16,9 @@ camelCase composition elements map 1:1 onto entities. Lowercase DOM vocabulary i
 | Element | What it is |
 | ------- | ---------- |
 | [`<rect>`](./rect.md) | A rectangle. Takes paints, strokes, shadows and effects. With `clipPath` it clips its parent instead of drawing. |
+| [`<ellipse>`](./ellipse.md) | An ellipse inscribed in its box. Takes what a rect takes. |
+| [`<polygon>`](./polygon.md) | A regular polygon (`pointCount` corners, a triangle by default) stretched to fill its box. Takes what a rect takes. |
+| [`<path>`](./path.md) | A vector outline from SVG path data (`d`), in its box's pixels or stretched from a `viewBox`; morphs between keyframes and trims. Takes what a rect takes. |
 | [`<text>`](./text.md) | Text; its children are the glyphs. Sizes itself to them unless given a box. |
 | [`<textRange>`](./text.md#textrange) | A style override over a run of the parent `<text>`'s glyphs, by character index. |
 | [`<video>`](./video.md) | A video clip: a rect whose intrinsic paint is the media `src` names. |
@@ -33,7 +36,7 @@ Children of a node, stacked in document order over its intrinsic fill. See [pain
 | Element | What it is |
 | ------- | ---------- |
 | `<solidPaint>` | A solid color; what the `fill` prop is shorthand for. |
-| `<linearGradientPaint>` / `<radialGradientPaint>` | A gradient; takes `<colorStop>` children. |
+| `<linearGradientPaint>` / `<radialGradientPaint>` / `<angularGradientPaint>` | A gradient; takes `<colorStop>` children. |
 | `<colorStop>` | One gradient stop. Valid only inside a gradient paint. |
 | `<imagePaint>` / `<videoPaint>` | Media painted into another element's box — a rect or a text filled with a picture. |
 | [`<htmlPaint>`](./html.md) | The paint form of `<html>`. |
@@ -46,7 +49,7 @@ Sub-entity children of the node (or paint) that holds them. See [styles.md](./st
 
 | Element | What it is |
 | ------- | ---------- |
-| `<stroke>` | An outline of the parent's box or glyphs. Several stack. |
+| `<stroke>` | An outline of the parent's box or glyphs, in its `color` or its solid and gradient paint children. Several stack. |
 | `<shadow>` | A drop shadow beneath the parent's silhouette. Several stack. |
 | `<effect>` | A CSS-style filter over the parent's rendered pixels. Several stack. |
 | `<mask>` | A matte limiting the `<effect>` holding it: the alpha of a tracked frame sequence. Under an `opacity` effect, the cut-out. See [styles.md](./styles.md#mask). |
@@ -65,7 +68,7 @@ User-defined components are ordinary Solid components; they compose the elements
 | ------- | ----------- |
 | `<video>`, `<image>`, `<adjustmentLayer>` | 1920 × 1080 |
 | `<scene>` | required — the frame's own size |
-| `<rect>`, `<html>`, `<surface>` | 100 × 100 |
+| `<rect>`, `<ellipse>`, `<polygon>`, `<path>`, `<html>`, `<surface>` | 100 × 100 |
 | `<audio>` | 500 × 150 (the waveform box on the canvas) |
 | `<rect clipPath>` | 500 × 500 |
 | `<text>` | fits its glyphs |
@@ -91,8 +94,9 @@ Every node accepts:
 | `keepAspectRatio` | `boolean` | absent | Locks the box to its authored proportions: resizing one bound (an editor handle, a layout row) drives the other so the ratio `width`:`height` has is kept — or, with neither authored, the ratio the box currently has. |
 | `constrainX` | `"left" \| "right" \| "center" \| "stretch" \| "scale"` | `"left"` | How the element follows its scene's frame when that frame is resized, horizontally — see below. |
 | `constrainY` | `"top" \| "bottom" \| "center" \| "stretch" \| "scale"` | `"top"` | The same vertically. |
-| `rotation` | `number` | `0` | Rotation in degrees. |
-| `scale` | `number` | `1` | Uniform scale about the box origin. Overrides `scaleX`/`scaleY` while set. |
+| `rotation` | `number` | `0` | Rotation in degrees, about the pivot. |
+| `pivotX`, `pivotY` | `number` | box centre (`<group>`: `0`) | The point `rotation` and scale turn about, px in the element's own space — from its box's top-left, or for a [`<group>`](./group.md#pivot) in its children's coordinates — like SVG's `rotate(angle cx cy)`. An axis left out of a pivot that has the other is `0`. Not animatable. |
+| `scale` | `number` | `1` | Uniform scale about the pivot. Overrides `scaleX`/`scaleY` while set. |
 | `scaleX`, `scaleY` | `number` | `1` | Per-axis scale. |
 | `opacity` | `number` | `1` | `0`–`1`; out-of-range values clamp, like CSS. |
 | `cornerRadius` | `number` | `0` | Uniform corner radius, px. |

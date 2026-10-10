@@ -6,6 +6,9 @@ export const CONONICAL_TIME_BASE = 1e6;
 
 export const DEFAULT_DURATION_FRAMES = 16 * 30;
 
+export const LINEAR_GRADIENT_DEFAULTS = { x1: 0, y1: 0.5, x2: 1, y2: 0.5 };
+export const ELLIPTICAL_GRADIENT_DEFAULTS = { cx: 0.5, cy: 0.5, rx: 0.5, ry: 0.5 };
+
 // Stage camera zoom limits (1 = 100%).
 export const MIN_CAMERA_ZOOM = 0.01;
 export const MAX_CAMERA_ZOOM = 10;
@@ -65,6 +68,9 @@ export enum ConstraintType {
 export enum GeometryType {
   RECT,
   TEXT,
+  ELLIPSE,
+  POLYGON,
+  PATH,
 }
 
 export enum PaintType {
@@ -77,6 +83,7 @@ export enum PaintType {
   HTML,
   SURFACE,
   SHADER,
+  ANGULAR_GRADIENT,
 }
 
 export enum EffectType {
@@ -178,4 +185,11 @@ export enum ToolType {
   TEXT_EDIT,
   OBJECT_MASK,
   CLIP_PATH,
+  LINEAR_GRADIENT,
+  RADIAL_GRADIENT,
+  ANGULAR_GRADIENT,
+  ELLIPSE,
+  POLYGON,
+  PEN,
+  PATH_EDIT,
 }

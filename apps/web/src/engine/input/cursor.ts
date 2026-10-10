@@ -89,10 +89,17 @@ const TOOL_CURSORS: Record<ToolType, { idle: CursorType; pressed?: CursorType }>
 	[ToolType.BLADE]: { idle: 'crosshair' },
 	[ToolType.SCENE]: { idle: 'crosshair' },
 	[ToolType.RECT]: { idle: 'crosshair' },
+	[ToolType.ELLIPSE]: { idle: 'crosshair' },
+	[ToolType.POLYGON]: { idle: 'crosshair' },
+	[ToolType.PEN]: { idle: 'crosshair' },
+	[ToolType.PATH_EDIT]: { idle: 'default' },
 	[ToolType.TEXT]: { idle: 'crosshair' },
 	[ToolType.TEXT_EDIT]: { idle: 'text' },
 	[ToolType.OBJECT_MASK]: { idle: 'crosshair' },
 	[ToolType.CLIP_PATH]: { idle: 'default' },
+	[ToolType.LINEAR_GRADIENT]: { idle: 'default' },
+	[ToolType.RADIAL_GRADIENT]: { idle: 'default' },
+	[ToolType.ANGULAR_GRADIENT]: { idle: 'default' },
 };
 
 /** The cursor the armed tool asks for, pressed or at rest. The object mask's brush draws its own ring, so it hides the cursor. */

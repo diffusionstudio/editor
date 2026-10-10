@@ -7,12 +7,13 @@ import { Not, Or } from 'koota';
 import { store } from '../world/store';
 import {
 	ChildOf, Geometry, Group, Hidden, IsClipPath, Sequential, AdjustmentLayer,
-	Culled, Flip, Anchor, Computed, Cache, LocalTransform, WorldTransform,
+	Culled, Flip, Computed, Cache, LocalTransform, WorldTransform,
 	WorldBounds, RenderSurface,
 	Root,
 } from '../traits';
 import { getParentNode } from '../queries/hierarchy';
 import { getViewMatrix } from '../queries/camera';
+import { entityPivot } from '../queries/interaction';
 
 import {
 	multiply2D,
@@ -32,20 +33,20 @@ import type { Entity, World } from 'koota';
 // snapshots, no change events.
 
 /**
- * Compute the local 2D affine matrix from Offset, Rotation, Scale,
- * Anchor, Skew and Size. Stores the result in LocalTransform.
+ * Compute the local 2D affine matrix from Offset, Rotation, Scale, Skew and
+ * the pivot they turn about (see `entityPivot`). Stores the result in
+ * LocalTransform. Nothing here reads a group's box: a group turns about its
+ * own pivot, so its matrix does not depend on where its children are.
  */
 export function computeLocalMatrix(world: World, entity: Entity): void {
 	const flip = store(world, Flip);
-	const anchor = store(world, Anchor);
 	const computed = store(world, Computed);
 	const local = store(world, LocalTransform);
 	const eid = entity.id();
 
 	const positionX = computed.positionX[eid] + computed.offsetX[eid];
 	const positionY = computed.positionY[eid] + computed.offsetY[eid];
-	const pivotX = (anchor.x[eid] ?? 0.5) * computed.width[eid];
-	const pivotY = (anchor.y[eid] ?? 0.5) * computed.height[eid];
+	const { x: pivotX, y: pivotY } = entityPivot(world, entity);
 	const scaleX = (flip.x[eid] ?? 1) * computed.scaleX[eid];
 	const scaleY = (flip.y[eid] ?? 1) * computed.scaleY[eid];
 	const rotation = computed.rotation[eid];
@@ -136,16 +137,25 @@ export function computeWorldBounds(world: World, entity: Entity): void {
 	boundsStore.maxY[eid] = bounds.maxY;
 }
 
-function cullEntity(world: World, entity: Entity, parentEntity: Entity | null): void {
-	// Inherit cull from the parent: the renderer already skips entire
-	// subtrees of culled parents, so descendants are effectively invisible
-	// even when their own AABB intersects the parent's. Propagating the tag
-	// down lets us free their decoders too. Pre-order DFS guarantees the
-	// parent's tag is already settled by the time we reach the child.
+/**
+ * How a node is culled: `null` tests its own bounds against the canvas, a
+ * boolean is the verdict it inherits. Top-level nodes are tested; below a
+ * node with a box of its own, children inherit its tag: the renderer already
+ * skips entire subtrees of culled parents, so descendants are effectively
+ * invisible even when their own AABB intersects the parent's, and
+ * propagating the tag down lets us free their decoders too. A group is
+ * spatially transparent — its box is only its children's — so its children
+ * are culled the way it would be, and it is tested only once they have been,
+ * against the box they make.
+ */
+type CullMode = boolean | null;
 
+function cullEntity(world: World, entity: Entity, mode: CullMode): void {
 	let intersect = true;
 
-	if (parentEntity === null) {
+	if (mode !== null) {
+		intersect = !mode;
+	} else {
 		// Without a render surface (headless world) nothing is culled.
 		const canvas = world.get(RenderSurface)?.canvas;
 		if (canvas) {
@@ -163,8 +173,6 @@ function cullEntity(world: World, entity: Entity, parentEntity: Entity | null): 
 				maxY: canvas.height,
 			});
 		}
-	} else {
-		intersect = !parentEntity.has(Culled);
 	}
 
 	const wasCulled = entity.has(Culled);
@@ -178,12 +186,26 @@ function cullEntity(world: World, entity: Entity, parentEntity: Entity | null): 
 	}
 }
 
+/** The cull mode `entity`'s children are walked with (see CullMode). */
+function childCullMode(entity: Entity, mode: CullMode): CullMode {
+	return entity.has(Group) ? mode : entity.has(Culled);
+}
+
+/** The cull mode `entity` is walked with: what its parents hand down to it. */
+function cullModeOf(entity: Entity): CullMode {
+	const parent = getParentNode(entity);
+	return parent === null ? null : childCullMode(parent, cullModeOf(parent));
+}
+
 /**
  * Recompute a Group entity's Computed bounds from the union of its children's
- * transformed boxes. Sequences aren't spatial constructs: they mirror their
- * parent's frame instead (the walk is parent-first, so the parent's Computed
- * values are already settled). Leaf entities own an absolute Size and need no
- * resolution here.
+ * transformed boxes. The box is derived data for whatever measures the group
+ * (selection, hit-testing, snapping, culling); the group's own matrix never
+ * reads it. The walk visits a group's children first, so their matrices are
+ * the ones of this frame. A sequence under a node with a box of its own is
+ * not a spatial construct: it mirrors that frame instead (a Geometry's
+ * Computed size is settled before the walk). Leaf entities own an absolute
+ * Size and need no resolution here.
  */
 export function computeGroupBounds(world: World, entity: Entity): void {
 	const computed = store(world, Computed);
@@ -192,7 +214,7 @@ export function computeGroupBounds(world: World, entity: Entity): void {
 
 	if (entity.has(Sequential)) {
 		const parent = getParentNode(entity);
-		if (parent !== null) {
+		if (parent !== null && !parent.has(Group)) {
 			const pid = parent.id();
 			computed.width[eid] = computed.width[pid];
 			computed.height[eid] = computed.height[pid];
@@ -284,37 +306,45 @@ function adjustLayers(world: World, adjust: Entity): void {
 	localStore.e[tid] = composed.e;
 	localStore.f[tid] = composed.f;
 
-	const reworld = (entity: Entity, parentEntity: Entity | null) => {
-		computeWorldTransform(world, entity, parentEntity);
+	// Children keep their local matrices: one may hold another layer's
+	// composition already.
+	placeSubtree(world, target, parent, cullModeOf(target), false);
+}
+
+/**
+ * Derives the world transform, bounds and cull tag of `entity` and its
+ * subtree, its local matrix (and its descendants') first when `local` is set.
+ * A node with a box of its own is placed before its children, since they
+ * inherit its cull tag; a group after them, since its box is theirs.
+ */
+function placeSubtree(world: World, entity: Entity, parentEntity: Entity | null, mode: CullMode, local: boolean): void {
+	if (local) computeLocalMatrix(world, entity);
+	computeWorldTransform(world, entity, parentEntity);
+
+	const group = entity.has(Group);
+	if (!group) {
 		computeWorldBounds(world, entity);
-		cullEntity(world, entity, parentEntity);
+		cullEntity(world, entity, mode);
+	}
 
-		for (const child of world.query(Or(Geometry, Group), ChildOf(entity))) {
-			reworld(child, entity);
-		}
-	};
+	const childMode = childCullMode(entity, mode);
+	for (const child of world.query(Or(Geometry, Group), ChildOf(entity))) {
+		placeSubtree(world, child, entity, childMode, local);
+	}
 
-	reworld(target, parent);
+	if (group) {
+		computeGroupBounds(world, entity);
+		computeWorldBounds(world, entity);
+		cullEntity(world, entity, mode);
+	}
 }
 
 /**
  * Transform system entry point. Call once per frame before the render system.
  */
 export function transformSystem(world: World): void {
-	const walk = (entity: Entity, parentEntity: Entity | null) => {
-		computeGroupBounds(world, entity);
-		computeLocalMatrix(world, entity);
-		computeWorldTransform(world, entity, parentEntity);
-		computeWorldBounds(world, entity);
-		cullEntity(world, entity, parentEntity);
-
-		for (const child of world.query(Or(Geometry, Group), ChildOf(entity))) {
-			walk(child, entity);
-		}
-	};
-
 	for (const entity of world.query(Or(Geometry, Group), ChildOf(world.get(Root)!))) {
-		walk(entity, null);
+		placeSubtree(world, entity, null, null, true);
 	}
 
 	for (const adjust of world.query(AdjustmentLayer)) {

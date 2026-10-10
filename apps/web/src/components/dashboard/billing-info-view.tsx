@@ -45,7 +45,7 @@ function DashboardBillingFreePlanCard(props: DashboardBillingFreePlanCardProps) 
         onClick={props.onUpgrade}
       >
         <span class="grid h-7 w-6 place-items-center overflow-clip">
-          <Icon name="upgrade" class="size-6" />
+          <Icon name="upgrade" />
         </span>
         Upgrade
       </Button>

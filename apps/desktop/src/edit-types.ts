@@ -10,9 +10,6 @@ import type { InspectValue, PropValue } from "@diffusionstudio/jsx";
 
 export type { PropValue };
 
-/** A value an edit can carry: what a source spells as a literal (see `setProp`). */
-export type EditValue = PropValue;
-
 export interface SourceContext {
   /** Absolute path of the project folder. */
   dir: string;
@@ -33,7 +30,7 @@ export interface SourceContext {
 export interface SourceSet {
   kind: "set";
   source: string;
-  props: Record<string, EditValue>;
+  props: Record<string, PropValue>;
   text?: string;
 }
 
@@ -50,7 +47,7 @@ export interface SourceInsert {
   source: string;
   parent: string;
   tag: string;
-  props: Record<string, EditValue>;
+  props: Record<string, PropValue>;
   before?: string;
   text?: string;
 }
@@ -90,7 +87,7 @@ export interface SourceRemove {
  * one in `ids`. The first iteration keeps the body's own names, so it carries
  * none.
  */
-export type SourceIteration = Record<string, { props: Record<string, EditValue>; text?: string; pending?: string }>;
+export type SourceIteration = Record<string, { props: Record<string, PropValue>; text?: string; pending?: string }>;
 
 /**
  * Replaces the `<For>`/`<Index>` around the element named by `source` with

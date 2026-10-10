@@ -321,7 +321,7 @@ export function ColorOpacityPicker(props: ColorOpacityPickerProps) {
               onClick={handleEyeDropper}
               disabled={isEyeDropperOpen() || !("EyeDropper" in window)}
             >
-              <Icon name="tool.color-picker" class="size-6" />
+              <Icon name="tool.color-picker" />
             </TooltipTrigger>
             <TooltipContent>Pick color from screen</TooltipContent>
           </Tooltip>
@@ -500,7 +500,7 @@ function NumberField(props: NumberFieldProps) {
   };
 
   return (
-    <div class="flex-1 min-w-0 h-7 rounded-none bg-input flex items-center focus-within:ring-1 focus-within:ring-inset focus-within:ring-ring">
+    <div class="flex-1 min-w-0 h-7 rounded-none last:rounded-r-md bg-input flex items-center focus-within:ring-1 focus-within:ring-inset focus-within:ring-ring">
       <input
         type="number"
         class="w-full bg-transparent px-2 text-sm text-foreground focus:outline-none"
@@ -538,7 +538,7 @@ function HexColorInput(props: HexColorInputProps) {
   };
 
   return (
-    <div class="flex-1 min-w-0 h-7 rounded-none bg-input flex items-center focus-within:ring-1 focus-within:ring-inset focus-within:ring-ring">
+    <div class="flex-1 min-w-0 h-7 rounded-none last:rounded-r-md bg-input flex items-center focus-within:ring-1 focus-within:ring-inset focus-within:ring-ring">
       <input
         type="text"
         class="flex-1 min-w-0 bg-transparent px-2 text-sm text-foreground focus:outline-none selection:bg-selection selection:text-selection-foreground"

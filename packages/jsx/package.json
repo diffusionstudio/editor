@@ -1,6 +1,6 @@
 {
   "name": "@diffusionstudio/jsx",
-  "version": "0.210.0",
+  "version": "0.211.0",
   "description": "Types and authoring API for Diffusion Studio compositions: the JSX element vocabulary and the hooks the editor implements when it mounts a project.",
   "license": "MPL-2.0",
   "type": "module",

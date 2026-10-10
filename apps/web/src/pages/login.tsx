@@ -25,7 +25,7 @@ function OAuthButton(props: OAuthButtonProps) {
       class="w-full gap-0 px-0.5"
       onClick={props.onClick}
     >
-      <Icon name={props.icon} class="size-6" />
+      <Icon name={props.icon} />
       <span class="min-w-0 flex-1 text-center">{props.label}</span>
       <span class="size-6 shrink-0" aria-hidden="true" />
     </Button>
@@ -87,7 +87,7 @@ export function LoginPage() {
       </Show>
       <Show when={!window.desktop}>
         <div class="flex items-center gap-1 p-4">
-          <Icon name="diffusion-logo" class="size-6" />
+          <Icon name="diffusion-logo" />
           <span class="text-sm font-450 text-foreground">Diffusion Studio</span>
         </div>
       </Show>

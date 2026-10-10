@@ -8,7 +8,6 @@ import { CameraController, EngineCanvas } from "@/engine";
 import { insertAsset } from "@/engine/insert-asset";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { Toolbar } from "./toolbar";
-import { DrawOverlay } from "./draw-overlay";
 import { DesktopAppBanner } from "./desktop-app-banner";
 import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
@@ -25,7 +24,7 @@ export function Canvas() {
    * imported into the library first, then land the same way.
    *
    * With no scene under the pointer they land loose on the stage, like an
-   * element drawn there (see DrawOverlay): the drop says where, so the active
+   * element drawn there (see `@/engine/draw-tool`): the drop says where, so the active
    * scene — which is somewhere else entirely — is not the answer.
    */
   const handleDropEvent = async (event: DragEvent) => {
@@ -77,7 +76,6 @@ export function Canvas() {
       >
         <Toolbar />
         <DesktopAppBanner />
-        <DrawOverlay />
         <SceneInitOverlay />
         <EngineCanvas />
         <CameraController />

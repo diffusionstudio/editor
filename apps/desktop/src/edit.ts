@@ -28,7 +28,6 @@ import type {
 
 export type * from "./edit-types";
 import type {
-  EditValue,
   SourceContext,
   SourceEdit,
   SourceInsert,
@@ -156,7 +155,7 @@ const initializerText = (value: PropValue): string =>
  * and no attribute at all rather than `muted={false}`, since absence is what a
  * boolean prop's false reads as.
  */
-function setProp(tag: JsxTag, name: string, value: EditValue): void {
+function setProp(tag: JsxTag, name: string, value: PropValue): void {
   const attribute = attributeOf(tag, name);
 
   if (value === true) {

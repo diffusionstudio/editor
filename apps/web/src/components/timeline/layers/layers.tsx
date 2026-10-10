@@ -155,8 +155,8 @@ export function Layers() {
             <TooltipTrigger<typeof Button>
               as={(triggerProps) => (
                 <Button {...triggerProps} variant="ghost" size="icon" onClick={handlePlay}>
-                  <Show when={playback()?.playing} fallback={<Icon name="play" class="size-6" />}>
-                    <Icon name="pause" class="size-6" />
+                  <Show when={playback()?.playing} fallback={<Icon name="play" />}>
+                    <Icon name="pause" />
                   </Show>
                 </Button>
               )}
@@ -188,7 +188,7 @@ export function Layers() {
               <TooltipTrigger<typeof Button>
                 as={(triggerProps) => (
                   <Button {...triggerProps} variant="ghost" size="icon" onClick={() => splitAtPlayhead(world)}>
-                    <Icon name="split" class="size-6" />
+                    <Icon name="split" />
                   </Button>
                 )}
               />
@@ -204,7 +204,7 @@ export function Layers() {
                       {...triggerProps}
                       as={(buttonProps) => (
                         <Button {...buttonProps} variant="ghost" size="icon">
-                          <Icon name="more-three-dots" class="size-6" />
+                          <Icon name="more-three-dots" />
                         </Button>
                       )}
                     />

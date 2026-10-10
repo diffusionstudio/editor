@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { SliderInput } from "@/components/ui/slider-input";
 import { ControlledTextField } from "@/components/ui/text-field";
+import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
 import { PanelSection } from "@/components/ui/panel-section";
 import { Show, createMemo, createSignal } from "solid-js";
 import { Icon } from "@/components/ui/icon";
@@ -33,7 +34,9 @@ import {
   CornerRadius,
   Hidden,
   MixedCornerRadius,
+  PointCount,
   isAudio,
+  isPolygon,
   isRect,
 } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
@@ -98,6 +101,9 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
   const mixedBR = useDerived(() => entity().get(Computed)?.cornerRadiusBottomRight ?? 0);
   const mixedBL = useDerived(() => entity().get(Computed)?.cornerRadiusBottomLeft ?? 0);
 
+  const pointCountTrait = useTrait(entity, PointCount);
+  const pointCount = () => pointCountTrait()?.value ?? 3;
+
   const [selectedBlendMode, setSelectedBlendMode] = createSignal(blendMode());
   const [radiusMode, setRadiusMode] = createSignal<RadiusMode>(entity().has(MixedCornerRadius) ? 'separate' : 'uniform');
 
@@ -130,6 +136,11 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
     if (selectedBlendMode() !== blendMode()) {
       previewBlendMode(selectedBlendMode());
     }
+  };
+
+  const handlePointCountChange = (v: number) => {
+    const count = Math.max(3, Math.round(v));
+    editor.editProperty(entity(), 'pointCount', count === 3 ? false : count);
   };
 
   const handleVisibilityChange = () => {
@@ -332,6 +343,27 @@ export function AppearanceSettings(props: AppearanceSettingsProps) {
             />
           </ControlRow>
         </Show>
+      </Show>
+
+      <Show when={isPolygon(entity())}>
+        <ControlRow label="Points" contentClass="grid grid-cols-2 gap-2 min-w-0">
+          <ControlledTextField
+            value={pointCount()}
+            autoSelect
+            step={1}
+            min={3}
+            onNumber={handlePointCountChange}
+            icon={<Icon name="vector-side-count" />}
+            sliderEnabled
+            limitEvents
+          />
+          <IncrementDecrementControl
+            decrementLabel="Fewer corners"
+            incrementLabel="More corners"
+            onDecrement={() => handlePointCountChange(pointCount() - 1)}
+            onIncrement={() => handlePointCountChange(pointCount() + 1)}
+          />
+        </ControlRow>
       </Show>
     </PanelSection>
   );

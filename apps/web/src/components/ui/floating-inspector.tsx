@@ -58,11 +58,65 @@ const getAvailableTop = (preferredTop: number, inspectorHeight: number): number 
   return clamp(preferredTop, VIEWPORT_PADDING, maxTop)
 }
 
+// ── Closing on a press outside ─────────────────────────────────────────
+
+/** An open inspector, as the press-outside handling sees it. */
+type OpenInspector = {
+  locked: () => boolean
+  close: () => void
+}
+
+/**
+ * Where a press keeps every inspector open: inside any of them, or in a
+ * menu, select or tooltip, which render portaled out of the inspector that
+ * opened them.
+ */
+const INSIDE_SELECTOR = "[data-slot='floating-inspector'], [data-popper-positioner]"
+
+const openInspectors = new Set<OpenInspector>()
+let listening = false
+
+/**
+ * Closes every open inspector when a press lands outside all of them, unless
+ * one is locked: a locked inspector keeps them all open, since closing a
+ * parent would take a locked child with it. Runs in the capture phase, ahead
+ * of whatever the press lands on, so the inspectors are gone before a click
+ * elsewhere opens the next one.
+ */
+const onPressCapture = (event: PointerEvent) => {
+  if (openInspectors.size === 0) return
+
+  const target = event.target
+  if (target instanceof Element && target.closest(INSIDE_SELECTOR)) return
+  for (const inspector of openInspectors) {
+    if (inspector.locked()) return
+  }
+
+  // A field being typed in commits on blur, which it would never get once
+  // its inspector is gone: the press closes it before focus moves.
+  const focused = document.activeElement
+  if (focused instanceof HTMLElement && focused.closest(INSIDE_SELECTOR)) focused.blur()
+
+  // Closing unregisters, so walk a copy.
+  for (const inspector of [...openInspectors]) inspector.close()
+}
+
+const registerOpenInspector = (inspector: OpenInspector): (() => void) => {
+  if (!listening) {
+    document.addEventListener("pointerdown", onPressCapture, true)
+    listening = true
+  }
+  openInspectors.add(inspector)
+  return () => openInspectors.delete(inspector)
+}
+
 export type FloatingInspectorProps = ComponentProps<"div"> & {
   anchorRef: MaybeAccessor<HTMLElement | null | undefined>
   width?: number
   offset?: MaybeAccessor<number>
   open?: MaybeAccessor<boolean>
+  onClose: () => void
+  locked?: MaybeAccessor<boolean>
 }
 
 export const FloatingInspector = (props: FloatingInspectorProps) => {
@@ -82,6 +136,8 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
     "offset",
     "open",
     "children",
+    "onClose",
+    "locked",
   ])
 
   const parentTopContext = useContext(FloatingInspectorTopContext)
@@ -177,6 +233,30 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
     event.preventDefault()
   }
 
+  const clampToViewport = () => {
+    const root = rootRef
+    if (!root) return
+
+    setPosition((current) => {
+      const rect = root.getBoundingClientRect()
+      const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - rect.width - VIEWPORT_PADDING)
+      const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - rect.height - VIEWPORT_PADDING)
+
+      const left = clamp(current.left, VIEWPORT_PADDING, maxLeft)
+      const top = clamp(current.top, VIEWPORT_PADDING, maxTop)
+      return left === current.left && top === current.top ? current : { left, top }
+    })
+  }
+
+  const resizeObserver = new ResizeObserver(clampToViewport)
+
+
+  const setRoot = (el: HTMLDivElement) => {
+    if (rootRef) resizeObserver.unobserve(rootRef)
+    rootRef = el
+    resizeObserver.observe(el)
+  }
+
   const setDragHandle = (el: HTMLElement | null) => {
     if (dragHandleRef) {
       dragHandleRef.removeEventListener("pointerdown", onPointerDown)
@@ -189,6 +269,16 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
       dragHandleRef.addEventListener("pointerdown", onPointerDown)
     }
   }
+
+  createEffect(() => {
+    if (!isOpen()) return
+
+    const unregister = registerOpenInspector({
+      locked: () => Boolean(toValue(local.locked)),
+      close: () => local.onClose(),
+    })
+    onCleanup(unregister)
+  })
 
   createEffect(() => {
     if (!isOpen()) return
@@ -208,26 +298,11 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
       }
     })
 
-    const onResize = () => {
-      const root = rootRef
-      if (!root) return
-
-      setPosition((current) => {
-        const rect = root.getBoundingClientRect()
-        const maxLeft = Math.max(VIEWPORT_PADDING, window.innerWidth - rect.width - VIEWPORT_PADDING)
-        const maxTop = Math.max(VIEWPORT_PADDING, window.innerHeight - rect.height - VIEWPORT_PADDING)
-
-        return {
-          left: clamp(current.left, VIEWPORT_PADDING, maxLeft),
-          top: clamp(current.top, VIEWPORT_PADDING, maxTop),
-        }
-      })
-    }
-
-    window.addEventListener("resize", onResize)
+    window.addEventListener("resize", clampToViewport)
 
     onCleanup(() => {
-      window.removeEventListener("resize", onResize)
+      window.removeEventListener("resize", clampToViewport)
+      resizeObserver.disconnect()
       cleanupDrag()
       setDragHandle(null)
     })
@@ -242,7 +317,7 @@ export const FloatingInspector = (props: FloatingInspectorProps) => {
       <FloatingInspectorTopContext.Provider value={{ top: () => position().top }}>
         <FloatingInspectorContext.Provider value={contextValue}>
           <div
-            ref={rootRef}
+            ref={setRoot}
             data-slot="floating-inspector"
             class={cx(
               "bg-background border-border fixed z-50 w-[264px] overflow-hidden rounded-xl border",

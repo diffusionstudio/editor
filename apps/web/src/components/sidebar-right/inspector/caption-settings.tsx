@@ -128,7 +128,7 @@ export function CaptionSettings(props: CaptionSettingsProps) {
       </For>
 
       <Show when={openSlot() !== null}>
-        <FloatingInspector open anchorRef={anchorRef}>
+        <FloatingInspector open anchorRef={anchorRef} onClose={() => setOpenSlot(null)}>
           <FloatingInspectorHeader>
             <FloatingInspectorTitle>
               {slots()[openSlot()!]?.label ?? "Color"}
@@ -142,7 +142,7 @@ export function CaptionSettings(props: CaptionSettingsProps) {
                   class="text-muted-foreground"
                   onClick={() => setOpenSlot(null)}
                 >
-                  <Icon name="close-remove" class="size-6" />
+                  <Icon name="close-remove" />
                 </TooltipTrigger>
                 <TooltipContent>Close</TooltipContent>
               </Tooltip>

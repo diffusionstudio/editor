@@ -86,7 +86,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
 
   return (
     <>
-      <FloatingInspector open anchorRef={props.anchorRef} width={248}>
+      <FloatingInspector open anchorRef={props.anchorRef} width={248} onClose={handleClose}>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle>Drop Shadow</FloatingInspectorTitle>
           <Tooltip>
@@ -118,7 +118,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
           <ControlRow label="Position">
             <div class="grid grid-cols-2 gap-2">
               <ControlledTextField
-                icon={<Icon name="prop-x-position" class="size-6" />}
+                icon={<Icon name="prop-x-position" />}
                 value={offsetX()}
                 onNumber={(value) => editOffset("offsetX", value)}
                 autoSelect
@@ -127,7 +127,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
                 keyframe={<Keyframe target={props.shadow} property="offsetX" />}
               />
               <ControlledTextField
-                icon={<Icon name="prop-y-position" class="size-6" />}
+                icon={<Icon name="prop-y-position" />}
                 value={offsetY()}
                 onNumber={(value) => editOffset("offsetY", value)}
                 autoSelect
@@ -159,7 +159,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
         </FloatingInspectorContent>
       </FloatingInspector>
 
-      <FloatingInspector open={pickingColor} anchorRef={() => colorRowRef} offset={26}>
+      <FloatingInspector open={pickingColor} anchorRef={() => colorRowRef} offset={26} onClose={() => setPickingColor(false)}>
         <FloatingInspectorHeader>
           <FloatingInspectorTitle>Color</FloatingInspectorTitle>
           <div class="ml-auto">
@@ -171,7 +171,7 @@ export function ShadowInspector(props: ShadowInspectorProps) {
                 class="text-muted-foreground"
                 onClick={() => setPickingColor(false)}
               >
-                <Icon name="close-remove" class="size-6" />
+                <Icon name="close-remove" />
               </TooltipTrigger>
               <TooltipContent>Close</TooltipContent>
             </Tooltip>

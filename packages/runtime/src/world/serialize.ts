@@ -7,10 +7,11 @@ import {
 	Geometry, Paint, Group, Scene, Audio, AdjustmentLayer, IsClipPath, Shadow, Stroke,
 	Hidden, ClipsContent, Name, Key, AssetId, ItemIndex, MountScript, MountPath,
 	Caption,
-	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
+	Position, Offset, Rotation, Scale, UniformScale, Anchor, Pivot, Skew, Size, Flip,
 	Constraint, KeepAspectRatio,
-	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, Blur, ScaleMode, Effect, Mask,
-	ColorStop, StrokeStyle, Shader,
+	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, PointCount, Blur, ScaleMode, Effect, Mask,
+	VectorPath, EvenOdd, ViewBox, PathTrim,
+	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, StrokeDash, Shader,
 	Chars, TextStyle,
 	Delay, Trim, PlaybackRate, SourceFrameRate,
 	Playback, Sequential, Transition, ClipHeight, Expanded,
@@ -18,6 +19,7 @@ import {
 	KeyframeTrack, Keyframe, Animation, Stage,
 } from '../traits';
 import { createEntity } from '../actions/entities';
+import { formatPath, parsePath } from '../math/path';
 
 import type { Entity, World } from 'koota';
 
@@ -86,6 +88,10 @@ export interface EntityRecord {
 		x?: number;
 		y?: number;
 	};
+	Pivot?: {
+		x?: number;
+		y?: number;
+	};
 	Skew?: {
 		x?: number;
 		y?: number;
@@ -107,6 +113,12 @@ export interface EntityRecord {
 		bottomRight: number;
 		bottomLeft: number;
 	};
+	PointCount?: number;
+	/** A path's outline as path data, which is what it is authored as. */
+	VectorPath?: string;
+	EvenOdd?: {};
+	ViewBox?: { x: number; y: number; width: number; height: number };
+	PathTrim?: { start: number; end: number; offset: number };
 	Color?: number;
 	Blur?: number;
 	AssetId?: string;
@@ -120,12 +132,25 @@ export interface EntityRecord {
 	ColorStop?: {
 		offset?: number;
 	};
+	LinearGradient?: {
+		x1?: number;
+		y1?: number;
+		x2?: number;
+		y2?: number;
+	};
+	EllipticalGradient?: {
+		cx?: number;
+		cy?: number;
+		rx?: number;
+		ry?: number;
+	};
 	StrokeStyle?: {
 		width?: number;
 		join?: number;
 		cap?: number;
 		miterLimit?: number;
 	};
+	StrokeDash?: { dash: number; gap: number; offset: number };
 	Hidden?: boolean;
 	ClipsContent?: boolean;
 	Sequential?: {};
@@ -158,6 +183,8 @@ export interface EntityRecord {
 		time?: number;
 		value?: number;
 		easing?: string;
+		/** A `d` keyframe's outline, as path data. */
+		path?: string;
 	};
 	Animation?: {
 		duration?: number;
@@ -266,6 +293,10 @@ export function serializeEntity(entity: Entity): EntityRecord {
 		const anchor = entity.get(Anchor)!;
 		record.Anchor = { x: anchor.x, y: anchor.y };
 	}
+	if (entity.has(Pivot)) {
+		const pivot = entity.get(Pivot)!;
+		record.Pivot = { x: pivot.x, y: pivot.y };
+	}
 	if (entity.has(Skew)) {
 		const skew = entity.get(Skew)!;
 		record.Skew = { x: skew.x, y: skew.y };
@@ -286,6 +317,25 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	}
 	if (entity.has(CornerRadius)) {
 		record.CornerRadius = entity.get(CornerRadius)!.value;
+	}
+	if (entity.has(PointCount)) {
+		record.PointCount = entity.get(PointCount)!.value;
+	}
+	const geometry = entity.get(VectorPath)?.geometry;
+	if (geometry) {
+		// Full precision: a copy is the same outline, not one rounded for a file.
+		record.VectorPath = formatPath(geometry, 6);
+	}
+	if (entity.has(EvenOdd)) {
+		record.EvenOdd = {};
+	}
+	if (entity.has(ViewBox)) {
+		const { x, y, width, height } = entity.get(ViewBox)!;
+		record.ViewBox = { x, y, width, height };
+	}
+	if (entity.has(PathTrim)) {
+		const { start, end, offset } = entity.get(PathTrim)!;
+		record.PathTrim = { start, end, offset };
 	}
 	if (entity.has(MixedCornerRadius)) {
 		const radius = entity.get(MixedCornerRadius)!;
@@ -321,6 +371,14 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	if (entity.has(ColorStop)) {
 		record.ColorStop = { offset: entity.get(ColorStop)!.offset };
 	}
+	if (entity.has(LinearGradient)) {
+		const { x1, y1, x2, y2 } = entity.get(LinearGradient)!;
+		record.LinearGradient = { x1, y1, x2, y2 };
+	}
+	if (entity.has(EllipticalGradient)) {
+		const { cx, cy, rx, ry } = entity.get(EllipticalGradient)!;
+		record.EllipticalGradient = { cx, cy, rx, ry };
+	}
 	if (entity.has(StrokeStyle)) {
 		const stroke = entity.get(StrokeStyle)!;
 		record.StrokeStyle = {
@@ -329,6 +387,10 @@ export function serializeEntity(entity: Entity): EntityRecord {
 			cap: stroke.cap,
 			miterLimit: stroke.miterLimit,
 		};
+	}
+	if (entity.has(StrokeDash)) {
+		const { dash, gap, offset } = entity.get(StrokeDash)!;
+		record.StrokeDash = { dash, gap, offset };
 	}
 	if (entity.has(Hidden)) {
 		record.Hidden = true;
@@ -375,7 +437,12 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	}
 	if (entity.has(Keyframe)) {
 		const keyframe = entity.get(Keyframe)!;
-		record.Keyframe = { time: keyframe.time, value: keyframe.value, easing: keyframe.easing };
+		record.Keyframe = {
+			time: keyframe.time,
+			value: keyframe.value,
+			easing: keyframe.easing,
+			...(keyframe.path ? { path: formatPath(keyframe.path, 6) } : {}),
+		};
 	}
 	if (entity.has(Animation)) {
 		const animation = entity.get(Animation)!;
@@ -514,6 +581,10 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 		entity.add(Anchor);
 		entity.set(Anchor, defined(e.Anchor));
 	}
+	if (e.Pivot !== undefined) {
+		entity.add(Pivot);
+		entity.set(Pivot, defined(e.Pivot));
+	}
 	if (e.Skew !== undefined) {
 		entity.add(Skew);
 		entity.set(Skew, defined(e.Skew));
@@ -537,6 +608,25 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.CornerRadius !== undefined) {
 		entity.add(CornerRadius);
 		entity.set(CornerRadius, { value: e.CornerRadius });
+	}
+	if (e.PointCount !== undefined) {
+		entity.add(PointCount);
+		entity.set(PointCount, { value: e.PointCount });
+	}
+	if (e.VectorPath !== undefined) {
+		entity.add(VectorPath);
+		entity.set(VectorPath, { geometry: parsePath(e.VectorPath).geometry });
+	}
+	if (e.EvenOdd !== undefined) {
+		entity.add(EvenOdd);
+	}
+	if (e.ViewBox !== undefined) {
+		entity.add(ViewBox);
+		entity.set(ViewBox, e.ViewBox);
+	}
+	if (e.PathTrim !== undefined) {
+		entity.add(PathTrim);
+		entity.set(PathTrim, e.PathTrim);
 	}
 	if (e.MixedCornerRadius !== undefined) {
 		entity.add(MixedCornerRadius);
@@ -576,9 +666,21 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 		entity.add(ColorStop);
 		entity.set(ColorStop, defined(e.ColorStop));
 	}
+	if (e.LinearGradient !== undefined) {
+		entity.add(LinearGradient);
+		entity.set(LinearGradient, defined(e.LinearGradient));
+	}
+	if (e.EllipticalGradient !== undefined) {
+		entity.add(EllipticalGradient);
+		entity.set(EllipticalGradient, defined(e.EllipticalGradient));
+	}
 	if (e.StrokeStyle !== undefined) {
 		entity.add(StrokeStyle);
 		entity.set(StrokeStyle, defined(e.StrokeStyle));
+	}
+	if (e.StrokeDash !== undefined) {
+		entity.add(StrokeDash);
+		entity.set(StrokeDash, e.StrokeDash);
 	}
 	if (e.Hidden !== undefined) {
 		entity.add(Hidden);
@@ -622,8 +724,9 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 		entity.set(KeyframeTrack, defined(e.KeyframeTrack));
 	}
 	if (e.Keyframe !== undefined) {
+		const { path, ...keyframe } = e.Keyframe;
 		entity.add(Keyframe);
-		entity.set(Keyframe, defined(e.Keyframe));
+		entity.set(Keyframe, defined({ ...keyframe, path: path === undefined ? undefined : parsePath(path).geometry }));
 	}
 	if (e.Animation !== undefined) {
 		entity.add(Animation);

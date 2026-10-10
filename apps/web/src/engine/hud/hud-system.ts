@@ -21,6 +21,9 @@ import {
 import { getMarqueeQuad } from '../input/snapping';
 import { getMountedNameInput } from './name-input';
 import { drawObjectMasks } from '../object-mask';
+import { drawGradientTool, isGradientTool } from '../gradient-tool';
+import { drawDrawTool } from '../draw-tool';
+import { drawPathEditor, drawPenTool, isPathEditing } from '../path-tool';
 
 import type { Entity, World } from 'koota';
 import type { Mat2D } from '@diffusionstudio/runtime';
@@ -48,8 +51,10 @@ export function hudSystem(world: World): void {
 	}
 
 	// The mask is in the way of the thing it is around while that thing is
-	// being moved, so it steps aside for the gesture.
-	const mask = world.get(Hud)?.mode === 'moving' ? null : getSelectionMask(world);
+	// being moved, so it steps aside for the gesture; its handles would sit
+	// on a gradient's while that is being placed, and on a path's vertices
+	// while those are being edited.
+	const mask = world.get(Hud)?.mode === 'moving' || isGradientTool(world) || isPathEditing(world) ? null : getSelectionMask(world);
 
 	if (mask) {
 		drawSelectionMask(world, ctx, mask, resolution);
@@ -58,6 +63,10 @@ export function hudSystem(world: World): void {
 
 	drawMarquee(world, ctx, resolution);
 	drawObjectMasks(world, ctx, resolution);
+	drawGradientTool(world, ctx, resolution);
+	drawDrawTool(world, ctx, resolution);
+	drawPenTool(world, ctx, resolution);
+	drawPathEditor(world, ctx, resolution);
 }
 
 function drawSnapLines(world: World, ctx: Ctx2D, resolution: number): void {

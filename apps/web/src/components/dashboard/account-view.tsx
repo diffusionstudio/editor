@@ -89,7 +89,7 @@ function DashboardAccountInfoRow(props: {
       leading={
         <Icon
           name={props.icon}
-          class="size-6 text-foreground"
+          class="text-foreground"
         />
       }
       title={props.label}
@@ -274,7 +274,7 @@ function DashboardAccountPersonalDetailsSection() {
           >
             Change image
             <Show when={uploading()}>
-              <Icon name="spinner-loader" class="size-6 animate-spin" />
+              <Icon name="spinner-loader" class="animate-spin" />
             </Show>
           </Button>
         </div>
@@ -318,7 +318,7 @@ function DashboardAccountPersonalDetailsSection() {
       >
         Save changes
         <Show when={saving()}>
-          <Icon name="spinner-loader" class="size-6 animate-spin" />
+          <Icon name="spinner-loader" class="animate-spin" />
         </Show>
       </Button>
     </DashboardSurfaceSection>
@@ -523,7 +523,7 @@ function DashboardAccountFreePlanCard() {
         onClick={() => setParams({ dashboard: "billing" }, { replace: true })}
       >
         <span class="grid h-7 w-6 place-items-center overflow-clip">
-          <Icon name="upgrade" class="size-6" />
+          <Icon name="upgrade" />
         </span>
         Upgrade
       </Button>

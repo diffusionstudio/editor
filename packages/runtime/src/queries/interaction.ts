@@ -13,14 +13,16 @@
 import { Not, Or } from 'koota';
 
 import {
-	Anchor, Computed, Geometry, Group, LocalTransform, Offset, Selected,
+	Anchor, Cache, Computed, EvenOdd, Geometry, Group, LocalTransform, Offset, Pivot, PointCount, Selected,
 	Sequential, WorldBounds, WorldTransform,
 } from '../traits';
+import { GeometryType } from '../constants';
 import { store } from '../world/store';
 import { isStage } from './predicates';
+import { getDrawnPath, getPathTransform } from './path';
 import { getViewMatrix } from './camera';
 import {
-	decompose2D, identity2D, invert2D, multiply2D, rectToQuad, rotate2D,
+	decompose2D, distanceToPath, identity2D, invert2D, multiply2D, pointInPath, pointInShape, rectToQuad, rotate2D,
 	scale2D, skew2D, transformPoint, translate2D,
 } from '../math';
 
@@ -63,11 +65,30 @@ export function entityOffset(world: World, entity: Entity): Point {
 	return { x: offset.x[eid] ?? 0, y: offset.y[eid] ?? 0 };
 }
 
-export function entityAnchor(world: World, entity: Entity): Point {
-	const anchor = store(world, Anchor);
+/**
+ * The point the node's rotation, scale and skew turn about, px in its own
+ * space: its `Pivot` while it has one, else its anchor's fraction of its box
+ * — of `width` × `height` when given, for a gesture that is changing the
+ * size. A group has no box of its own to take a fraction of (its box follows
+ * its children), so without a pivot it turns about its origin, as an SVG
+ * `<g>` does.
+ */
+export function entityPivot(world: World, entity: Entity, width?: number, height?: number): Point {
 	const eid = entity.id();
 
-	return { x: anchor.x[eid] ?? 0.5, y: anchor.y[eid] ?? 0.5 };
+	if (entity.has(Pivot)) {
+		const pivot = store(world, Pivot);
+		return { x: pivot.x[eid] ?? 0, y: pivot.y[eid] ?? 0 };
+	}
+
+	if (entity.has(Group)) return { x: 0, y: 0 };
+
+	const anchor = store(world, Anchor);
+	const computed = store(world, Computed);
+	return {
+		x: (anchor.x[eid] ?? 0.5) * (width ?? computed.width[eid] ?? 0),
+		y: (anchor.y[eid] ?? 0.5) * (height ?? computed.height[eid] ?? 0),
+	};
 }
 
 /** The entity's box in device pixels, as [TL, TR, BR, BL]. */
@@ -101,8 +122,48 @@ export function isPointerInEntity(world: World, entity: Entity, point: Point): b
 	const originX = computed.originX[eid] ?? 0;
 	const originY = computed.originY[eid] ?? 0;
 
-	return local.x >= originX && local.x <= originX + (computed.width[eid] ?? 0)
-		&& local.y >= originY && local.y <= originY + (computed.height[eid] ?? 0);
+	const width = computed.width[eid] ?? 0;
+	const height = computed.height[eid] ?? 0;
+
+	const type = entity.has(Geometry) ? store(world, Geometry).value[eid] : undefined;
+	if (type === GeometryType.PATH) {
+		return isPointerInPath(world, entity, local.x - originX, local.y - originY);
+	}
+	if (type === GeometryType.ELLIPSE || type === GeometryType.POLYGON) {
+		const pointCount = entity.has(PointCount) ? store(world, PointCount).value[eid]! : 3;
+		return pointInShape(type, local.x - originX, local.y - originY, width, height, pointCount);
+	}
+
+	return local.x >= originX && local.x <= originX + width
+		&& local.y >= originY && local.y <= originY + height;
+}
+
+/** How near the outline of a path, in its own px, still hits it (on top of half its widest stroke). */
+const PATH_HIT_SLOP = 4;
+
+/**
+ * Whether a point in a path's box (px from its top-left) hits it: inside
+ * what it fills, or on its outline, as far out as its widest stroke reaches
+ * — what an open, unfilled path is picked up by. Measured in the `d`'s own
+ * coordinates, the tolerance taken back through the viewBox's stretch.
+ */
+function isPointerInPath(world: World, entity: Entity, x: number, y: number): boolean {
+	const geometry = getDrawnPath(world, entity);
+	if (geometry === null) return false;
+
+	const { sx, sy, tx, ty } = getPathTransform(world, entity);
+	if (sx === 0 || sy === 0) return false;
+	const px = (x - tx) / sx;
+	const py = (y - ty) / sy;
+	if (pointInPath(geometry, px, py, entity.has(EvenOdd))) return true;
+
+	const computed = store(world, Computed);
+	let reach = 0;
+	for (const stroke of store(world, Cache).strokes[entity.id()] ?? []) {
+		reach = Math.max(reach, (computed.strokeWidth[stroke.id()] ?? 0) / 2);
+	}
+	const scale = Math.min(Math.abs(sx), Math.abs(sy));
+	return distanceToPath(geometry, px, py) * scale <= reach + PATH_HIT_SLOP;
 }
 
 /** The entities a selection mask spans: sequences are not spatial, so they never do. */

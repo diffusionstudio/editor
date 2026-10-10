@@ -160,7 +160,7 @@ export function DashboardPage() {
               <DashboardSidebarItem active={view() === "account"} onClick={() => setView("account")} icon="user" label="Account" />
               <DashboardSidebarItem active={view() === "settings"} onClick={() => setView("settings")} icon="settings" label="General" />
               <DashboardSidebarItem active={view() === "mcp"} onClick={() => setView("mcp")} icon="ai-mcp-cli" label="MCP & CLI" />
-              <DashboardSidebarItem active={view() === "ai-credits"} onClick={() => setView("ai-credits")} icon="ai-generate" label="AI credits" />
+              <DashboardSidebarItem active={view() === "ai-credits"} onClick={() => setView("ai-credits")} icon="ai-credits" label="AI credits" />
               <DashboardSidebarItem active={view() === "billing"} onClick={() => setView("billing")} icon="billing" label="Billing" />
               <DashboardSidebarItem active={view() === "help"} onClick={() => setView("help")} icon="help" label="Help" />
             </DashboardSidebarSection>

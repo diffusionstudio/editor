@@ -110,21 +110,21 @@ export function ActionBar(props: ActionBarProps) {
                   <DropdownMenuPortal>
                     <DropdownMenuContent>
                       <div class="flex items-center gap-1 px-0 pr-2 h-7">
-                        <Icon name="ai-generate" class="size-6 text-muted-foreground" />
+                        <Icon name="ai-credits" class="text-muted-foreground" />
                         <span class="text-xs text-muted-foreground">{totalCredits()} AI credits used</span>
                       </div>
                       <Separator class="my-1" />
                       <DropdownMenuGroup>
                         <DropdownMenuItem onSelect={handleMakeVideo}>
-                          <Icon name="film-video-export" class="size-6 mr-2 text-foreground" />
+                          <Icon name="film-video-export" class="mr-2 text-foreground" />
                           Make video
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleRerun}>
-                          <Icon name="rerun" class="size-6 mr-2 text-foreground" />
+                          <Icon name="rerun" class="mr-2 text-foreground" />
                           Rerun
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={handleReuse}>
-                          <Icon name="reuse-settings" class="size-6 mr-2 text-foreground" />
+                          <Icon name="reuse-settings" class="mr-2 text-foreground" />
                           Reuse
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
@@ -153,13 +153,13 @@ export function ActionBar(props: ActionBarProps) {
                   <DropdownMenuPortal>
                     <DropdownMenuContent>
                       <div class="flex items-center gap-1 px-0 pr-2 h-7">
-                        <Icon name="ai-generate" class="size-6 text-muted-foreground" />
+                        <Icon name="ai-credits" class="text-muted-foreground" />
                         <span class="text-xs text-muted-foreground">{totalCredits()} AI credits used</span>
                       </div>
                       <Separator class="my-1" />
                       <DropdownMenuGroup>
                         <DropdownMenuItem onSelect={handleRerun}>
-                          <Icon name="rerun" class="size-6 mr-2 text-foreground" />
+                          <Icon name="rerun" class="mr-2 text-foreground" />
                           Rerun
                         </DropdownMenuItem>
                       </DropdownMenuGroup>

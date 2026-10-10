@@ -116,7 +116,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
   };
 
   return (
-    <FloatingInspector open anchorRef={props.anchorRef} width={248}>
+    <FloatingInspector open anchorRef={props.anchorRef} width={248} onClose={props.onClose}>
       <FloatingInspectorHeader class="items-center justify-between px-2">
         <Select<EffectOption>
           value={option()}
@@ -206,7 +206,7 @@ export function EffectsInspector(props: EffectsInspectorProps) {
         <Show when={option().unit === "deg"}>
           <ControlRow label="Angle">
             <ControlledTextField
-              icon={<Icon name="rotate-angle" class="size-6" />}
+              icon={<Icon name="rotate-angle" />}
               value={value()}
               onNumber={editValue}
               unit="deg"

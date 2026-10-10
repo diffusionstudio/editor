@@ -5,3 +5,5 @@
 export * from './common';
 export * from './matrix2d';
 export * from './aabb';
+export * from './shape';
+export * from './path';

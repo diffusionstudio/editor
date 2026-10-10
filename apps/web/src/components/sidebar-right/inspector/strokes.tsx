@@ -15,16 +15,23 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { ItemRow } from "@/components/ui/item-row";
 import { PanelSection } from "@/components/ui/panel-section";
-import { useHas } from "@diffusionstudio/koota-solid";
+import { useHas, useTrait } from "@diffusionstudio/koota-solid";
 import { Stroke as StrokeElement } from "@diffusionstudio/reconciler";
-import { Cache, Computed, Hidden, colorToHex } from "@diffusionstudio/runtime";
+import { Cache, Color, Computed, Hidden, Paint, PaintType, colorToHex } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
-import { StrokeInspector } from "./stroke-inspector";
+import { StrokeInspector, useStrokePaint } from "./stroke-inspector";
 
 import type { Entity } from "koota";
 
-/** What "Add stroke" authors; `<stroke>`'s own default color. */
+/** What "Add stroke" authors. */
 const DEFAULT_COLOR = "#000000";
+
+/** What a row says for a stroke drawn with a gradient, in place of a color. */
+const GRADIENT_NAMES: Partial<Record<PaintType, string>> = {
+  [PaintType.LINEAR_GRADIENT]: "Linear",
+  [PaintType.RADIAL_GRADIENT]: "Radial",
+  [PaintType.ANGULAR_GRADIENT]: "Angular",
+};
 
 // Stable identity, so a node without strokes does not resample every tick.
 const NO_STROKES: Entity[] = [];
@@ -36,9 +43,9 @@ type StrokesSettingsProps = {
 /**
  * The `<stroke>` children of the selected node, in paint order (the list is
  * shown topmost first, so the last element in the file is the first row).
- * A row opens the stroke's own inspector; what it shows is the color, since
- * that is the one thing a stroke always says. The line style
- * (`width`/`join`/`miterLimit`) is the stroke's own and not the node's, so it
+ * A row opens the stroke's own inspector; what it shows is the paint the
+ * inspector edits (see `useStrokePaint`): its color, or which gradient. The line style
+ * (`width`/`join`/`miterLimit`/`dash`/`dashGap`/`dashOffset`) is the stroke's own and not the node's, so it
  * lives in that inspector rather than under every row.
  */
 export function StrokesSettings(props: StrokesSettingsProps) {
@@ -139,8 +146,17 @@ type StrokeRowProps = {
 function StrokeRow(props: StrokeRowProps) {
   const editor = useEditor();
 
-  const color = useDerived(() => props.stroke.get(Computed)?.color ?? 0);
+  const paint = useStrokePaint(() => props.stroke);
+  const paintType = useTrait(paint, Paint);
+  const color = useDerived(() => paint().get(Computed)?.color ?? 0);
   const hidden = useHas(() => props.stroke, Hidden);
+  const hasColor = useHas(() => props.stroke, Color);
+
+  // A stroke with neither a `color` nor a paint child draws nothing.
+  const value = () => {
+    if (paint() === props.stroke && !hasColor()) return "None";
+    return GRADIENT_NAMES[paintType()?.value ?? PaintType.SOLID] ?? colorToHex(color()).replace("#", "");
+  };
 
   const toggleHidden = () => {
     editor.editProperty(props.stroke, "hidden", !hidden());
@@ -151,7 +167,7 @@ function StrokeRow(props: StrokeRowProps) {
       <ContextMenuTrigger>
         <ItemRow
           label="Stroke"
-          value={colorToHex(color()).replace("#", "")}
+          value={value()}
           icon={<Icon name="rectangle-small" />}
           onClick={props.onSelect}
           disabled={hidden()}

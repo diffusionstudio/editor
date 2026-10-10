@@ -163,7 +163,7 @@ export function SourceRows(props: SourceRowsProps) {
       </Show>
 
       <Show when={picking() === "media"}>
-        <FloatingInspector open anchorRef={props.anchorRef}>
+        <FloatingInspector open anchorRef={props.anchorRef} onClose={() => setPicking(undefined)}>
           <FloatingInspectorHeader>
             <FloatingInspectorTitle>Source</FloatingInspectorTitle>
             <div class="ml-auto flex items-center gap-1">
@@ -176,7 +176,7 @@ export function SourceRows(props: SourceRowsProps) {
                   class="text-muted-foreground"
                   onClick={() => setPicking(undefined)}
                 >
-                  <Icon name="close-remove" class="size-6" />
+                  <Icon name="close-remove" />
                 </TooltipTrigger>
                 <TooltipContent>Close</TooltipContent>
               </Tooltip>
@@ -307,7 +307,7 @@ function SolidFillRow(props: SolidFillRowProps) {
       </div>
 
       <Show when={props.picking}>
-        <FloatingInspector open anchorRef={props.anchorRef}>
+        <FloatingInspector open anchorRef={props.anchorRef} onClose={() => props.onPickingChange(false)}>
           <FloatingInspectorHeader>
             <FloatingInspectorTitle>Solid</FloatingInspectorTitle>
             <div class="ml-auto flex items-center gap-1">
@@ -319,7 +319,7 @@ function SolidFillRow(props: SolidFillRowProps) {
                   class="text-muted-foreground"
                   onClick={() => props.onPickingChange(false)}
                 >
-                  <Icon name="close-remove" class="size-6" />
+                  <Icon name="close-remove" />
                 </TooltipTrigger>
                 <TooltipContent>Close</TooltipContent>
               </Tooltip>
