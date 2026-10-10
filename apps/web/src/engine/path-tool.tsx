@@ -2,22 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/**
- * The pen and the path editor, the way Figma has them. The pen (P) draws a
- * new `<path>` a vertex at a time: a click puts down a corner, a drag pulls
- * out a smooth vertex's handles, a click on the first vertex closes the path
- * and Enter or Esc leaves it open. Editing a path (Enter, or a double-click
- * on it) puts its vertices on the canvas: drag a vertex or a handle, Alt to
- * break a smooth vertex's handles apart, double-click a vertex to make it a
- * corner or smooth, click the outline to add a vertex, Delete to take the
- * picked one out. Leaving the editor fits the box to the outline again.
- *
- * Every change is a `d` written through the editor, the way the inspector
- * writes any prop. A keyframed path keeps its keyframes After Effects'
- * way: moving a vertex or a handle keys the outline at the playhead, while
- * adding or deleting a vertex happens in every keyframe at once, so all of
- * them keep the same vertices and the morph between them stays one.
- */
 
 import { Path, Stroke } from '@diffusionstudio/reconciler';
 import {
@@ -53,6 +37,8 @@ const LINE_WIDTH = 1.5;
 const LINE_HALO = 3.5;
 /** A vertex's dot, CSS px. */
 const VERTEX_RADIUS = 4.5;
+/** The dot under the pen where its next click puts a vertex, CSS px. */
+const PREVIEW_RADIUS = 3;
 /** The side of the square at a handle's end, CSS px. */
 const HANDLE_SIZE = 5;
 /** The square around a vertex or handle that takes the press, CSS px a side. */
@@ -83,9 +69,9 @@ function guide(ctx: Ctx2D, res: number): void {
 	ctx.stroke();
 }
 
-function vertexDot(ctx: Ctx2D, point: Point, res: number, filled: boolean): void {
+function vertexDot(ctx: Ctx2D, point: Point, res: number, filled: boolean, radius = VERTEX_RADIUS): void {
 	ctx.beginPath();
-	ctx.arc(point.x, point.y, VERTEX_RADIUS * res, 0, Math.PI * 2);
+	ctx.arc(point.x, point.y, radius * res, 0, Math.PI * 2);
 	ctx.fillStyle = filled ? ACCENT : '#FFFFFF';
 	ctx.fill();
 	ctx.strokeStyle = ACCENT;
@@ -127,9 +113,10 @@ function hitQuad(point: Point, res: number) {
 
 /**
  * While the pen is up: the region over the whole stage that takes its
- * presses, and the path so far with a rubber band from its last vertex to
- * the pointer. A pen put down for another tool keeps what it drew; the hand
- * only borrows the stage, so a path survives a space-pan.
+ * presses, the path so far with a rubber band from its last vertex to the
+ * pointer, and a dot under the pointer where the next click puts a vertex.
+ * A pen put down for another tool keeps what it drew; the hand only borrows
+ * the stage, so a path survives a space-pan.
  */
 export function drawPenTool(world: World, ctx: Ctx2D, res: number): void {
 	const tool = world.get(Tool)?.value;
@@ -145,45 +132,53 @@ export function drawPenTool(world: World, ctx: Ctx2D, res: number): void {
 	});
 
 	const { vertices } = pen;
-	if (!vertices.length) return;
+	const pointer = world.get(Pointer)!;
+	const closing = !pen.drawing && vertices.length >= 2 && nearFirstVertex(world, pointer.clientX, pointer.clientY);
+	// Where the next click puts a vertex; over the first one, that one lights up instead.
+	const preview = !pen.drawing && pointer.over && !closing;
+	if (!vertices.length && !preview) return;
 
 	const view = getViewMatrix(world);
 	const device = (x: number, y: number) => transformPoint(view, x, y);
-	const pointer = world.get(Pointer)!;
 
 	ctx.save();
 	ctx.resetTransform();
 
-	ctx.beginPath();
-	const first = device(vertices[0]!.x, vertices[0]!.y);
-	ctx.moveTo(first.x, first.y);
-	for (let i = 1; i < vertices.length; i++) {
-		const from = vertices[i - 1]!;
-		const to = vertices[i]!;
-		const c1 = device(from.outX, from.outY);
-		const c2 = device(to.inX, to.inY);
-		const end = device(to.x, to.y);
-		ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, end.x, end.y);
-	}
-	if (!pen.drawing) {
-		// Where the next click would put the next vertex.
+	if (vertices.length) {
+		ctx.beginPath();
+		const first = device(vertices[0]!.x, vertices[0]!.y);
+		ctx.moveTo(first.x, first.y);
+		for (let i = 1; i < vertices.length; i++) {
+			const from = vertices[i - 1]!;
+			const to = vertices[i]!;
+			const c1 = device(from.outX, from.outY);
+			const c2 = device(to.inX, to.inY);
+			const end = device(to.x, to.y);
+			ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, end.x, end.y);
+		}
+		if (!pen.drawing) {
+			// The segment the next click would end.
+			const last = vertices[vertices.length - 1]!;
+			const c1 = device(last.outX, last.outY);
+			ctx.bezierCurveTo(c1.x, c1.y, pointer.clientX, pointer.clientY, pointer.clientX, pointer.clientY);
+		}
+		guide(ctx, res);
+
 		const last = vertices[vertices.length - 1]!;
-		const c1 = device(last.outX, last.outY);
-		ctx.bezierCurveTo(c1.x, c1.y, pointer.clientX, pointer.clientY, pointer.clientX, pointer.clientY);
-	}
-	guide(ctx, res);
+		const anchor = device(last.x, last.y);
+		if (last.outX !== last.x || last.outY !== last.y) {
+			handleDot(ctx, anchor, device(last.inX, last.inY), res);
+			handleDot(ctx, anchor, device(last.outX, last.outY), res);
+		}
 
-	const last = vertices[vertices.length - 1]!;
-	const anchor = device(last.x, last.y);
-	if (last.outX !== last.x || last.outY !== last.y) {
-		handleDot(ctx, anchor, device(last.inX, last.inY), res);
-		handleDot(ctx, anchor, device(last.outX, last.outY), res);
+		vertices.forEach((vertex, index) => {
+			vertexDot(ctx, device(vertex.x, vertex.y), res, index === 0 ? closing : index === vertices.length - 1);
+		});
 	}
 
-	const closing = !pen.drawing && vertices.length >= 2 && nearFirstVertex(world, pointer.clientX, pointer.clientY);
-	vertices.forEach((vertex, index) => {
-		vertexDot(ctx, device(vertex.x, vertex.y), res, index === 0 ? closing : index === vertices.length - 1);
-	});
+	if (preview) {
+		vertexDot(ctx, { x: pointer.clientX, y: pointer.clientY }, res, false, PREVIEW_RADIUS);
+	}
 
 	ctx.restore();
 }
@@ -396,9 +391,10 @@ function pathMatrix(world: World, entity: Entity): Mat2D {
  * While the editor is up: a region over the stage for clicks on the
  * outline or off it, the outline itself, every vertex, and the handles
  * around the picked one — its own, and the neighbors' that shape the two
- * segments it joins. The editor goes down by itself when its path is
- * deleted or deselected, or when another tool is picked (the hand only
- * borrows the stage).
+ * segments it joins, and a dot on the outline where a click would add a
+ * vertex. The editor goes down by itself when its path is deleted or
+ * deselected, or when another tool is picked (the hand only borrows the
+ * stage).
  */
 export function drawPathEditor(world: World, ctx: Ctx2D, res: number): void {
 	const state = world.get(PathEditor)!;
@@ -435,7 +431,10 @@ export function drawPathEditor(world: World, ctx: Ctx2D, res: number): void {
 	ctx.resetTransform();
 	guide(ctx, res);
 
+	// Where the vertices and handles take the press, ahead of the outline.
+	const parts: Point[] = [];
 	const push = (id: string, point: Point) => {
+		parts.push(point);
 		regions.push({ target: { kind: 'hud', id, entity, quad: hitQuad(point, res) }, callback: handlePathEditInteraction });
 	};
 
@@ -465,7 +464,28 @@ export function drawPathEditor(world: World, ctx: Ctx2D, res: number): void {
 		}
 	});
 
+	const pointer = world.get(Pointer)!;
+	const half = (HANDLE_HIT * res) / 2;
+	const onPart = parts.some((point) => Math.abs(point.x - pointer.clientX) <= half && Math.abs(point.y - pointer.clientY) <= half);
+	if (pointer.over && pointer.phase === 'lifted' && !onPart) {
+		const hit = outlineHit(world, entity, geometry, pointer.clientX, pointer.clientY);
+		if (hit) vertexDot(ctx, hit.point, res, false, PREVIEW_RADIUS);
+	}
+
 	ctx.restore();
+}
+
+/**
+ * Where on the outline a click at (clientX, clientY) would add a vertex:
+ * the nearest point on it, in device pixels, if it is near enough.
+ */
+function outlineHit(world: World, entity: Entity, geometry: PathGeometry, clientX: number, clientY: number) {
+	const local = pointerInPath(world, entity, clientX, clientY);
+	const nearest = nearestOnPath(geometry, local.x, local.y);
+	if (nearest === null) return null;
+	const point = transformPoint(pathMatrix(world, entity), ...xy(pointOnPath(geometry, nearest.subpath, nearest.segment, nearest.t)));
+	if (Math.hypot(point.x - clientX, point.y - clientY) > OUTLINE_HIT * resolution(world)) return null;
+	return { ...nearest, point };
 }
 
 /** The pointer in the edited path's `d` coordinates. */
@@ -494,15 +514,14 @@ export function handlePathEditInteraction(world: World, event: DispatchedPointer
 	if (event.target.id === 'path-edit') {
 		if (event.type !== 'click') return;
 		const geometry = getPathGeometry(world, entity);
-		const point = pointerInPath(world, entity, event.clientX, event.clientY);
-		const nearest = geometry && nearestOnPath(geometry, point.x, point.y);
-		if (geometry && nearest) {
-			const on = transformPoint(pathMatrix(world, entity), ...xy(pointOnPath(geometry, nearest.subpath, nearest.segment, nearest.t)));
-			if (Math.hypot(on.x - event.clientX, on.y - event.clientY) <= OUTLINE_HIT * resolution(world)) {
-				insertVertex(world, editor, entity, nearest.subpath, nearest.segment, nearest.t);
-				world.set(PathEditor, { subpath: nearest.subpath, vertex: nearest.segment + 1 });
+		if (geometry) {
+			const hit = outlineHit(world, entity, geometry, event.clientX, event.clientY);
+			if (hit) {
+				insertVertex(world, editor, entity, hit.subpath, hit.segment, hit.t);
+				world.set(PathEditor, { subpath: hit.subpath, vertex: hit.segment + 1 });
 				return;
 			}
+			const point = pointerInPath(world, entity, event.clientX, event.clientY);
 			if (pointInPath(geometry, point.x, point.y)) {
 				world.set(PathEditor, { subpath: -1, vertex: -1 });
 				return;
