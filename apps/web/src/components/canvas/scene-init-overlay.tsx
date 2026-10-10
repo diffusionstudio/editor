@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { useQuery, useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import { ChildOf, Library, Root, setCamera, Source } from "@diffusionstudio/runtime";
 import { Icon } from "@/components/ui/icon";
@@ -21,6 +21,7 @@ import {
   PRESET_CATEGORIES,
 } from "@/lib/layout-presets";
 import { useEditor } from "@/engine";
+import { useProjectConfig } from "@/engine/project-config";
 import { droppedFiles, importFiles } from "@/engine/asset-actions";
 import { createScene, insertAssetsInNewScene } from "@/engine/new-scene";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
@@ -33,9 +34,10 @@ const DEFAULT_NAME = "New Scene";
 const DEFAULT_PRESET: LayoutPreset = { label: "Long-form 16:9", width: 1920, height: 1080 };
 
 /**
- * The empty-project prompt: a placeholder frame in the middle of the canvas
+ * The new-project prompt: a placeholder frame in the middle of the canvas
  * that becomes the first scene on click, with the camera fitted to it so the
- * scene lands exactly where the placeholder was.
+ * scene lands exactly where the placeholder was. Only for a project whose
+ * stage has never had anything on it: one emptied later stays empty.
  */
 export function SceneInitOverlay() {
   const world = useWorld();
@@ -43,6 +45,7 @@ export function SceneInitOverlay() {
   const root = world.get(Root)!;
   const source = useTrait(root, Source);
   const children = useQuery(ChildOf(root));
+  const config = useProjectConfig();
 
   const [editing, setEditing] = createSignal(false);
   const [selectedPreset, setSelectedPreset] = createSignal<LayoutPreset>(DEFAULT_PRESET);
@@ -52,7 +55,19 @@ export function SceneInitOverlay() {
   let overlayRef: HTMLDivElement | undefined;
   let buttonRef: HTMLButtonElement | undefined;
 
-  const showOverlay = createMemo(() => source()?.value && children().length === 0);
+  // Without a project config there is nothing to remember it by: the
+  // prompt shows whenever the stage is empty.
+  const isNew = () => {
+    const c = config();
+    return !c || (c.loaded() && !c.initialized());
+  };
+
+  const showOverlay = createMemo(() => source()?.value && children().length === 0 && isNew());
+
+  createEffect(() => {
+    const c = config();
+    if (c?.loaded() && children().length > 0) void c.markInitialized();
+  });
 
   const aspectRatio = () => {
     const p = selectedPreset();

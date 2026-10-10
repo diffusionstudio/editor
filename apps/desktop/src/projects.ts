@@ -549,7 +549,7 @@ a new session.
 | Path | What it is |
 | ---- | ---------- |
 | \`index.tsx\` | The entry. Its default export renders the composition. |
-| \`package.json\` | The project record: \`projectId\` (its identity, kept across renames), \`displayName\` (the name shown in the app), \`main\` (the entry), \`diffusion\` (how each scene is exported), and the diffusion commands as scripts. |
+| \`package.json\` | The project record: \`projectId\` (its identity, kept across renames), \`displayName\` (the name shown in the app), \`main\` (the entry), \`diffusion\` (how each scene is exported, and whether the stage has ever had anything on it), and the diffusion commands as scripts. |
 | \`tsconfig.json\` | Types for the composition tags, through \`jsxImportSource\`. |
 | \`assets.yml\` | The asset library: for every asset its library path, where its bytes are, and what it was found to be. Written by the app; hand edits are read on the next load. |
 | \`assets/\` | The library's files: put one here and it is taken in while the app watches, and the app writes its own here too. Media imported through the app is linked where it lies instead, never copied. |

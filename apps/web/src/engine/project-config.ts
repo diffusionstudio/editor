@@ -18,6 +18,9 @@
 // A scene with no entry has nothing set up.
 //
 //   { "export": { "intro": { "format": "mp4", ... } } }
+//
+// `initialized` says the stage has had something on it at least once: until
+// then the project is new, and the canvas offers to make its first scene.
 
 import { createSignal } from 'solid-js';
 import { Source } from '@diffusionstudio/runtime';
@@ -148,6 +151,8 @@ export class ProjectConfig {
 	private raw: Record<string, unknown> = {};
 	private disposed = false;
 	private readonly exports = createSignal<Record<string, ExportConfig>>({});
+	private readonly loadedSignal = createSignal(false);
+	private readonly initializedSignal = createSignal(false);
 
 	public constructor(world: World, dir: string) {
 		this.world = world;
@@ -166,6 +171,25 @@ export class ProjectConfig {
 
 		this.raw = isRecord(value) ? value : {};
 		this.exports[1](parseExports(this.raw.export));
+		this.initializedSignal[1](this.raw.initialized === true);
+		this.loadedSignal[1](true);
+	}
+
+	/** Whether the config has been read. Reactive. */
+	public loaded(): boolean {
+		return this.loadedSignal[0]();
+	}
+
+	/** Whether the stage has ever had something on it. Reactive. */
+	public initialized(): boolean {
+		return this.initializedSignal[0]();
+	}
+
+	/** Records that the stage has had something on it: here now, in the file after. */
+	public async markInitialized(): Promise<void> {
+		if (this.initialized()) return;
+		this.initializedSignal[1](true);
+		await this.save({ ...this.raw, initialized: true });
 	}
 
 	/**
@@ -197,9 +221,13 @@ export class ProjectConfig {
 		const next = { ...this.raw };
 		if (Object.keys(exports).length) next.export = exports;
 		else delete next.export;
-		this.raw = next;
 		this.exports[1](parseExports(next.export));
+		await this.save(next);
+	}
 
+	/** Makes `next` the config and writes it to the file. */
+	private async save(next: Record<string, unknown>): Promise<void> {
+		this.raw = next;
 		try {
 			await writeProjectConfig(this.dir, Object.keys(next).length ? next : null);
 		} catch (error) {
