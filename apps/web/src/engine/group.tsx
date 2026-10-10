@@ -19,7 +19,7 @@ import {
 	aabbFromTransformedRect,
 	computeLocalMatrix,
 	decompose2D,
-	entityAnchor,
+	entityPivot,
 	entityLocalMat,
 	entityOffset,
 	framesToSeconds,
@@ -63,16 +63,31 @@ function isIdentity(mat: Mat2D): boolean {
  * Puts the selection into a new group where it stands. The group is authored
  * with no transform of its own, so the members keep the coordinates they had
  * and nothing moves; its box is derived from theirs (see `computeGroupBounds`),
- * so there is no size to author either. Only the members sharing the first
- * one's parent go in — a wrap has one place to put things (see `wrap`). The
- * selection moves to the group.
+ * so there is no size to author either. What it is authored with is a pivot
+ * at the members' center as they stand now — the group's space being their
+ * parent's, their box's center is the pivot as is — fixed from here on, so
+ * the group turns about the same point however its contents change later.
+ * Only the members sharing the first one's parent go in — a wrap has one
+ * place to put things (see `wrap`). The selection moves to the group.
  */
 export function groupSelection(world: World): void {
 	const editor = getDocumentEditor(world);
-	const selected = [...world.query(Selected, NODES, Not(IsClipPath))];
-	if (!selected.length) return;
+	const selected = new Set(world.query(Selected, NODES, Not(IsClipPath)));
+	const first = [...selected][0];
+	if (!first) return;
 
-	const group = editor.wrap(selected, () => <GroupElement name={getNextName(world, 'Group')} />);
+	const parent = getParentEntity(first);
+	if (!parent) return;
+
+	// The same members `wrap` will take.
+	const members = getEntityChildren(world, parent).filter((entity) => selected.has(entity));
+	const box = measure(world, members.flatMap((member) => spatialLeaves(world, member)));
+	const pivotX = box ? round2((box.minX + box.maxX) / 2) : undefined;
+	const pivotY = box ? round2((box.minY + box.maxY) / 2) : undefined;
+
+	const group = editor.wrap([...selected], () => (
+		<GroupElement name={getNextName(world, 'Group')} pivotX={pivotX} pivotY={pivotY} />
+	));
 	if (group) editor.select(group);
 }
 
@@ -116,6 +131,37 @@ function spatialLeaves(world: World, entity: Entity): Entity[] {
 }
 
 /**
+ * The upright box `entities` make in their parent's space, or null for none.
+ */
+function measure(world: World, entities: Entity[]): { minX: number; minY: number; maxX: number; maxY: number } | null {
+	if (!entities.length) return null;
+
+	const computed = store(world, Computed);
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+
+	for (const entity of entities) {
+		const eid = entity.id();
+		computeLocalMatrix(world, entity);
+		// The box the way computeWorldBounds frames it: the origin folded into
+		// the matrix, so a group's children-derived rect sits where it is drawn.
+		const bounds = aabbFromTransformedRect(
+			multiply2D(entityLocalMat(world, entity), translate2D(computed.originX[eid] ?? 0, computed.originY[eid] ?? 0)),
+			computed.width[eid] ?? 0,
+			computed.height[eid] ?? 0,
+		);
+		if (bounds.minX < minX) minX = bounds.minX;
+		if (bounds.minY < minY) minY = bounds.minY;
+		if (bounds.maxX > maxX) maxX = bounds.maxX;
+		if (bounds.maxY > maxY) maxY = bounds.maxY;
+	}
+
+	return { minX, minY, maxX, maxY };
+}
+
+/**
  * Puts the selection into a new scene. Unlike a group or a sequence, a scene
  * has a place and a size of its own, so it is authored around the members —
  * their box in the parent's space, edges rounded outward so the scene's clip
@@ -140,34 +186,14 @@ export function wrapSelectionInScene(world: World): void {
 	// parent's children.
 	const members = getEntityChildren(world, parent).filter((entity) => selected.has(entity));
 	const measured = members.flatMap((member) => spatialLeaves(world, member));
-	if (!measured.length) return;
+	const box = measure(world, measured);
+	if (!box) return;
 
 	const computed = store(world, Computed);
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const entity of measured) {
-		const eid = entity.id();
-		computeLocalMatrix(world, entity);
-		// The box the way computeWorldBounds frames it: the origin folded into
-		// the matrix, so a group's children-derived rect sits where it is drawn.
-		const bounds = aabbFromTransformedRect(
-			multiply2D(entityLocalMat(world, entity), translate2D(computed.originX[eid] ?? 0, computed.originY[eid] ?? 0)),
-			computed.width[eid] ?? 0,
-			computed.height[eid] ?? 0,
-		);
-		if (bounds.minX < minX) minX = bounds.minX;
-		if (bounds.minY < minY) minY = bounds.minY;
-		if (bounds.maxX > maxX) maxX = bounds.maxX;
-		if (bounds.maxY > maxY) maxY = bounds.maxY;
-	}
-
-	const x = Math.floor(minX);
-	const y = Math.floor(minY);
-	const width = Math.max(1, Math.ceil(maxX) - x);
-	const height = Math.max(1, Math.ceil(maxY) - y);
+	const x = Math.floor(box.minX);
+	const y = Math.floor(box.minY);
+	const width = Math.max(1, Math.ceil(box.maxX) - x);
+	const height = Math.max(1, Math.ceil(box.maxY) - y);
 
 	const scene = editor.wrap([...selected], () => (
 		<SceneElement name={getNextName(world, 'Scene')} x={x} y={y} width={width} height={height} />
@@ -282,9 +308,7 @@ function bakeContainerInto(
 
 	if (containerLocal) {
 		computeLocalMatrix(world, child);
-		const anchor = entityAnchor(world, child);
-		const pivotX = anchor.x * (computed.width[cid] ?? 0);
-		const pivotY = anchor.y * (computed.height[cid] ?? 0);
+		const { x: pivotX, y: pivotY } = entityPivot(world, child);
 
 		// The pivot folded in before decomposing, as `resizeNode` folds
 		// it: the translation that comes out is position + pivot, clear

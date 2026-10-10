@@ -21,9 +21,9 @@
 
 import { Path, Stroke } from '@diffusionstudio/reconciler';
 import {
-	Cache, Computed, HitRegions, Keyframe, LocalTransform, Position, RenderSurface, Root, Selected, Source, Tool, ToolType,
-	VectorPath, ViewBox,
-	entityAnchor, entityWorldMat, findSceneAt, formatPath, getNextName, getPathGeometry, getPathTransform,
+	Cache, Computed, HitRegions, Keyframe, LocalTransform, Pivot, Position, RenderSurface, Root, Selected, Source, Tool,
+	ToolType, VectorPath, ViewBox,
+	entityPivot, entityWorldMat, findSceneAt, formatPath, getNextName, getPathGeometry, getPathTransform,
 	getViewMatrix, identity2D, invert2D, isPath, multiply2D, nearestOnPath, pathBounds, pointInPath,
 	pointOnPath, rectToQuad, removeVertex, screenToWorld, segmentCount, splitSegment, store, transformPath,
 	transformPoint, unionPathBounds, vertexCount, worldToLocal,
@@ -746,12 +746,19 @@ export function fitPathBox(world: World, editor: DocumentEditor, entity: Entity)
 	if (tight) return;
 
 	// The box's position moves by the shift as its linear part takes it, the
-	// pivot (anchor × size) moving with the new size: L(p) = pos + pivot + A(p − pivot).
-	const anchor = entityAnchor(world, entity);
+	// pivot moving with the box: L(p) = pos + pivot + A(p − pivot). An anchor's
+	// pivot is a fraction of the new size; a pivot of the path's own stays on
+	// the point of the outline it was on, which the box's corner moved off by
+	// the shift.
+	const ownPivot = entity.has(Pivot);
+	const oldPivot = entityPivot(world, entity, oldWidth, oldHeight);
+	const newPivot = ownPivot
+		? { x: round2(oldPivot.x - shiftX), y: round2(oldPivot.y - shiftY) }
+		: entityPivot(world, entity, width, height);
 	const local = store(world, LocalTransform);
 	const a = local.a[eid]!, b = local.b[eid]!, c = local.c[eid]!, d = local.d[eid]!;
-	const pivotX = anchor.x * (width - oldWidth);
-	const pivotY = anchor.y * (height - oldHeight);
+	const pivotX = newPivot.x - oldPivot.x;
+	const pivotY = newPivot.y - oldPivot.y;
 	const vx = shiftX + pivotX;
 	const vy = shiftY + pivotY;
 	const position = entity.get(Position) ?? { x: 0, y: 0 };
@@ -763,6 +770,11 @@ export function fitPathBox(world: World, editor: DocumentEditor, entity: Entity)
 	if (authored) editor.editProperty(entity, 'd', formatPath(transformPath(authored, shift)));
 	for (const keyframe of keyframes) {
 		editor.editProperty(keyframe, 'value', formatPath(transformPath(keyframe.get(Keyframe)!.path!, shift)));
+	}
+
+	if (ownPivot) {
+		editor.editProperty(entity, 'pivotX', newPivot.x);
+		editor.editProperty(entity, 'pivotY', newPivot.y);
 	}
 
 	const writes: TransformWrite[] = [['width', width], ['height', height], ['x', x], ['y', y]];

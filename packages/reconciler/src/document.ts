@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, EvenOdd, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Paint, PaintType, parseColor, parsePath, PathTrim, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, VectorPath, ViewBox, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, EvenOdd, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Pivot, Paint, PaintType, parseColor, parsePath, PathTrim, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, VectorPath, ViewBox, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -946,6 +946,25 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 				if (entity.has(Sequential)) return;
 				entity.add(Scale);
 				entity.set(Scale, { [name === 'scaleX' ? 'x' : 'y']: toNumber(value) ?? 1 });
+				return;
+			}
+			case 'pivotX':
+			case 'pivotY': {
+				const { entity, props } = node;
+				if (entity.has(Sequential)) return;
+
+				// One trait for both axes: absent, the node turns about its
+				// anchor (a group about its origin), so an axis left out of a
+				// pivot that has the other is 0, like an unset x.
+				const x = toNumber(props.pivotX);
+				const y = toNumber(props.pivotY);
+				if (x === undefined && y === undefined) {
+					entity.remove(Pivot);
+					return;
+				}
+
+				entity.add(Pivot);
+				entity.set(Pivot, { x: x ?? 0, y: y ?? 0 });
 				return;
 			}
 			case 'constrainX':

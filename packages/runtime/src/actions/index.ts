@@ -18,7 +18,6 @@ export * from './timing';
 export * from './resize';
 export * from './keyframe';
 export * from './overlap';
-export * from './group';
 export * from './frame';
 export * from './playback';
 export * from './clipboard';

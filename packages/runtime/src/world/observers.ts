@@ -7,7 +7,7 @@ import { store } from './store';
 import {
 	ChildOf, Culled, Sequential, Group, Scene, Audio, Paint, AssetId,
 	Delay, Trim, PlaybackRate, SourceFrameRate, Keyframe, ItemIndex,
-	Position, Offset, Rotation, Scale, UniformScale, Skew, Anchor, Flip,
+	Position, Offset, Rotation, Scale, UniformScale, Skew, Anchor, Pivot, Flip,
 	Opacity, Color, Blur, Volume, Effect, CornerRadius, MixedCornerRadius,
 	ColorStop, LinearGradient, EllipticalGradient, PathTrim, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
 	ImageDecoderHandle, VideoDecoderHandle,
@@ -103,7 +103,7 @@ export function observeWorld(world: World): () => void {
 	// A sequence is a group without spatial identity of its own.
 	subs.push(world.onAdd(Sequential, (entity) => {
 		entity.add(Group);
-		entity.remove(Position, Offset, Rotation, Scale, Skew, Anchor, Flip);
+		entity.remove(Position, Offset, Rotation, Scale, Skew, Anchor, Pivot, Flip);
 	}));
 
 	const refile = (clipPath: boolean) => (entity: Entity) => {

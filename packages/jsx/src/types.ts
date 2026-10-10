@@ -255,7 +255,20 @@ type SizeProps = {
   keepAspectRatio?: boolean;
 };
 
-type TransformProps = PositionProps & OffsetProps & SizeProps & {
+type PivotProps = {
+  /**
+   * The point `rotation`, `scale` and skew turn about, px in the element's
+   * own space (from its box's top-left; for a `<group>`, its children's
+   * coordinates), like SVG's `rotate(angle cx cy)`. Absent, an element turns
+   * about the center of its box and a `<group>` about its origin; the
+   * editor's group action sets one at the members' center. An axis left out
+   * of a pivot that has the other is 0.
+   */
+  pivotX?: number;
+  pivotY?: number;
+};
+
+type TransformProps = PositionProps & OffsetProps & SizeProps & PivotProps & {
   /**
    * How the element follows its scene's frame when that frame is resized —
    * horizontally, then vertically. They are read only against a frame that
@@ -268,7 +281,7 @@ type TransformProps = PositionProps & OffsetProps & SizeProps & {
   constrainY?: VerticalConstraint;
   /** Rotation in degrees. */
   rotation?: number;
-  /** Uniform scale about the box origin, 1 = natural size. Overrides `scaleX`/`scaleY` while set. */
+  /** Uniform scale about the pivot, 1 = natural size. Overrides `scaleX`/`scaleY` while set. */
   scale?: number;
   /** Per-axis scale, 1 = natural size. */
   scaleX?: number;

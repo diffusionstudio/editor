@@ -20,7 +20,7 @@ import {
 	ChildOf, Computed, Culled, Geometry, Group, Hovering,
 	Interactive, KeepAspectRatio, RenderSurface, Root, Scene,
 	Selected, Skew, Time,
-	computeGroupBounds, computeLocalMatrix, decompose2D, entityAnchor,
+	decompose2D, entityPivot,
 	entityOffset, entityQuad, entityWorldMat, enterEntity,
 	findKeyframeTrackEntity, getParentEntity, getParentNode, getSceneAncestor,
 	getSelection, getSelectionMask, identity2D, invert2D, isPath, isPointerInEntity,
@@ -447,8 +447,10 @@ export function handleResizeInteraction(world: World, event: DispatchedPointerEv
 		const localScale = scaleAbout(pivotX, pivotY, newWidth / snapshot.width, newHeight / snapshot.height);
 
 		// Groups have no Size of their own, so a group resize transforms its
-		// direct children instead; the group's own transform is left alone and
-		// the transform system rebuilds its box from where the children ended up.
+		// direct children instead; the group's own transform is left alone
+		// (it turns about its pivot, not its box, so nothing about it moves)
+		// and the transform system rebuilds its box from where the children
+		// ended up.
 		const hasGroup = selection.some((entity) => entity.has(Group));
 		// The single-node wobble guard does not apply to a group's children:
 		// they are scaled in the group's space, not their own, so their
@@ -462,15 +464,6 @@ export function handleResizeInteraction(world: World, event: DispatchedPointerEv
 
 			for (const entity of targets) {
 				resizeNode(world, entity, oldTr, localScale, writeAngles);
-
-				// The walk is parent-first, so a group's box is built from its
-				// children's transforms as of the previous frame. Refresh this one
-				// now, or a rotated group's box lags a frame behind and drifts.
-				if (hasGroup) computeLocalMatrix(world, entity);
-			}
-
-			if (selected.has(Group)) {
-				keepGroupPlaced(world, selected);
 			}
 		}
 
@@ -496,14 +489,11 @@ function resizeNode(world: World, entity: Entity, oldTr: Mat2D, localScale: Mat2
 	if (!snapshot) return;
 
 	const editor = getDocumentEditor(world);
-	const anchor = entityAnchor(world, entity);
+	const oldPivot = entityPivot(world, entity, snapshot.width, snapshot.height);
 
 	// Take the pivot out of the old local transform: the decomposition puts it
 	// back from the new size.
-	const oldLocal = multiply2D(
-		snapshot.localTransform,
-		translate2D(snapshot.width * anchor.x, snapshot.height * anchor.y),
-	);
+	const oldLocal = multiply2D(snapshot.localTransform, translate2D(oldPivot.x, oldPivot.y));
 
 	const decomposed = decompose2D(inParentSpace(oldTr, localScale, snapshot.parentTransform, oldLocal));
 
@@ -512,12 +502,13 @@ function resizeNode(world: World, entity: Entity, oldTr: Mat2D, localScale: Mat2
 	const width = snapshot.width * (decomposed.scaleX / snapshot.scaleX);
 	const height = snapshot.height * (decomposed.scaleY / snapshot.scaleY);
 	const offset = entityOffset(world, entity);
+	const pivot = entityPivot(world, entity, width, height);
 
 	const writes: TransformWrite[] = [
 		['width', Math.round(width)],
 		['height', Math.round(height)],
-		['x', Math.round(decomposed.x - width * anchor.x - offset.x)],
-		['y', Math.round(decomposed.y - height * anchor.y - offset.y)],
+		['x', Math.round(decomposed.x - pivot.x - offset.x)],
+		['y', Math.round(decomposed.y - pivot.y - offset.y)],
 	];
 	if (writeAngles) writes.push(['rotation', Math.round(decomposed.rotation * 100) / 100]);
 	// A path's outline stretches with its box rather than staying put in it.
@@ -536,40 +527,17 @@ function resizeNode(world: World, entity: Entity, oldTr: Mat2D, localScale: Mat2
 }
 
 /**
- * Holds a resized group where the gesture found it. Its local matrix pivots
- * about anchor x box size, and resizing the children moves that pivot; with a
- * rotation, the (I - R)·pivot term then shifts the group's translation and
- * drags the whole group off the pointer. The children were computed against
- * the group's transform as of dragstart, so put it back.
+ * Where `entity`'s pivot sits in the space of the selection mask `maskTr`,
+ * as of the gesture's start: its own px, taken out through the transforms
+ * snapshotted then and back in through the mask's.
  */
-function keepGroupPlaced(world: World, group: Entity): void {
-	const snapshot = getTransformSnapshot(group);
-	if (!snapshot) return;
+function maskPivot(world: World, entity: Entity, maskTr: Mat2D): Point {
+	const state = getTransformSnapshot(entity);
+	if (!state) return { x: 0, y: 0 };
 
-	// Rebuild the box from the children that just moved, so the new pivot is
-	// the one the group will actually be drawn with.
-	computeGroupBounds(world, group);
-
-	const computed = store(world, Computed);
-	const gid = group.id();
-	const anchor = entityAnchor(world, group);
-	const pivotX = anchor.x * (computed.width[gid] ?? 0);
-	const pivotY = anchor.y * (computed.height[gid] ?? 0);
-
-	// computeLocalMatrix builds L = T(position) · K, K = T(pivot)·linear·T(-pivot).
-	// The resize leaves `linear` alone, so solve T(position) = L · K⁻¹ for the
-	// new pivot and the rebuilt matrix comes out equal to the snapshot again.
-	const desired = snapshot.localTransform;
-	const linear: Mat2D = { a: desired.a, b: desired.b, c: desired.c, d: desired.d, e: 0, f: 0 };
-	const position = multiply2D(desired, invert2D(scaleFree(pivotX, pivotY, linear)));
-	const offset = entityOffset(world, group);
-	const editor = getDocumentEditor(world);
-
-	editTransform(world, editor, group, [
-		['x', Math.round(position.e - offset.x)],
-		['y', Math.round(position.f - offset.y)],
-	]);
-	computeLocalMatrix(world, group);
+	const pivot = entityPivot(world, entity, state.width, state.height);
+	const placed = transformPoint(multiply2D(state.parentTransform, state.localTransform), pivot.x, pivot.y);
+	return transformPoint(invert2D(maskTr), placed.x, placed.y);
 }
 
 /** A rotation handle, just outside a corner of the selection mask. */
@@ -586,11 +554,11 @@ export function handleRotateInteraction(world: World, event: DispatchedPointerEv
 		const editor = getDocumentEditor(world);
 		const selection = getSelection(world);
 
-		// One node turns about its own anchor, several about the center of the
+		// One node turns about its own pivot, several about the center of the
 		// box they share.
-		const single = selection.length === 1 ? entityAnchor(world, selection[0]!) : null;
-		const pivotX = snapshot.width * (single?.x ?? 0.5);
-		const pivotY = snapshot.height * (single?.y ?? 0.5);
+		const { x: pivotX, y: pivotY } = selection.length === 1
+			? maskPivot(world, selection[0]!, oldTr)
+			: { x: snapshot.width / 2, y: snapshot.height / 2 };
 
 		const current = pointerPoint(world, oldTr);
 		const origin = pointerOrigin(world, oldTr);
@@ -603,10 +571,8 @@ export function handleRotateInteraction(world: World, event: DispatchedPointerEv
 			const state = getTransformSnapshot(entity);
 			if (!state) continue;
 
-			const anchor = entityAnchor(world, entity);
-			const anchorX = state.width * anchor.x;
-			const anchorY = state.height * anchor.y;
-			const oldLocal = multiply2D(state.localTransform, translate2D(anchorX, anchorY));
+			const own = entityPivot(world, entity, state.width, state.height);
+			const oldLocal = multiply2D(state.localTransform, translate2D(own.x, own.y));
 
 			let newLocal = inParentSpace(oldTr, localRotate, state.parentTransform, oldLocal);
 			let decomposed = decompose2D(newLocal);
@@ -614,10 +580,10 @@ export function handleRotateInteraction(world: World, event: DispatchedPointerEv
 			// Shift snaps to global 15 degree steps. The snap has to turn about
 			// the pivot the gesture used, and the position has to be re-derived
 			// from the snapped matrix: reusing the unsnapped one works for a
-			// single node (its own matrix pivots about the same anchor, so its
-			// position is rotation-invariant) but a group's matrix pivots about
-			// its box center, which the mask's center is offset from, and the
-			// mask jumps.
+			// single node (its own matrix pivots about the same point, so its
+			// position is rotation-invariant) but several nodes turn about the
+			// center of the box they share, which is none of their own pivots,
+			// and the mask jumps.
 			if (keys(world).has('shift')) {
 				const snapped = Math.round(decomposed.rotation / 15) * 15;
 
@@ -631,8 +597,8 @@ export function handleRotateInteraction(world: World, event: DispatchedPointerEv
 
 			const offset = entityOffset(world, entity);
 			editTransform(world, editor, entity, [
-				['x', Math.round(decomposed.x - anchorX - offset.x)],
-				['y', Math.round(decomposed.y - anchorY - offset.y)],
+				['x', Math.round(decomposed.x - own.x - offset.x)],
+				['y', Math.round(decomposed.y - own.y - offset.y)],
 				['rotation', Math.round(decomposed.rotation * 100) / 100],
 			]);
 		}
@@ -724,10 +690,8 @@ export function handleMaskInteraction(world: World, event: DispatchedPointerEven
 
 			if (drop !== undefined) reparentTo(world, entity, drop);
 
-			const anchor = entityAnchor(world, entity);
-			const anchorX = state.width * anchor.x;
-			const anchorY = state.height * anchor.y;
-			const oldLocal = multiply2D(state.localTransform, translate2D(anchorX, anchorY));
+			const own = entityPivot(world, entity, state.width, state.height);
+			const oldLocal = multiply2D(state.localTransform, translate2D(own.x, own.y));
 			// The snapshot is against the parent the drag started under, so a
 			// node that changed parents mid-drag carries the correction that
 			// undoes the difference between them.
@@ -737,8 +701,8 @@ export function handleMaskInteraction(world: World, event: DispatchedPointerEven
 			const offset = entityOffset(world, entity);
 
 			editTransform(world, editor, entity, [
-				['x', Math.round(decomposed.x - anchorX - offset.x)],
-				['y', Math.round(decomposed.y - anchorY - offset.y)],
+				['x', Math.round(decomposed.x - own.x - offset.x)],
+				['y', Math.round(decomposed.y - own.y - offset.y)],
 			]);
 		}
 	}
@@ -909,11 +873,6 @@ function rotateAbout(x: number, y: number, degrees: number): Mat2D {
 	let mat = translate2D(x, y);
 	mat = multiply2D(mat, rotate2D(degrees));
 	return multiply2D(mat, translate2D(-x, -y));
-}
-
-/** The pivot part of `computeLocalMatrix`: T(pivot) · linear · T(-pivot). */
-function scaleFree(pivotX: number, pivotY: number, linear: Mat2D): Mat2D {
-	return multiply2D(multiply2D(translate2D(pivotX, pivotY), linear), translate2D(-pivotX, -pivotY));
 }
 
 /** A mask-space delta as the parent sees it: parent⁻¹ · mask · delta · mask⁻¹ · parent. */

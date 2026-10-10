@@ -94,8 +94,9 @@ Every node accepts:
 | `keepAspectRatio` | `boolean` | absent | Locks the box to its authored proportions: resizing one bound (an editor handle, a layout row) drives the other so the ratio `width`:`height` has is kept — or, with neither authored, the ratio the box currently has. |
 | `constrainX` | `"left" \| "right" \| "center" \| "stretch" \| "scale"` | `"left"` | How the element follows its scene's frame when that frame is resized, horizontally — see below. |
 | `constrainY` | `"top" \| "bottom" \| "center" \| "stretch" \| "scale"` | `"top"` | The same vertically. |
-| `rotation` | `number` | `0` | Rotation in degrees. |
-| `scale` | `number` | `1` | Uniform scale about the box origin. Overrides `scaleX`/`scaleY` while set. |
+| `rotation` | `number` | `0` | Rotation in degrees, about the pivot. |
+| `pivotX`, `pivotY` | `number` | box centre (`<group>`: `0`) | The point `rotation` and scale turn about, px in the element's own space — from its box's top-left, or for a [`<group>`](./group.md#pivot) in its children's coordinates — like SVG's `rotate(angle cx cy)`. An axis left out of a pivot that has the other is `0`. Not animatable. |
+| `scale` | `number` | `1` | Uniform scale about the pivot. Overrides `scaleX`/`scaleY` while set. |
 | `scaleX`, `scaleY` | `number` | `1` | Per-axis scale. |
 | `opacity` | `number` | `1` | `0`–`1`; out-of-range values clamp, like CSS. |
 | `cornerRadius` | `number` | `0` | Uniform corner radius, px. |

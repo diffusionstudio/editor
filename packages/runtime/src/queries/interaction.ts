@@ -13,7 +13,7 @@
 import { Not, Or } from 'koota';
 
 import {
-	Anchor, Cache, Computed, EvenOdd, Geometry, Group, LocalTransform, Offset, PointCount, Selected,
+	Anchor, Cache, Computed, EvenOdd, Geometry, Group, LocalTransform, Offset, Pivot, PointCount, Selected,
 	Sequential, WorldBounds, WorldTransform,
 } from '../traits';
 import { GeometryType } from '../constants';
@@ -65,11 +65,30 @@ export function entityOffset(world: World, entity: Entity): Point {
 	return { x: offset.x[eid] ?? 0, y: offset.y[eid] ?? 0 };
 }
 
-export function entityAnchor(world: World, entity: Entity): Point {
-	const anchor = store(world, Anchor);
+/**
+ * The point the node's rotation, scale and skew turn about, px in its own
+ * space: its `Pivot` while it has one, else its anchor's fraction of its box
+ * — of `width` × `height` when given, for a gesture that is changing the
+ * size. A group has no box of its own to take a fraction of (its box follows
+ * its children), so without a pivot it turns about its origin, as an SVG
+ * `<g>` does.
+ */
+export function entityPivot(world: World, entity: Entity, width?: number, height?: number): Point {
 	const eid = entity.id();
 
-	return { x: anchor.x[eid] ?? 0.5, y: anchor.y[eid] ?? 0.5 };
+	if (entity.has(Pivot)) {
+		const pivot = store(world, Pivot);
+		return { x: pivot.x[eid] ?? 0, y: pivot.y[eid] ?? 0 };
+	}
+
+	if (entity.has(Group)) return { x: 0, y: 0 };
+
+	const anchor = store(world, Anchor);
+	const computed = store(world, Computed);
+	return {
+		x: (anchor.x[eid] ?? 0.5) * (width ?? computed.width[eid] ?? 0),
+		y: (anchor.y[eid] ?? 0.5) * (height ?? computed.height[eid] ?? 0),
+	};
 }
 
 /** The entity's box in device pixels, as [TL, TR, BR, BL]. */

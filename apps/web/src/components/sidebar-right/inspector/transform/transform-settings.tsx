@@ -16,11 +16,13 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Keyframe } from "@/components/ui/keyframe";
-import { useWorld } from "@diffusionstudio/koota-solid";
+import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
 import {
   Computed,
+  Pivot,
   getParentEntity,
   isAdjustmentLayer,
+  isGroup,
   isScene,
   isSequence,
 } from "@diffusionstudio/runtime";
@@ -28,6 +30,7 @@ import { useDerived, useEditor } from "@/engine/hooks";
 import { syncKeyframe } from "@/engine/keyframes";
 import { RotateRow } from "./rotate-row";
 import { AnchorRow } from "./anchor-row";
+import { PivotRow } from "./pivot-row";
 import { OffsetRow } from "./offset-row";
 import { ScaleRow } from "./scale-row";
 import { SkewRow } from "./skew-row";
@@ -47,11 +50,13 @@ type TransformAddons = Partial<Record<TransformAddon, boolean>>;
 /**
  * Where a node sits and how it is transformed there. Position, rotation,
  * offset, scale and constraints are props (`x`/`y`, `rotation`,
- * `offsetX`/`offsetY`, `scale` or `scaleX`/`scaleY`,
+ * `offsetX`/`offsetY`, `scale` or `scaleX`/`scaleY`, `pivotX`/`pivotY`,
  * `constrainX`/`constrainY`) written through the editor; anchor, flip and
  * skew have no JSX spelling and are written to their traits alone, so they do
- * not survive a recompile. The rows below Position are opt-in and which ones
- * are shown is app state, kept per user rather than per node.
+ * not survive a recompile. A pivot replaces the anchor: a group always turns
+ * about one, any other node once it has one, and the anchor slot shows it
+ * instead. The rows below Position are opt-in and which ones are shown is app
+ * state, kept per user rather than per node.
  */
 export function TransformSettings(props: TransformSettingsProps) {
   const world = useWorld();
@@ -61,6 +66,9 @@ export function TransformSettings(props: TransformSettingsProps) {
   const [addons, setAddons] = createStoredSignal(
     store.define<TransformAddons>('transform.addons', {})
   );
+
+  const pivot = useTrait(() => entity(), Pivot);
+  const usesPivot = () => isGroup(entity()) || pivot() !== undefined;
 
   const positionX = useDerived(() => entity().get(Computed)?.positionX ?? 0);
   const positionY = useDerived(() => entity().get(Computed)?.positionY ?? 0);
@@ -131,7 +139,7 @@ export function TransformSettings(props: TransformSettingsProps) {
               </Show>
               <Show when={!showAddon('anchor')}>
                 <DropdownMenuItem onSelect={() => toggleAddon('anchor', true)}>
-                  Anchor
+                  {usesPivot() ? 'Pivot' : 'Anchor'}
                 </DropdownMenuItem>
               </Show>
               <Show when={!showAddon('offset')}>
@@ -188,7 +196,12 @@ export function TransformSettings(props: TransformSettingsProps) {
       </Show>
 
       <Show when={showAddon('anchor')}>
-        <AnchorRow node={entity()} onRemoveAddon={() => toggleAddon('anchor', false)} />
+        <Show
+          when={usesPivot()}
+          fallback={<AnchorRow node={entity()} onRemoveAddon={() => toggleAddon('anchor', false)} />}
+        >
+          <PivotRow node={entity()} onRemoveAddon={() => toggleAddon('anchor', false)} />
+        </Show>
       </Show>
 
       <Show when={showAddon('offset')}>

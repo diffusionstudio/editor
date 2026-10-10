@@ -9,7 +9,7 @@ import {
 	Tool,
 	ToolType,
 	decompose2D,
-	entityAnchor,
+	entityPivot,
 	entityOffset,
 	entityWorldMat,
 	getEntityTree,
@@ -96,13 +96,13 @@ export function applyClipPaths(world: World): void {
 		const eid = shape.id();
 		const width = computed.width[eid] ?? 0;
 		const height = computed.height[eid] ?? 0;
-		const anchor = entityAnchor(world, shape);
+		const pivot = entityPivot(world, shape);
 
 		// Where it is drawn now, pivot folded in (see `bakeContainerInto`),
 		// taken into the target's space before the move changes its parent.
 		const placed = decompose2D(multiply2D(
 			targetInverse,
-			multiply2D(entityWorldMat(world, shape), translate2D(anchor.x * width, anchor.y * height)),
+			multiply2D(entityWorldMat(world, shape), translate2D(pivot.x, pivot.y)),
 		));
 
 		if (!editor.reparent(shape, target)) continue;
@@ -115,8 +115,9 @@ export function applyClipPaths(world: World): void {
 		const nextHeight = ownY === 0 ? height : Math.round(height * Math.abs(placed.scaleY / ownY));
 
 		const offset = entityOffset(world, shape);
-		const x = Math.round(placed.x - anchor.x * nextWidth - offset.x);
-		const y = Math.round(placed.y - anchor.y * nextHeight - offset.y);
+		const nextPivot = entityPivot(world, shape, nextWidth, nextHeight);
+		const x = Math.round(placed.x - nextPivot.x - offset.x);
+		const y = Math.round(placed.y - nextPivot.y - offset.y);
 		const rotation = round2(placed.rotation);
 
 		const writes: TransformWrite[] = [];

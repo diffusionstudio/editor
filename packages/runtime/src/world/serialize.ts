@@ -7,7 +7,7 @@ import {
 	Geometry, Paint, Group, Scene, Audio, AdjustmentLayer, IsClipPath, Shadow, Stroke,
 	Hidden, ClipsContent, Name, Key, AssetId, ItemIndex, MountScript, MountPath,
 	Caption,
-	Position, Offset, Rotation, Scale, UniformScale, Anchor, Skew, Size, Flip,
+	Position, Offset, Rotation, Scale, UniformScale, Anchor, Pivot, Skew, Size, Flip,
 	Constraint, KeepAspectRatio,
 	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, PointCount, Blur, ScaleMode, Effect, Mask,
 	VectorPath, EvenOdd, ViewBox, PathTrim,
@@ -85,6 +85,10 @@ export interface EntityRecord {
 	};
 	UniformScale?: number;
 	Anchor?: {
+		x?: number;
+		y?: number;
+	};
+	Pivot?: {
 		x?: number;
 		y?: number;
 	};
@@ -287,6 +291,10 @@ export function serializeEntity(entity: Entity): EntityRecord {
 	if (entity.has(Anchor)) {
 		const anchor = entity.get(Anchor)!;
 		record.Anchor = { x: anchor.x, y: anchor.y };
+	}
+	if (entity.has(Pivot)) {
+		const pivot = entity.get(Pivot)!;
+		record.Pivot = { x: pivot.x, y: pivot.y };
 	}
 	if (entity.has(Skew)) {
 		const skew = entity.get(Skew)!;
@@ -567,6 +575,10 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.Anchor !== undefined) {
 		entity.add(Anchor);
 		entity.set(Anchor, defined(e.Anchor));
+	}
+	if (e.Pivot !== undefined) {
+		entity.add(Pivot);
+		entity.set(Pivot, defined(e.Pivot));
 	}
 	if (e.Skew !== undefined) {
 		entity.add(Skew);

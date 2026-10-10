@@ -18,6 +18,8 @@ export const UniformScale = trait({ value: 1 });
 
 export const Anchor = trait({ x: 0, y: 0 });
 
+export const Pivot = trait({ x: 0, y: 0 });
+
 export const Skew = trait({ x: 0, y: 0 });
 
 export const Size = trait({ width: 0, height: 0 });
@@ -35,7 +37,7 @@ export const KeepAspectRatio = trait({ width: 0, height: 0 });
 
 // Derived state below: written by the transform system, never serialized.
 
-// Local 2D affine matrix from Offset, Rotation, Scale, Anchor, Skew and Size.
+// Local 2D affine matrix from Offset, Rotation, Scale, Pivot (or Anchor), Skew and Size.
 export const LocalTransform = trait({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 });
 
 export const WorldTransform = trait({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 });

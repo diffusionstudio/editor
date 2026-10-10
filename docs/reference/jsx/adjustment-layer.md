@@ -32,8 +32,9 @@ Inside a [`<sequence>`](./sequences.md) the layer acts on what sits below the *s
 | ---- | ---- | ------- | ------- |
 | `x`, `y` | `number` | `0` | Translation applied to the clip below, px. |
 | `offsetX`, `offsetY` | `number` | `0` | Render-time translation on top of `x`/`y`, px. |
-| `rotation` | `number` | `0` | Rotation in degrees, about the box centre. |
-| `scale` | `number` | `1` | Uniform scale about the box centre. Overrides `scaleX`/`scaleY` while set. |
+| `rotation` | `number` | `0` | Rotation in degrees, about the pivot. |
+| `scale` | `number` | `1` | Uniform scale about the pivot. Overrides `scaleX`/`scaleY` while set. |
+| `pivotX`, `pivotY` | `number` | box centre | The point the transform turns about, px from the box's top-left. |
 | `scaleX`, `scaleY` | `number` | `1` | Per-axis scale. |
 | `width`, `height` | `number` | `1920` × `1080` | **Never drawn**: the box the transform pivots around. Set them to the scene's own size on a frame shaped otherwise, so `rotation` and `scale` turn about its middle. |
 | `hidden` | `boolean` | absent | Excludes the layer without removing it: the clip below is left alone and the layer keeps its place in the timeline. |
