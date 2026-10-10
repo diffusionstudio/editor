@@ -94,7 +94,7 @@ export function PromptInputActions() {
             <DropdownMenuContent>
               <Show when={isGenerated()}>
                 <div class="flex items-center gap-1 px-0 pr-2 h-7">
-                  <Icon name="ai-generate" class="text-muted-foreground" />
+                  <Icon name="ai-credits" class="text-muted-foreground" />
                   <span class="text-xs text-muted-foreground">
                     {totalCredits()} AI credits used
                   </span>

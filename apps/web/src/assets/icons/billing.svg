@@ -1,6 +1,5 @@
 <svg viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-<clipPath id="a"><path d="M0 0H25V10H0Z"/></clipPath>
-<path d="M9.76 10.6L13.436 5.997L17.379 9.217L16.274 10.6M12.222 10.6L14.927 7.214" stroke="currentColor" stroke-linejoin="round" clip-path="url(#a)"/>
-<path d="M9 9.5H7.5A1 1 0 0 0 6.5 10.5A1 1 0 0 0 7.5 11.5H17A1.5 1.5 0 0 1 18.5 13V17A1.5 1.5 0 0 1 17 18.5H8.5A2 2 0 0 1 6.5 16.5V10.5" stroke="currentColor" stroke-linejoin="round"/>
-<path d="M15.5 15.5H16.5" stroke="currentColor" stroke-linecap="round"/>
+<rect x="5.5" y="7.5" width="14" height="10" rx="0.5" stroke="currentColor"/>
+<path d="M5.5 10.5H19.5" stroke="currentColor"/>
+<path d="M8.5 13.5H11.5" stroke="currentColor" stroke-linecap="round"/>
 </svg>
