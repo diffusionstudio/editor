@@ -1,6 +1,6 @@
-# ElevenLabs v3 voices
+# ElevenLabs voices
 
-The voices [`elevenlabs-v3`](../models.md#voice) speaks in: pass the id as `voice`. The prompt is the text to speak, up to 5,000 characters; audio tags in brackets steer the delivery (`[whispers]`, `[laughs]`, `[excited]`).
+The voices [`elevenlabs-v3`](../models.md#voice) and [`elevenlabs-v4`](../models.md#voice) speak in: pass the id as `voice`. The prompt is the text to speak, up to 5,000 characters for v3 and 10,000 for v4; on v3, audio tags in brackets steer the delivery (`[whispers]`, `[laughs]`, `[excited]`).
 
 ```json
 { "model": "elevenlabs-v3", "voice": "JBFqnCBsd6RMkjVDRZzb", "prompt": "[softly] Welcome back. Let's pick up where we left off." }
