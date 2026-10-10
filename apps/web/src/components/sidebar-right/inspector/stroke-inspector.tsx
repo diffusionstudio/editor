@@ -28,20 +28,30 @@ import { IncrementDecrementControl } from "@/components/ui/increment-decrement-c
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Keyframe } from "@/components/ui/keyframe";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { Cache, Computed, StrokeDash, StrokeJoin, StrokeStyle } from "@diffusionstudio/runtime";
+import { Cache, Computed, StrokeCap, StrokeDash, StrokeJoin, StrokeStyle } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
 import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
 import { FillPicker, type FillTab } from "./fill-picker";
 
 import type { Accessor } from "solid-js";
 
-import type { AnimatableProperty, StrokeJoin as StrokeJoinName } from "@diffusionstudio/jsx";
+import type {
+  AnimatableProperty,
+  StrokeCap as StrokeCapName,
+  StrokeJoin as StrokeJoinName,
+} from "@diffusionstudio/jsx";
 import type { Entity } from "koota";
 
 const JOIN_SEGMENTS: { value: StrokeJoinName; icon: string; label: string }[] = [
   { value: "miter", icon: "line-join-miter", label: "Miter" },
   { value: "bevel", icon: "line-join-bevel", label: "Bevel" },
   { value: "round", icon: "line-join-round", label: "Round" },
+];
+
+const CAP_SEGMENTS: { value: StrokeCapName; icon: string; label: string }[] = [
+  { value: "butt", icon: "line-cap-butt", label: "Butt" },
+  { value: "round", icon: "line-cap-round", label: "Round" },
+  { value: "square", icon: "line-cap-square", label: "Square" },
 ];
 
 type LineStyle = "solid" | "dashed";
@@ -68,6 +78,12 @@ const JOIN_NAMES: Record<StrokeJoin, StrokeJoinName> = {
   [StrokeJoin.MITER]: "miter",
   [StrokeJoin.BEVEL]: "bevel",
   [StrokeJoin.ROUND]: "round",
+};
+
+const CAP_NAMES: Record<StrokeCap, StrokeCapName> = {
+  [StrokeCap.BUTT]: "butt",
+  [StrokeCap.ROUND]: "round",
+  [StrokeCap.SQUARE]: "square",
 };
 
 /** A line is drawn with a color or a gradient, never a picture. */
@@ -100,12 +116,12 @@ type StrokeInspectorProps = {
 };
 
 /**
- * One `<stroke>`: its paint and its line style (`width`/`join`/`miterLimit`,
+ * One `<stroke>`: its paint and its line style (`width`/`cap`/`join`/`miterLimit`,
  * and when the style select has it dashed `dash`/`dashGap`/`dashOffset`).
  * The paint is the stroke's own `color` or a
  * gradient paint child, picked in the fill picker without its asset tab; a
  * gradient is placed in the box of the stroke's parent, so that is where its
- * handles go. `cap` has no control yet: there are no icons for it.
+ * handles go.
  */
 export function StrokeInspector(props: StrokeInspectorProps) {
   const world = useWorld();
@@ -121,6 +137,7 @@ export function StrokeInspector(props: StrokeInspectorProps) {
   const style = useTrait(() => props.stroke, StrokeStyle);
 
   const join = createMemo(() => JOIN_NAMES[style()?.join ?? StrokeJoin.MITER]);
+  const cap = createMemo(() => CAP_NAMES[style()?.cap ?? StrokeCap.BUTT]);
   const miterLimit = () => style()?.miterLimit ?? DEFAULT_MITER_LIMIT;
 
   const dash = useDerived(() => props.stroke.get(Computed)?.dash ?? DEFAULT_DASH);
@@ -139,6 +156,10 @@ export function StrokeInspector(props: StrokeInspectorProps) {
 
   const editJoin = (value: StrokeJoinName) => {
     editor.editProperty(props.stroke, "join", value === "miter" ? false : value);
+  };
+
+  const editCap = (value: StrokeCapName) => {
+    editor.editProperty(props.stroke, "cap", value === "butt" ? false : value);
   };
 
   const editMiterLimit = (value: number) => {
@@ -314,6 +335,16 @@ export function StrokeInspector(props: StrokeInspectorProps) {
                 items={JOIN_SEGMENTS}
                 buttonClass="transition-colors"
                 iconClass="size-3.5 text-muted-foreground"
+              />
+            </ControlRow>
+
+            <ControlRow label="Cap">
+              <SegmentedIconTabs
+                value={cap}
+                onChange={editCap}
+                items={CAP_SEGMENTS}
+                buttonClass="transition-colors"
+                iconClass="text-muted-foreground"
               />
             </ControlRow>
 
