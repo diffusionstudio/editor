@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import type { FileHandle } from "node:fs/promises";
 import { makeUserNotifier, updateElectronApp } from "update-electron-app";
 import { tempPathFor } from "./atomic";
+import { externalUrl } from "./external-url";
 import { DapiServer } from "./dapi/server";
 import { agentChatEndpoint, configureAgentChat, deleteProjectChats, stopAgentChat } from "./agent-chat";
 import { cliStatus, installCli, refreshCliShim, uninstallCli } from "./cli-install";
@@ -354,7 +355,16 @@ if (squirrelLaunch) {
     windows.show();
   });
 
-  mainBridge.handle(MAIN_CHANNELS.APP_OPEN_EXTERNAL, ({ url }) => shell.openExternal(url));
+  mainBridge.handle(MAIN_CHANNELS.APP_OPEN_EXTERNAL, ({ url }) => {
+    const external = externalUrl(url);
+    if (!external) {
+      // The scheme alone, so a token in a rejected link stays out of the log.
+      const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(url)?.[1] ?? "(none)";
+      console.error(`[main] refused to open an external "${scheme}" link`);
+      return;
+    }
+    return shell.openExternal(external);
+  });
   mainBridge.handle(MAIN_CHANNELS.APP_SHOW_IN_FOLDER, ({ path }) => shell.showItemInFolder(path));
   mainBridge.handle(MAIN_CHANNELS.ANALYTICS_CONFIGURE, (config) => configureAnalytics(config));
   mainBridge.handle(MAIN_CHANNELS.AUTH_GET_PENDING_CALLBACK, () =>
