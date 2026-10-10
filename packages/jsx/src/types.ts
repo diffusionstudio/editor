@@ -102,7 +102,8 @@ export type Easing =
 /**
  * The props a `<keyframeTrack>` can drive, by name. Whose prop is the
  * track's holder's: `x` under a `<rect>` is the rect's, `width` under a
- * `<stroke>` the line width, `value` under an `<effect>` its amount,
+ * `<stroke>` the line width (and `dash`/`dashGap`/`dashOffset` only go
+ * under a stroke), `value` under an `<effect>` its amount,
  * `color`/`opacity` under a paint the paint's. `d` morphs a `<path>`'s
  * outline from one keyframe's path data to the next.
  */
@@ -139,7 +140,10 @@ export type AnimatableProperty =
   | "d"
   | "trimStart"
   | "trimEnd"
-  | "trimOffset";
+  | "trimOffset"
+  | "dash"
+  | "dashGap"
+  | "dashOffset";
 
 /** Transition styles — the editor's transition inspector options. */
 export type TransitionType =
@@ -684,8 +688,8 @@ export type PathProps = CommonProps & FillProps & {
 
 /**
  * `<stroke>` — an outline of the parent's box (or glyphs), a sub-entity like a
- * paint: `color` is its own solid paint, `width`/`join`/`cap`/`miterLimit` its
- * line style, and paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
+ * paint: `color` is its own solid paint, `width`/`join`/`cap`/`miterLimit` and
+ * `dash`/`dashGap`/`dashOffset` its line style, and paint children (`<SolidPaint>`, `<LinearGradientPaint>`,
  * `<RadialGradientPaint>`, `<AngularGradientPaint>`) draw through the same
  * line over `color`, placed in the parent's box. `opacity` and `blendMode`
  * apply to all of it. Several stack in document order, later ones on top.
@@ -697,10 +701,31 @@ export type StrokeProps = Partial<ColorProps> & PaintProps & {
   width?: number;
   /** How the stroke turns corners. Default "miter". */
   join?: StrokeJoin;
-  /** How the stroke ends open paths (text glyphs, open `<path>` subpaths). Default "butt". */
+  /**
+   * How the stroke ends open paths (text glyphs, open `<path>` subpaths) and
+   * each of its dashes. "round" and "square" reach half the width past the
+   * end, into the gap. Default "butt".
+   */
   cap?: StrokeCap;
   /** Miter length limit, as a ratio of the width. Default 10. */
   miterLimit?: number;
+  /**
+   * Dashes the line: `dash` px of line, then `dashGap` px of gap, repeated
+   * along it. Default 0, a solid line unless `dashGap` is set; `dash={0}`
+   * with `cap="round"` draws dots.
+   */
+  dash?: number;
+  /**
+   * The gap between dashes, px. Default `dash` as written (a `dash` track
+   * does not move it); 0 is a solid line.
+   */
+  dashGap?: number;
+  /**
+   * How far into the dash pattern the line starts, px: SVG's
+   * `stroke-dashoffset`. Animating it walks the dashes along the line, back
+   * toward the start as it grows. Default 0.
+   */
+  dashOffset?: number;
 };
 
 /**

@@ -45,7 +45,7 @@ type StrokesSettingsProps = {
  * shown topmost first, so the last element in the file is the first row).
  * A row opens the stroke's own inspector; what it shows is the paint the
  * inspector edits (see `useStrokePaint`): its color, or which gradient. The line style
- * (`width`/`join`/`miterLimit`) is the stroke's own and not the node's, so it
+ * (`width`/`join`/`miterLimit`/`dash`/`dashGap`/`dashOffset`) is the stroke's own and not the node's, so it
  * lives in that inspector rather than under every row.
  */
 export function StrokesSettings(props: StrokesSettingsProps) {

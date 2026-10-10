@@ -34,7 +34,7 @@ import { getViewMatrix } from '../queries/camera';
 import { colorToHex } from '../utils/color';
 import { FAILED_COLOR, getSourceFailure } from '../utils/source-failure';
 import { getGeneratingColor, isGenerating } from '../utils/generating';
-import { applyStrokeStyle } from '../utils/stroke';
+import { applyStrokeStyle, clearLineDash } from '../utils/stroke';
 import { renderText } from '../utils/text';
 import { getTransitionWindow } from '../utils/transition';
 import { drawOnto, getSurfaceContext } from '../utils/surface';
@@ -638,6 +638,9 @@ function renderStrokes(world: World, entity: Entity): void {
 		ctx.globalCompositeOperation = savedCO;
 		ctx.globalAlpha = savedAlpha;
 	}
+
+	// Not to dash the node's children, nor its shimmer.
+	clearLineDash(ctx);
 }
 
 // Stable empty list for strokes without paint children, so the render loop allocates none.

@@ -10,7 +10,7 @@ import {
 	Geometry, Group, AdjustmentLayer, Hidden, Culled,
 	Computed, Cache, Animation, KeyframeTrack, Keyframe, Chars,
 	UniformScale, Position, Offset, Rotation, Scale, Skew, Size, Opacity,
-	Color, Blur, Volume, Effect, StrokeStyle, CornerRadius, MixedCornerRadius,
+	Color, Blur, Volume, Effect, StrokeStyle, StrokeDash, CornerRadius, MixedCornerRadius,
 	ColorStop, LinearGradient, EllipticalGradient, PathTrim, VectorPath,
 } from '../traits';
 import { AnimationType, AnimationPhase, LINEAR_GRADIENT_DEFAULTS, ELLIPTICAL_GRADIENT_DEFAULTS } from '../constants';
@@ -51,6 +51,9 @@ export function resetAnimatedValues(world: World, entity: Entity | null, ignore?
 	computed.blur[eid] = read(Blur, 'value', 0);
 	computed.volume[eid] = read(Volume, 'value', 0);
 	computed.strokeWidth[eid] = read(StrokeStyle, 'width', 1);
+	computed.dash[eid] = read(StrokeDash, 'dash', 0);
+	computed.dashGap[eid] = read(StrokeDash, 'gap', 0);
+	computed.dashOffset[eid] = read(StrokeDash, 'offset', 0);
 	computed.cornerRadius[eid] = read(CornerRadius, 'value', 0);
 	computed.cornerRadiusTopLeft[eid] = read(MixedCornerRadius, 'topLeft', 0);
 	computed.cornerRadiusTopRight[eid] = read(MixedCornerRadius, 'topRight', 0);
@@ -356,6 +359,18 @@ export function getPropertyPaths(world: World) {
 		'stroke.width': {
 			computed: computed.strokeWidth,
 			authored: store(world, StrokeStyle).width,
+		},
+		'stroke.dash': {
+			computed: computed.dash,
+			authored: store(world, StrokeDash).dash,
+		},
+		'stroke.dashGap': {
+			computed: computed.dashGap,
+			authored: store(world, StrokeDash).gap,
+		},
+		'stroke.dashOffset': {
+			computed: computed.dashOffset,
+			authored: store(world, StrokeDash).offset,
 		},
 		'vertexRadius': {
 			computed: computed.cornerRadius,

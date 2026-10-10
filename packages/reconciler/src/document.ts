@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, EvenOdd, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Pivot, Paint, PaintType, parseColor, parsePath, PathTrim, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, VectorPath, ViewBox, Volume, Workarea } from '@diffusionstudio/runtime';
+import { Active, AdjustmentLayer, Animation, AnimationPhase, AnimationType, appendChild, AssetId, Audio, Background, bindAsset, BlendMode, BlendModeType, Blur, Caption, CaptionAlign, CAPTION_PRESET_FILLS, CAPTION_PRESET_STYLES, CaptionType, Chars, ClipHeight, ClipsContent, Computed, Constraint, ConstraintCache, ConstraintType, CornerRadius, clampPointCount, createEntity, DEFAULT_BACKGROUND, Color, ColorStop, Delay, Effect, EffectType, EvenOdd, Expanded, FontStyle, FramePromises, FrameRate, getActiveEntity, Loop, LoadRequest, Mask, Geometry, GeometryType, getEntityTree, getParentEntity, getParentNode, Hidden, Host, IsClipPath, isText, ItemIndex, KeepAspectRatio, Keyframe, KeyframeTrack, LINEAR_GRADIENT_DEFAULTS, LinearGradient, MixedCornerRadius, Mode, Muted, Name, Offset, Opacity, Pivot, Paint, PaintType, parseColor, parsePath, PathTrim, PendingSource, PendingSync, Playback, PlaybackRate, PointCount, Position, ELLIPTICAL_GRADIENT_DEFAULTS, EllipticalGradient, removeChild, RenderSurface, resizeEntity, Scale, ScaleMode, ScaleModeType, secondsToFrames, getAsset, getEntityChildren, Group, Sequential, Shader, Size, Stage, Root, Rotation, Scene, Selected, Shadow, Source, SourceFrameRate, setCameraMatrix, setPlayhead, setTimelineView, Stroke, StrokeCap, StrokeDash, StrokeJoin, StrokeStyle, SyncRequest, TextAlign, TextBaseline, TextCase, TextRange, TextStyle, Transition, TransitionType, Trim, UniformScale, VectorPath, ViewBox, Volume, Workarea } from '@diffusionstudio/runtime';
 import { DEFAULT_MASK_SMOOTHING } from '@diffusionstudio/assets';
 import { LOOP_ATTR, parseTime, SOURCE_ATTR } from '@diffusionstudio/jsx';
 import { createSignal } from 'solid-js';
@@ -211,6 +211,9 @@ const TRACK_PROPERTIES: Record<string, PropertyPath> = {
 	trimStart: 'trim.start',
 	trimEnd: 'trim.end',
 	trimOffset: 'trim.offset',
+	dash: 'stroke.dash',
+	dashGap: 'stroke.dashGap',
+	dashOffset: 'stroke.dashOffset',
 };
 
 /**
@@ -1200,6 +1203,27 @@ export class RuntimeDocument implements ProjectDocument<SceneNode> {
 			case 'miterLimit': {
 				if (!entity.has(Stroke)) return;
 				entity.set(StrokeStyle, { miterLimit: toNumber(value) ?? 10 });
+				return;
+			}
+			case 'dash':
+			case 'dashGap':
+			case 'dashOffset': {
+				if (!entity.has(Stroke)) return;
+				const dash = toNumber(node.props.dash);
+				const gap = toNumber(node.props.dashGap);
+				const offset = toNumber(node.props.dashOffset);
+				if (dash === undefined && gap === undefined && offset === undefined) {
+					entity.remove(StrokeDash);
+					return;
+				}
+				// An unset gap is the dash length as written; a `dash` track
+				// leaves it there.
+				entity.add(StrokeDash);
+				entity.set(StrokeDash, {
+					dash: Math.max(0, dash ?? 0),
+					gap: Math.max(0, gap ?? dash ?? 0),
+					offset: offset ?? 0,
+				});
 				return;
 			}
 			case 'type': {

@@ -11,7 +11,7 @@ import {
 	Constraint, KeepAspectRatio,
 	Opacity, BlendMode, Color, CornerRadius, MixedCornerRadius, PointCount, Blur, ScaleMode, Effect, Mask,
 	VectorPath, EvenOdd, ViewBox, PathTrim,
-	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, Shader,
+	ColorStop, LinearGradient, EllipticalGradient, StrokeStyle, StrokeDash, Shader,
 	Chars, TextStyle,
 	Delay, Trim, PlaybackRate, SourceFrameRate,
 	Playback, Sequential, Transition, ClipHeight, Expanded,
@@ -150,6 +150,7 @@ export interface EntityRecord {
 		cap?: number;
 		miterLimit?: number;
 	};
+	StrokeDash?: { dash: number; gap: number; offset: number };
 	Hidden?: boolean;
 	ClipsContent?: boolean;
 	Sequential?: {};
@@ -386,6 +387,10 @@ export function serializeEntity(entity: Entity): EntityRecord {
 			cap: stroke.cap,
 			miterLimit: stroke.miterLimit,
 		};
+	}
+	if (entity.has(StrokeDash)) {
+		const { dash, gap, offset } = entity.get(StrokeDash)!;
+		record.StrokeDash = { dash, gap, offset };
 	}
 	if (entity.has(Hidden)) {
 		record.Hidden = true;
@@ -672,6 +677,10 @@ export function deserializeEntity(entity: Entity, e: Partial<EntityRecord>): voi
 	if (e.StrokeStyle !== undefined) {
 		entity.add(StrokeStyle);
 		entity.set(StrokeStyle, defined(e.StrokeStyle));
+	}
+	if (e.StrokeDash !== undefined) {
+		entity.add(StrokeDash);
+		entity.set(StrokeDash, e.StrokeDash);
 	}
 	if (e.Hidden !== undefined) {
 		entity.add(Hidden);

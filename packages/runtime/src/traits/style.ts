@@ -96,6 +96,11 @@ export const StrokeStyle = trait({
 	miterLimit: 10,
 });
 
+// A dashed stroke sub-entity: `dash` px of line then `gap` px of gap,
+// repeated from `offset` px along the line. A gap of 0 is a solid line.
+// Absent means solid.
+export const StrokeDash = trait({ dash: 0, gap: 0, offset: 0 });
+
 // Shader paint source (document data; the compiled host lives in ShaderHost).
 export const Shader = trait({
 	code: '',

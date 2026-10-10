@@ -2,10 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   FloatingInspector,
   FloatingInspectorContent,
@@ -18,15 +25,15 @@ import { FillItem } from "@/components/ui/fill-item";
 import { ControlledTextField } from "@/components/ui/text-field";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Keyframe } from "@/components/ui/keyframe";
-import { useTrait, useWorld } from "@diffusionstudio/koota-solid";
-import { Cache, Computed, StrokeJoin, StrokeStyle } from "@diffusionstudio/runtime";
+import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
+import { Cache, Computed, StrokeDash, StrokeJoin, StrokeStyle } from "@diffusionstudio/runtime";
 import { useDerived, useEditor } from "@/engine/hooks";
-import { syncKeyframe } from "@/engine/keyframes";
+import { removeKeyframeTrack, syncKeyframe } from "@/engine/keyframes";
 import { FillPicker, type FillTab } from "./fill-picker";
 
 import type { Accessor } from "solid-js";
 
-import type { StrokeJoin as StrokeJoinName } from "@diffusionstudio/jsx";
+import type { AnimatableProperty, StrokeJoin as StrokeJoinName } from "@diffusionstudio/jsx";
 import type { Entity } from "koota";
 
 const JOIN_SEGMENTS: { value: StrokeJoinName; icon: string; label: string }[] = [
@@ -34,6 +41,19 @@ const JOIN_SEGMENTS: { value: StrokeJoinName; icon: string; label: string }[] = 
   { value: "bevel", icon: "line-join-bevel", label: "Bevel" },
   { value: "round", icon: "line-join-round", label: "Round" },
 ];
+
+type LineStyle = "solid" | "dashed";
+
+const STYLE_OPTIONS: { value: LineStyle; icon: string; label: string }[] = [
+  { value: "solid", icon: "stroke.solid", label: "Solid" },
+  { value: "dashed", icon: "stroke.dashed", label: "Dashed" },
+];
+
+/** The props a dashed line adds, all cleared when it goes back to solid. */
+const DASH_PROPS: AnimatableProperty[] = ["dash", "dashGap", "dashOffset"];
+
+/** The dash a solid line takes when it is switched to dashed, its gap the same. */
+const DASHED_DASH = 10;
 
 const JOIN_NAMES: Record<StrokeJoin, StrokeJoinName> = {
   [StrokeJoin.MITER]: "miter",
@@ -44,9 +64,11 @@ const JOIN_NAMES: Record<StrokeJoin, StrokeJoinName> = {
 /** A line is drawn with a color or a gradient, never a picture. */
 const STROKE_TABS: FillTab[] = ["solid", "gradient"];
 
-/** `<stroke>`'s defaults; a control left at one of these unsets its prop. */
+/** `<stroke>`'s defaults; a control left at one of these unsets its prop, but the dash ones. */
 const DEFAULT_WIDTH = 1;
 const DEFAULT_MITER_LIMIT = 10;
+const DEFAULT_DASH = 0;
+const DEFAULT_DASH_OFFSET = 0;
 
 // Stable identity, so a stroke without paint children does not resample every tick.
 const NO_PAINTS: Entity[] = [];
@@ -69,12 +91,12 @@ type StrokeInspectorProps = {
 };
 
 /**
- * One `<stroke>`: its paint and its line style (`width`/`join`/`miterLimit`).
- * The paint is the stroke's own `color` or a gradient paint child, picked in
- * the fill picker without its asset tab; a gradient is placed in the box of
- * the stroke's parent, so that is where its handles go. `cap` has no control
- * yet: it only shows on open paths (text glyphs, open `<path>` subpaths) and
- * there are no icons for it.
+ * One `<stroke>`: its paint and its line style (`width`/`join`/`miterLimit`,
+ * and when the header's settings menu has it dashed `dash`/`dashGap`/
+ * `dashOffset`). The paint is the stroke's own `color` or a
+ * gradient paint child, picked in the fill picker without its asset tab; a
+ * gradient is placed in the box of the stroke's parent, so that is where its
+ * handles go. `cap` has no control yet: there are no icons for it.
  */
 export function StrokeInspector(props: StrokeInspectorProps) {
   const world = useWorld();
@@ -91,6 +113,13 @@ export function StrokeInspector(props: StrokeInspectorProps) {
 
   const join = createMemo(() => JOIN_NAMES[style()?.join ?? StrokeJoin.MITER]);
   const miterLimit = () => style()?.miterLimit ?? DEFAULT_MITER_LIMIT;
+
+  const dash = useDerived(() => props.stroke.get(Computed)?.dash ?? DEFAULT_DASH);
+  const dashGap = useDerived(() => props.stroke.get(Computed)?.dashGap ?? DEFAULT_DASH);
+  const dashOffset = useDerived(() => props.stroke.get(Computed)?.dashOffset ?? DEFAULT_DASH_OFFSET);
+
+  const isDashed = useHas(() => props.stroke, StrokeDash);
+  const lineStyle = (): LineStyle => (isDashed() ? "dashed" : "solid");
 
   const editWidth = (value: number) => {
     // Unlike a node's width this is the line width, not `resizeEntity`, so
@@ -111,6 +140,36 @@ export function StrokeInspector(props: StrokeInspectorProps) {
     );
   };
 
+  // The dash fields write even their defaults: unsetting the last of them
+  // would make the line solid, and only the style menu does that.
+  const editDash = (value: number) => {
+    editor.editProperty(props.stroke, "dash", value);
+    syncKeyframe(world, editor, props.stroke, "dash", value);
+  };
+
+  const editDashGap = (value: number) => {
+    editor.editProperty(props.stroke, "dashGap", value);
+    syncKeyframe(world, editor, props.stroke, "dashGap", value);
+  };
+
+  const editDashOffset = (value: number) => {
+    editor.editProperty(props.stroke, "dashOffset", value);
+    syncKeyframe(world, editor, props.stroke, "dashOffset", value);
+  };
+
+  // Solid clears every dash prop and its track.
+  const editLineStyle = (value: LineStyle) => {
+    if (value === lineStyle()) return;
+    if (value === "solid") {
+      for (const property of DASH_PROPS) {
+        removeKeyframeTrack(world, editor, props.stroke, property);
+        editor.editProperty(props.stroke, property, false);
+      }
+      return;
+    }
+    editor.editProperty(props.stroke, "dash", DASHED_DASH);
+  };
+
   const handleClose = () => {
     setPickingPaint(false);
     props.onClose();
@@ -121,18 +180,67 @@ export function StrokeInspector(props: StrokeInspectorProps) {
       <FloatingInspector open anchorRef={props.anchorRef} width={248} ref={inspectorRef} onClose={handleClose}>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle>Stroke</FloatingInspectorTitle>
-          <Tooltip>
-            <TooltipTrigger
-              as={Button}
-              size="icon"
-              variant="ghost"
-              class="text-muted-foreground"
-              onClick={handleClose}
-            >
-              <Icon name="close-remove" />
-            </TooltipTrigger>
-            <TooltipContent>Close</TooltipContent>
-          </Tooltip>
+          <div class="flex items-center">
+            <DropdownMenu placement="bottom-end">
+              <Tooltip>
+                <TooltipTrigger<typeof DropdownMenuTrigger>
+                  as={(triggerProps: object) => (
+                    <DropdownMenuTrigger<typeof Button>
+                      {...triggerProps}
+                      as={(buttonProps) => (
+                        <Button
+                          {...buttonProps}
+                          size="icon"
+                          variant="ghost"
+                          class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
+                        >
+                          <Icon name="preferences-adjust-vertical" />
+                        </Button>
+                      )}
+                    />
+                  )}
+                />
+                <TooltipContent>Stroke style</TooltipContent>
+              </Tooltip>
+              <DropdownMenuPortal>
+                <DropdownMenuContent class="w-32">
+                  <For each={STYLE_OPTIONS}>
+                    {(option) => (
+                      <DropdownMenuItem
+                        tone="neutral"
+                        class="gap-1 px-0 pr-2"
+                        onSelect={() => editLineStyle(option.value)}
+                      >
+                        <span class="w-6 h-7 shrink-0 flex items-center justify-center">
+                          <Show when={lineStyle() === option.value}>
+                            <Icon name="confirm-check" class="text-popover-foreground" />
+                          </Show>
+                        </span>
+                        <span class="w-7 h-7 shrink-0 flex items-center justify-center">
+                          <Icon name={option.icon} class="text-popover-foreground" />
+                        </span>
+                        <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                          {option.label}
+                        </span>
+                      </DropdownMenuItem>
+                    )}
+                  </For>
+                </DropdownMenuContent>
+              </DropdownMenuPortal>
+            </DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button}
+                size="icon"
+                variant="ghost"
+                class="text-muted-foreground"
+                onClick={handleClose}
+              >
+                <Icon name="close-remove" />
+              </TooltipTrigger>
+              <TooltipContent>Close</TooltipContent>
+            </Tooltip>
+          </div>
         </FloatingInspectorHeader>
         <FloatingInspectorSeparator />
         <FloatingInspectorContent class="flex flex-col gap-2 p-4">
@@ -153,6 +261,49 @@ export function StrokeInspector(props: StrokeInspectorProps) {
               keyframe={<Keyframe target={props.stroke} property="width" />}
             />
           </ControlRow>
+
+          <Show when={lineStyle() === "dashed"}>
+            <ControlRow label="Dash">
+              <ControlledTextField
+                icon={<Icon name="stroke.dash" />}
+                value={dash()}
+                onNumber={editDash}
+                step={1}
+                min={0}
+                autoSelect
+                sliderEnabled
+                limitEvents
+                keyframe={<Keyframe target={props.stroke} property="dash" />}
+              />
+            </ControlRow>
+
+            <ControlRow label="Gap">
+              <ControlledTextField
+                icon={<Icon name="stroke.gap" />}
+                value={dashGap()}
+                onNumber={editDashGap}
+                step={1}
+                min={0}
+                autoSelect
+                sliderEnabled
+                limitEvents
+                keyframe={<Keyframe target={props.stroke} property="dashGap" />}
+              />
+            </ControlRow>
+
+            <ControlRow label="Offset">
+              <ControlledTextField
+                icon={<Icon name="stroke.dash-offset" />}
+                value={dashOffset()}
+                onNumber={editDashOffset}
+                step={1}
+                autoSelect
+                sliderEnabled
+                limitEvents
+                keyframe={<Keyframe target={props.stroke} property="dashOffset" />}
+              />
+            </ControlRow>
+          </Show>
 
           <ControlRow label="Join">
             <SegmentedIconTabs
@@ -186,7 +337,7 @@ export function StrokeInspector(props: StrokeInspectorProps) {
           fill={paint()}
           tabs={STROKE_TABS}
           onClose={() => setPickingPaint(false)}
-          onReplace={() => {}}
+          onReplace={() => { }}
         />
       </Show>
     </>

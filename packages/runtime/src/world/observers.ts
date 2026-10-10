@@ -9,7 +9,7 @@ import {
 	Delay, Trim, PlaybackRate, SourceFrameRate, Keyframe, ItemIndex,
 	Position, Offset, Rotation, Scale, UniformScale, Skew, Anchor, Pivot, Flip,
 	Opacity, Color, Blur, Volume, Effect, CornerRadius, MixedCornerRadius,
-	ColorStop, LinearGradient, EllipticalGradient, PathTrim, StrokeStyle, Size, Computed, Active, Stage, IsClipPath,
+	ColorStop, LinearGradient, EllipticalGradient, PathTrim, StrokeStyle, StrokeDash, Size, Computed, Active, Stage, IsClipPath,
 	ImageDecoderHandle, VideoDecoderHandle,
 	AudioDecoderHandle, CaptionDecoderHandle, WaveformHandle,
 	ShaderHostHandle, AudioBusHandle, TextStyle, TextRange,
@@ -299,6 +299,14 @@ export function observeWorld(world: World): () => void {
 
 	mirror(StrokeStyle, (entity) => {
 		store(world, Computed).strokeWidth[entity.id()] = entity.get(StrokeStyle)!.width;
+	});
+
+	mirror(StrokeDash, (entity) => {
+		const computed = store(world, Computed);
+		const { dash, gap, offset } = entity.get(StrokeDash)!;
+		computed.dash[entity.id()] = dash;
+		computed.dashGap[entity.id()] = gap;
+		computed.dashOffset[entity.id()] = offset;
 	});
 
 	// Size flows into Computed via propagation (descendants owning a Size
