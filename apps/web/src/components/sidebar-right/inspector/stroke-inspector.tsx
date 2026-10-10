@@ -2,17 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { Show, createMemo, createSignal } from "solid-js";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Icon } from "@/components/ui/icon";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectIconTrigger,
+  SelectItem,
+  SelectPortal,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   FloatingInspector,
   FloatingInspectorContent,
@@ -23,6 +24,7 @@ import {
 import { ControlRow } from "@/components/ui/control-group";
 import { FillItem } from "@/components/ui/fill-item";
 import { ControlledTextField } from "@/components/ui/text-field";
+import { IncrementDecrementControl } from "@/components/ui/increment-decrement-control";
 import { SegmentedIconTabs } from "@/components/ui/segmented-icon-tabs";
 import { Keyframe } from "@/components/ui/keyframe";
 import { useHas, useTrait, useWorld } from "@diffusionstudio/koota-solid";
@@ -44,10 +46,17 @@ const JOIN_SEGMENTS: { value: StrokeJoinName; icon: string; label: string }[] = 
 
 type LineStyle = "solid" | "dashed";
 
-const STYLE_OPTIONS: { value: LineStyle; icon: string; label: string }[] = [
-  { value: "solid", icon: "stroke.solid", label: "Solid" },
-  { value: "dashed", icon: "stroke.dashed", label: "Dashed" },
-];
+const LINE_STYLES: LineStyle[] = ["solid", "dashed"];
+
+const LINE_STYLE_ICONS: Record<LineStyle, string> = {
+  solid: "stroke.solid",
+  dashed: "stroke.dashed",
+};
+
+const LINE_STYLE_LABELS: Record<LineStyle, string> = {
+  solid: "Solid",
+  dashed: "Dashed",
+};
 
 /** The props a dashed line adds, all cleared when it goes back to solid. */
 const DASH_PROPS: AnimatableProperty[] = ["dash", "dashGap", "dashOffset"];
@@ -92,8 +101,8 @@ type StrokeInspectorProps = {
 
 /**
  * One `<stroke>`: its paint and its line style (`width`/`join`/`miterLimit`,
- * and when the header's settings menu has it dashed `dash`/`dashGap`/
- * `dashOffset`). The paint is the stroke's own `color` or a
+ * and when the style select has it dashed `dash`/`dashGap`/`dashOffset`).
+ * The paint is the stroke's own `color` or a
  * gradient paint child, picked in the fill picker without its asset tab; a
  * gradient is placed in the box of the stroke's parent, so that is where its
  * handles go. `cap` has no control yet: there are no icons for it.
@@ -141,7 +150,7 @@ export function StrokeInspector(props: StrokeInspectorProps) {
   };
 
   // The dash fields write even their defaults: unsetting the last of them
-  // would make the line solid, and only the style menu does that.
+  // would make the line solid, and only the style select does that.
   const editDash = (value: number) => {
     editor.editProperty(props.stroke, "dash", value);
     syncKeyframe(world, editor, props.stroke, "dash", value);
@@ -180,153 +189,147 @@ export function StrokeInspector(props: StrokeInspectorProps) {
       <FloatingInspector open anchorRef={props.anchorRef} width={248} ref={inspectorRef} onClose={handleClose}>
         <FloatingInspectorHeader class="items-center justify-between">
           <FloatingInspectorTitle>Stroke</FloatingInspectorTitle>
-          <div class="flex items-center">
-            <DropdownMenu placement="bottom-end">
-              <Tooltip>
-                <TooltipTrigger<typeof DropdownMenuTrigger>
-                  as={(triggerProps: object) => (
-                    <DropdownMenuTrigger<typeof Button>
-                      {...triggerProps}
-                      as={(buttonProps) => (
-                        <Button
-                          {...buttonProps}
-                          size="icon"
-                          variant="ghost"
-                          class="text-muted-foreground data-expanded:bg-accent data-expanded:text-foreground"
-                        >
-                          <Icon name="preferences-adjust-vertical" />
-                        </Button>
-                      )}
-                    />
-                  )}
-                />
-                <TooltipContent>Stroke style</TooltipContent>
-              </Tooltip>
-              <DropdownMenuPortal>
-                <DropdownMenuContent class="w-32">
-                  <For each={STYLE_OPTIONS}>
-                    {(option) => (
-                      <DropdownMenuItem
-                        tone="neutral"
-                        class="gap-1 px-0 pr-2"
-                        onSelect={() => editLineStyle(option.value)}
-                      >
-                        <span class="w-6 h-7 shrink-0 flex items-center justify-center">
-                          <Show when={lineStyle() === option.value}>
-                            <Icon name="confirm-check" class="text-popover-foreground" />
-                          </Show>
-                        </span>
-                        <span class="w-7 h-7 shrink-0 flex items-center justify-center">
-                          <Icon name={option.icon} class="text-popover-foreground" />
-                        </span>
-                        <span class="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {option.label}
-                        </span>
-                      </DropdownMenuItem>
-                    )}
-                  </For>
-                </DropdownMenuContent>
-              </DropdownMenuPortal>
-            </DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button}
-                size="icon"
-                variant="ghost"
-                class="text-muted-foreground"
-                onClick={handleClose}
-              >
-                <Icon name="close-remove" />
-              </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
-            </Tooltip>
-          </div>
+          <Tooltip>
+            <TooltipTrigger
+              as={Button}
+              size="icon"
+              variant="ghost"
+              class="text-muted-foreground"
+              onClick={handleClose}
+            >
+              <Icon name="close-remove" />
+            </TooltipTrigger>
+            <TooltipContent>Close</TooltipContent>
+          </Tooltip>
         </FloatingInspectorHeader>
         <FloatingInspectorSeparator />
-        <FloatingInspectorContent class="flex flex-col gap-2 p-4">
-          <ControlRow label="Paint">
-            <FillItem fill={paint()} onClick={() => setPickingPaint(true)} />
-          </ControlRow>
+        <FloatingInspectorContent class="flex flex-col gap-3 px-2 py-4">
+          <div class="flex flex-col gap-2 px-2">
+            <ControlRow label="Color">
+              <FillItem fill={paint()} onClick={() => setPickingPaint(true)} />
+            </ControlRow>
 
-          <ControlRow label="Weight">
-            <ControlledTextField
-              icon={<Icon name="stroke.weight" />}
-              value={width()}
-              onNumber={editWidth}
-              step={1}
-              min={0}
-              autoSelect
-              sliderEnabled
-              limitEvents
-              keyframe={<Keyframe target={props.stroke} property="width" />}
-            />
-          </ControlRow>
+            <ControlRow label="Weight">
+              <div class="grid grid-cols-2 gap-2">
+                <ControlledTextField
+                  icon={<Icon name="stroke.weight" />}
+                  value={width()}
+                  onNumber={editWidth}
+                  step={1}
+                  min={0}
+                  autoSelect
+                  sliderEnabled
+                  limitEvents
+                  keyframe={<Keyframe target={props.stroke} property="width" />}
+                />
+                <IncrementDecrementControl
+                  onDecrement={() => editWidth(Math.max(0, width() - 1))}
+                  onIncrement={() => editWidth(width() + 1)}
+                  decrementLabel="Decrease weight"
+                  incrementLabel="Increase weight"
+                />
+              </div>
+            </ControlRow>
+          </div>
 
-          <Show when={lineStyle() === "dashed"}>
-            <ControlRow label="Dash">
-              <ControlledTextField
-                icon={<Icon name="stroke.dash" />}
-                value={dash()}
-                onNumber={editDash}
-                step={1}
-                min={0}
-                autoSelect
-                sliderEnabled
-                limitEvents
-                keyframe={<Keyframe target={props.stroke} property="dash" />}
+          <Separator />
+
+          <div class="flex flex-col gap-2 px-2">
+            <ControlRow label="Style">
+              <Select<LineStyle>
+                value={lineStyle()}
+                onChange={(value) => value && editLineStyle(value)}
+                options={LINE_STYLES}
+                itemComponent={(itemProps) => (
+                  <SelectItem item={itemProps.item} class="gap-1 px-0 pr-2">
+                    <span class="flex items-center gap-1">
+                      <span class="w-7 h-7 shrink-0 flex items-center justify-center">
+                        <Icon
+                          name={LINE_STYLE_ICONS[itemProps.item.rawValue]}
+                          class="text-popover-foreground group-data-[highlighted]:text-primary-foreground"
+                        />
+                      </span>
+                      <span class="min-w-0 truncate">{LINE_STYLE_LABELS[itemProps.item.rawValue]}</span>
+                    </span>
+                  </SelectItem>
+                )}
+              >
+                <SelectIconTrigger
+                  icon={<Icon name={LINE_STYLE_ICONS[lineStyle()]} />}
+                  valueClass="text-xxs flex-1"
+                >
+                  {LINE_STYLE_LABELS[lineStyle()]}
+                </SelectIconTrigger>
+                <SelectPortal>
+                  <SelectContent class="w-32" />
+                </SelectPortal>
+              </Select>
+            </ControlRow>
+
+            <Show when={lineStyle() === "dashed"}>
+              <ControlRow label="Dash">
+                <ControlledTextField
+                  value={dash()}
+                  onNumber={editDash}
+                  step={1}
+                  min={0}
+                  autoSelect
+                  limitEvents
+                  keyframe={<Keyframe target={props.stroke} property="dash" />}
+                />
+              </ControlRow>
+
+              <ControlRow label="Gap">
+                <ControlledTextField
+                  value={dashGap()}
+                  onNumber={editDashGap}
+                  step={1}
+                  min={0}
+                  autoSelect
+                  limitEvents
+                  keyframe={<Keyframe target={props.stroke} property="dashGap" />}
+                />
+              </ControlRow>
+
+              <ControlRow label="Offset">
+                <ControlledTextField
+                  value={dashOffset()}
+                  onNumber={editDashOffset}
+                  step={1}
+                  autoSelect
+                  limitEvents
+                  keyframe={<Keyframe target={props.stroke} property="dashOffset" />}
+                />
+              </ControlRow>
+            </Show>
+          </div>
+
+          <Separator />
+
+          <div class="flex flex-col gap-2 px-2">
+            <ControlRow label="Join">
+              <SegmentedIconTabs
+                value={join}
+                onChange={editJoin}
+                items={JOIN_SEGMENTS}
+                buttonClass="transition-colors"
+                iconClass="size-3.5 text-muted-foreground"
               />
             </ControlRow>
 
-            <ControlRow label="Gap">
+            <ControlRow label="Miter">
               <ControlledTextField
-                icon={<Icon name="stroke.gap" />}
-                value={dashGap()}
-                onNumber={editDashGap}
+                icon={<Icon name="stroke.miter" />}
+                value={miterLimit()}
+                onNumber={editMiterLimit}
                 step={1}
-                min={0}
+                min={1}
                 autoSelect
                 sliderEnabled
                 limitEvents
-                keyframe={<Keyframe target={props.stroke} property="dashGap" />}
               />
             </ControlRow>
-
-            <ControlRow label="Offset">
-              <ControlledTextField
-                icon={<Icon name="stroke.dash-offset" />}
-                value={dashOffset()}
-                onNumber={editDashOffset}
-                step={1}
-                autoSelect
-                sliderEnabled
-                limitEvents
-                keyframe={<Keyframe target={props.stroke} property="dashOffset" />}
-              />
-            </ControlRow>
-          </Show>
-
-          <ControlRow label="Join">
-            <SegmentedIconTabs
-              value={join}
-              onChange={editJoin}
-              items={JOIN_SEGMENTS}
-              buttonClass="transition-colors"
-              iconClass="size-3.5 text-muted-foreground"
-            />
-          </ControlRow>
-
-          <ControlRow label="Miter">
-            <ControlledTextField
-              icon={<Icon name="stroke.miter" />}
-              value={miterLimit()}
-              onNumber={editMiterLimit}
-              step={1}
-              min={1}
-              autoSelect
-              sliderEnabled
-              limitEvents
-            />
-          </ControlRow>
+          </div>
         </FloatingInspectorContent>
       </FloatingInspector>
 
