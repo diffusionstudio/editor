@@ -88,6 +88,9 @@ export function getClipSamples(clip: number): ClipSamples | null {
  * at has changed.
  */
 export function requestPeaks(world: World, request: PeakRequest): void {
+	const peaks = clipPeaks.get(request.clip);
+	if (peaks && peaks.assetId !== request.asset.id) clipPeaks.delete(request.clip);
+
 	// The waveform is the cache's to derive and to keep. Until a project has
 	// attached one there is nothing to draw from and nothing to do about it.
 	const cache = world.get(Library)?.cache;
@@ -201,6 +204,7 @@ async function updateClip(request: PeakRequest, record: AssetPeaks): Promise<voi
 		peaks.cut = wanted;
 
 		const data = await readPeaks(request.asset.id, record, wanted.from, wanted.to);
+		if (clipPeaks.get(request.clip) !== peaks) return;
 		if (!data) {
 			peaks.cut = null;
 			return;
@@ -222,7 +226,7 @@ async function updateClip(request: PeakRequest, record: AssetPeaks): Promise<voi
 	}
 
 	const pending = peaks.pending;
-	if (pending) {
+	if (pending && clipPeaks.get(request.clip) === peaks) {
 		peaks.pending = null;
 		void updateClip(pending, record);
 	}
