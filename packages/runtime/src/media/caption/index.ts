@@ -115,7 +115,7 @@ export function resolveCaptionDecoder(world: World, entity: Entity): CaptionDeco
 	const captionType = entity.get(Caption)?.type ?? CaptionType.CLASSIC;
 	const existing = entity.get(CaptionDecoderHandle);
 
-	if (existing && captionType === existing.type) {
+	if (existing && captionType === existing.type && existing.assetId === assetId) {
 		// A resolve before the entity was parented had nothing to place
 		// against; keep trying until placement lands.
 		if (!existing.styled) existing.styled = existing.applyStyles(world, entity);
@@ -129,6 +129,7 @@ export function resolveCaptionDecoder(world: World, entity: Entity): CaptionDeco
 	if (!asset) return null;
 
 	const decoder = createCaptionDecoder(captionType, asset);
+	decoder.assetId = assetId;
 	entity.add(CaptionDecoderHandle);
 	entity.set(CaptionDecoderHandle, decoder);
 

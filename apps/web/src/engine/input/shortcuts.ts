@@ -47,6 +47,7 @@ import { withEmptiedTracks } from '../keyframes';
 import { cancelObjectMask, getObjectTrack, trackObjectMask, undoMaskStroke } from '../object-mask';
 import { beginPathEdit, deletePickedVertex, endPathEdit, finishPen, isPathEditing, isPenDrawing, selectedPath } from '../path-tool';
 import { splitAtPlayhead } from '../split';
+import { setWorkareaEdge } from '../timing';
 import { Keys, MODIFIER_KEYS, ObjectMaskTool, Pointer } from '../traits';
 import { editTransform } from './interactions';
 
@@ -180,6 +181,10 @@ export function nudgeSelection(world: World, dx: number, dy: number): void {
 
 const nudge = (dx: number, dy: number) => (world: World): void => nudgeSelection(world, dx, dy);
 
+/** With nothing selected, the arrows move the playhead instead of nudging a selection. */
+const noSelection = (world: World): boolean => world.query(Selected).length === 0;
+const hasSelection = (world: World): boolean => world.query(Selected).length > 0;
+
 /** How long space has to be held to read as a pan and not as a tap. */
 const SPACE_HAND_DELAY = 200;
 
@@ -304,6 +309,16 @@ export function seekBy(world: World, frames: number): void {
 }
 
 const seekFrames = (frames: number) => (world: World): void => seekBy(world, frames);
+
+/** I / O: put the work area's in or out point where the playhead is. */
+const setInPoint = (world: World): void => {
+	const scene = getActiveEntity(world);
+	if (scene) setWorkareaEdge(world, scene, 'start');
+};
+const setOutPoint = (world: World): void => {
+	const scene = getActiveEntity(world);
+	if (scene) setWorkareaEdge(world, scene, 'end');
+};
 
 const seekSeconds = (seconds: number) => (world: World): void =>
 	seekBy(world, Math.round(seconds * (world.get(FrameRate)?.value ?? 30)));
@@ -555,7 +570,7 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['f', '!mod'], action: selectTool(ToolType.SCENE) },
 	{ keys: ['t', '!mod'], action: selectTool(ToolType.TEXT) },
 	{ keys: ['r', '!mod'], action: selectTool(ToolType.RECT) },
-	{ keys: ['o', '!mod'], action: selectTool(ToolType.ELLIPSE) },
+	{ keys: ['e', '!mod'], action: selectTool(ToolType.ELLIPSE) },
 	{ keys: ['p', '!mod'], action: selectTool(ToolType.PEN), active: (world) => !objectMaskTool(world) },
 	{ keys: ['m', '!mod'], action: selectTool(ToolType.OBJECT_MASK) },
 	{ keys: ['a', '!mod'], action: seekFrames(-1) },
@@ -564,6 +579,8 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['s', '!mod'], action: seekSeconds(-1) },
 	{ keys: [';', '!mod'], action: seekSelectionEdge('start') },
 	{ keys: ["'", '!mod'], action: seekSelectionEdge('end') },
+	{ keys: ['i', '!mod'], action: setInPoint },
+	{ keys: ['o', '!mod'], action: setOutPoint },
 	// fn ←/→ on macOS, Home/End elsewhere.
 	{ keys: ['home'], action: seekTimelineEdge('start') },
 	{ keys: ['end'], action: seekTimelineEdge('end') },
@@ -576,14 +593,21 @@ const PRESSED_SHORTCUTS: readonly Shortcut[] = [
 	{ keys: ['enter', '!mod'], action: editSelectedPath, active: pathToEdit },
 	{ keys: ['enter', '!mod'], action: selectChildren },
 	{ keys: ['escape'], action: deselect },
-	{ keys: ['arrowleft', '!shift'], action: nudge(-NUDGE, 0) },
-	{ keys: ['arrowright', '!shift'], action: nudge(NUDGE, 0) },
-	{ keys: ['arrowup', '!shift'], action: nudge(0, -NUDGE) },
-	{ keys: ['arrowdown', '!shift'], action: nudge(0, NUDGE) },
-	{ keys: ['arrowleft', 'shift'], action: nudge(-NUDGE_FAST, 0) },
-	{ keys: ['arrowright', 'shift'], action: nudge(NUDGE_FAST, 0) },
-	{ keys: ['arrowup', 'shift'], action: nudge(0, -NUDGE_FAST) },
-	{ keys: ['arrowdown', 'shift'], action: nudge(0, NUDGE_FAST) },
+	// Nothing selected: the playhead moves a frame (⌘: ten frames) instead.
+	{ keys: ['arrowleft', '!shift', '!mod'], action: seekFrames(-1), active: noSelection },
+	{ keys: ['arrowright', '!shift', '!mod'], action: seekFrames(1), active: noSelection },
+	{ keys: ['arrowleft', 'shift', '!mod'], action: seekFrames(-5), active: noSelection },
+	{ keys: ['arrowright', 'shift', '!mod'], action: seekFrames(5), active: noSelection },
+	{ keys: ['arrowleft', 'mod', '!shift'], action: seekFrames(-10), active: noSelection },
+	{ keys: ['arrowright', 'mod', '!shift'], action: seekFrames(10), active: noSelection },
+	{ keys: ['arrowleft', '!shift', '!mod'], action: nudge(-NUDGE, 0), active: hasSelection },
+	{ keys: ['arrowright', '!shift', '!mod'], action: nudge(NUDGE, 0), active: hasSelection },
+	{ keys: ['arrowup', '!shift', '!mod'], action: nudge(0, -NUDGE), active: hasSelection },
+	{ keys: ['arrowdown', '!shift', '!mod'], action: nudge(0, NUDGE), active: hasSelection },
+	{ keys: ['arrowleft', 'shift', '!mod'], action: nudge(-NUDGE_FAST, 0), active: hasSelection },
+	{ keys: ['arrowright', 'shift', '!mod'], action: nudge(NUDGE_FAST, 0), active: hasSelection },
+	{ keys: ['arrowup', 'shift', '!mod'], action: nudge(0, -NUDGE_FAST), active: hasSelection },
+	{ keys: ['arrowdown', 'shift', '!mod'], action: nudge(0, NUDGE_FAST), active: hasSelection },
 	{ keys: [' '], action: onSpacePressed },
 	// Object mask tool shortcuts
 	{ keys: ['p', '!mod'], action: (world) => world.set(ObjectMaskTool, { mode: 'points' }), active: objectMaskTool },

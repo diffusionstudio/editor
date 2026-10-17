@@ -177,13 +177,17 @@ function applyKeyframeDrag(world: World, scene: Entity, surface: TimelineSurface
 /** Notes where `entity`'s edges are, so a trim can be measured from them. */
 export function beginTrim(world: World, entity: Entity): void {
 	const computed = store(world, Computed);
-	const eid = entity.id();
-
-	entity.add(TrimDragOrigin);
-	entity.set(TrimDragOrigin, {
-		start: computed.start[eid] ?? 0,
-		end: computed.end[eid] ?? 0,
-	});
+	// Trimming one clip of a selection trims them all: each records where its
+	// edges were, and then moves by the delta of the one being held.
+	const targets = entity.has(Selected) ? [...world.query(Selected)] : [entity];
+	for (const target of targets) {
+		const eid = target.id();
+		target.add(TrimDragOrigin);
+		target.set(TrimDragOrigin, {
+			start: computed.start[eid] ?? 0,
+			end: computed.end[eid] ?? 0,
+		});
+	}
 }
 
 /**
@@ -213,6 +217,18 @@ export function applyTrim(
 
 	if (edge === 'in') trimIn(world, entity, frame);
 	else trimOut(world, entity, frame);
+
+	// The rest of the selection follows by the same delta, each clamped by what
+	// it can do itself (see `trimBounds`), so several clips trim in lockstep.
+	const delta = frame - (edge === 'in' ? origin.start : origin.end);
+	for (const other of world.query(TrimDragOrigin)) {
+		if (other === entity) continue;
+		const otherOrigin = other.get(TrimDragOrigin)!;
+		const [min, max] = trimBounds(world, other, edge, otherOrigin);
+		const at = clamp((edge === 'in' ? otherOrigin.start : otherOrigin.end) + delta, min, max);
+		if (edge === 'in') trimIn(world, other, at);
+		else trimOut(world, other, at);
+	}
 }
 
 /**

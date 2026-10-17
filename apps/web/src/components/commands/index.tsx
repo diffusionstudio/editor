@@ -15,6 +15,8 @@ import { MediaAssetCommands } from "./media-asset";
 import { ProjectFolderCommands } from "./project-folder";
 import { RemoveBackgroundCommand } from "./remove-background";
 import { RemoveSilenceCommand } from "./remove-silence";
+import { RippleDeleteGapCommand } from "./ripple-delete-gap";
+import { CloseGapLayerCommand } from "./close-gap-layer";
 import { RerunCommand } from "./rerun";
 import { ReuseSettingsCommand } from "./reuse-settings";
 import { ShortcutCommands } from "./shortcuts";
@@ -47,6 +49,8 @@ export function CanvasCommands() {
       <RemoveBackgroundCommand />
       <AutoCaptionsCommand />
       <RemoveSilenceCommand />
+      <RippleDeleteGapCommand />
+      <CloseGapLayerCommand />
       <MediaAssetCommands />
       <CleanUpCommand />
       <ExportVideoCommand />

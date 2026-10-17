@@ -84,7 +84,7 @@ export const TIMELINE_MENU: NodeMenuLayout = {
     ["shortcut:bring-to-front", "shortcut:send-to-back", "shortcut:toggle-hidden", "toggle-muted", "toggle-soloed"],
     MEDIA,
   ],
-  empty: [["shortcut:paste"]],
+  empty: [["shortcut:paste"], ["ripple-delete-gap", "close-gap-layer"]],
 };
 
 /**

@@ -14,6 +14,7 @@ import { CanvasCommands, NodeContextMenu } from "@/components/commands";
 import { DesktopAppBanner } from "./desktop-app-banner";
 import { toast } from "somoto"
 import { SceneInitOverlay } from "./scene-init-overlay";
+import { InlineTextEditor } from "./inline-text-editor";
 import { ASSET_DRAG_TYPE } from "@/components/sidebar-left/folder-item";
 
 import type { Asset } from "@diffusionstudio/assets";
@@ -104,6 +105,7 @@ export function Canvas() {
         </NodeContextMenu>
         <CameraController />
       </div>
+      <InlineTextEditor />
     </div>
   );
 }

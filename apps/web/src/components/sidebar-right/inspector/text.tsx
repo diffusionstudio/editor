@@ -29,7 +29,9 @@ import {
   ToolType,
   isCaption,
   isText,
+  store,
 } from '@diffusionstudio/runtime';
+import { commitCaptionText } from '@/engine/caption-edit';
 import { FontDropdown } from './font-picker';
 import { useDerived, useEditor, useTool } from '@/engine/hooks';
 import { removeKeyframeTrack, syncKeyframe } from '@/engine/keyframes';
@@ -153,6 +155,10 @@ export function TextPanel(props: TextPanelProps) {
             onBlur={() => world.set(Tool, { value: ToolType.MOVE })}
           />
         </ControlRow>
+      </Show>
+
+      <Show when={isCaption(entity())}>
+        <CaptionContent entity={entity()} />
       </Show>
 
       <ControlRow label="Font">
@@ -354,3 +360,41 @@ const VERTICAL_ALIGNS: Record<TextBaseline, string> = {
   // No tab offers a first-line baseline; it reads as the top one.
   [TextBaseline.ALPHABETIC]: 'top',
 };
+
+
+/**
+ * The words a caption shows at the playhead, editable. Captions are decoded
+ * from a transcript asset, so an edit rewrites the segment covering the
+ * playhead in the transcript and points the element at the new file — the
+ * original transcript is kept.
+ */
+function CaptionContent(props: { entity: Entity }) {
+  const world = useWorld();
+  const tool = useTool();
+  const [draft, setDraft] = createSignal('');
+  const current = () => store(world, Chars).value[props.entity.id()] ?? '';
+
+  createEffect(() => setDraft(current()));
+
+  const commit = async () => {
+    const text = draft().trim();
+    if (!text || text === current().trim()) return;
+    await commitCaptionText(world, props.entity, text);
+  };
+
+  return (
+    <ControlRow label="Caption" contentClass="flex flex-col">
+      <GrowingTextArea
+        value={draft()}
+        maxRows={8}
+        onInput={setDraft}
+        focused={tool() === ToolType.TEXT_EDIT}
+        onFocus={() => world.set(Tool, { value: ToolType.TEXT_EDIT })}
+        onBlur={() => {
+          world.set(Tool, { value: ToolType.MOVE });
+          void commit();
+        }}
+      />
+    </ControlRow>
+  );
+}

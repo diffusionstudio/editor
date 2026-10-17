@@ -19,6 +19,7 @@
 import {
 	Computed,
 	FrameRate,
+	Workarea,
 	Host,
 	framesToSeconds,
 	getSourceFrameAt,
@@ -71,6 +72,21 @@ export function editTime(world: World, entity: Entity, name: TimeProp, frames: n
  * it off with `null`. The file spells it in seconds like every other time,
  * and `false` is the value the writer drops the attribute for.
  */
+/** Sets one edge of the scene's work area at the playhead (an in or out point), creating it if needed. */
+export function setWorkareaEdge(world: World, scene: Entity, edge: 'start' | 'end'): void {
+	const computed = store(world, Computed);
+	const frame = computed.localTime[scene.id()] ?? 0;
+	const duration = computed.end[scene.id()] ?? 0;
+	const current = scene.get(Workarea);
+	let start = current?.start ?? 0;
+	let end = current?.end ?? duration;
+
+	if (edge === 'start') start = Math.max(0, Math.min(frame, end - 1));
+	else end = Math.max(frame, start + 1);
+
+	if (end > start) editWorkarea(world, scene, [start, end]);
+}
+
 export function editWorkarea(world: World, scene: Entity, range: [start: number, end: number] | null): void {
 	const fps = world.get(FrameRate)?.value ?? 30;
 	getDocumentEditor(world).editProperty(

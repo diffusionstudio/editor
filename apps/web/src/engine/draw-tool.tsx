@@ -9,6 +9,7 @@
  * the press was in, a scene always at the root.
  */
 
+import { setInlineEditing } from './inline-edit';
 import { Ellipse, Polygon, Rect, Scene, SolidPaint, Text } from '@diffusionstudio/reconciler';
 import {
 	Computed, GeometryType, HitRegions, RenderSurface, Root, Source, Tool, ToolType,
@@ -278,5 +279,6 @@ export function handleDrawInteraction(world: World, event: DispatchedPointerEven
 		editor.select(entity);
 	}
 
-	world.set(Tool, { value: tool === ToolType.TEXT ? ToolType.TEXT_EDIT : ToolType.MOVE });
+	if (tool === ToolType.TEXT && entity) setInlineEditing(true);
+	world.set(Tool, { value: ToolType.MOVE });
 }
