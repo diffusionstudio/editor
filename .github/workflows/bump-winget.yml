@@ -20,7 +20,7 @@ on:
         required: false
 
 env:
-  PACKAGE_ID: DiffusionStudio.DiffusionStudio
+  PACKAGE_ID: DiffusionStudio.Editor
   KOMAC_VERSION: 2.16.0
   KOMAC_SHA256: 7d2707fa6210f2789a3702de49fbd150b736dbf426ee0b9bc8e098736f9fd82d
 
