@@ -173,6 +173,9 @@ async function decodeStill(asset: Asset, width: number, hash: string): Promise<v
  * whenever the stretch on screen or the size of a tile has changed.
  */
 export function requestFrames(request: FrameRequest): void {
+	const cached = clipFrames.get(request.clip);
+	if (cached && cached.assetId !== request.asset.id) clipFrames.delete(request.clip);
+
 	const record = assetFrames.get(request.asset.id);
 
 	if (!record || (!record.decoding && !record.decoded)) {
@@ -192,6 +195,7 @@ export function requestFrames(request: FrameRequest): void {
 export function pickFrame(clip: number, assetId: string, timestamp: number, interval: number): Frame | null {
 	const cached = clipFrames.get(clip);
 	const covered = cached !== undefined
+		&& cached.assetId === assetId
 		&& timestamp >= cached.start - interval
 		&& timestamp <= cached.end + interval;
 
@@ -358,13 +362,14 @@ async function updateClip(request: FrameRequest): Promise<void> {
 		}
 
 		const track = await getVideoTrack(request.asset);
-		if (!track) return;
+		if (!track || clipFrames.get(request.clip) !== cached) return;
 
 		const sink = createSink(track, request);
 
-		for (let i = 0; i < count; i++) {
+		for (let i = 0; i < count && clipFrames.get(request.clip) === cached; i++) {
 			try {
 				const wrapped = await sink.getCanvas(((from + i) * request.interval) / request.fps);
+				if (clipFrames.get(request.clip) !== cached) return;
 				if (!wrapped) continue;
 
 				// The decoder may snap to the nearest keyframe, so the frame is
@@ -391,7 +396,7 @@ async function updateClip(request: FrameRequest): Promise<void> {
 	}
 
 	const pending = cached.pending;
-	if (pending) {
+	if (pending && clipFrames.get(request.clip) === cached) {
 		cached.pending = null;
 		void updateClip(pending);
 	}

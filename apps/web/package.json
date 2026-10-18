@@ -10,7 +10,8 @@
     "build:desktop": "tsc -b && vite build --mode desktop --base=./ --outDir=../desktop/web",
     "preview": "vite preview",
     "check": "tsc -p tsconfig.app.json --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run --environment node"
   },
   "dependencies": {
     "@diffusionstudio/agent-chat": "*",
@@ -69,6 +70,7 @@
     "unplugin-typegpu": "^0.11.6",
     "vite": "^7.2.4",
     "vite-plugin-solid": "^2.11.10",
-    "vite-plugin-solid-svg": "^0.8.1"
+    "vite-plugin-solid-svg": "^0.8.1",
+    "vitest": "^4.0.0"
   }
 }
