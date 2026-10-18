@@ -196,6 +196,13 @@ function forwardAudioDecoder(world: World, scene: Entity, entity: Entity, audioS
 			relativeDelay: (origin / fps) + audioDelay,
 		});
 		framePromises(world)?.push(playPromise);
+	} else if (world.get(Mode)?.value !== 'realtime') {
+		// Offline rendering: the OfflineAudioContext runs behind the frame loop (the
+		// encoder lets it lag by up to a second of samples). Stopping the nodes here would
+		// cut the part of the clip the audio thread has not rendered yet, so every clip
+		// that ends before the scene does would lose its tail in the export. The scheduled
+		// buffers already end at the clip's out point, so let them finish.
+		decoder.release();
 	} else {
 		decoder.reset();
 	}
