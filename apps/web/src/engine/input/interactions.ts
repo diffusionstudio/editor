@@ -19,7 +19,7 @@
 import {
 	ChildOf, Computed, Culled, Geometry, Group, Hovering,
 	Interactive, KeepAspectRatio, RenderSurface, Root, Scene,
-	Selected, Skew, Time,
+	Chars, Selected, Skew, Time, isText,
 	decompose2D, entityPivot,
 	entityOffset, entityQuad, entityWorldMat, enterEntity,
 	findKeyframeTrackEntity, getParentEntity, getParentNode, getSceneAncestor,
@@ -36,6 +36,7 @@ import { syncKeyframe } from '../keyframes';
 import { beginPathEdit, pinViewBox } from '../path-tool';
 import { Hud, Keys, Pointer, SnapLines } from '../traits';
 import { getToolCursor, updateCursor, type CursorType } from './cursor';
+import { setInlineEditing } from '../inline-edit';
 import { mountNameInput } from '../hud/name-input';
 import {
 	buildSnapCandidatesFromCorners, buildSnapCandidatesFromQuad, findSnapTarget,
@@ -174,6 +175,17 @@ export function handleGeometryInteraction(world: World, event: DispatchedPointer
 
 	if (event.type === 'drag' || event.type === 'dragend') {
 		handleMaskInteraction(world, event);
+	}
+
+	// Double-click a text layer to edit what it says: the inspector's Content
+	// field takes focus (the same place the text tool types into).
+	if (event.type === 'dblclick' && event.target.kind === 'entity') {
+		const entity = event.target.id;
+		if (isText(entity) || entity.has(Chars)) {
+			editor.select(entity);
+			setInlineEditing(true);
+			return;
+		}
 	}
 
 	// Double-click on a path edits its vertices.

@@ -13,6 +13,7 @@ import { useLibrary } from '@/engine/library';
 import { useTimeline } from '@/context/timeline';
 import { ASSET_DRAG_TYPE } from '@/components/sidebar-left/folder-item';
 import { NodeContextMenu, TIMELINE_MENU } from '@/components/commands';
+import { setPendingGap } from '@/engine/timeline/gap';
 
 /**
  * The timeline's canvas. What is drawn on it is the timeline system's
@@ -75,7 +76,11 @@ export function Timeline() {
   };
 
   return (
-    <NodeContextMenu class="relative size-full" layout={TIMELINE_MENU} pick={timeline.nodesAt}>
+    <NodeContextMenu class="relative size-full" layout={TIMELINE_MENU} pick={(event) => {
+        const nodes = timeline.nodesAt(event);
+        setPendingGap(nodes.length ? null : timeline.gapAt(event));
+        return nodes;
+      }}>
       <canvas
         class="absolute inset-0"
         id="timeline-canvas"

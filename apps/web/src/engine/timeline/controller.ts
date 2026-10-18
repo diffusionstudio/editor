@@ -9,7 +9,18 @@
  * controller itself never paints.
  */
 
-import { AdjustmentLayer, Geometry, Group, getSelection, getTimelineView } from '@diffusionstudio/runtime';
+import {
+	AdjustmentLayer,
+	ChildOf,
+	Computed,
+	Geometry,
+	Group,
+	Sequential,
+	buildTimelineLayers,
+	getSelection,
+	getTimelineView,
+	store,
+} from '@diffusionstudio/runtime';
 import { Or } from 'koota';
 
 import { assert, clamp } from '@/utils';
@@ -29,6 +40,7 @@ import {
 	updateTimelineTransform,
 } from './view';
 import {
+	RULER_HEIGHT,
 	SCROLL_X_SENSITIVITY,
 	TIMELINE_RESOLUTION_RANGE,
 	WHEEL_LINE_HEIGHT,
@@ -36,6 +48,7 @@ import {
 	ZOOM_DELTA_CLAMP,
 	ZOOM_SENSITIVITY,
 } from './config';
+import { getNodeHeight } from './layout';
 import { getFrameRate } from './view';
 
 import type { Entity, World } from 'koota';
@@ -238,6 +251,56 @@ export function createTimelineController(world: World) {
 		return node ? [node] : getSelection(world);
 	};
 
+	/**
+	 * The empty space between two clips of a sequence under a right-click, in
+	 * timeline frames: what the timeline's Ripple Delete closes. Null over
+	 * anything that is not a gap (a clip, the ruler, a scene layer).
+	 */
+	const gapAt = (event: MouseEvent): { sequence: Entity; startFrame: number; endFrame: number } | null => {
+		const scene = getTimelineScene(world);
+		const rect = surface.canvas?.getBoundingClientRect();
+		if (scene === null || !rect) return null;
+
+		const rowY = event.clientY - rect.top - RULER_HEIGHT + getScrollY(world, scene);
+		if (rowY < 0) return null;
+		const frame = clientToFrame(event.clientX);
+		const computed = store(world, Computed);
+
+		let top = 0;
+		const walk = (nodes: ReturnType<typeof buildTimelineLayers>): { entity: Entity; kind: string } | null => {
+			for (const node of nodes) {
+				const height = getNodeHeight(node);
+				if (node.kind !== 'keyframe-track' && rowY >= top && rowY < top + height) {
+					return { entity: node.entity, kind: node.kind };
+				}
+				top += height;
+				if (node.kind !== 'keyframe-track') {
+					const found = walk(node.children);
+					if (found) return found;
+				}
+			}
+			return null;
+		};
+		const row = walk(buildTimelineLayers(world, scene));
+
+		if (!row || row.kind !== 'geometry' || !row.entity.has(Sequential)) return null;
+
+		const children = [...world.query(ChildOf(row.entity))]
+			.filter((child) => (child.has(Geometry) || child.has(Group) || child.has(AdjustmentLayer)) && computed.start[child.id()] !== undefined)
+			.sort((a, b) => (computed.start[a.id()] ?? 0) - (computed.start[b.id()] ?? 0));
+		const first = children[0];
+		if (first) {
+			const start = computed.start[first.id()] ?? 0;
+			if (frame >= 0 && frame < start) return { sequence: row.entity, startFrame: 0, endFrame: start };
+		}
+		for (let index = 0; index + 1 < children.length; index += 1) {
+			const end = computed.end[children[index]!.id()] ?? 0;
+			const start = computed.start[children[index + 1]!.id()] ?? 0;
+			if (end < start && frame > end && frame < start) return { sequence: row.entity, startFrame: end, endFrame: start };
+		}
+		return null;
+	};
+
 	const setMinimized = (minimized: boolean): void => {
 		surface.minimized = minimized;
 	};
@@ -313,6 +376,7 @@ export function createTimelineController(world: World) {
 		clientToFrame,
 		clientToTime,
 		nodesAt,
+		gapAt,
 		setMinimized,
 	};
 }

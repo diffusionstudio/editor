@@ -27,6 +27,8 @@ export type CaptionPresetStyle = {
 
 export interface CaptionDecoder {
 	readonly type: CaptionType;
+	/** The transcript asset it was built from; a new one rebuilds the decoder. */
+	assetId?: string;
 	groups: WordGroup[];
 	ready: boolean;
 	styled: boolean;
