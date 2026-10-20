@@ -14,6 +14,7 @@ import { Or } from 'koota';
 
 import { assert, clamp } from '@/utils';
 import { getDocumentEditor } from '@/engine/editor';
+import { watchPixelRatio } from '@/engine/pixel-ratio';
 import { createPointer } from './pointer';
 import { TimelineSurface } from './surface';
 import { timelineSystem } from './timeline';
@@ -101,6 +102,7 @@ export function createTimelineController(world: World) {
 	};
 
 	const observer = new ResizeObserver(resize);
+	let stopWatchingPixelRatio = (): void => {};
 
 	const layerObserver = new ResizeObserver(() => {
 		applyScroll();
@@ -254,6 +256,7 @@ export function createTimelineController(world: World) {
 		surface.layout = parent.getBoundingClientRect();
 
 		observer.observe(parent);
+		stopWatchingPixelRatio = watchPixelRatio(resize);
 
 		canvas.addEventListener('wheel', handleWheel);
 		canvas.addEventListener('pointerdown', pointer.down, { passive: true });
@@ -263,6 +266,7 @@ export function createTimelineController(world: World) {
 
 	const detachCanvas = (): void => {
 		observer.disconnect();
+		stopWatchingPixelRatio();
 
 		surface.canvas?.removeEventListener('wheel', handleWheel);
 		surface.canvas?.removeEventListener('pointerdown', pointer.down);

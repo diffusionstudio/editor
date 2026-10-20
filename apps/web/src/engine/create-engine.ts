@@ -11,6 +11,7 @@ import { clearClipFrames, clearClipPeaks, clearMedia, clearPeaks, timelineSystem
 import { clearObjectTrackOf, clearObjectTracks } from './object-mask';
 import { pasteInto, shortcutSystem } from './input/shortcuts';
 import { pastedMedia } from '@/lib/clipboard';
+import { watchPixelRatio } from './pixel-ratio';
 
 import type { RuntimeWorld } from '@diffusionstudio/runtime';
 import type { CanvasPointerEvent, PointerEventType } from '@diffusionstudio/runtime';
@@ -30,6 +31,7 @@ class Engine {
 	private rafId: number | null = null;
 	private lastTimestamp: number | null = null;
 	private resizeObserver = new ResizeObserver(this.resize.bind(this));
+	private stopWatchingPixelRatio = (): void => {};
 
 	private readonly audioContext: AudioContext;
 	private readonly ownsAudioContext: boolean;
@@ -278,6 +280,7 @@ class Engine {
 		window.addEventListener('blur', this.onBlur);
 
 		this.resizeObserver.observe(canvas.parentElement!);
+		this.stopWatchingPixelRatio = watchPixelRatio(this.resize.bind(this));
 	}
 
 	public snapshot(): Promise<Blob | null> {
@@ -330,6 +333,7 @@ class Engine {
 		window.removeEventListener('paste', this.onPaste);
 		window.removeEventListener('blur', this.onBlur);
 		this.resizeObserver.disconnect();
+		this.stopWatchingPixelRatio();
 	}
 }
 
