@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-import { getAssetFile, getLibrary } from "@diffusionstudio/runtime";
+import { getLibrary } from "@diffusionstudio/runtime";
 import { DapiError, generatedPath, isLocalJobId, isLocalModel } from "@diffusionstudio/dapi";
 
 import { api } from "@/lib/api";
@@ -116,7 +116,7 @@ async function withUploads(value: unknown, ctx: ToolContext, field?: string): Pr
 /** A file uploaded; in an `audio` field only its sound, so a video's picture is not sent to be ignored. */
 async function upload(path: string, field: string | undefined, ctx: ToolContext): Promise<AssetRef> {
   const asset = await resolveAsset(ctx, path);
-  return uploadFile(field === "audio" ? await audioFile(asset) : await getAssetFile(asset));
+  return uploadFile(field === "audio" ? await audioFile(asset) : await asset.handle.getOriginal());
 }
 
 /**

@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { AIFF_MIME } from "@diffusionstudio/assets";
+
 /**
  * Formats a byte count to a human-readable size using base-1024 units.
  * @param bytes - Raw byte size.
@@ -64,6 +66,7 @@ export function formatMimeTypeLabel(mimeType: string) {
     "video/webm": "WebM Video",
     "audio/mpeg": "MP3 Audio",
     "audio/wav": "WAV Audio",
+    [AIFF_MIME]: "AIFF Audio",
     "image/jpeg": "JPEG Image",
     "image/png": "PNG Image",
     "image/webp": "WebP Image",

@@ -52,7 +52,7 @@ export function outputOf(request: { model: ModelId; count?: number; aspectRatio?
 function refs(library: AssetLibrary, ids: (string | undefined)[]): Promise<(AssetRef | undefined)[]> {
   return Promise.all(ids.map((id) => {
     const asset = id ? library.get(id) : undefined;
-    return asset ? uploadAsset(library, asset) : undefined;
+    return asset ? uploadAsset(asset) : undefined;
   }));
 }
 

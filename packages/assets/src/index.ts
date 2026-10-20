@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+export { AIFF_MIME, aiffContainer } from './aiff';
 export * from './types';
 export * from './manifest';
 export * from './fs';

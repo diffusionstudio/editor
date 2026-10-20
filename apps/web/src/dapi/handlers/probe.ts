@@ -4,7 +4,7 @@
 
 import { ALL_FORMATS, BlobSource, Input } from "mediabunny";
 import { getAssetFile } from "@diffusionstudio/runtime";
-import { assetName } from "@diffusionstudio/assets";
+import { AIFF_MIME, aiffContainer, assetName } from "@diffusionstudio/assets";
 import { resolveAsset } from "../lib/assets";
 
 import type { ToolHandler } from "../handler";
@@ -14,13 +14,15 @@ const PROBE_SAMPLE_PACKETS = 200;
 export const probe: ToolHandler<"probe"> = async ({ path }, ctx) => {
   const asset = await resolveAsset(ctx, path);
   const blob = await getAssetFile(asset);
+  const original = asset.mimeType === AIFF_MIME ? await asset.handle.getOriginal() : undefined;
+  const container = original && { format: await aiffContainer(original), mimeType: AIFF_MIME };
   const base = {
     id: asset.id,
     name: assetName(asset),
     path: asset.path,
     type: asset.type,
     mimeType: asset.mimeType,
-    size: blob.size,
+    size: (original ?? blob).size,
     ...("width" in asset && { width: asset.width, height: asset.height }),
   };
 
@@ -59,8 +61,8 @@ export const probe: ToolHandler<"probe"> = async ({ path }, ctx) => {
 
     return {
       ...base,
-      format: format.name,
-      mimeType,
+      format: container?.format ?? format.name,
+      mimeType: container?.mimeType ?? mimeType,
       duration,
       tags: { ...tags, ...(images?.length && { attachedImages: images.length }) },
       tracks,

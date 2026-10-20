@@ -28,7 +28,7 @@ import {
   projectsRevision,
 } from "@/projects";
 import { listEditors, openInEditor, revealPath } from "@/lib/shell";
-import { AssetId, ChildOf, Name, Root, Scene, getAssetFile, getActiveEntity, sortByItemIndex } from "@diffusionstudio/runtime";
+import { AssetId, ChildOf, Name, Root, Scene, getActiveEntity, sortByItemIndex } from "@diffusionstudio/runtime";
 import { assetName } from "@diffusionstudio/assets";
 import { useQuery, useWorld } from "@diffusionstudio/koota-solid";
 import { useLibrary } from "@/engine/library";
@@ -314,7 +314,7 @@ export function FileAssetMenu() {
       const usedNames = new Set<string>();
       await Promise.all(
         all.map(async (asset) => {
-          const file = await getAssetFile(asset);
+          const file = await asset.handle.getOriginal();
           const assetFileName = assetName(asset);
           const base = assetFileName.match(/\.[^.]+$/)
             ? assetFileName

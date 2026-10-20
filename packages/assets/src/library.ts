@@ -5,6 +5,7 @@
 
 import { createSignal, type Accessor } from 'solid-js';
 
+import { AiffError, mediaOf } from './aiff';
 import { AssetCache } from './cache';
 import { hashBlob, hashSequence } from './hash';
 import {
@@ -299,11 +300,6 @@ export class AssetLibrary {
 			if (entry.transient && entry.source === source) return entry;
 		}
 		return undefined;
-	}
-
-	/** The File backing an asset. */
-	public file(asset: Asset): Promise<File> {
-		return asset.handle.getFile();
 	}
 
 	// -----------------------------------------------------------------------
@@ -609,11 +605,16 @@ export class AssetLibrary {
 	}
 
 	private async describeFile(source: string, meta: DescribeMeta): Promise<Asset> {
-		const handle = this.fileHandle(source);
-		const file = await handle.getFile();
-		const mimeType = await detectMimeType(file);
+		const original = await this.fs.file(source);
+		const mimeType = await detectMimeType(original);
 		if (!mimeType) throw new Error(`Unsupported file: ${basename(source)}`);
-		const [id, probe] = await Promise.all([hashBlob(file), probeMedia(file, mimeType)]);
+		const [id, probe] = await Promise.all([
+			hashBlob(original),
+			mediaOf(original, mimeType).then((media) => probeMedia(media, mimeType)),
+		]).catch((error) => {
+			if (error instanceof AiffError) throw new Error(`Unsupported file: ${basename(source)}: ${error.message}`);
+			throw error;
+		});
 
 		return {
 			id,
@@ -621,8 +622,8 @@ export class AssetLibrary {
 			source,
 			createdAt: meta.createdAt ?? new Date().toISOString(),
 			mimeType,
-			stat: { size: file.size, mtime: file.lastModified },
-			handle,
+			stat: { size: original.size, mtime: original.lastModified },
+			handle: this.fileHandle(source, mimeType),
 			...probe,
 		};
 	}
@@ -630,9 +631,14 @@ export class AssetLibrary {
 	private async describeUrl(url: string, meta: DescribeMeta): Promise<Asset> {
 		const mimeType = await detectMimeType(url);
 		if (!mimeType) throw new Error(`Unsupported resource: ${url}`);
-		const handle = this.urlHandle(url);
-		const file = await handle.getFile();
-		const [id, probe] = await Promise.all([hashBlob(file), probeMedia(file, mimeType)]);
+		const handle = this.urlHandle(url, mimeType);
+		const [id, probe] = await Promise.all([
+			handle.getOriginal().then(hashBlob),
+			handle.getFile().then((media) => probeMedia(media, mimeType)),
+		]).catch((error) => {
+			if (error instanceof AiffError) throw new Error(`Unsupported resource: ${url}: ${error.message}`);
+			throw error;
+		});
 
 		return {
 			id,
@@ -648,8 +654,8 @@ export class AssetLibrary {
 	private async describeSequence(source: string, frames: FsEntry[], meta: DescribeMeta): Promise<SequenceAsset> {
 		if (!frames.length) throw new Error(`Empty sequence: ${basename(source)}`);
 		const first = frames[0]!;
-		const handle = this.fileHandle(joinPath(source, first.name));
-		const file = await handle.getFile();
+		const firstFrame = joinPath(source, first.name);
+		const file = await this.fs.file(firstFrame);
 		const mimeType = await detectMimeType(file);
 		if (!mimeType?.startsWith('image/')) throw new Error(`Not an image sequence: ${basename(source)}`);
 		const probe = await probeMedia(file, mimeType);
@@ -666,7 +672,7 @@ export class AssetLibrary {
 			height: probe.height,
 			frameRate: DEFAULT_SEQUENCE_FPS,
 			duration: frames.length / DEFAULT_SEQUENCE_FPS,
-			handle,
+			handle: this.fileHandle(firstFrame, mimeType),
 			directoryHandle: this.directoryHandle(source),
 		};
 	}
@@ -675,35 +681,34 @@ export class AssetLibrary {
 	private attach(record: AssetRecord): Asset {
 		if (record.type === 'SEQUENCE') {
 			const first = this.fs.list(record.source).then((entries) => sortFrames(entries).find((entry) => entry.kind === 'file'));
+			const firstFrame = async () => this.fs.file(joinPath(record.source, (await first)?.name ?? ''));
 			return {
 				...record,
-				handle: { getFile: async () => this.fs.file(joinPath(record.source, (await first)?.name ?? '')) },
+				handle: { getFile: firstFrame, getOriginal: firstFrame },
 				directoryHandle: this.directoryHandle(record.source),
 			};
 		}
 		return {
 			...record,
-			handle: isUrlSource(record.source) ? this.urlHandle(record.source) : this.fileHandle(record.source),
+			handle: isUrlSource(record.source) ? this.urlHandle(record.source, record.mimeType) : this.fileHandle(record.source, record.mimeType),
 		};
 	}
 
-	private fileHandle(source: string): AssetFileHandle {
-		return { getFile: () => this.fs.file(source) };
+	private fileHandle(source: string, mimeType: string): AssetFileHandle {
+		return handleOver(() => this.fs.file(source), mimeType);
 	}
 
-	private urlHandle(url: string): AssetFileHandle {
+	private urlHandle(url: string, mimeType: string): AssetFileHandle {
 		let cached: Promise<File> | undefined;
-		return {
-			getFile: () => {
-				cached ??= fetch(url).then(async (response) => {
-					if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
-					const blob = await response.blob();
-					return new File([blob], basename(url.split(/[?#]/)[0]!), { type: blob.type });
-				});
-				cached.catch(() => (cached = undefined));
-				return cached;
-			},
-		};
+		return handleOver(() => {
+			cached ??= fetch(url).then(async (response) => {
+				if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+				const blob = await response.blob();
+				return new File([blob], basename(url.split(/[?#]/)[0]!), { type: blob.type });
+			});
+			cached.catch(() => (cached = undefined));
+			return cached;
+		}, mimeType);
 	}
 
 	private directoryHandle(source: string): AssetDirectoryHandle {
@@ -723,4 +728,8 @@ export class AssetLibrary {
 interface DescribeMeta {
 	path: string;
 	createdAt?: string;
+}
+
+function handleOver(original: () => Promise<File>, mimeType: string): AssetFileHandle {
+	return { getOriginal: original, getFile: () => original().then((file) => mediaOf(file, mimeType)) };
 }

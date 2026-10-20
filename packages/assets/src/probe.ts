@@ -7,6 +7,7 @@
 
 import { ALL_FORMATS, BlobSource, Input, UrlSource } from 'mediabunny';
 
+import { AIFF_MIME, aiffContainer, isAiffType } from './aiff';
 import { isMaskFileHead, MASK_MIME_TYPE, readMaskHeader } from './mask';
 
 import type { InputTrack } from 'mediabunny';
@@ -32,9 +33,10 @@ const TRANSCRIPT_TYPES = new Set(['application/json', 'application/x-subrip', 't
  * The MIME type of a file, or of the resource behind a URL. Subtitle files go
  * by extension (OS registries rarely map .srt); images fall back to their
  * magic bytes when nothing declared a type (a download filed without an
- * extension has none to go by), and so do mask files; audio and video are
- * sniffed by mediabunny, since a container's declared type is often wrong or
- * empty. Null when the file is not something the library takes.
+ * extension has none to go by), and so do mask files and AIFF, which
+ * mediabunny does not open; audio and video are sniffed by mediabunny, since
+ * a container's declared type is often wrong or empty. Null when the file is
+ * not something the library takes.
  */
 export async function detectMimeType(input: Blob | string): Promise<string | null> {
 	const name = typeof input === 'string' ? input.split(/[?#]/)[0]! : (input as File).name ?? '';
@@ -48,10 +50,13 @@ export async function detectMimeType(input: Blob | string): Promise<string | nul
 	if (mimeType?.startsWith('image/')) return mimeType;
 	if (mimeType?.startsWith('text/html')) return mimeType;
 
+	if (typeof input === 'string' && isAiffType(mimeType)) return AIFF_MIME;
+
 	if (typeof input !== 'string') {
 		const sniffed = await sniffImageType(input);
 		if (sniffed) return sniffed;
 		if (await sniffMaskFile(input)) return MASK_MIME_TYPE;
+		if (await aiffContainer(input)) return AIFF_MIME;
 	}
 
 	try {

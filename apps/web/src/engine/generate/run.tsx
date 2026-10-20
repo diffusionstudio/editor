@@ -167,7 +167,7 @@ export async function transform(
 	const paint = media.paint === media.node ? undefined : media.paint.get(Source)?.value;
 
 	try {
-		const job = await runJob(request(await uploadAsset(library, input)), progress.update);
+		const job = await runJob(request(await uploadAsset(input)), progress.update);
 		if (job.status !== 'succeeded') throw new Error(jobFailure(job));
 
 		const [file] = job.assets;
@@ -187,11 +187,11 @@ export async function transform(
 /** Uploads made this session, by library asset id: an input is sent once. */
 const uploads = new Map<string, Promise<AssetRef>>();
 
-/** The ref a request names a library asset by, uploading its bytes when the API lacks them. */
-export function uploadAsset(library: AssetLibrary, asset: Asset): Promise<AssetRef> {
+/** The ref a request names a library asset by, uploading the user's file when the API lacks it. */
+export function uploadAsset(asset: Asset): Promise<AssetRef> {
 	let ref = uploads.get(asset.id);
 	if (!ref) {
-		ref = library.file(asset).then(uploadFile);
+		ref = asset.handle.getOriginal().then(uploadFile);
 		ref.catch(() => uploads.delete(asset.id));
 		uploads.set(asset.id, ref);
 	}

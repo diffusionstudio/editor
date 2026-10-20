@@ -14,6 +14,7 @@ How to understand source material before editing it. Inspect only the modalities
 - Lay down the A-roll. Assemble the primary footage as JSX and save. Get the spine of the edit right before anything else.
 - Layer the rest on top. Once the A-roll holds, add B-roll and secondary assets (sound effects, captions, overlays) in the same source.
 - Symlink media the project uses into its `assets/` folder and name it by library path (`assets/b-roll/drone.mp4` is `"b-roll/drone.mp4"`); local and remote paths work too but stay outside the library.
+- Check [the formats the editor reads](../reference/jsx/media.md#formats) before you make or convert media. A file in any other format stays out of the library. That section also shows how to make a WAV with macOS `say`. It writes AIFF by default and fails on a bare `-o speech.wav`.
 - `context` reports which folder the app actually has open and where the playhead sits.
 
 **The source is the document.** A project is a folder of JSX; `open` a folder once, then write the files and save. Saving recompiles and re-renders the canvas.

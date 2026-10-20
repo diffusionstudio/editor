@@ -7,7 +7,14 @@ import type { MaskRecipe } from './mask';
 /** Whatever hands out the asset's bytes: a real File on desktop, an OPFS
  *  file on the web, a fetched blob for a URL. */
 export interface AssetFileHandle {
+	/**
+	 * The asset as decoders read it: the file itself, except for AIFF, which
+	 * gets a view with the same samples in a container they open. Decode,
+	 * draw and play from this, never copy out of it.
+	 */
 	getFile(): Promise<File>;
+	/** The file exactly as the user keeps it, byte for byte. Identity, freshness and every copy out of the app read this. */
+	getOriginal(): Promise<File>;
 }
 
 /** Directory of numbered frame files backing a SEQUENCE asset. Typed to the

@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { AIFF_MIME } from '@diffusionstudio/assets';
 
 /**
  * Converts a MIME type to its corresponding file extension
@@ -35,6 +36,7 @@ export function mimeTypeToExtension(mimeType: string): string {
     // Audio
     'audio/mpeg': '.mp3',
     'audio/mp3': '.mp3',
+    [AIFF_MIME]: '.aiff',
     'audio/wav': '.wav',
     'audio/wave': '.wav',
     'audio/x-wav': '.wav',

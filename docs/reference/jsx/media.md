@@ -46,3 +46,35 @@ Link rather than copy: the bytes stay where they are, the project holds nothing 
 A link is the project's, and what it points at is not. Deleting a linked asset in the panel removes the link and stops there.
 
 This is the way in from outside the app: there is no command that adds an asset, and `assets.yml` is not an entry point — a record carries the content hash the app computes for it, and a malformed one is dropped on load. The asset panel does the same thing from inside the app: an imported file is linked where it lies, recorded by its absolute path, never copied. A file that should not move and does not need a library path is named by its absolute path in `src` instead, at the cost of the portability a library path has.
+
+## Formats
+
+The editor reads these formats. It identifies audio and video by their bytes, not by their extension, so a WAV saved as `speech.mp3` still opens as a WAV.
+
+| Kind | Formats |
+| --- | --- |
+| Video | MP4, MOV, WebM, Matroska, and MPEG-TS |
+| Audio | WAV, MP3, M4A, AAC, FLAC, Ogg, and AIFF |
+| Image | PNG, JPEG, WebP, GIF, SVG, and other images Chromium decodes, such as AVIF and BMP |
+
+AIFF includes AIFF-C. The editor reads either when it holds uncompressed samples, which is what macOS writes. It refuses compressed AIFF-C (IMA 4:1, μ-law, and A-law) with `Unsupported file`.
+
+Any other audio or video format, such as AVI, FLV, WMA, CAF, or an HLS playlist, stays out of the library. The app skips such a file in `assets/`, and an import or a tool call that names it fails with `Unsupported file`, or `Unsupported resource` for a URL. Convert it first, for example with `ffmpeg -i in.avi out.mp4`.
+
+### Make audio with `say`
+
+macOS `say` writes AIFF by default, and the editor reads AIFF, so `say -o speech.aiff "text"` needs no conversion. To make a WAV, give `say` the sample format.
+
+```sh
+say --file-format=WAVE --data-format=LEI16@22050 -o speech.wav "text"
+```
+
+A bare `say -o speech.wav` fails with `fmt?` and writes no file.
+
+Four other file names exit 0 and still leave nothing the editor can use:
+
+- `-o speech.mp3` writes a 16-byte file with no audio.
+- `-o speech.ogg` and `-o speech.opus` write an empty file.
+- `-o speech.caf` writes a CAF file, which the editor does not read.
+
+Check the size of a file before you use it. To turn a CAF file into a WAV, run `afconvert -f WAVE -d LEI16 speech.caf speech.wav` or `ffmpeg -i speech.caf speech.wav`.

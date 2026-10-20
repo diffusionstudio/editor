@@ -73,7 +73,7 @@ export async function saveAssetAs(asset: Pick<Asset, 'handle' | 'mimeType' | 'pa
 		throw error;
 	}
 
-	const file = await asset.handle.getFile();
+	const file = await asset.handle.getOriginal();
 	const writable = await target.createWritable();
 	try {
 		await file.stream().pipeTo(writable);
