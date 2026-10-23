@@ -1404,6 +1404,11 @@ export function watchProject(window: BrowserWindow | null, dir: string): void {
 
   const watcher = watch(dir, { recursive: true }, (_event, filename) => {
     if (!filename) return;
+    // macOS's recursive FSEvents watch fires an extra notification for the
+    // watched folder itself alongside the real one for whatever changed
+    // inside it — and again once more, asynchronously, after the folder is
+    // removed and the watcher closed. Neither names an actual project file.
+    if (filename === basename(dir)) return;
     // Project-relative and `/`-separated; installs churn node_modules constantly.
     const path = filename.split(sep).join("/");
     if (path.startsWith("node_modules/") || path === "node_modules") return;
