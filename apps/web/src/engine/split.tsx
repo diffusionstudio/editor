@@ -29,7 +29,9 @@ import {
 import { Or } from 'koota';
 
 import { getDocumentEditor } from './editor';
-import { cloneFramesForSplit, clonePeaksForSplit } from './timeline';
+import { transferSplitBindings } from './timeline/magnetic-binding';
+import { cloneFramesForSplit } from './timeline/media';
+import { clonePeaksForSplit } from './timeline/peaks';
 import { trimIn, trimOut } from './timing';
 
 import type { Entity, World } from 'koota';
@@ -112,6 +114,8 @@ export function splitAtPlayhead(world: World): Entity[] {
 		clonePeaksForSplit(original.id(), copy.id());
 		cloneFramesForSplit(original.id(), copy.id());
 	}
+
+	for (const { original, copy } of pairs) transferSplitBindings(world, original, copy, frame);
 
 	// Two clips side by side under a scene are two layers of the timeline,
 	// where a sequence's children are one row: the halves are wrapped so a

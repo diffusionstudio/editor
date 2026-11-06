@@ -2,6 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+import { useWorld } from "@diffusionstudio/koota-solid";
+import { Sequential } from "@diffusionstudio/runtime";
+import { toast } from "somoto";
+import { magneticTrackMode, setMagneticTrackEnabled } from "@/engine/timeline/magnetic-track";
+
 import {
   DropdownMenuItem,
   DropdownMenuPortal,
@@ -246,6 +251,12 @@ export function TimelineClipMenu() {
 }
 
 export function TimelineTrackMenu() {
+  const world = useWorld();
+  const toggleMagneticTrack = () => {
+    const track = world.query(Sequential).find((track) => magneticTrackMode(track));
+    if (track) setMagneticTrackEnabled(world, track, magneticTrackMode(track) !== "on");
+    else toast.info("請先在時間軸右鍵指定磁性主軌");
+  };
   return (
     <>
       <DropdownMenuGroup>
@@ -260,7 +271,7 @@ export function TimelineTrackMenu() {
       <DropdownMenuSeparator />
 
       <DropdownMenuGroup>
-        <DropdownMenuItem>Toggle magnetic track</DropdownMenuItem>
+        <DropdownMenuItem onSelect={toggleMagneticTrack}>切換磁性主軌</DropdownMenuItem>
       </DropdownMenuGroup>
     </>
   );

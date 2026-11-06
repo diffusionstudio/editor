@@ -19,6 +19,8 @@ import { authoredElement, authoredTree, getRuntimeDocument, insert, isSceneNode,
 import { findInspectEntry } from './inspect';
 import { AssetSelection } from './traits';
 
+import { boundAssets } from './timeline/magnetic-binding';
+
 import type { SceneNode } from '@diffusionstudio/runtime';
 import type { InspectValue, PropValue } from '@diffusionstudio/jsx';
 import type { Entity, World } from 'koota';
@@ -634,7 +636,7 @@ export class DocumentEditor {
 	public duplicate(entities: Entity | Entity[]): Entity[] {
 		const copies: Entity[] = [];
 		for (const source of this.subtreeRoots(entities)) {
-			const tree = this.spell(source);
+			const tree = this.spellCopy(source);
 			if (!tree) continue;
 
 			// Out of any sequence, on top of what it left.
@@ -678,7 +680,7 @@ export class DocumentEditor {
 			if (!parent) continue;
 
 			this.settle(original);
-			const tree = this.spell(original);
+			const tree = this.spellCopy(original, true);
 			if (!tree) continue;
 
 			const siblings = getEntityChildren(this.world, parent);
@@ -811,7 +813,7 @@ export class DocumentEditor {
 	 */
 	public copy(entities: Entity | Entity[]): void {
 		const roots = this.subtreeRoots(entities);
-		const trees = roots.map((root) => this.spell(root)).filter((tree) => tree !== undefined);
+		const trees = roots.map((root) => this.spellCopy(root)).filter((tree) => tree !== undefined);
 		if (!trees.length) return;
 		this.clipboard = { trees, parent: getParentEntity(roots[0]!)?.get(Source)?.value };
 	}
@@ -878,6 +880,20 @@ export class DocumentEditor {
 		if (!tree) return undefined;
 		delete tree.props.selected;
 		delete tree.props.active;
+		return tree;
+	}
+
+	/** A copy gets its own identity; split copies can keep the asset’s link. */
+	private spellCopy(entity: Entity, keepAssetBinding = false): AuthoredTree | undefined {
+		const tree = this.spell(entity);
+		if (!tree) return undefined;
+		const clearIdentity = (node: AuthoredTree): void => {
+			delete node.props.magneticTrack;
+			delete node.props.magneticAnchor;
+			if (!keepAssetBinding) delete node.props.magneticBindTo;
+			for (const child of node.children) clearIdentity(child);
+		};
+		clearIdentity(tree);
 		return tree;
 	}
 
@@ -963,6 +979,13 @@ export class DocumentEditor {
 			}
 			return true;
 		});
+
+		const removed = new Set(roots.flatMap((root) => getEntityTree(this.world, root)));
+		for (const node of removed) {
+			for (const asset of boundAssets(this.world, node)) {
+				if (!removed.has(asset)) this.editProperty(asset, 'magneticBindTo', false);
+			}
+		}
 
 		const document = this.document;
 		for (const entity of roots) {

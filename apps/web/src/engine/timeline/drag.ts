@@ -33,13 +33,15 @@ import { clamp } from '@/utils';
 import { getDocumentEditor } from '../editor';
 import { resolveSequentialOverlaps } from '../overlap';
 import { authoredTime, moveEntityTo, trimIn, trimOut } from '../timing';
+import { activeMagneticTrack, commitMagneticDrop, planMagneticDrop } from './magnetic-track';
 import { findSnapDelta, findSnapFrame } from './snapping';
-import { framesToPixels, getFrameRate, getResolution, pixelsToFrames } from './view';
+import { framesToPixels, getFrameRate, getResolution, getScrollX, getTimelineScene, pixelsToFrames } from './view';
 
 import type { Entity, World } from 'koota';
 import type { TimelineSurfaceState } from './surface';
 
 const NODES = Or(Geometry, Group, AdjustmentLayer);
+const magneticDrags = new WeakMap<World, { clip: Entity; track: Entity }>();
 
 /** Which edge of a clip a trim is holding. */
 export type TrimEdge = 'in' | 'out';
@@ -54,6 +56,20 @@ export type TrimEdge = 'in' | 'out';
  */
 export function updateDragGestures(world: World, scene: Entity, surface: TimelineSurfaceState): void {
 	const position = surface.pointer?.position;
+	const magnetic = magneticDrags.get(world);
+	if (magnetic && (!position || position.state === 'lifted' || position.state === 'idle')) {
+		magneticDrags.delete(world);
+		const { clip, track } = magnetic;
+		const origin = clip.isAlive() ? clip.get(ClipDragOrigin) : undefined;
+		if (origin) {
+			clip.remove(ClipDragOrigin);
+			if (position?.state === 'lifted' && activeMagneticTrack(world, clip) === track) {
+				const cursor = timelinePointerFrame(world, scene, position.currentX);
+				const drop = planMagneticDrop(world, track, clip, cursor);
+				if (drop) commitMagneticDrop(world, drop);
+			}
+		}
+	}
 	const dragging = !!position && position.state !== 'idle';
 
 	if (!dragging) {
@@ -126,6 +142,20 @@ export function applyClipDrag(
 ): void {
 	const origin = entity.get(ClipDragOrigin)!;
 
+	const magnetic = magneticDrags.get(world);
+	const track = magnetic?.clip === entity ? magnetic.track : activeMagneticTrack(world, entity);
+	if (track) {
+		magneticDrags.set(world, { clip: entity, track });
+		const scene = getTimelineScene(world);
+		const pointer = surface.pointer?.position;
+		if (scene && pointer) {
+			const cursor = timelinePointerFrame(world, scene, pointer.currentX);
+			const drop = planMagneticDrop(world, track, entity, cursor);
+			if (drop) surface.snapX = framesToPixels(drop.line, resolution);
+		}
+		return;
+	}
+
 	const floor = -earliestDraggedStart(world);
 	const offset = Math.max(pixelsToFrames(draggedPixels(surface), resolution), floor);
 
@@ -136,6 +166,10 @@ export function applyClipDrag(
 	if (snapped) surface.snapX = framesToPixels(snap.frame, resolution);
 
 	moveEntityTo(world, entity, origin.start + offset - (snapped ? snap.delta : 0));
+}
+
+function timelinePointerFrame(world: World, scene: Entity, x: number): number {
+	return pixelsToFrames(x, getResolution(world, scene)) + getScrollX(world, scene);
 }
 
 /** Where the first clip of the drag in flight started, from the snapshots. */
