@@ -19,7 +19,7 @@ import { authoredElement, authoredTree, getRuntimeDocument, insert, isSceneNode,
 import { findInspectEntry } from './inspect';
 import { AssetSelection } from './traits';
 
-import { boundAssets } from './timeline/magnetic-binding';
+import { boundAssets } from './timeline/magnetic-binding-state';
 
 import type { SceneNode } from '@diffusionstudio/runtime';
 import type { InspectValue, PropValue } from '@diffusionstudio/jsx';
@@ -680,7 +680,7 @@ export class DocumentEditor {
 			if (!parent) continue;
 
 			this.settle(original);
-			const tree = this.spellCopy(original, true);
+			const tree = this.spellCopy(original, { keepAssetBinding: true });
 			if (!tree) continue;
 
 			const siblings = getEntityChildren(this.world, parent);
@@ -884,7 +884,7 @@ export class DocumentEditor {
 	}
 
 	/** A copy gets its own identity; split copies can keep the asset’s link. */
-	private spellCopy(entity: Entity, keepAssetBinding = false): AuthoredTree | undefined {
+	private spellCopy(entity: Entity, { keepAssetBinding = false } = {}): AuthoredTree | undefined {
 		const tree = this.spell(entity);
 		if (!tree) return undefined;
 		const clearIdentity = (node: AuthoredTree): void => {

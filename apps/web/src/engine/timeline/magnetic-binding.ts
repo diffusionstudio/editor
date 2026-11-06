@@ -3,19 +3,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import {
-	Computed, Group, Host, Name, Sequential, Source, getEntityChildren, getParentNode, getSceneAncestor,
+	Computed, Host, Name, Sequential, Source, fitsChildren, getEntityChildren, getParentNode, getSceneAncestor,
 } from '@diffusionstudio/runtime';
 import { toast } from 'somoto';
 
 import { getDocumentEditor } from '../editor';
+import { bindingAnchorOf, bindingOf, boundAssets, isVideoClip } from './magnetic-binding-state';
 
 import type { Entity, World } from 'koota';
 
 const ASSET_TAGS = new Set(['audio', 'image', 'text', 'captions']);
 
-export const isVideoClip = (entity: Entity): boolean => entity.get(Host)?.tag === 'video';
-const anchorOf = (clip: Entity) => clip.get(Host)?.props.magneticAnchor;
-export const bindingOf = (asset: Entity) => asset.get(Host)?.props.magneticBindTo;
 
 export function bindingSelection(nodes: Entity[]): { clip: Entity; assets: Entity[] } | null {
 	const videos = nodes.filter(isVideoClip);
@@ -40,7 +38,7 @@ export function bindingSelection(nodes: Entity[]): { clip: Entity; assets: Entit
 function setBindings(world: World, clip: Entity, assets: Entity[]): void {
 	if (!assets.length) return;
 	const editor = getDocumentEditor(world);
-	const existing = anchorOf(clip);
+	const existing = bindingAnchorOf(clip);
 	const anchor = typeof existing === 'string' && existing ? existing : crypto.randomUUID();
 	if (anchor !== existing) editor.editProperty(clip, 'magneticAnchor', anchor);
 	for (const asset of assets) editor.editProperty(asset, 'magneticBindTo', anchor);
@@ -56,13 +54,6 @@ export function clearBindings(world: World, assets: Entity[]): void {
 	for (const asset of assets) {
 		if (bindingOf(asset)) editor.editProperty(asset, 'magneticBindTo', false);
 	}
-}
-
-export function boundAssets(world: World, clip: Entity): Entity[] {
-	const anchor = anchorOf(clip);
-	if (typeof anchor !== 'string' || !anchor) return [];
-	const scene = getSceneAncestor(clip);
-	return world.query(Host, Source).filter((asset) => bindingOf(asset) === anchor && getSceneAncestor(asset) === scene);
 }
 
 export function transferSplitBindings(world: World, head: Entity, tail: Entity, frame: number): void {
@@ -89,7 +80,7 @@ type Span = { start: number; end: number };
 export function bindingConflict(world: World, starts: Map<Entity, number>): Entity[] {
 	const affected = new Set(starts.keys());
 	for (const clip of starts.keys()) {
-		for (let parent = getParentNode(clip); parent?.has(Group); parent = getParentNode(parent)) {
+		for (let parent = getParentNode(clip); parent && fitsChildren(parent); parent = getParentNode(parent)) {
 			affected.add(parent);
 		}
 	}
@@ -100,7 +91,7 @@ export function bindingConflict(world: World, starts: Map<Entity, number>): Enti
 		const current = clip.get(Computed);
 		const start = starts.get(clip);
 		let result = current && (start === undefined ? current : { start, end: start + current.end - current.start });
-		if (start === undefined && affected.has(clip) && clip.has(Group)) {
+		if (start === undefined && affected.has(clip) && fitsChildren(clip)) {
 			const children = getEntityChildren(world, clip).map(span).filter((item) => item !== undefined);
 			if (children.length) result = {
 				start: Math.min(...children.map((item) => item.start)),

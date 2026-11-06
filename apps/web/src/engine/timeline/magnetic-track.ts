@@ -3,23 +3,27 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 import {
-	Computed, Host, Selected, Sequential, Source, getEntityChildren, getParentNode, getTimelineOrigin,
+	Computed, Host, Selected, Sequential, Source, getEntityChildren, getEntityTree, getParentNode, getTimelineOrigin,
 } from '@diffusionstudio/runtime';
 
 import { getDocumentEditor } from '../editor';
 import { getEditHistory } from '../history';
-import { moveEntityTo } from '../timing';
-import { bindingConflict, boundAssets, isVideoClip, reportBindingConflict } from './magnetic-binding';
+import { authoredTime, editTime, moveEntityTo } from '../timing';
+import { bindingConflict, reportBindingConflict } from './magnetic-binding';
+import { boundAssets, isVideoClip } from './magnetic-binding-state';
 
 import type { Entity, World } from 'koota';
 
-export const magneticTrackMode = (entity: Entity): unknown => entity.get(Host)?.props.magneticTrack;
+export function magneticTrackMode(entity: Entity): 'on' | 'off' | undefined {
+	const mode = entity.get(Host)?.props.magneticTrack;
+	return mode === 'on' || mode === 'off' ? mode : undefined;
+}
 
-export function selectedVideoTrack(nodes: Entity[]): Entity | null {
+export function selectedVideoTrack(world: World, nodes: Entity[]): Entity | null {
 	if (nodes.length !== 1) return null;
 	const node = nodes[0]!;
 	const track = node.has(Sequential) ? node : isVideoClip(node) ? getParentNode(node) : null;
-	return track?.has(Sequential) && track.has(Source) ? track : null;
+	return track?.has(Sequential) && track.has(Source) && getEntityChildren(world, track).some(isVideoClip) ? track : null;
 }
 
 export function designateMagneticTrack(world: World, track: Entity): void {
@@ -88,7 +92,7 @@ export function commitMagneticDrop(world: World, drop: MagneticDrop): void {
 	for (const [clip, start] of drop.starts) {
 		const time = clip.get(Computed);
 		if (!time) continue;
-		for (const asset of boundAssets(world, clip)) {
+		for (const asset of getEntityTree(world, clip).flatMap((node) => boundAssets(world, node))) {
 			const assetTime = asset.get(Computed);
 			if (!assetTime) continue;
 			if (drop.starts.has(asset)) {
@@ -104,10 +108,23 @@ export function commitMagneticDrop(world: World, drop: MagneticDrop): void {
 		return;
 	}
 
+	const moves = Array.from(starts, ([clip, start]) => {
+		const bounds = clip.get(Computed)!;
+		const origin = getTimelineOrigin(clip);
+		return {
+			clip,
+			destination: origin + (authoredTime(world, clip, 'start') ?? 0) + start - bounds.start,
+			captionEnd: clip.get(Host)?.tag === 'captions' && authoredTime(world, clip, 'end') === undefined
+				? bounds.end - origin : undefined,
+		};
+	});
 	const history = getEditHistory(world);
 	history.beginGesture();
 	try {
-		for (const [clip, start] of starts) moveEntityTo(world, clip, start);
+		for (const { clip, destination, captionEnd } of moves) {
+			if (captionEnd !== undefined) editTime(world, clip, 'end', captionEnd);
+			moveEntityTo(world, clip, destination);
+		}
 	} finally {
 		history.endGesture();
 	}

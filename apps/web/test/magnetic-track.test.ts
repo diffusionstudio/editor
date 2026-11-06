@@ -24,6 +24,9 @@ import { getDocumentEditor } from '../src/engine/editor';
 import { splitAtPlayhead } from '../src/engine/split';
 import { getEditHistory } from '../src/engine/history';
 import { applyClipDrag, beginClipDrag, updateDragGestures } from '../src/engine/timeline/drag';
+import { bindSelection, clearBindings } from '../src/engine/timeline/magnetic-binding';
+import { designateMagneticTrack, setMagneticTrackEnabled } from '../src/engine/timeline/magnetic-track';
+import { RULER_HEIGHT } from '../src/engine/timeline/config';
 import { setResolution, setScrollX } from '../src/engine/timeline/view';
 
 import type { TimelineSurfaceState } from '../src/engine/timeline/surface';
@@ -54,17 +57,18 @@ function bounds(node: ReturnType<ReturnType<typeof project>['add']>) {
 	return [value.start, value.end];
 }
 
-function move(projectState: ReturnType<typeof project>, deltaX: number) {
+function move(projectState: ReturnType<typeof project>, deltaX: number, releaseY = RULER_HEIGHT + 10) {
 	const { world, scene, c } = projectState;
 	const history = getEditHistory(world);
-	const position = { state: 'pressing', currentX: 105 + deltaX, deltaX };
-	const surface = { pointer: { position }, snapX: null } as unknown as TimelineSurfaceState;
+	const position = { state: 'pressing', currentX: 105 + deltaX, currentY: RULER_HEIGHT + 10, deltaX };
+	const surface = { pointer: { position }, layout: { width: 300, height: 200 }, snapX: null } as unknown as TimelineSurfaceState;
 	history.beginGesture();
 	beginClipDrag(world, c.entity);
-	applyClipDrag(world, surface, c.entity, 1);
+	applyClipDrag(world, surface, c.entity, 1, { top: 0, height: 30 });
 	const preview = surface.snapX;
 	history.endGesture();
 	position.state = 'lifted';
+	position.currentY = releaseY;
 	updateDragGestures(world, scene.entity, surface);
 	position.state = 'idle';
 	updateDragGestures(world, scene.entity, surface);
@@ -143,5 +147,54 @@ describe('magnetic timeline editing', () => {
 		expect(sound.entity.isAlive()).toBe(true);
 		expect(sound.props.magneticBindTo).toBe(false);
 		expect(bounds(sound)).toEqual([63, 72]);
+	});
+
+	it('cancels when the pointer is released on another row', () => {
+		const state = project();
+		expect(move(state, -65, 130)).toBe(30);
+		expect(bounds(state.b)).toEqual([60, 90]);
+		expect(bounds(state.c)).toEqual([90, 120]);
+		expect(getEditHistory(state.world).canUndo()).toBe(false);
+	});
+
+	it('moves a group without losing its children’s offsets', () => {
+		const state = project();
+		const { world, track, add, b, c } = state;
+		getDocumentEditor(world).remove(b.entity);
+		const group = add('Group', 'group', track);
+		const child = add('Video', 'inside', group, { start: 2, end: 3 });
+		move(state, -65);
+		expect(bounds(c)).toEqual([30, 60]);
+		expect(bounds(child)).toEqual([90, 120]);
+		expect(child.props.start).toBe(2);
+		expect(child.props.end).toBe(3);
+	});
+
+	it('starts a designated track disabled and uses existing drag rules until enabled', () => {
+		const state = project();
+		const { world, track, b, c } = state;
+		designateMagneticTrack(world, track.entity);
+		expect(track.props.magneticTrack).toBe('off');
+		move(state, -65);
+		expect(bounds(b)).toEqual([60, 90]);
+		expect(bounds(c)[0]).toBeLessThan(60);
+		getEditHistory(world).undo();
+		setMagneticTrackEnabled(world, track.entity, true);
+		move(state, -65);
+		expect(bounds(b)).toEqual([90, 120]);
+	});
+
+	it('binds selected material to its video and lets the user unlink it in place', () => {
+		const state = project();
+		const { world, scene, add, b } = state;
+		const sound = add('Audio', 'pop', scene, { start: 2.1, end: 2.4 });
+		expect(sound.props.magneticBindTo).toBeUndefined();
+		bindSelection(world, [b.entity, sound.entity]);
+		expect(sound.props.magneticBindTo).toBe(b.props.magneticAnchor);
+		move(state, -65);
+		expect(bounds(sound)).toEqual([93, 102]);
+		clearBindings(world, [sound.entity]);
+		expect(sound.props.magneticBindTo).toBe(false);
+		expect(bounds(sound)).toEqual([93, 102]);
 	});
 });

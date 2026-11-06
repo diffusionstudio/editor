@@ -48,7 +48,8 @@ import {
   wrapSelectionInSequence,
 } from "@/engine";
 
-import { bindSelection, bindingOf, bindingSelection, clearBindings } from "@/engine/timeline/magnetic-binding";
+import { bindingOf } from "@/engine/timeline/magnetic-binding-state";
+import { bindSelection, bindingSelection, clearBindings } from "@/engine/timeline/magnetic-binding";
 import {
   designateMagneticTrack,
   magneticTrackMode,
@@ -105,11 +106,11 @@ const SHORTCUTS: Shortcut[] = [
     icon: "sidebar-timeline",
     keys: [],
     run: (world) => {
-      const track = selectedVideoTrack([...world.query(Selected)]);
+      const track = selectedVideoTrack(world, [...world.query(Selected)]);
       if (track) designateMagneticTrack(world, track);
     },
-    available: ({ nodes }) => {
-      const track = selectedVideoTrack(nodes);
+    available: ({ nodes, world }) => {
+      const track = selectedVideoTrack(world, nodes);
       return track !== null && !magneticTrackMode(track);
     },
   },
@@ -138,11 +139,11 @@ const SHORTCUTS: Shortcut[] = [
     icon: "sidebar-timeline",
     keys: [],
     run: (world) => {
-      const track = selectedVideoTrack([...world.query(Selected)]);
+      const track = selectedVideoTrack(world, [...world.query(Selected)]);
       if (track) setMagneticTrackEnabled(world, track, enabled);
     },
-    available: ({ nodes }) => {
-      const track = selectedVideoTrack(nodes);
+    available: ({ nodes, world }) => {
+      const track = selectedVideoTrack(world, nodes);
       return track !== null && magneticTrackMode(track) === (enabled ? "off" : "on");
     },
   })),
