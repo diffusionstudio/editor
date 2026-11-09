@@ -250,7 +250,7 @@ function handleBody(
 		beginClipDrag(world, entity);
 	}
 	if (entity.has(ClipDragOrigin)) {
-		applyClipDrag(world, surface, entity, resolution);
+		applyClipDrag(world, surface, entity, resolution, row);
 	}
 
 	// While a marquee is out, the clips it covers are the selection: entering

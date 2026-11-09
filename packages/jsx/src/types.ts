@@ -204,6 +204,10 @@ export type CaptionPreset =
 
 /** What every element the editor can point at carries. */
 type IdentityProps = {
+  /** Editor-only identity of a video clip with explicitly bound materials. */
+  magneticAnchor?: string;
+  /** Editor-only link to the video clip that carries this material. */
+  magneticBindTo?: string;
   /** Human-readable node name. */
   name?: string;
   /**
@@ -1062,6 +1066,8 @@ export type TextRangeProps = Partial<ColorProps> & FontProps & {
 };
 
 export type SequenceProps = Pick<IdentityProps, "name"> & {
+  /** Editor-only designation and toggle for timeline insertion. */
+  magneticTrack?: "on" | "off";
   children?: SolidJSX.Element;
 };
 

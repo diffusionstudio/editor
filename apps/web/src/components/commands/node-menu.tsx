@@ -82,6 +82,8 @@ export const TIMELINE_MENU: NodeMenuLayout = {
   nodes: [
     CLIPBOARD,
     ["shortcut:split"],
+    ["shortcut:designate-magnetic-track", "shortcut:enable-magnetic-track", "shortcut:disable-magnetic-track"],
+    ["shortcut:bind-to-video", "shortcut:unbind-from-video"],
     STRUCTURE,
     ["shortcut:bring-to-front", "shortcut:send-to-back", "shortcut:toggle-hidden", "toggle-muted", "toggle-soloed"],
     MEDIA,

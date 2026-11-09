@@ -10,6 +10,7 @@ import { For } from "solid-js";
 import { useWorld } from "@diffusionstudio/koota-solid";
 import {
   FrameRate,
+  Selected,
   getActiveEntity,
   isGroupLike,
   isSequence,
@@ -46,6 +47,15 @@ import {
   wrapSelectionInScene,
   wrapSelectionInSequence,
 } from "@/engine";
+
+import { bindingOf } from "@/engine/timeline/magnetic-binding-state";
+import { bindSelection, bindingSelection, clearBindings } from "@/engine/timeline/magnetic-binding";
+import {
+  designateMagneticTrack,
+  magneticTrackMode,
+  selectedVideoTrack,
+  setMagneticTrackEnabled,
+} from "@/engine/timeline/magnetic-track";
 
 import type { Entity, World } from "koota";
 import type { Section } from "@/context/commands";
@@ -89,6 +99,55 @@ const seekSeconds = (seconds: number) => (world: World) =>
   seekBy(world, Math.round(seconds * (world.get(FrameRate)?.value ?? 30)));
 
 const SHORTCUTS: Shortcut[] = [
+  {
+    id: "designate-magnetic-track",
+    title: "指定為磁性主軌",
+    group: "Timeline",
+    icon: "sidebar-timeline",
+    keys: [],
+    run: (world) => {
+      const track = selectedVideoTrack(world, [...world.query(Selected)]);
+      if (track) designateMagneticTrack(world, track);
+    },
+    available: ({ nodes, world }) => {
+      const track = selectedVideoTrack(world, nodes);
+      return track !== null && !magneticTrackMode(track);
+    },
+  },
+  {
+    id: "bind-to-video",
+    title: "綁定到影片片段",
+    group: "Timeline",
+    icon: "sidebar-timeline",
+    keys: [],
+    run: (world) => bindSelection(world, [...world.query(Selected)]),
+    available: ({ nodes }) => bindingSelection(nodes) !== null,
+  },
+  {
+    id: "unbind-from-video",
+    title: "解除影片綁定",
+    group: "Timeline",
+    icon: "sidebar-timeline",
+    keys: [],
+    run: (world) => clearBindings(world, [...world.query(Selected)]),
+    available: ({ nodes }) => nodes.some(bindingOf),
+  },
+  ...([true, false] as const).map((enabled): Shortcut => ({
+    id: enabled ? "enable-magnetic-track" : "disable-magnetic-track",
+    title: enabled ? "開啟磁性主軌" : "關閉磁性主軌",
+    group: "Timeline",
+    icon: "sidebar-timeline",
+    keys: [],
+    run: (world) => {
+      const track = selectedVideoTrack(world, [...world.query(Selected)]);
+      if (track) setMagneticTrackEnabled(world, track, enabled);
+    },
+    available: ({ nodes, world }) => {
+      const track = selectedVideoTrack(world, nodes);
+      return track !== null && magneticTrackMode(track) === (enabled ? "off" : "on");
+    },
+  })),
+
   {
     id: "group",
     title: "Group",
