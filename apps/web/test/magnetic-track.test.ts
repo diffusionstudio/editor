@@ -21,14 +21,16 @@ vi.mock('somoto', () => ({ toast: { error: vi.fn(), info: vi.fn() } }));
 
 import { toast } from 'somoto';
 import { getDocumentEditor } from '../src/engine/editor';
+import { insertAsset } from '../src/engine/insert-asset';
 import { splitAtPlayhead } from '../src/engine/split';
 import { getEditHistory } from '../src/engine/history';
 import { applyClipDrag, beginClipDrag, updateDragGestures } from '../src/engine/timeline/drag';
 import { bindSelection, clearBindings } from '../src/engine/timeline/magnetic-binding';
-import { designateMagneticTrack, setMagneticTrackEnabled } from '../src/engine/timeline/magnetic-track';
+import { designateMagneticTrack, selectedVideoTrack, setMagneticTrackEnabled } from '../src/engine/timeline/magnetic-track';
 import { RULER_HEIGHT } from '../src/engine/timeline/config';
 import { setResolution, setScrollX } from '../src/engine/timeline/view';
 
+import type { ImageAsset, VideoAsset } from '@diffusionstudio/assets';
 import type { TimelineSurfaceState } from '../src/engine/timeline/surface';
 
 function project(bind = false) {
@@ -196,5 +198,37 @@ describe('magnetic timeline editing', () => {
 		clearBindings(world, [sound.entity]);
 		expect(sound.props.magneticBindTo).toBe(false);
 		expect(bounds(sound)).toEqual([93, 102]);
+	});
+
+	it('designates and reorders an imported video and moves its imported image', () => {
+		const state = project();
+		const { world, scene, track } = state;
+		const editor = getDocumentEditor(world);
+		editor.remove(state.c.entity);
+		const media = {
+			id: 'test-asset',
+			source: '/test/asset',
+			createdAt: '2026-11-01T00:00:00Z',
+			width: 640,
+			height: 360,
+			handle: {} as VideoAsset['handle'],
+		};
+		const video: VideoAsset = { ...media, type: 'VIDEO', path: 'clip.mov', mimeType: 'video/quicktime', duration: 5, frameRate: 30, bitRate: 1000 };
+		const image: ImageAsset = { ...media, id: 'test-image', type: 'IMAGE', path: 'photo.png', mimeType: 'image/png' };
+		const clip = insertAsset(world, video, { parent: track.entity, start: 3 })!;
+		const picture = insertAsset(world, image, { parent: scene.entity, start: 3.1 })!;
+		editor.editProperty(clip, 'end', 4);
+		editor.editProperty(picture, 'end', 3.4);
+
+		editor.editProperty(track.entity, 'magneticTrack', false);
+		expect(selectedVideoTrack(world, [clip])).toBe(track.entity);
+		designateMagneticTrack(world, track.entity);
+		expect(track.props.magneticTrack).toBe('off');
+		setMagneticTrackEnabled(world, track.entity, true);
+		bindSelection(world, [clip, picture]);
+		expect(picture.get(Host)?.props.magneticBindTo).toBeTypeOf('string');
+		expect(move({ ...state, c: clip.get(Host)! }, -65)).toBe(30);
+		expect(clip.get(Computed)?.start).toBe(30);
+		expect(picture.get(Computed)?.start).toBe(33);
 	});
 });

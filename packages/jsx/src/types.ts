@@ -204,6 +204,8 @@ export type CaptionPreset =
 
 /** What every element the editor can point at carries. */
 type IdentityProps = {
+  /** Editor-only identity of a video clip with explicitly bound materials. */
+  magneticAnchor?: string;
   /** Editor-only link to the video clip that carries this material. */
   magneticBindTo?: string;
   /** Human-readable node name. */
@@ -930,8 +932,6 @@ export type ColorStopProps = ColorProps & OpacityProps & TrackChildren & {
 export type MediaPaintProps = PaintProps & MediaProps & FitProps & FrameRateProps & TrackChildren;
 
 export type VideoProps = CommonProps & MediaProps & FitProps & FrameRateProps & AudioTrackProps & {
-  /** Editor-only identity of a video with explicitly bound materials. */
-  magneticAnchor?: string;
   /** Paint children, stacked over the media paint created by `src`; `<Stroke>`, `<Shadow>`, `<Effect>`, `<ClipPath>`, `<Mask>`, `<Animation>` and `<KeyframeTrack>` children. */
     children?: SolidJSX.Element;
   };

@@ -8,12 +8,11 @@ import {
 import { toast } from 'somoto';
 
 import { getDocumentEditor } from '../editor';
-import { bindingAnchorOf, bindingOf, boundAssets, isVideoClip } from './magnetic-binding-state';
+import { bindingAnchorOf, bindingOf, boundAssets, isImageClip, isVideoClip } from './magnetic-binding-state';
 
 import type { Entity, World } from 'koota';
 
-const ASSET_TAGS = new Set(['audio', 'image', 'text', 'captions']);
-
+const ASSET_TAGS = new Set(['audio', 'text', 'captions']);
 
 export function bindingSelection(nodes: Entity[]): { clip: Entity; assets: Entity[] } | null {
 	const videos = nodes.filter(isVideoClip);
@@ -25,7 +24,8 @@ export function bindingSelection(nodes: Entity[]): { clip: Entity; assets: Entit
 
 	for (const asset of assets) {
 		const tag = asset.get(Host)?.tag;
-		if (!tag || !ASSET_TAGS.has(tag) || !asset.has(Source) || getSceneAncestor(asset) !== scene) return null;
+		if (!tag || (!ASSET_TAGS.has(tag) && !isImageClip(asset))) return null;
+		if (!asset.has(Source) || getSceneAncestor(asset) !== scene) return null;
 		const clipParent = getParentNode(clip);
 		if (clipParent?.has(Sequential) && getParentNode(asset) === clipParent) return null;
 		for (let parent = getParentNode(asset); parent; parent = getParentNode(parent)) {
