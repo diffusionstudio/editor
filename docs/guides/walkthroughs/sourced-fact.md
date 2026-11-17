@@ -6,6 +6,9 @@ card: the claim and a credit containing the page's title and canonical URL are
 separate, editable `<text>` nodes. It uses the same agent-to-editor workflow as
 the other walkthroughs.
 
+Start with Diffusion Studio set up and signed in, and your agent connected to
+its MCP server.
+
 ## 1. Verify one claim
 
 Write a brief: an eight-second, 1920×1080 card stating how many moons Mars has

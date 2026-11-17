@@ -8,8 +8,8 @@
  *   diffusion check sourced-fact
  *   diffusion capture sourced-fact -t 0 4 7
  *
- * The fact and credit are saved here; opening the composition needs no
- * search service, remote media, or account. The editor supplies Inter.
+ * The fact and credit are saved here, with no search or remote media needed.
+ * The editor's normal setup and sign-in requirements apply; it supplies Inter.
  */
 
 /** @inspect text path="Content/Fact" */
