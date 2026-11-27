@@ -28,11 +28,23 @@ export function revealWords(chars: string, ratio: number): string {
 	return out;
 }
 
+const ARABIC_SCRIPT_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+const ARABIC_SCRAMBLE_CHARS = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي٠١٢٣٤٥٦٧٨٩';
+
+export function splitGraphemes(str: string): string[] {
+	if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+		const seg = new Intl.Segmenter('ar', { granularity: 'grapheme' });
+		return Array.from(seg.segment(str), (s) => s.segment);
+	}
+	return Array.from(str);
+}
+
 export function revealChars(chars: string, ratio: number): string {
 	if (ratio >= 1) return chars;
 	if (ratio <= 0) return '';
-	const visibleCount = Math.floor(ratio * chars.length);
-	return chars.slice(0, visibleCount);
+	const clusters = splitGraphemes(chars);
+	const visibleCount = Math.floor(ratio * clusters.length);
+	return clusters.slice(0, visibleCount).join('');
 }
 
 // ─── Scramble Text ──────────────────────────────────────────
@@ -123,7 +135,7 @@ function pickScrambleChar(seed: number, position: number, step: number, charset:
 }
 
 function buildScrambleState(text: string): ScrambleState {
-	const characters = expandCharRanges(SCRAMBLE_CHARSETS[SCRAMBLE_DEFAULT_CHARS] ?? SCRAMBLE_DEFAULT_CHARS);
+	const characters = ARABIC_SCRIPT_RE.test(text) ? ARABIC_SCRAMBLE_CHARS : expandCharRanges(SCRAMBLE_CHARSETS[SCRAMBLE_DEFAULT_CHARS] ?? SCRAMBLE_DEFAULT_CHARS);
 	const cursorChars = SCRAMBLE_CURSOR;
 	const cursorLen = cursorChars.length;
 

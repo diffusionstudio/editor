@@ -130,6 +130,11 @@ export class Token {
 	}
 }
 
+const ARABIC_RTL_RE = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+export function isRtlLine(words: { chars: string }[]): boolean {
+	return words.some((w) => ARABIC_RTL_RE.test(w.chars));
+}
+
 function applyFont(ctx: Ctx, world: World, entity: Entity, ranges: Entity[]) {
 	const size = getFontSize(world, entity, ranges);
 	const family = getFontFamily(world, entity, ranges);
@@ -143,7 +148,8 @@ function applyFont(ctx: Ctx, world: World, entity: Entity, ranges: Entity[]) {
 
 	ctx.font = `${mappedStyle} ${weight.toLowerCase()} ${size}px "${family.replace(/"/g, '')}", Inter`;
 	ctx.textBaseline = mappedBaseline;
-	ctx.letterSpacing = `${spacing}px`;
+	const rawChars = store(world, Computed).chars[entity.id()] ?? store(world, Chars).value[entity.id()] ?? '';
+	ctx.letterSpacing = ARABIC_RTL_RE.test(rawChars) ? '0px' : `${spacing}px`;
 }
 
 function shapeTokens(world: World, entity: Entity): void {
@@ -213,8 +219,17 @@ function shapeTokens(world: World, entity: Entity): void {
 			line.baseline = maxAscent || lineHeights[l]! * 0.75; // Fallback if no words in line
 		}
 
-		for (const word of lines[l]!) {
-			word.setLine(line);
+		if (isRtlLine(lines[l]!)) {
+			let rtlCursor = lineWidths[l]!;
+			for (const word of lines[l]!) {
+				rtlCursor -= word.width;
+				word.offset = rtlCursor;
+				word.setLine(line);
+			}
+		} else {
+			for (const word of lines[l]!) {
+				word.setLine(line);
+			}
 		}
 
 		line.offsetY += lineHeights[l]! * leading;
